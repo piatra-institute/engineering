@@ -2,14 +2,13 @@
 
 A self-contained prompt for handing a chapter to an external reviewing
 agent (Codex, a domain reviewer running with read access to the
-repository, or a future automated reviewer). The prompt is intended to
-produce a consolidated written review that an editor can apply.
+repository, or a future automated reviewer). The prompt produces a
+consolidated written review that an editor can apply.
 
 The prompt is paired with `docs/reviewer-guide.md` (the protocol the
 review follows) and `docs/voice.md` (the voice rules the review checks
-against). A reviewer who does not read those two documents will not be
-able to produce a useful report; the prompt names them as required
-reading.
+against). A reviewer who does not read those two documents cannot
+produce a useful report; the prompt names them as required reading.
 
 ## When to use this prompt
 
@@ -24,14 +23,12 @@ checklist in `docs/release-checklist.md`).
 
 ## How to use this prompt
 
-1. Identify the chapter coordinates: volume number, volume slug, chapter
-   number, chapter slug, chapter title. For the pilot chapter the values
-   are: `01`, `quantity`, `01`, `why-we-measure`, `Why we measure`.
-2. Copy the **Prompt** section below verbatim.
-3. Substitute every `{PLACEHOLDER}` with the chapter's value.
-4. Hand the substituted prompt to the reviewing agent.
-5. When the agent writes its report at the named output path, read it,
-   apply the fixes, and record the review in `docs/reviews/`.
+1. Set two numbers at the top of the prompt below: `Volume:` (1 to 12)
+   and `Chapter:`. Slugs are not needed; the reviewer discovers them.
+2. Copy the **Prompt** section below.
+3. Hand it to the reviewing agent.
+4. When the report lands at the named output path, read it, apply the
+   fixes, and record resolution.
 
 The agent does not see the conversation in which the prompt was
 written. Anything the reviewer needs must be in the prompt or in the
@@ -41,21 +38,33 @@ files the prompt names.
 
 ```
 You are reviewing a chapter of a 12-volume engineering formation text
-called Engineering. The repository is at:
+called Engineering. Run from the repository root (the directory
+containing main.tex, Makefile, volumes/, docs/, bibliography/).
 
-  /Users/ly3xqhl8g9/Data/i/theings/piatra/content/piatra-press/engineering
+Volume: 1
+Chapter: 2
 
-The chapter to review is:
+Resolve the chapter coordinates from those two numbers. Volume numbers
+run 1 to 12; chapter numbers vary per volume.
 
-  Volume {VOLUME_NUM}: {VOLUME_NAME}
-  Chapter {CHAPTER_NUM}: {CHAPTER_TITLE}
+Path conventions (all paths relative to the repository root):
 
-Source files:
+  - Volume folder:    volumes/<NN>-<vol-slug>/
+  - Volume opener:    volumes/<NN>-<vol-slug>/_volume.tex
+  - Chapter folder:   volumes/<NN>-<vol-slug>/ch<MM>-<chapter-slug>/
+  - Chapter prose:    volumes/<NN>-<vol-slug>/ch<MM>-<chapter-slug>/chapter.tex
+  - Volume dossier:   docs/research/<NN>-<vol-slug>/_volume.md
+  - Chapter dossier:  docs/research/<NN>-<vol-slug>/ch<MM>-<chapter-slug>.md
 
-  Chapter prose: volumes/{VOLUME_NUM}-{VOLUME_SLUG}/ch{CHAPTER_NUM}-{CHAPTER_SLUG}/chapter.tex
-  Chapter dossier: docs/research/{VOLUME_NUM}-{VOLUME_SLUG}/ch{CHAPTER_NUM}-{CHAPTER_SLUG}.md
-  Volume opener: volumes/{VOLUME_NUM}-{VOLUME_SLUG}/_volume.tex
-  Volume dossier: docs/research/{VOLUME_NUM}-{VOLUME_SLUG}/_volume.md
+NN is the volume number padded to two digits (1 -> 01, 12 -> 12). MM
+is the chapter number padded to two digits (2 -> 02, 17 -> 17). The
+slugs (vol-slug, chapter-slug) are kebab-case strings unique to each
+volume and chapter; you discover them by listing the volumes/ and
+docs/research/ trees and matching on the NN and ch<MM> prefixes. The
+dossier tree under docs/research/ mirrors the volumes/ tree exactly.
+
+If any path does not resolve unambiguously, stop and report which. Do
+not guess.
 
 Read this background before reading the chapter:
 
@@ -71,9 +80,13 @@ prose. Then read every BibLaTeX entry the chapter cites in
 bibliography/references.bib.
 
 Run all three reviewer roles from docs/reviewer-guide.md (technical,
-pedagogical, voice) on the chapter. Write a single consolidated report at:
+pedagogical, voice) on the chapter. Write a single consolidated report
+at:
 
-  docs/reviews/vol{VOLUME_NUM}-ch{CHAPTER_NUM}-{CHAPTER_SLUG}-review.md
+  docs/reviews/vol<NN>-ch<MM>-review.md
+
+(e.g. Volume 1 Chapter 2 -> docs/reviews/vol01-ch02-review.md;
+Volume 3 Chapter 5 -> docs/reviews/vol03-ch05-review.md).
 
 Be unsparing. The reviewer's job is to find what would embarrass an
 external reader. Do not be reverent; the chapter is a draft.
@@ -155,9 +168,9 @@ working-engineer register, with no em-dashes. The report itself is read
 by the editor, by the writer, and by future reviewers; it should model
 the voice it is auditing.
 
-Output: a single file at docs/reviews/vol{VOLUME_NUM}-ch{CHAPTER_NUM}-{CHAPTER_SLUG}-review.md
-with the sections A through H above. Do not edit the chapter itself; the
-editor applies fixes after reading the report. If the chapter has obvious
+Output: a single file at docs/reviews/vol<NN>-ch<MM>-review.md with
+the sections A through H above. Do not edit the chapter itself; the editor
+applies fixes after reading the report. If the chapter has obvious
 build-breaking errors (undefined macros, missing citations, unresolvable
 cross-references), say so at the top of the report so the editor fixes
 those before applying the substantive comments.
@@ -185,7 +198,7 @@ are build-breakers, then technical, then voice, then pedagogy.
 
 Once the reviewer's report is written:
 
-1. Open the report at `docs/reviews/vol{NN}-ch{MM}-{slug}-review.md`.
+1. Open the report at `docs/reviews/vol<NN>-ch<MM>-review.md`.
 2. Apply the fixes from section G in order.
 3. Where a fix is contested or wrong, add a `### Editor's response`
    block at the bottom of the report explaining the disagreement.
@@ -201,14 +214,12 @@ every fix.
 
 ## Calibration: the pilot review
 
-The pilot review (Vol I Ch 1, "Why we measure") is the first execution
-of this protocol. It is the calibration run. After the pilot review is
-complete, the editor compares the report's findings against this
-template and revises the prompt if the report missed obvious issues or
-spent words on issues the editor would not have asked for. The revised
-prompt becomes the production template.
-
-Subsequent chapters use the production template without revision unless
-the project's voice rules, citation policy, or release checklist change.
-A change to any of those triggers a sweep of recent reviews to confirm
-they would still hold.
+The pilot review (Vol I Ch 1, "Why we measure") was the first execution
+of this protocol; the report and its resolution are recorded at
+`docs/reviews/ch01-pilot-review.md`. After the pilot, this template was
+revised twice: first to use a single short chapter identifier rather
+than five placeholder fields, then to use two simple numeric variables
+(`Volume:` and `Chapter:`) and let the reviewer discover slugs and
+resolve paths. Subsequent revisions of this template should be
+triggered only when the project's voice rules, citation policy, or
+release checklist change in ways the prompt does not yet reflect.

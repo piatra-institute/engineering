@@ -530,7 +530,11 @@ Every chapter has `Project track: TBD` in its `\chapmeta`. Resolving Q55 across 
 
 Vol I Ch 1 project track: **household + analysis (hybrid)**. Hazard class: **none**. Tools: scale, thermometer, stopwatch, ruler, smartphone (sensors and stopwatch app). Artifact: a one-week measurement logbook with explicit error bars on every quantity, plus a 1500-word reflection on which quantities were stable, which drifted, and which the reader could not measure with the tools available. Solutions take the form of a published reference logbook from the general editor, not a single answer key.
 
-The remaining 173 chapters' project-track resolution is deferred to Phase 0.7.
+### Settled 2026-04-28 (Q55-ch02)
+
+Vol I Ch 2 project track: **analysis** (paper/pencil only, no instruments). Hazard class: **none**. Tools: paper, pencil, calculator, and an optional plotting environment for the Buckingham pi exercises that benefit from a graph. Artifact: five physical relationships derived using only dimensional analysis (e.g., pendulum period, drag on a sphere, heat-conduction time scale, free-fall time, capillary rise), each presented with explicit dimensional balance, the dimensionless groups identified, and a check against the published functional form. Solutions take the form of a published reference set of derivations from the general editor.
+
+The remaining 172 chapters' project-track resolution is deferred to Phase 0.7.
 
 # How to use this file
 

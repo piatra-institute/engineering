@@ -6,7 +6,7 @@ UV = uv
 # Artifacts removed by `make clean` and after each build.
 # `make distclean` additionally removes the PDF and the latexmk tracking files
 # ($(MAIN).fdb_latexmk, $(MAIN).fls), forcing a fully fresh rebuild next time.
-ARTIFACTS = *.aux *.bbl *.bcf *.blg *.idx *.ilg *.ind *.log *.out *.run.xml *.synctex.gz *.toc
+ARTIFACTS = *.aux *.bbl *.bbl-SAVE-ERROR *.bcf *.bcf-SAVE-ERROR *.blg *.idx *.ilg *.ind *.log *.out *.run.xml *.synctex.gz *.toc
 
 all: $(MAIN).pdf
 
@@ -82,7 +82,7 @@ audit-docs:
 	@found=0; \
 	scan_paths="README.md scripts appendices frontmatter"; \
 	doc_paths="$$(find docs -name '*.md' ! -path 'docs/diagnostic.md' ! -path 'docs/research/accidents/*')"; \
-	for token in '163 chapter' '163 chapters' '~465' '465 page' 'book-NN' 'book-XX' 'docs/research/book-' 'Volume XI Chapter 12'; do \
+	for token in '163 chapter' '163 chapters' '~465' '465 page' 'book-NN' 'book-XX' 'docs/research/book-' 'Volume XI Chapter 12' '/Users/' '/home/'; do \
 	    hits=$$(grep -rnF -- "$$token" $$scan_paths $$doc_paths 2>/dev/null || true); \
 	    if [ -n "$$hits" ]; then \
 	        echo ""; \
