@@ -1,4 +1,4 @@
-.PHONY: all clean distclean watch outline scaffolding strict check stats audit-docs
+.PHONY: all clean distclean watch outline scaffolding strict check stats audit-docs accidents
 
 MAIN = main
 LATEXMK = latexmk
@@ -93,6 +93,40 @@ audit-docs:
 	done; \
 	if [ $$found -eq 0 ]; then echo "audit-docs: PASS (no stale references)"; \
 	else echo ""; echo "audit-docs: FAIL"; exit 1; fi
+
+# Named-cases registry audit (Q56). For every \cite{acc:*} key in chapter
+# prose, verify a registry entry exists at docs/research/accidents/ that
+# names the same key in its frontmatter or body. Lists registry entries
+# not yet cited as informational. Exits non-zero if any cited acc: key
+# lacks a registry entry.
+accidents:
+	@echo "auditing chapter prose for named accidents..."
+	@cited=$$(grep -rhoE 'acc:[A-Za-z0-9_:.-]+' volumes/ 2>/dev/null | sort -u); \
+	registry_dir=docs/research/accidents; \
+	if [ ! -d "$$registry_dir" ]; then \
+	    echo "registry directory $$registry_dir does not exist"; exit 1; \
+	fi; \
+	registered=$$(grep -rhE 'acc:[A-Za-z0-9_:.-]+' $$registry_dir 2>/dev/null \
+	    | grep -oE 'acc:[A-Za-z0-9_:.-]+' | sort -u); \
+	missing=""; \
+	for key in $$cited; do \
+	    if ! echo "$$registered" | grep -qx "$$key"; then \
+	        missing="$$missing $$key"; \
+	    fi; \
+	done; \
+	if [ -n "$$missing" ]; then \
+	    echo ""; \
+	    echo "MISSING from registry:$$missing"; \
+	    echo ""; \
+	    echo "accidents: FAIL"; \
+	    exit 1; \
+	fi; \
+	cited_count=$$(echo "$$cited" | grep -c '^acc:' 2>/dev/null || echo 0); \
+	entry_count=$$(ls $$registry_dir/*.md 2>/dev/null \
+	    | grep -v -E '/(README|SCHEMA)\.md$$' | wc -l | xargs); \
+	echo "$$cited_count acc: keys cited in chapters; all resolve to a registry entry"; \
+	echo "$$entry_count registry entries on disk (excluding README, SCHEMA)"; \
+	echo "accidents: PASS"
 
 clean:
 	rm -f $(ARTIFACTS)

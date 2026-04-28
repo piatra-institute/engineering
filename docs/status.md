@@ -4,12 +4,19 @@ Last updated: 2026-04-28.
 
 ## Phase
 
-**Phase 0.6: curriculum expansion.** Complete on 2026-04-28. Closed eleven substantive curriculum gaps (acoustics, mass transfer, plasma physics, bioinformatics, quantum computing, power electronics, MEMS, project management, user research, defence systems, space infrastructure) plus four naming/register fixes and the explicit stigmergy hook in Vol IX.
+**Phase 0.7: registry foundation and pilot prose.** In progress as of 2026-04-28. Includes:
+
+- Vol I Chapter 1 ("Why we measure"): pilot prose written and reviewed (Codex, 40 fixes applied; review resolved at `docs/reviews/ch01-pilot-review.md`).
+- Vol I Chapter 2 ("Units and dimensions"): prose written and reviewed (Codex, 30 fixes applied; review resolved at `docs/reviews/vol01-ch02-review.md`).
+- Vol I opener prose written; archetype list now lists balance alongside scaling, failure, and uncertainty.
+- Named-cases registry foundation (Q56 partial): schema (`docs/research/accidents/SCHEMA.md`); twelve initial entries (every accident cited in Ch 1 / Ch 2 plus seven Volume X high-priority cases); index (`docs/research/accidents/README.md`); citation-policy update with closest-equivalent clause; reviewer-guide registry-check requirement (items 24-27); `make accidents` target.
+
+Phase 0.6 (curriculum expansion). Complete on 2026-04-28. Closed eleven substantive curriculum gaps (acoustics, mass transfer, plasma physics, bioinformatics, quantum computing, power electronics, MEMS, project management, user research, defence systems, space infrastructure) plus four naming/register fixes and the explicit stigmergy hook in Vol IX.
 
 Previous phase: **Phase 0.5** (structural hardening). Complete on 2026-04-28.
 Earlier phase: **Phase 0** (scaffolding + outline). Complete on 2026-04-26.
 
-Next phase: **Phase 1** (pilot chapter, then production prose).
+Next phase: **Phase 1** (production prose at scale, after Phase 0.7 completes).
 
 ## At a glance
 

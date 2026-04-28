@@ -64,39 +64,52 @@ The technical reviewer works through this checklist sequentially. Each item is e
 22. Named accidents in the failure section follow the seven-section template (or reference the registry entry).
 23. Counterfactuals are evidence-based, not invented.
 
+### Named-cases registry (Q56)
+
+For every named accident appearing in the chapter (in prose, exercises, or chapmeta `Named cases` list):
+
+24. The accident has a registry entry at `docs/research/accidents/<slug>-<year>.md`.
+25. The chapter's mechanism description aligns with the registry's `## Technical mechanism` section, or quotes one of the registry's `## Short-form summaries` verbatim. The chapter does not re-narrate the accident from a different framing.
+26. The chapter's `\\cite{...}` key for the accident matches the registry's primary or closest-equivalent key.
+27. If the registry entry is at status `placeholder` or `provisional`, the chapter's draft is acceptable but the chapter cannot ship until the registry entry is `verified`.
+
+A chapter that names an accident with no registry entry is blocked. The author either writes the registry entry (the easier path; ~30 min using the schema at `docs/research/accidents/SCHEMA.md`) or removes the accident from the chapter.
+
+The `make accidents` target runs the same check mechanically; reviewers should run it before reading.
+
 ### Estimation environment
 
-24. Every chapter has at least one `\\begin{estimation}` block.
-25. Estimation blocks precede the corresponding calculation.
-26. Estimation answers are correct to within the stated tolerance.
+28. Every chapter has at least one `\\begin{estimation}` block.
+29. Estimation blocks precede the corresponding calculation.
+30. Estimation answers are correct to within the stated tolerance.
 
 ### Project
 
-27. The chapter project is tractable in the stated time budget.
-28. The project's required tools are listed.
-29. The project specifies a physical track and (where applicable) a simulation track.
-30. The project's expected outcome is stated.
-31. The project's failure modes are described.
+31. The chapter project is tractable in the stated time budget.
+32. The project's required tools are listed.
+33. The project specifies a physical track and (where applicable) a simulation track.
+34. The project's expected outcome is stated.
+35. The project's failure modes are described.
 
 ### Aging
 
-32. Every fast-aging or medium-life claim carries a "current as of YYYY" tag.
-33. Software / commercial / regulatory specifics live in companion notes when appropriate.
-34. The reader returning in 2046 can tell which parts to re-derive and which to trust.
+36. Every fast-aging or medium-life claim carries a "current as of YYYY" tag.
+37. Software / commercial / regulatory specifics live in companion notes when appropriate.
+38. The reader returning in 2046 can tell which parts to re-derive and which to trust.
 
 ### Cross-references
 
-35. Every `\\cref{...}` and `\\autoref{...}` resolves to the intended target.
-36. Forward references are minimised; backward references are precise.
-37. Bridges to adjacent chapters and volumes are accurate.
+39. Every `\\cref{...}` and `\\autoref{...}` resolves to the intended target.
+40. Forward references are minimised; backward references are precise.
+41. Bridges to adjacent chapters and volumes are accurate.
 
 ### Voice (handled by voice reviewer; technical reviewer flags only the egregious)
 
-38. No em-dashes.
-39. No first-person "I" in body prose.
-40. No "let us pause to note" / "in essence" / "fundamentally" / similar AI-tic.
+42. No em-dashes.
+43. No first-person "I" in body prose.
+44. No "let us pause to note" / "in essence" / "fundamentally" / similar AI-tic.
 
-A chapter that fails three or more items in any cluster (foundations, correctness, citation, etc.) is returned with a structural rewrite required, not a corrections list.
+A chapter that fails three or more items in any cluster (foundations, correctness, citation, registry, etc.) is returned with a structural rewrite required, not a corrections list.
 
 ## Reviewer turnaround
 

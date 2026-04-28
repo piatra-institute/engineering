@@ -84,16 +84,26 @@ Half-life category is set in each chapter's `\chapmeta` block. Section-level hal
 
 A named accident (Bhopal, Chernobyl, Boeing 737 MAX, Therac-25, Tacoma Narrows, Aloha 243, Air France 447, Genoa Morandi Bridge, Volkswagen diesel-defeat, Mars Climate Orbiter, Knight Capital, etc.) requires:
 
-1. The official primary investigation report (or the closest equivalent if no formal report exists), with its `acc:` key.
+1. The official primary investigation report, with its `acc:` key, when one exists; or the closest equivalent under the rule below.
 2. The applicable regulatory or legal context (with `law:` key) when relevant.
 3. At least one independent secondary analysis (book, peer-reviewed paper, or major investigative journalism, with `text:` or `paper:` key).
-4. The technical mechanism cited from the primary report.
+4. The technical mechanism cited from the primary or closest-equivalent source.
 5. The organisational mechanism cited from a source (often the same primary report, sometimes a separate study).
 6. A "lessons by scale" summary (the part, the machine, the operator, the organisation, the regulator) drawn from the primary record.
 
-Cases that lack a primary source are not cited as accidents; they are referred to as anecdotal and are handled in companion notes if at all.
+### Closest equivalent to primary
 
-The named-cases registry under `docs/research/accidents/` (Q56, deferred) collects these per-accident records and prevents shallow re-tellings across chapters.
+When no single public official investigation report exists for a named accident (Therac-25, certain medical and software cases, organisational failures with no single regulatory inquiry, accidents whose government files remain unavailable), the closest equivalent is acceptable provided the registry entry under `docs/research/accidents/` names:
+
+1. Why no primary report exists (no formal investigation was conducted; the investigation was conducted but the report is not public; the report was written by an interested party rather than an independent body; multiple incomplete reports exist with no canonical synthesis).
+2. Which secondary or near-primary source is being treated as canonical (peer-reviewed reconstructions based on official documents; FDA, GAO, or similar regulator records; court documents and depositions; investigative journalism that cites primary sources by name).
+3. What evidence the canonical source itself draws on (FDA records consulted; deposition transcripts cited; specific regulator's files referenced).
+
+The closest-equivalent designation is per-case and is recorded in the registry entry, not asserted in chapter prose. A chapter cites the registry-blessed key as if it were primary; the registry's frontmatter records the designation and the body's provenance section justifies it.
+
+Cases that lack both a primary source and an acceptable closest-equivalent are not cited as accidents; they are referred to as anecdotal and are handled in companion notes if at all.
+
+The named-cases registry under `docs/research/accidents/` (Q56) collects these per-accident records and prevents shallow re-tellings across chapters. The schema lives at `docs/research/accidents/SCHEMA.md`. The technical reviewer's checklist (in `docs/reviewer-guide.md`) requires every named accident in chapter prose to resolve to a registry entry.
 
 ## Citation prohibitions
 

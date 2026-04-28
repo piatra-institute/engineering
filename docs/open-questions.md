@@ -24,11 +24,11 @@ Each chapter outside the pilot still has `Project track: TBD (physical, simulati
 
 What we need to settle: who does this pass and on what schedule.
 
-### Q56. Named-cases registry
+### Q56. Named-cases registry (in progress)
 
-The diagnostic recommends an accident/source registry under `docs/research/accidents/` before the failure-section prose starts, so the same accident can be referenced consistently across chapters with primary sources already cataloged. Currently named cases (Bhopal, Chernobyl, Boeing 737 MAX, Therac-25, Tacoma Narrows, Aloha 243, Air France 447, Genoa Morandi Bridge, Volkswagen diesel-defeat, ...) are mentioned in dossiers and section headings but have no canonical entries.
+The registry's foundation landed on 2026-04-28: schema (`docs/research/accidents/SCHEMA.md`), citation-policy update with the closest-equivalent-to-primary clause (`docs/citation-policy.md`), reviewer-guide registry-check requirement (`docs/reviewer-guide.md` items 24-27), `make accidents` target, twelve initial entries (every accident cited in Vol I Ch 1 and Ch 2 plus seven Volume X high-priority cases), and the registry index (`docs/research/accidents/README.md`).
 
-What we need to settle: the registry schema, the first ~30 entries, and the BibLaTeX entries for primary investigation reports.
+What remains: the ~18-20 additional entries (Aloha 243, Air France 447, Boeing 737 MAX, Tay Bridge, Citicorp Tower, Genoa Morandi, Aberfan, Vajont, Texas City refinery, Flixborough, Buncefield, Deepwater Horizon, Fukushima, Patriot Dhahran, Knight Capital, Volkswagen diesel-defeat, Northeast blackout 2003, Texas grid 2021). These accumulate as chapters cite them, governed by the schema and `make accidents`. Each new entry takes ~20-30 minutes when its primary or closest-equivalent source is confirmed and the body sections can be filled from it.
 
 ## How to use this file
 
