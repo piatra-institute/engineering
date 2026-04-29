@@ -534,7 +534,11 @@ Vol I Ch 1 project track: **household + analysis (hybrid)**. Hazard class: **non
 
 Vol I Ch 2 project track: **analysis** (paper/pencil only, no instruments). Hazard class: **none**. Tools: paper, pencil, calculator, and an optional plotting environment for the Buckingham pi exercises that benefit from a graph. Artifact: five physical relationships derived using only dimensional analysis (e.g., pendulum period, drag on a sphere, heat-conduction time scale, free-fall time, capillary rise), each presented with explicit dimensional balance, the dimensionless groups identified, and a check against the published functional form. Solutions take the form of a published reference set of derivations from the general editor.
 
-The remaining 172 chapters' project-track resolution is deferred to Phase 0.7.
+### Settled 2026-04-28 (Q55-ch03)
+
+Vol I Ch 3 project track: **analysis** with an optional household component. Hazard class: **none**. Tools: paper, pencil, internet research access for standards documents and manufacturer calibration certificates, and one household measuring instrument of the reader's choice. Artifact: a traceability-chain document for one measurement in the reader's life (a bathroom scale, a kitchen thermometer, a smartphone clock, a GPS coordinate, a workplace instrument, or equivalent), tracing the chain from the reader's instrument through working standard, secondary standard, primary standard, to the SI defining constant. Each link in the chain is documented with sources (calibration certificate where available; standards-body publications; manufacturer documentation). The deliverable is a 1500-word document with the chain explicit, gaps in the chain named, and a reflection on what would change in the reader's confidence in the measurement if any link failed.
+
+The remaining 171 chapters' project-track resolution is deferred to Phase 0.7.
 
 # How to use this file
 
