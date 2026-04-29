@@ -1,37 +1,1232 @@
 \chapter{Sequences, series, limits}
 \label{vol02:ch04}
 
-\epigraph{}{}
+\epigraph{All science is dominated by the idea of approximation.}{Bertrand
+Russell, \emph{The Scientific Outlook} (1931), Ch.~3.}
 
-\chapmeta{Half-life: foundational. Archetypes: scaling, uncertainty. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational. Archetypes: scaling (Taylor expansion
+as the formal scaling near a working point); uncertainty (the engineer's
+first formal handling of approximation error). Exercise target: 30.
+Project track: analysis only. Hazard class: none. Reader path default:
+standard, with sections explicitly tagged. Named cases: none.}
 
 \noindent
-\TODO{Volume 2, Chapter 4. Approx 80 pp.}
+A sequence is a list of numbers indexed by the integers; a series is the
+running sum of a sequence; a limit is the value the sequence or its
+partial sum approaches as the index runs. The engineering content of
+these three definitions is the question that runs through the chapter:
+when the engineer truncates a series after a finite number of terms, or
+evaluates a function near a working point, how large is the residual,
+and what controls its size? This chapter answers that question with the
+machinery of geometric and Taylor series, with the convergence tests
+engineers use, and with limits as the formal language of behaviour at
+the edge of an operating range. The chapter is the bridge into calculus.
+Calculus formally arrives in Chapter~5; this chapter prepares the reader
+to read its derivations as expansions of objects already understood.
 
-\section{Sequences and their behaviour at infinity}
-\TODO{Section prose.}
+\section{Sequences and their behaviour at infinity}\pathtag{core}
 
-\section{Series: geometric, harmonic, alternating}
-\TODO{Section prose.}
+A \engterm{sequence} is a function from the natural numbers $\N$ (or
+$\N \cup \{0\}$) to a set, usually $\R$ or $\C$. We write the sequence
+as $(a_{n})_{n \geq 1}$ or simply $a_{1}, a_{2}, a_{3}, \ldots$. The
+index $n$ is the sequence's position; the value $a_{n}$ is the
+sequence's $n$-th term.
 
-\section{Convergence tests engineers actually use}
-\TODO{Section prose.}
+Engineering sequences arrive from two sources. The first is iteration:
+a numerical method produces $x_{n+1} = g(x_{n})$ from a starting value
+$x_{0}$, and the question is whether $x_{n}$ approaches a useful answer
+as $n$ grows. The second is sampling: a continuous quantity is recorded
+at times $t_{n}$, producing the sequence $a_{n} = f(t_{n})$, and the
+question is what the long-time average or the behaviour at large $n$
+tells us about the underlying process. Both situations turn on the
+same question: does the sequence settle, and to what?
 
-\section{Power series, Taylor series}
-\TODO{Section prose.}
+\subsection{Convergence}
 
-\section{Limits: epsilon-delta informally; engineering use}
-\TODO{Section prose.}
+\engterm{Convergence}. A sequence $(a_{n})$ \engterm{converges} to a
+limit $L$ if, for every tolerance $\varepsilon > 0$, there exists an
+index $N$ such that $\abs{a_{n} - L} < \varepsilon$ for all $n \geq N$.
+We write $a_{n} \to L$ or $\lim_{n \to \infty} a_{n} = L$. A sequence
+that does not converge is said to \engterm{diverge}.
 
-\section{Failure: divergent series that look convergent}
-\TODO{Section prose.}
+The definition has the formal flavour of an epsilon argument; we will
+return to that style in section 4.5 when we treat limits of functions.
+The working content for sequences is simpler. The reader picks how close
+the sequence has to get; the definition guarantees an index past which
+the sequence stays at least that close, forever. If the reader can write
+down such an $N$ for any $\varepsilon$, the sequence converges. If the
+reader can show that no such $N$ exists for some $\varepsilon$, it does
+not.
 
-\section{Worked examples: small-angle approximations, perturbation expansions}
-\TODO{Section prose.}
+\engterm{Bounded}. A sequence is \engterm{bounded} if there is a single
+$M$ with $\abs{a_{n}} \leq M$ for all $n$. Bounded does not imply
+convergent: $a_{n} = (-1)^{n}$ is bounded between $-1$ and $1$ but
+oscillates forever. Convergent does imply bounded: a sequence that
+eventually sits within $\varepsilon$ of $L$ has all but finitely many
+terms in $[L - \varepsilon, L + \varepsilon]$, and the finitely many
+remaining terms add a finite bound.
 
+\engterm{Monotone}. A sequence is \engterm{monotone increasing} if
+$a_{n+1} \geq a_{n}$ for all $n$, and \engterm{monotone decreasing} if
+$a_{n+1} \leq a_{n}$. The \engterm{monotone convergence theorem} says
+that a bounded monotone sequence converges. The proof depends on the
+\engterm{completeness} of $\R$: every nonempty bounded subset of the
+real numbers has a least upper bound. The engineering use of the
+theorem is direct. If a numerical iteration produces a sequence that
+is bounded and monotone (each step makes the residual smaller, and the
+residuals do not run off to infinity), the iteration converges, even
+when we cannot compute the limit directly.
 
-\section{Project}
-\TODO{derive the standard small-angle approximations and bound the error}
+\subsection{Standard sequences and their limits}
+
+A small inventory carries most engineering work.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Geometric}: $a_{n} = r^{n}$. Converges to $0$ for
+    $\abs{r} < 1$; converges to $1$ for $r = 1$; diverges otherwise.
+    The engineering quantity behind this sequence is repeated
+    multiplication by a fixed factor: capacitor voltage discharging
+    through a resistor in equal time steps, a dropped fraction of an
+    investment compounded each period, a numerical iteration whose
+    error shrinks by a fixed ratio.
+  \item \engterm{Power-law}: $a_{n} = n^{p}$. Converges to $0$ for
+    $p < 0$, to $1$ for $p = 0$, and diverges for $p > 0$. The
+    \engterm{harmonic} sequence $a_{n} = 1/n$ converges to $0$ but, as
+    we will see, its partial sums diverge.
+  \item \engterm{Logarithmic}: $a_{n} = \log n / n$ converges to $0$.
+    Logarithms grow more slowly than any positive power.
+  \item \engterm{Factorial}: $a_{n} = c^{n} / n!$ converges to $0$ for
+    every constant $c$. The factorial dominates exponential growth.
+\end{itemize}
+
+The relative growth rates compose into a working hierarchy: $\log n
+\ll n^{p} \ll c^{n} \ll n!$ as $n \to \infty$, for any $p > 0$ and any
+$c > 1$. We use $\ll$ to mean that the ratio of left-hand to right-hand
+tends to zero. The hierarchy will reappear in algorithm analysis
+(Volume II Chapter 17) and in the asymptotic behaviour of physical
+expansions later in this chapter.
+
+\subsection{Recursive sequences}
+
+Many engineering sequences are defined recursively: $a_{n+1} = g(a_{n})$
+with a starting value $a_{0}$. Three patterns occur often enough to
+deserve naming.
+
+\engterm{Linear recursion}: $a_{n+1} = r a_{n} + c$. The fixed point is
+$a^{*} = c / (1 - r)$ when $r \neq 1$. The deviation $b_{n} = a_{n} -
+a^{*}$ satisfies $b_{n+1} = r b_{n}$, so $b_{n} = r^{n} b_{0}$. The
+sequence converges to $a^{*}$ for $\abs{r} < 1$ and diverges for
+$\abs{r} > 1$. The case $r = 1$ is a random walk in disguise: $a_{n} =
+a_{0} + n c$ grows or decays linearly. This recursion appears in
+discrete-time models of cooling, tank filling, and savings.
+
+\engterm{Newton's iteration}: $a_{n+1} = a_{n} - f(a_{n}) / f'(a_{n})$
+for finding a root of $f$. The iteration converges quadratically near
+a simple root: the new error is approximately the square of the old
+error, divided by twice the derivative at the root. We treat this
+formally in Volume II Chapter 16; the present-chapter point is that the
+question "does this iteration converge?" is a question about the
+sequence the iteration produces.
+
+\engterm{Fixed-point iteration}: $a_{n+1} = g(a_{n})$ converges to a
+fixed point $a^{*} = g(a^{*})$ when $\abs{g'(a^{*})} < 1$ and the
+starting value is close enough. The convergence is linear with rate
+$\abs{g'(a^{*})}$. Engineering iterations from heat-transfer
+relaxation to PageRank are fixed-point iterations in disguise.
+
+\subsection{The big-O and little-o notations}
+
+The engineering notation for "this term is small in this regime" is
+the \engterm{big-O} family. Given two sequences $(a_{n})$ and
+$(b_{n})$ with $b_{n} > 0$ eventually:
+
+\begin{itemize}[leftmargin=*]
+  \item $a_{n} = O(b_{n})$ means $\abs{a_{n}} \leq C b_{n}$ for some
+    constant $C$ and all sufficiently large $n$. The sequence $a_{n}$
+    is bounded by a constant multiple of $b_{n}$.
+  \item $a_{n} = o(b_{n})$ means $a_{n} / b_{n} \to 0$. The sequence
+    $a_{n}$ is asymptotically negligible compared to $b_{n}$.
+  \item $a_{n} \sim b_{n}$ means $a_{n} / b_{n} \to 1$. The two
+    sequences are asymptotically equal.
+\end{itemize}
+
+The same notation applies to functions of a continuous variable, with
+$x \to x_{0}$ or $x \to \infty$ replacing $n \to \infty$. Engineers use
+these symbols to compress statements like "the truncation error is
+proportional to $h^{2}$ as the step $h$ shrinks" into $\text{error} =
+O(h^{2})$. Volume I taught the reader to carry a relative uncertainty
+through every calculation; the big-O family is the formal home of that
+habit when the smallness depends on a parameter.
+
+\begin{archetype}[Scaling, formalised as expansion near a working point]
+Volume I introduced scaling as the engineer's habit of asking how a
+quantity changes when an input is multiplied by a factor. This chapter
+sharpens the habit. When a function $f(x)$ is studied near a working
+point $x_{0}$, its behaviour to leading order is captured by a small
+finite number of terms in a Taylor series. The first-order term scales
+linearly with the deviation $h = x - x_{0}$; the second-order term
+scales as $h^{2}$; the residual scales as $h^{n+1}$ when $n$ terms are
+kept. Scaling becomes the apparatus by which the engineer estimates
+how good an approximation is and when to stop including more terms.
+\end{archetype}
+
+\begin{estimation}
+\textbf{Question.} A numerical iteration produces residuals $r_{0} =
+1.0$, $r_{1} = 0.5$, $r_{2} = 0.25$, $r_{3} = 0.125$. Estimate the
+number of further iterations needed to reduce the residual to $10^{-6}$.
+
+\textbf{Estimate.} The residuals halve at each step, so the sequence is
+geometric with ratio $r = 0.5$. To reduce by a factor of $10^{6}$ from
+the current $r_{3} = 0.125$, we need an additional factor of about
+$10^{6} / 8 \approx 10^{5}$. Since $0.5^{17} \approx 7.6 \times 10^{-6}$
+and $0.5^{20} \approx 9.5 \times 10^{-7}$, about $17$ to $20$ further
+iterations should suffice. A working budget of $20$ iterations leaves
+some margin.
+\end{estimation}
+
+\section{Series: geometric, harmonic, alternating}\pathtag{core}
+
+Given a sequence $(a_{n})_{n \geq 1}$, the \engterm{partial sum} is
+$S_{N} = \sum_{n=1}^{N} a_{n}$. The \engterm{series} is the limit of
+the partial sums:
+\[
+\sum_{n=1}^{\infty} a_{n} = \lim_{N \to \infty} S_{N},
+\]
+when this limit exists. If it does, the series \engterm{converges}; if
+not, it \engterm{diverges}.
+
+A series is a sequence (the partial sums) that happens to be defined as
+a sum. The convergence question for a series is the convergence question
+for its sequence of partial sums. Three series carry most of the early
+engineering content.
+
+\subsection{The geometric series}
+
+For $\abs{r} < 1$,
+\[
+\sum_{n=0}^{\infty} r^{n} = \frac{1}{1 - r}.
+\]
+The partial sum has a closed form. Multiply $S_{N} = 1 + r + r^{2} +
+\cdots + r^{N}$ by $r$ and subtract: $(1 - r) S_{N} = 1 - r^{N+1}$, so
+$S_{N} = (1 - r^{N+1}) / (1 - r)$. As $N \to \infty$, $r^{N+1} \to 0$
+when $\abs{r} < 1$, giving the stated limit. For $\abs{r} \geq 1$, the
+partial sums do not settle (for $r = 1$ they grow as $N + 1$; for
+$r = -1$ they oscillate between $0$ and $1$; for $\abs{r} > 1$ they
+grow without bound).
+
+The geometric series is the workhorse of engineering. It models
+discounted cash flow, signal repetition, multipath echoes, the
+steady-state of a leaky integrator, the response of a recursive filter.
+The closed form $1/(1 - r)$ also gives a useful first-order
+approximation for any quantity of the form "a thing times a series of
+diminishing copies of itself."
+
+A finite geometric sum is also useful in its own right:
+\[
+\sum_{n=0}^{N-1} r^{n} = \frac{1 - r^{N}}{1 - r} \quad (r \neq 1).
+\]
+This formula handles cases where the engineer wants the cumulative
+effect after $N$ steps, regardless of whether the series ultimately
+converges.
+
+\subsection{The harmonic series}
+
+For all the simplicity of its terms, the series
+\[
+\sum_{n=1}^{\infty} \frac{1}{n} = 1 + \frac{1}{2} + \frac{1}{3} +
+\frac{1}{4} + \cdots
+\]
+diverges. The standard proof by Oresme groups terms:
+\[
+1 + \frac{1}{2} + \underbrace{\left(\frac{1}{3} + \frac{1}{4}\right)}_{>
+1/2} + \underbrace{\left(\frac{1}{5} + \cdots + \frac{1}{8}\right)}_{>
+1/2} + \cdots,
+\]
+each parenthesised group exceeds $1/2$, and there are infinitely many
+groups, so the partial sums grow without bound. The growth is slow:
+$S_{N} \approx \log N + \gamma$, where $\gamma \approx 0.5772$ is the
+Euler-Mascheroni constant. To reach $S_{N} = 100$ takes roughly $N
+\approx e^{100 - \gamma} \approx 1.5 \times 10^{43}$ terms.
+
+The harmonic series is the canonical case of a divergent series whose
+terms shrink to zero. The terms shrinking is necessary for convergence
+but not sufficient. We return to this case in section 4.6 as the
+chapter's failure mode.
+
+\subsection{Alternating series}
+
+A series of the form $\sum_{n=1}^{\infty} (-1)^{n+1} b_{n}$ with
+$b_{n} > 0$ is \engterm{alternating}. The \engterm{alternating series
+test} (Leibniz) states: if $b_{n}$ is monotone decreasing and
+$b_{n} \to 0$, the series converges. The classical example is the
+alternating harmonic series:
+\[
+\sum_{n=1}^{\infty} \frac{(-1)^{n+1}}{n} = 1 - \frac{1}{2} + \frac{1}{3}
+- \frac{1}{4} + \cdots = \log 2.
+\]
+The cancellation between consecutive terms produces a convergent series
+where the unsigned series diverged. The engineering interpretation: a
+process that adds and subtracts alternately, with each contribution
+slightly smaller than the last, has a finite cumulative effect even
+when the unsigned process does not.
+
+The alternating series test also gives a useful error bound. If $S_{N}$
+is the $N$-th partial sum of a convergent alternating series and $S$ is
+the true sum, then $\abs{S - S_{N}} \leq b_{N+1}$: the truncation error
+is at most the magnitude of the first omitted term. This is the
+simplest worked-bound formula in the chapter.
+
+\subsection{Absolute and conditional convergence}
+
+A series $\sum a_{n}$ \engterm{converges absolutely} if
+$\sum \abs{a_{n}}$ converges. It \engterm{converges conditionally} if
+$\sum a_{n}$ converges but $\sum \abs{a_{n}}$ does not.
+
+Absolute convergence is the safer condition. A rearrangement of an
+absolutely convergent series sums to the same total. A rearrangement
+of a conditionally convergent series can be made to sum to any real
+number (Riemann's rearrangement theorem). For engineers, the practical
+content is: when manipulating a series (reordering, regrouping,
+multiplying by another series), check that the operations preserve the
+sum. Absolute convergence preserves sum under reordering; conditional
+convergence does not.
+
+\section{Convergence tests engineers actually use}\pathtag{standard}
+
+The following tests are the working tools. We state each in its
+operational form, with a brief justification, and indicate the regime
+where it is sharpest.
+
+\subsection{Term test (necessary condition)}
+
+If $\sum a_{n}$ converges, then $a_{n} \to 0$. Equivalently, if
+$a_{n} \not\to 0$, the series diverges. This is the cheapest test and
+catches the simplest failures: the partial sums cannot settle if the
+last term added is not shrinking. The converse fails (the harmonic
+series has $a_{n} \to 0$ but diverges); the term test rejects, it does
+not approve.
+
+\subsection{Comparison test}
+
+If $0 \leq a_{n} \leq b_{n}$ for all sufficiently large $n$ and
+$\sum b_{n}$ converges, then $\sum a_{n}$ converges. If $0 \leq b_{n}
+\leq a_{n}$ and $\sum b_{n}$ diverges, then $\sum a_{n}$ diverges.
+
+The working version compares the unknown series to a known series. The
+catalog of known series carries the engineer's library: $\sum 1/n^{p}$
+converges for $p > 1$ (the \engterm{p-series}), diverges for $p \leq 1$;
+$\sum r^{n}$ converges for $\abs{r} < 1$. To test $\sum 1/(n^{2} + 1)$,
+compare with $\sum 1/n^{2}$, which converges, so the original series
+converges. To test $\sum 1/(2n + 1)$, compare with $\sum 1/(2n + 2n) =
+(1/4) \sum 1/n$, which diverges, so the original diverges.
+
+A useful refinement is the \engterm{limit comparison test}: if
+$a_{n}, b_{n} > 0$ and $\lim_{n \to \infty} a_{n}/b_{n} = c$ for some
+$0 < c < \infty$, then $\sum a_{n}$ and $\sum b_{n}$ either both
+converge or both diverge. This handles cases where the inequality
+$a_{n} \leq b_{n}$ holds only up to a constant factor.
+
+\subsection{Ratio test}
+
+For a series $\sum a_{n}$ with $a_{n} > 0$, compute
+\[
+L = \lim_{n \to \infty} \frac{a_{n+1}}{a_{n}}.
+\]
+The series converges if $L < 1$ and diverges if $L > 1$. The case
+$L = 1$ is inconclusive.
+
+The ratio test is the engineer's favourite for series whose terms
+involve factorials or exponentials. The series $\sum n! / n^{n}$ has
+ratio $a_{n+1}/a_{n} = (n+1)/((n+1)/n)^{n+1} \cdot 1/(n+1) = (n/(n+1))^{n}
+\to 1/e < 1$, so the series converges. The series $\sum c^{n}/n!$ has
+ratio $c/(n+1) \to 0$, so it converges absolutely for every $c$, which
+underwrites the convergence of $e^{x}$ everywhere.
+
+\subsection{Root test}
+
+For a series $\sum a_{n}$ with $a_{n} \geq 0$, compute
+\[
+L = \lim_{n \to \infty} \sqrt[n]{a_{n}}.
+\]
+The series converges if $L < 1$ and diverges if $L > 1$. The case
+$L = 1$ is inconclusive.
+
+The root test is sharper than the ratio test in cases where the terms
+involve $n$-th powers, such as $\sum (1 - 1/n)^{n^{2}}$. Here
+$\sqrt[n]{a_{n}} = (1 - 1/n)^{n} \to 1/e$, so the series converges.
+Where both tests apply and give a clean limit, the ratio test is
+usually easier to compute; where the ratio test produces an
+indeterminate ratio, the root test sometimes still gives a clean
+$n$-th-root limit.
+
+\subsection{Integral test (informal)}
+
+If $f$ is positive, decreasing, and continuous on $[1, \infty)$ with
+$f(n) = a_{n}$, then $\sum_{n=1}^{\infty} a_{n}$ converges if and only
+if the improper integral $\int_{1}^{\infty} f(x) \, \dd x$ converges.
+We will define this integral formally in Chapter 6; here we use the
+test informally to motivate two key results.
+
+The first is the p-series test. For $f(x) = 1/x^{p}$, the integral
+$\int_{1}^{\infty} 1/x^{p} \, \dd x$ converges for $p > 1$ (giving
+$1/(p-1)$) and diverges for $p \leq 1$. The series $\sum 1/n^{p}$
+follows the same pattern.
+
+The second is the harmonic divergence at the level of growth rate.
+For $p = 1$, $\int_{1}^{N} 1/x \, \dd x = \log N$. The harmonic
+partial sums grow as $\log N + \gamma + O(1/N)$, the integral test's
+verdict in concrete form.
+
+\subsection{Picking a test}
+
+A working order:
+
+\begin{enumerate}[leftmargin=*]
+  \item Try the term test. If $a_{n} \not\to 0$, the series diverges.
+  \item If the term involves $r^{n}$, use the geometric series.
+  \item If the term involves a factorial, use the ratio test.
+  \item If the term is $\sim 1/n^{p}$ for large $n$, use the comparison
+    or limit comparison test against $\sum 1/n^{p}$.
+  \item If the terms are positive and the term is the value of a
+    function $f(n)$ for which $\int f$ has a clean form, use the
+    integral test.
+  \item If the series alternates and the magnitude is monotone
+    decreasing to zero, the alternating-series test gives convergence
+    and a one-term error bound.
+  \item If none of the above applies, the root test sometimes
+    succeeds where the ratio test produces $L = 1$.
+\end{enumerate}
+
+The list is not exhaustive, but it covers the engineering catalog. A
+reader who runs through it on a new series, in order, settles the
+convergence question for nearly every series this volume produces
+\cite{text:strang2016}.
+
+\section{Power series and Taylor series}\pathtag{core}
+
+A \engterm{power series} centred at $x_{0}$ is
+\[
+\sum_{n=0}^{\infty} c_{n} (x - x_{0})^{n} = c_{0} + c_{1} (x - x_{0})
++ c_{2} (x - x_{0})^{2} + \cdots,
+\]
+where the coefficients $c_{n}$ are constants and $x$ is a real (or
+complex) variable. The set of $x$ for which the series converges is an
+interval (or disk in the complex case) around $x_{0}$, called the
+\engterm{interval (or disk) of convergence}. Its half-width is the
+\engterm{radius of convergence} $R$, given by
+\[
+\frac{1}{R} = \limsup_{n \to \infty} \sqrt[n]{\abs{c_{n}}}.
+\]
+Inside the interval the series converges absolutely. Outside it
+diverges. At the endpoints it may converge or diverge, and the cases
+must be checked individually.
+
+\subsection{Taylor series}
+
+A function $f$ that has derivatives of all orders at $x_{0}$ has a
+\engterm{Taylor series} at $x_{0}$:
+\[
+f(x) = \sum_{n=0}^{\infty} \frac{f^{(n)}(x_{0})}{n!} (x - x_{0})^{n}.
+\]
+The coefficients are the function's successive derivatives at $x_{0}$,
+divided by the appropriate factorial. The series at $x_{0} = 0$ is the
+\engterm{Maclaurin series}.
+
+We treat the Taylor series as a known result. The formal derivation
+uses the differential calculus we take up in Chapter 5; for the present
+chapter, the series is the working object, and the question is the
+size of the error when we truncate it.
+
+\subsection{Taylor's theorem with remainder}
+
+For a function $f$ with $n+1$ continuous derivatives on an interval
+containing $x_{0}$ and $x$, the truncated Taylor series gives
+\[
+f(x) = \sum_{k=0}^{n} \frac{f^{(k)}(x_{0})}{k!} (x - x_{0})^{k}
++ R_{n}(x),
+\]
+where the \engterm{remainder} $R_{n}(x)$ admits several useful forms.
+The \engterm{Lagrange form} is
+\[
+R_{n}(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!} (x - x_{0})^{n+1}
+\]
+for some $\xi$ between $x_{0}$ and $x$. The engineer rarely knows
+$\xi$, but a bound on $\abs{f^{(n+1)}}$ over the interval gives a bound
+on $\abs{R_{n}(x)}$:
+\[
+\abs{R_{n}(x)} \leq \frac{M_{n+1}}{(n+1)!} \abs{x - x_{0}}^{n+1},
+\]
+where $M_{n+1} = \sup_{\xi} \abs{f^{(n+1)}(\xi)}$ on the interval. This
+inequality is the chapter's main quantitative tool.
+
+\subsection{The canonical engineering Taylor series}
+
+Five Maclaurin series carry the bulk of engineering work. We list them
+with their radii of convergence and a one-line note on what each is
+used for.
+
+\engterm{Exponential}.
+\[
+e^{x} = \sum_{n=0}^{\infty} \frac{x^{n}}{n!} = 1 + x + \frac{x^{2}}{2}
++ \frac{x^{3}}{6} + \frac{x^{4}}{24} + \cdots
+\]
+Radius of convergence: infinite. The exponential converges everywhere
+on $\R$ (and on $\C$). It is the basic series of growth, decay, and
+oscillation when combined with imaginary arguments.
+
+\engterm{Sine}.
+\[
+\sin x = \sum_{n=0}^{\infty} \frac{(-1)^{n} x^{2n+1}}{(2n+1)!} = x
+- \frac{x^{3}}{6} + \frac{x^{5}}{120} - \frac{x^{7}}{5040} + \cdots
+\]
+Radius of convergence: infinite. Engineers use the leading-order term
+$\sin x \approx x$ for small $x$ in radians; the next term, $-x^{3}/6$,
+sets the error of the small-angle approximation.
+
+\engterm{Cosine}.
+\[
+\cos x = \sum_{n=0}^{\infty} \frac{(-1)^{n} x^{2n}}{(2n)!} = 1
+- \frac{x^{2}}{2} + \frac{x^{4}}{24} - \frac{x^{6}}{720} + \cdots
+\]
+Radius of convergence: infinite. The leading correction $\cos x
+\approx 1 - x^{2}/2$ is the second-order pendulum and small-deflection
+formula.
+
+\engterm{Logarithm}.
+\[
+\log(1 + x) = \sum_{n=1}^{\infty} \frac{(-1)^{n+1} x^{n}}{n} = x
+- \frac{x^{2}}{2} + \frac{x^{3}}{3} - \frac{x^{4}}{4} + \cdots
+\]
+Radius of convergence: $1$. Converges for $-1 < x \leq 1$. The
+leading-order $\log(1 + x) \approx x$ is the workhorse for relative
+deviations: a $5\%$ change in a quantity contributes about $0.05$ to
+the logarithm.
+
+\engterm{Binomial}.
+\[
+(1 + x)^{\alpha} = \sum_{n=0}^{\infty} \binom{\alpha}{n} x^{n} = 1
++ \alpha x + \frac{\alpha (\alpha - 1)}{2} x^{2} + \frac{\alpha
+(\alpha - 1)(\alpha - 2)}{6} x^{3} + \cdots,
+\]
+where $\binom{\alpha}{n} = \alpha(\alpha - 1) \cdots (\alpha - n +
+1)/n!$ is the generalised binomial coefficient. Radius of convergence:
+$1$ (when $\alpha$ is not a non-negative integer; otherwise the series
+terminates). The binomial expansion supplies $\sqrt{1 + x} \approx 1 +
+x/2 - x^{2}/8$ and $1/(1 + x) \approx 1 - x + x^{2} - x^{3} + \cdots$
+as special cases.
+
+These five series, together with the manipulations of section 4.4.5,
+cover most of the smooth functions an engineer evaluates near a
+working point.
+
+\subsection{Manipulating Taylor series}
+
+Inside their disks of convergence, power series can be added,
+subtracted, multiplied, divided (subject to the leading coefficient
+not vanishing), composed, and integrated or differentiated term by
+term. The composition rule justifies, for example, $e^{\sin x}$ near
+$x = 0$:
+\begin{align*}
+e^{\sin x} &= 1 + \sin x + \frac{\sin^{2} x}{2} + \frac{\sin^{3} x}{6}
++ \cdots \\
+&= 1 + \left(x - \frac{x^{3}}{6}\right) + \frac{1}{2}\left(x -
+\frac{x^{3}}{6}\right)^{2} + \cdots \\
+&= 1 + x + \frac{x^{2}}{2} - \frac{x^{4}}{8} + \cdots
+\end{align*}
+The reader collects terms by total power of $x$; the result is the
+Maclaurin series of $e^{\sin x}$ to the order kept. The same
+manipulations underwrite the standard small-angle composites
+(amplitude responses, frequency-shifted oscillations, perturbed
+expansions) that appear later in the chapter.
+
+\subsection{Euler's identity}
+
+A clean payoff. Substitute $x = i\theta$ into the exponential series:
+\[
+e^{i\theta} = \sum_{n=0}^{\infty} \frac{(i\theta)^{n}}{n!}.
+\]
+The powers of $i$ cycle: $i^{0} = 1$, $i^{1} = i$, $i^{2} = -1$,
+$i^{3} = -i$, $i^{4} = 1$, $\ldots$. Splitting the sum into even and
+odd indices:
+\[
+e^{i\theta} = \left(1 - \frac{\theta^{2}}{2} + \frac{\theta^{4}}{24}
+- \cdots\right) + i \left(\theta - \frac{\theta^{3}}{6}
++ \frac{\theta^{5}}{120} - \cdots\right) = \cos\theta + i \sin\theta.
+\]
+The identity $e^{i\theta} = \cos\theta + i \sin\theta$ unifies the
+exponential, sine, and cosine series. Setting $\theta = \pi$ gives
+$e^{i\pi} = -1$, the relation between five fundamental constants
+known as Euler's identity. Volume II Chapter 3 introduced the rotation
+interpretation of complex multiplication; the Taylor series machinery
+gives the algebraic backing for the same identity.
+
+\section{Limits: epsilon-delta informally; engineering use}\pathtag{standard}
+
+The limit of a function captures the value the function approaches as
+the input approaches a target. Limits are the formal machinery of
+"what happens at the edge of the working range," and they underwrite
+every derivative and every integral that follows in this volume.
+
+\subsection{The intuitive picture}
+
+For a function $f$ defined near a point $x_{0}$ (but not necessarily
+at $x_{0}$), we say
+\[
+\lim_{x \to x_{0}} f(x) = L
+\]
+if $f(x)$ can be made as close to $L$ as we like by taking $x$
+sufficiently close to $x_{0}$ (with $x \neq x_{0}$).
+
+The qualifier "with $x \neq x_{0}$" matters. The function value
+$f(x_{0})$, if defined, is allowed to disagree with the limit. The
+function $f(x) = (x^{2} - 1)/(x - 1)$ has $f(x) = x + 1$ for $x \neq
+1$, so $\lim_{x \to 1} f(x) = 2$, even though $f(1)$ is not defined
+(the formula has $0/0$ at $x = 1$). The limit answers a question about
+behaviour near a point, not at the point.
+
+\subsection{Epsilon-delta as motivating discipline}
+
+The formal definition makes "as close as we like" and "sufficiently
+close" precise.
+
+\engterm{Epsilon-delta limit}. We say $\lim_{x \to x_{0}} f(x) = L$ if,
+for every $\varepsilon > 0$, there exists a $\delta > 0$ such that
+$0 < \abs{x - x_{0}} < \delta$ implies $\abs{f(x) - L} < \varepsilon$.
+
+The structure of the definition is a dialogue: the user specifies a
+tolerance $\varepsilon$ on the output; the prover supplies a
+corresponding tolerance $\delta$ on the input that guarantees the
+output stays within tolerance. The limit exists when, for every demand,
+a working $\delta$ can be produced.
+
+We are using this definition as motivating discipline rather than as a
+working tool. An engineer rarely computes limits by writing out
+epsilon-delta arguments. The engineer uses limit laws (sums, products,
+quotients of limits go to sums, products, and quotients of the limits,
+when defined), continuity (a continuous function has $\lim_{x \to x_{0}}
+f(x) = f(x_{0})$, by definition of continuity), the standard limits
+(such as $\lim_{x \to 0} \sin x / x = 1$), and L'H\^{o}pital's rule
+(treated in Chapter 5). The epsilon-delta definition is the
+definition's truth condition; the working tools live above it.
+
+The discipline the definition imposes is that "behaviour near a point"
+has a precise meaning, and that statements like "the function tends to
+$L$" are decidable rather than aesthetic. An engineer who has internalised
+this discipline reads "the system reaches steady state" as a claim with a
+specific epsilon-delta content.
+
+\subsection{One-sided limits, infinite limits, limits at infinity}
+
+Three variants extend the basic definition.
+
+\engterm{One-sided limit}. $\lim_{x \to x_{0}^{+}} f(x) = L$ if $f(x)
+\to L$ as $x$ approaches $x_{0}$ from the right (that is, with
+$x > x_{0}$). The left-hand limit $\lim_{x \to x_{0}^{-}} f(x)$ is
+defined similarly. The two-sided limit exists if and only if both
+one-sided limits exist and are equal.
+
+\engterm{Infinite limit}. $\lim_{x \to x_{0}} f(x) = +\infty$ if $f(x)$
+exceeds every prescribed $M > 0$ for $x$ sufficiently close to $x_{0}$.
+The function does not converge to a finite value; it grows without
+bound as $x$ approaches $x_{0}$. The same idea defines $-\infty$ as a
+limit and limits as $x \to \pm \infty$.
+
+\engterm{Limit at infinity}. $\lim_{x \to \infty} f(x) = L$ if $f(x)
+\to L$ as $x$ grows without bound. The behaviour of a sequence at
+infinity is the case where $x$ ranges over the integers.
+
+\subsection{Engineering uses of limits}
+
+Five engineering questions are limit questions in disguise:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Steady state}. The voltage on a charging capacitor is
+    $V(t) = V_{0}(1 - e^{-t/\tau})$. The steady-state voltage is
+    $\lim_{t \to \infty} V(t) = V_{0}$. The time required to reach a
+    fraction of $V_{0}$ is set by the time constant $\tau$. Volume II
+    Chapter 7 treats the underlying ODE; the limit is the answer to
+    "where does this system end up?"
+  \item \engterm{Linearity at small input}. A nonlinear device behaves
+    approximately linearly at small input. The constant of
+    proportionality is $\lim_{x \to 0} f(x)/x$ when this limit exists.
+    For $f(x) = \sin x$, the limit is $1$; for $f(x) = \tan x$, the
+    limit is $1$; for $f(x) = e^{x} - 1$, the limit is $1$. The
+    common-leading-coefficient pattern is the small-signal regime.
+  \item \engterm{Asymptotic behaviour}. A drag force $F(v) = c_{1} v +
+    c_{2} v^{2}$ has linear-drag behaviour for small $v$ (where the
+    quadratic term is negligible) and quadratic-drag behaviour for
+    large $v$ (where the linear term is negligible). The crossover is
+    where $c_{1} v \sim c_{2} v^{2}$, that is, $v \sim c_{1}/c_{2}$.
+    The behaviour at the edges of the working range is the limit
+    behaviour at $v \to 0$ and $v \to \infty$.
+  \item \engterm{Continuity at a boundary}. A property of a material
+    has one expression in one regime and another expression in the
+    next. The two expressions match at the boundary if and only if the
+    one-sided limits agree. Engineers chase this matching condition at
+    contact surfaces, phase transitions, and method-of-stripes joints.
+  \item \engterm{Convergence of an iteration}. A numerical iteration
+    is useful when the sequence of iterates has a limit. The
+    convergence question becomes a limit question.
+\end{itemize}
+
+The unifying engineering use is the question \emph{what happens at the
+edge}, where "edge" means at zero, at infinity, at a working-point
+deviation, at a boundary, or at the limit of a long-running process.
+Limits are the language in which that question is asked.
+
+\section{Failure: divergent series that look convergent}\pathtag{core}
+
+The chapter's failure mode is a series whose terms shrink, whose
+partial sums seem to be settling, but which never reaches a finite
+limit. The harmonic series is the canonical case.
+
+\subsection{The harmonic-series trap}
+
+A reader confronted with $\sum 1/n$ for the first time often guesses
+that it converges. The terms shrink. Each new term is smaller than the
+last. The partial sums grow more slowly with each step. By visual
+inspection they look like they are approaching some finite value.
+
+They are not. The partial sums grow as $\log N + \gamma$, which is
+unbounded. The growth is just slow enough that the engineer's eye does
+not notice the trend without checking. After ten thousand terms, the
+sum is about $9.79$. After a million, $14.39$. After a billion, $21.30$.
+After Avogadro's number of terms, $55.99$. The growth is slow, but
+unbounded.
+
+The engineering hazard is that an iteration whose residual decreases
+like $1/n$ rather than like $1/n^{2}$ does not converge in the sense
+that allows the engineer to truncate at finite $n$ with a controlled
+error. The truncation residual is the harmonic tail $\sum_{k > N} 1/k$,
+which itself diverges.
+
+\subsection{Diagnostics}
+
+Three diagnostics help the working engineer separate convergent from
+divergent series with shrinking terms.
+
+\engterm{Term test for divergence}. If the terms do not shrink to zero,
+the series diverges. This is the cheap rejection.
+
+\engterm{Comparison with $1/n^{p}$}. If the terms behave asymptotically
+like $1/n^{p}$, the series converges for $p > 1$ and diverges for
+$p \leq 1$. The difference between $p = 1.0$ and $p = 1.01$ is the
+difference between divergence and convergence. The $p = 1$ boundary is
+sharp.
+
+\engterm{Look at the partial sums on a log scale}. A truly convergent
+series has partial sums that approach a horizontal asymptote when
+plotted on a linear scale. A logarithmically divergent series, plotted
+on a log-log scale of $S_{N}$ versus $N$, has $S_{N}$ growing as
+$\log \log N$ asymptotically, which still goes to infinity but does so
+visibly slowly. A power-law-divergent series has $S_{N}$ growing as a
+power of $N$ on the same plot. The visual diagnostic is fragile; the
+analytical diagnostic above is more reliable.
+
+\subsection{Why the boundary is sharp}
+
+The boundary between convergence and divergence is set by the
+borderline behaviour of $\sum 1/(n \log n)$, $\sum 1/(n \log n \log
+\log n)$, and so on, each marginally divergent. Asymptotic analyses
+of borderline series are useful in queue-theoretic and renewal-theoretic
+calculations and in some convergence analyses for stochastic
+algorithms. For working engineers, the take-away is procedural: a
+series whose terms shrink as $1/n$ or slower is suspect, and the
+engineer should switch to a comparison or integral-test argument
+before assuming convergence.
+
+\subsection{The principle}
+
+\begin{principle}[Shrinking terms do not guarantee a convergent sum]
+For a series $\sum a_{n}$, the condition $a_{n} \to 0$ is necessary
+for convergence but not sufficient. A series whose partial sums
+appear to be settling may still diverge if the terms shrink no faster
+than $1/n$. Before truncating an infinite series at finite $N$ and
+treating the tail as negligible, the engineer verifies convergence by
+the comparison, ratio, root, or integral test, and bounds the
+truncation tail explicitly.
+\end{principle}
+
+The same principle reappears later in the volume in the contexts of
+Fourier series convergence, asymptotic expansions, perturbation
+theory, and improper integrals. The harmonic-series trap is the
+chapter's first encounter with a pattern the engineer will meet again.
+
+\section{Worked examples: small-angle approximations and perturbation expansions}\pathtag{core}
+
+We work two extended examples, each producing a usable formula and an
+explicit error bound.
+
+\subsection{The small-angle approximations}
+
+For $\theta$ small in radians, the Taylor series of $\sin$, $\cos$, and
+$\tan$ at $\theta = 0$ give:
+\begin{align*}
+\sin \theta &= \theta - \frac{\theta^{3}}{6} + \frac{\theta^{5}}{120}
+- \cdots, \\
+\cos \theta &= 1 - \frac{\theta^{2}}{2} + \frac{\theta^{4}}{24}
+- \cdots, \\
+\tan \theta &= \theta + \frac{\theta^{3}}{3} + \frac{2 \theta^{5}}{15}
++ \cdots.
+\end{align*}
+Truncating at the leading term gives the standard approximations:
+\[
+\sin \theta \approx \theta, \quad \cos \theta \approx 1, \quad
+\tan \theta \approx \theta,
+\]
+together with the next-order refinements
+\[
+\sin \theta \approx \theta - \frac{\theta^{3}}{6}, \quad \cos \theta
+\approx 1 - \frac{\theta^{2}}{2}, \quad \tan \theta \approx \theta
++ \frac{\theta^{3}}{3}.
+\]
+
+The truncation error for the leading-term sine is bounded by Taylor's
+theorem (Lagrange form) by $M_{3} \theta^{3}/3!$ where $M_{3}$ bounds
+$\abs{f^{(3)}}$ on the interval. For $\sin$, $f^{(3)} = -\cos$, so
+$M_{3} \leq 1$, and the bound becomes
+\[
+\abs{\sin \theta - \theta} \leq \frac{\theta^{3}}{6}.
+\]
+The bound is sharp at $\theta \to 0$. We tabulate it (with all
+quantities in radians, and the approximated value $\theta$ given in
+degrees alongside for orientation) at the four working angles named in
+the project (\autoref{tab:smallangle}).
+
+\begin{table}[h]
+\centering
+\begin{tabular}{lllll}
+\toprule
+$\theta$ (deg) & $\theta$ (rad) & $\sin \theta$ & $\theta$ (approx) &
+$\abs{\sin \theta - \theta}/\sin \theta$ \\
+\midrule
+$5^{\circ}$ & $0.0873$ & $0.0872$ & $0.0873$ & $0.13\%$ \\
+$10^{\circ}$ & $0.1745$ & $0.1736$ & $0.1745$ & $0.51\%$ \\
+$25^{\circ}$ & $0.4363$ & $0.4226$ & $0.4363$ & $3.2\%$ \\
+$45^{\circ}$ & $0.7854$ & $0.7071$ & $0.7854$ & $11.1\%$ \\
+\bottomrule
+\end{tabular}
+\caption{The leading-order small-angle sine approximation $\sin \theta
+\approx \theta$, with relative error at four working angles. The error
+grows as $\theta^{2}/6$ in the relative form, so the same table at
+$\theta = 1^{\circ}$ would give roughly $0.005\%$ error.}
+\label{tab:smallangle}
+\end{table}
+
+The cosine error follows the same pattern with $\theta^{2}/2$ as the
+leading term and $\theta^{4}/24$ as the next correction. At
+$\theta = 25^{\circ}$, the relative error in $\cos \theta \approx 1$ is
+roughly $9.4\%$, and the relative error in $\cos \theta \approx 1 -
+\theta^{2}/2$ drops to about $0.4\%$. At $\theta = 45^{\circ}$, the
+leading-order cosine approximation is off by $29\%$, and the
+quadratic-correction approximation is off by $4.0\%$.
+
+The engineering decision the table makes operational is at what angle
+the leading-order approximation has been pushed past its budget. For a
+$1\%$ error budget on the sine, the leading-order approximation works
+at $\theta \leq 14^{\circ}$ approximately; the quadratic correction
+extends the budget to $\theta \leq 35^{\circ}$. For a $0.1\%$ budget,
+the leading-order approximation is good only to about $4.5^{\circ}$.
+The reader who carries a tolerance into the small-angle decision can
+look up the bound rather than guessing.
+
+\subsection{Perturbation expansion: a quadratic equation with a small parameter}
+
+A standard pattern in engineering analysis: a system has a clean
+solution when a small parameter is set to zero, and the engineer wants
+the correction to first order in the small parameter. Consider the
+quadratic equation
+\[
+x^{2} + 2 \varepsilon x - 1 = 0
+\]
+with $\varepsilon$ small. The unperturbed equation ($\varepsilon = 0$)
+is $x^{2} = 1$, with roots $x = \pm 1$. We look for the perturbed root
+near $x = 1$ in the form
+\[
+x(\varepsilon) = 1 + a_{1} \varepsilon + a_{2} \varepsilon^{2}
++ a_{3} \varepsilon^{3} + \cdots.
+\]
+Substitute and expand:
+\[
+(1 + a_{1} \varepsilon + a_{2} \varepsilon^{2} + \cdots)^{2}
++ 2 \varepsilon (1 + a_{1} \varepsilon + \cdots) - 1 = 0.
+\]
+Collect by powers of $\varepsilon$. The constant term: $1 - 1 = 0$,
+satisfied. The $\varepsilon^{1}$ term: $2 a_{1} + 2 = 0$, giving $a_{1}
+= -1$. The $\varepsilon^{2}$ term: $2 a_{2} + a_{1}^{2} + 2 a_{1} = 0$,
+giving $a_{2} = (2 a_{1} - a_{1}^{2})/(-2) \cdot (-1) = (2 - 1)/2$;
+correctly, $a_{2} = 1/2$. The expansion to second order is
+\[
+x_{+}(\varepsilon) = 1 - \varepsilon + \frac{\varepsilon^{2}}{2} +
+O(\varepsilon^{3}).
+\]
+The exact root is $x_{+}(\varepsilon) = -\varepsilon + \sqrt{1 +
+\varepsilon^{2}}$, which by binomial expansion gives $-\varepsilon + 1
++ \varepsilon^{2}/2 - \varepsilon^{4}/8 + \cdots$, in agreement.
+
+The same procedure produces $x_{-}(\varepsilon) = -1 - \varepsilon -
+\varepsilon^{2}/2 + O(\varepsilon^{3})$ for the root near $-1$. The
+engineering payoff: a closed-form first-order correction without
+solving the quadratic at every value of $\varepsilon$. This pattern
+generalises across nonlinear equations, ODEs, and PDEs, and underwrites
+much of the asymptotic-methods machinery later in the volume
+\cite{text:mahajan2014}.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Small-angle approximations with explicit error bounds]
+The reader derives the standard small-angle approximations from their
+Taylor series, computes explicit error bounds at four working angles,
+compares to the exact values, and writes a 1500-word reflection on
+when each approximation is safe to use and when it should be replaced
+with the exact form.
+
+\textbf{Track}. Analysis only. \textbf{Hazard class}: none.
+\textbf{Tools}. Paper, pencil, calculator. No computer or simulation
+required, although the reader may use a computer-algebra system or
+spreadsheet to confirm the arithmetic.
+
+\textbf{Procedure}.
+
+\begin{enumerate}[leftmargin=*]
+  \item \engterm{Sine and cosine}. Derive the leading-order
+    approximations $\sin \theta \approx \theta$ and $\cos \theta
+    \approx 1$, and their next-order refinements $\sin \theta \approx
+    \theta - \theta^{3}/6$ and $\cos \theta \approx 1 - \theta^{2}/2$,
+    by writing out the Maclaurin series and truncating at the chosen
+    order. State the Lagrange remainder bound for each approximation,
+    using $M = 1$ for the bound on the next derivative magnitude.
+  \item \engterm{Tangent}. Derive $\tan \theta \approx \theta$ and
+    $\tan \theta \approx \theta + \theta^{3}/3$ from the Maclaurin
+    series of the tangent. State the radius of convergence of the
+    series and identify the obstacle to a global Taylor expansion of
+    $\tan$.
+  \item \engterm{Pendulum-period correction}. The exact period of a
+    simple pendulum at amplitude $\theta_{0}$ is
+    \[
+    T(\theta_{0}) = 4 \sqrt{\frac{L}{g}} \int_{0}^{\pi/2}
+    \frac{\dd \phi}{\sqrt{1 - \sin^{2}(\theta_{0}/2) \sin^{2} \phi}}.
+    \]
+    The integral on the right is the complete elliptic integral of
+    the first kind, $K(\sin(\theta_{0}/2))$. Expand the integrand in
+    powers of $\sin(\theta_{0}/2)$ and integrate term by term to
+    obtain
+    \[
+    T(\theta_{0}) = 2 \pi \sqrt{\frac{L}{g}}\left(1
+    + \frac{\theta_{0}^{2}}{16} + \frac{11 \theta_{0}^{4}}{3072}
+    + \cdots\right).
+    \]
+    The reader may take the elliptic-integral identity as given (a
+    standard result) and verify the first two terms of the expansion;
+    the derivation of the elliptic-integral form belongs to Volume II
+    Chapter 6.
+  \item \engterm{Relativistic kinetic energy at low speed}. The
+    relativistic kinetic energy is $K = (\gamma - 1) m c^{2}$ with
+    $\gamma = 1/\sqrt{1 - v^{2}/c^{2}}$. Expand $\gamma$ in powers of
+    $\beta^{2} = v^{2}/c^{2}$ and show that, to leading order in
+    $\beta^{2}$,
+    \[
+    K \approx \frac{1}{2} m v^{2} + \frac{3}{8} m v^{2} \beta^{2}
+    + \cdots.
+    \]
+    The leading-order term is the Newtonian kinetic energy. The
+    next-order term is the leading relativistic correction. Identify
+    the speed at which the relativistic correction is $1\%$ of the
+    Newtonian result.
+  \item \engterm{Binomial expansion}. Derive
+    \[
+    (1 + x)^{1/2} \approx 1 + \frac{x}{2} - \frac{x^{2}}{8}
+    + \frac{x^{3}}{16} - \cdots, \qquad
+    (1 + x)^{-1} \approx 1 - x + x^{2} - x^{3} + \cdots,
+    \]
+    from the binomial theorem with non-integer $\alpha$. State the
+    radius of convergence ($\abs{x} < 1$) and identify three
+    engineering quantities for which one of these expansions is the
+    standard linearisation tool.
+\end{enumerate}
+
+\textbf{Error tabulation}. For each approximation, compute the
+absolute error at $\theta = 5^{\circ}, 10^{\circ}, 25^{\circ},
+45^{\circ}$ (where applicable, and at the corresponding $\beta$ values
+for the relativistic case). Tabulate both the leading-order error and
+the next-order error.
+
+\textbf{Reflection (1500 words)}. The reader writes a 1500-word
+narrative addressing:
+
+\begin{itemize}[leftmargin=*]
+  \item Which small-angle approximation has the most generous error
+    budget, and why. (The answer turns on which derivative bound is
+    smallest, given that $\sin$, $\cos$, and $\tan$ have very
+    different higher-derivative growth.)
+  \item For each approximation, the angle at which the leading-order
+    formula has $1\%$ relative error and the angle at which it has
+    $5\%$ error. State whether these crossover angles match what the
+    reader had implicitly assumed before doing the calculation.
+  \item One engineering context in which the leading-order
+    approximation is reliable, one in which the next-order correction
+    is required, and one in which the exact form should be used. For
+    each, name the regime and the dominant uncertainty source.
+  \item Whether the small-angle approximation is, in the reader's
+    judgment, a piece of mathematical convenience or an irreducible
+    feature of the engineering work. Defend the position with a
+    specific example.
+  \item One measurement or analysis in the reader's prior experience
+    where a small-angle (or analogous small-parameter) approximation
+    was applied. Identify the implicit error tolerance the writer
+    appears to have had, whether the tolerance was met, and what the
+    next-order correction would have changed.
+\end{itemize}
+
+\textbf{Deliverable}. The five derivations, the error table at the
+specified angles, and the reflection. The general editor's reference
+set of derivations and tables is published online; the reader is
+encouraged to compare \emph{after} completing their own.
+
+\textbf{Time}. Approximately five to seven hours of derivation, two
+to three hours of error tabulation, and three to four hours of
+reflection. Total approximately ten to fourteen hours, distributed
+across two or three sittings.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises train calculation, derivation, estimation, simulation,
+design, diagnosis, failure analysis, and judgment. Calculation and
+derivation problems have full solutions; open-ended problems have
+rubrics or reference write-ups. Exercises are tagged with their
+reader-path tier.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the sum of the geometric series
+$\sum_{n=0}^{\infty} (0.9)^{n}$ and the partial sum
+$\sum_{n=0}^{19} (0.9)^{n}$. State the absolute and relative
+truncation error.
+\end{exercise}
+
+\begin{exercise}
+Find the radius of convergence of the power series
+$\sum_{n=1}^{\infty} (n!) \, x^{n} / n^{n}$. State the test you used.
+\end{exercise}
+
+\begin{exercise}
+Compute the first four nonzero terms of the Maclaurin series of
+$f(x) = \log(1 + x^{2})$. State the radius of convergence.
+\end{exercise}
+
+\begin{exercise}
+Use the alternating-series error bound to determine how many terms of
+the Maclaurin series of $\sin(0.5)$ are needed to compute the value
+to within $10^{-6}$.
+\end{exercise}
+
+\begin{exercise}
+Compute $e^{0.1}$ using the Maclaurin series truncated after the
+quadratic term, and state the Lagrange remainder bound at $\xi$ in
+$[0, 0.1]$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Prove that the harmonic series $\sum_{n=1}^{\infty} 1/n$ diverges by
+the grouping argument of Oresme. Then prove that the partial sums
+satisfy $S_{N} \geq 1 + (\log_{2} N)/2$ for $N$ a power of $2$.
+\end{exercise}
+
+\begin{exercise}
+Prove the alternating-series test: if $b_{n}$ is monotone decreasing
+to zero, the partial sums of $\sum (-1)^{n+1} b_{n}$ form a Cauchy
+sequence, and so the series converges. State the truncation-error
+bound and prove it.
+\end{exercise}
+
+\begin{exercise}
+Derive Euler's identity $e^{i\theta} = \cos \theta + i \sin \theta$
+by substituting $x = i\theta$ into the Maclaurin series for $e^{x}$
+and separating real and imaginary parts. State the radius of
+convergence.
+\end{exercise}
+
+\begin{exercise}
+Derive the Maclaurin expansion of $1/(1 - x)^{2}$ by differentiating
+the geometric series $1/(1 - x) = \sum x^{n}$ term by term. State the
+radius of convergence and verify the result against the binomial
+expansion.
+\end{exercise}
+
+\begin{exercise}
+Show that the Taylor series of $f(x) = e^{-1/x^{2}}$ at $x_{0} = 0$
+(with $f(0) = 0$ by convention) has every coefficient equal to zero,
+and yet $f(x) \neq 0$ for $x \neq 0$. Discuss what this example shows
+about the relationship between a function and its Taylor series.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the angle below which the small-angle sine approximation
+$\sin \theta \approx \theta$ has error below $0.1\%$. Then estimate
+the corresponding angle for $0.01\%$ error. State the order-of-magnitude
+scaling of the boundary with the error tolerance.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of terms of the Maclaurin series for $e^{x}$
+needed to compute $e^{1}$ to within $10^{-9}$, using the Lagrange
+remainder bound with $M = e \approx 2.72$. Compare to the number of
+terms needed to compute $e^{0.1}$ to the same tolerance.
+\end{exercise}
+
+\begin{exercise}
+Estimate the relative error in the small-angle pendulum period $T = 2
+\pi \sqrt{L/g}$ at amplitude $\theta_{0} = 30^{\circ}$, using the
+correction $T(\theta_{0})/T_{0} \approx 1 + \theta_{0}^{2}/16$. State
+the implicit assumption about the next-order correction.
+\end{exercise}
+
+\begin{exercise}
+Estimate the speed at which the leading relativistic correction to
+the kinetic energy contributes $1\%$ of the Newtonian value. Express
+the answer as a fraction of the speed of light and as a speed in
+$\si{\meter\per\second}$.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+In a language of the reader's choice, compute the partial sums of the
+harmonic series at $N = 10, 100, 10^{3}, 10^{4}, 10^{5}, 10^{6}$, and
+plot them against $\log N$. Compare to the asymptotic $\log N + \gamma$.
+Identify the regime in which the asymptotic is accurate to better than
+$1\%$.
+\end{exercise}
+
+\begin{exercise}
+Numerically evaluate the partial sums of the alternating harmonic
+series at $N = 10, 100, 10^{3}, 10^{4}$, and compare to $\log 2$.
+Verify that the truncation error is bounded by the magnitude of the
+first omitted term.
+\end{exercise}
+
+\begin{exercise}
+Compute the Taylor polynomial of $\sin x$ at $x_{0} = 0$ to orders
+$1, 3, 5, 7, 9$ and tabulate the absolute error at $x = 0.5, 1.0,
+1.5, 2.0$. Compare the empirical error to the Lagrange remainder
+bound.
+\end{exercise}
+
+\begin{exercise}
+Implement Newton's iteration $a_{n+1} = a_{n} - (a_{n}^{2} - 2)/(2
+a_{n})$ for $\sqrt{2}$ starting from $a_{0} = 1$. Tabulate $a_{n}$
+and the residual $a_{n}^{2} - 2$ for $n = 0, 1, \ldots, 6$. Verify
+that the residual squares at each step (quadratic convergence).
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a series-truncation criterion for evaluating $e^{x}$ on a
+microcontroller without floating-point hardware, using the Maclaurin
+series and a stated relative error tolerance of $10^{-6}$ on the
+range $x \in [0, 1]$. Specify the truncation order and the storage
+requirement (number of coefficients).
+\end{exercise}
+
+\begin{exercise}
+Design a numerical scheme that uses the geometric series formula $1/(1
+- r) = \sum r^{n}$ to evaluate $1/x$ for $x$ in $[0.5, 2]$ without
+division. Specify the substitution $x = 1 - r$, the convergence
+condition, and the truncation order required for $10^{-4}$ relative
+accuracy.
+\end{exercise}
+
+\begin{exercise}
+Design a small-angle decision rule for a device that mixes
+approximate-trigonometry computation (faster, less accurate) and
+exact-trigonometry computation (slower, accurate). State the angle
+threshold above which the device must use the exact form, given an
+error budget of $0.5\%$ on the sine.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A colleague reports that the series $\sum 1/(n \log n)$ converges
+because its terms decrease faster than $1/n$. State whether the
+conclusion is correct and identify the test that settles the question.
+\end{exercise}
+
+\begin{exercise}
+A computation of $\sin(45^{\circ})$ on a calculator returns
+$0.7071067811$. The reader uses the Maclaurin series $\sin x \approx x
+- x^{3}/6 + x^{5}/120 - x^{7}/5040 + x^{9}/362880$ and gets a value
+that agrees to within roughly $4 \times 10^{-8}$. Identify the
+expected truncation error from the Lagrange remainder bound and
+verify it against the empirical residual.
+\end{exercise}
+
+\begin{exercise}
+A spreadsheet evaluates $f(x) = (e^{x} - 1)/x$ at $x = 10^{-12}$ by
+direct computation and returns $0$. Identify the failure mechanism
+and propose a Taylor-series formula for $f(x)$ that is numerically
+stable near $x = 0$.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+A control loop uses the small-angle approximation $\sin \theta
+\approx \theta$ and operates with $\theta$ ranging up to $40^{\circ}$.
+Argue, in 200 to 300 words, whether the approximation is safe in this
+range, identify the angle at which the next-order correction becomes
+mandatory, and state the consequence of using the leading-order
+approximation past its budget.
+\end{exercise}
+
+\begin{exercise}
+A signal-processing routine uses a power-series approximation of a
+nonlinear sensor characteristic, truncated at the cubic term. The
+sensor is then operated outside its calibrated range, where the
+quartic and higher terms become significant. Argue, in 200 to 300
+words, what the user observes, what the diagnostic for the regime
+shift looks like, and the procedural fix.
+\end{exercise}
+
+\begin{exercise}
+A numerical iteration produces residuals that decrease but do not
+square at each step. Argue, in 200 to 300 words, what this tells the
+analyst about the convergence rate of the iteration, what the
+expected total iteration count is to reach a target tolerance, and
+which of three named iterations (Newton, secant, fixed-point) is
+consistent with the observed behaviour.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A junior engineer says: "Any approximation is good enough as long as
+the next term is smaller than the error budget." Write a one-paragraph
+response that takes the junior engineer seriously, identifies what is
+correct in the statement, identifies what is missing (the role of
+absolute versus relative error and the role of the next-derivative
+bound), and proposes a sharper rule.
+\end{exercise}
+
+\begin{exercise}
+A safety analysis uses the leading-order small-angle approximation
+$\sin \theta \approx \theta$ in deriving an upper bound on a hazard.
+Argue, in 200 to 300 words, whether this is a conservative or an
+optimistic choice, when the leading-order approximation overstates
+the bound and when it understates it, and what the safety analyst
+should do to make the approximation defensible.
+\end{exercise}
+
+\begin{exercise}
+Argue, in one paragraph, whether engineering training should
+emphasise the formal epsilon-delta definition of a limit or the
+working limit-laws-and-Taylor-series machinery. Take a position and
+defend it with a specific example from a working engineering problem.
+\end{exercise}

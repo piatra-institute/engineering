@@ -1,46 +1,1691 @@
 \chapter{Differential equations: ODEs}
 \label{vol02:ch07}
 
-\epigraph{}{}
+\epigraph{The laws of nature are but the mathematical thoughts of God.}{Attributed to Euclid by Leibniz; sourced here as an aphorism in the public domain rather than as a primary citation.}
 
-\chapmeta{Half-life: foundational. Archetypes: stability, control, transport. Exercise target: 45. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational for the formal apparatus (the
+canonical first- and second-order linear forms, the integrating
+factor, the characteristic polynomial, the matrix exponential, the
+phase plane); durable for the working numerical methods (Euler, RK4,
+implicit Euler, the basic stiffness diagnosis); medium-life for the
+specific solver tooling and library names of any given decade.
+Archetypes: stability (the formal home; Lyapunov stability is
+previewed here and developed in Volume X), control (the forced
+response of the second-order linear oscillator previews Volumes
+VIII-IX), transport (the heat-equation bridge to Chapter 12).
+Exercise target: 45. Project track: simulation with analysis, per
+Q55-vol02-ch07. Hazard class: none. Reader path default: standard,
+with sections explicitly tagged. Named cases: Patriot missile system
+at Dhahran (1991), invoked in the failure section as the prototype of
+accumulated arithmetic error in long-running numerical integration.}
 
 \noindent
-\TODO{Volume 2, Chapter 7. Approx 120 pp.}
+A differential equation says how a quantity changes. The reader has
+already met two specialised cases of the form: a derivative as a
+rate, in Chapter 5, and an integral as a running accumulation, in
+Chapter 6. An ordinary differential equation, an ODE, ties the two
+together. It states that the rate of change of an unknown function
+of one variable is a known function of the unknown and of the
+variable. The chapter teaches the reader to recognise the canonical
+forms (first-order linear, separable, second-order linear with
+constant coefficients), to solve them by hand when a closed form
+exists, to integrate them numerically when no closed form exists,
+to read the qualitative behaviour off the phase plane, and to name
+the failure modes by which an ODE solution either diverges, lies, or
+silently shifts to the wrong attractor.
 
-\section{What an ODE is, where it comes from}
-\TODO{Section prose.}
+\section{What an ODE is, where it comes from}\pathtag{core}
 
-\section{First-order linear ODEs}
-\TODO{Section prose.}
+An \engterm{ordinary differential equation} is an equation of the
+form
+\[
+F\bigl(t,\, y(t),\, \dot{y}(t),\, \ddot{y}(t),\, \ldots,\, y^{(n)}(t)\bigr) = 0,
+\]
+where $y(t)$ is the unknown function, $t$ is the independent
+variable, the dots and superscripts denote derivatives with respect
+to $t$, and $F$ is a known function. The integer $n$ is the
+\engterm{order} of the equation: the order of the highest derivative
+that appears. The equation is \engterm{ordinary} because $y$ is a
+function of one variable; if $y$ depended on more than one
+independent variable, the equation would be a partial differential
+equation, the subject of Chapter 12.
 
-\section{Separable equations}
-\TODO{Section prose.}
+A \engterm{solution} of the ODE on an interval $I$ is a function
+$y \colon I \to \R$ that is differentiable enough to make the
+equation make sense, and that satisfies the equation pointwise on
+$I$. An \engterm{initial-value problem (IVP)} is an ODE together
+with $n$ side conditions $y(t_{0}) = y_{0}$, $\dot{y}(t_{0}) =
+v_{0}$, and so on, that pin a single solution out of the family.
+A \engterm{boundary-value problem (BVP)} replaces the $n$
+conditions at one point with conditions distributed across two
+points; BVPs arise routinely for second-order spatial problems and
+return in the PDE chapter.
 
-\section{Second-order linear with constant coefficients}
-\TODO{Section prose.}
+The conventional independent variable is $t$ for time and $x$ for
+space, but the formal apparatus treats them identically. We use $t$
+throughout this chapter for definiteness. The chapter on PDEs and
+the chapter on multivariable calculus each treat space-dependent
+problems in the same notation translated.
 
-\section{Forced response: resonance, beating}
-\TODO{Section prose.}
+\subsection{Where ODEs come from}
 
-\section{Systems of ODEs}
-\TODO{Section prose.}
+ODEs appear whenever a balance law, a constitutive law, or a
+controller is written down for a quantity that varies with one
+parameter (typically time, sometimes position along an axis). The
+canonical sources, all of which we revisit in this chapter or in
+later volumes, are these.
 
-\section{Phase-plane analysis}
-\TODO{Section prose.}
+\textbf{Newton's second law.} A particle of mass $m$ subject to a
+force $F$ obeys $m \ddot{x} = F$. When $F$ depends on the position
+$x$, the velocity $\dot{x}$, and time $t$, the equation is a
+second-order ODE in $x(t)$. A spring force $-k x$, a viscous force
+$-c \dot{x}$, and an external drive $F(t)$ together produce
+$m \ddot{x} + c \dot{x} + k x = F(t)$, the canonical form whose
+analysis occupies §7.4 and §7.5.
 
-\section{Numerical ODE solvers: Euler, RK4, stiffness}
-\TODO{Section prose.}
+\textbf{The RC circuit.} A resistor $R$ in series with a capacitor
+$C$ across a voltage $V(t)$ obeys, by Kirchhoff's voltage law and
+the constitutive laws $V_{R} = R i$ and $V_{C} = q/C$ with $i =
+\dot{q}$, the equation $R \dot{q} + q/C = V(t)$. The same equation
+in terms of capacitor voltage $v_{C} = q/C$ reads $RC \dot{v}_{C} +
+v_{C} = V(t)$. The product $\tau = RC$ has dimensions of time and
+sets the circuit's response time. The discharge problem
+$RC \dot{v}_{C} + v_{C} = 0$ is the prototype first-order linear
+ODE; its solution motivates the entire Chapter.
 
-\section{Failure: numerical instability and the stiffness trap}
-\TODO{Section prose.}
+\textbf{Population growth.} A population whose per-capita
+reproduction rate is constant obeys $\dot{N} = r N$, the prototype
+of exponential growth. With finite resources, the rate decreases
+with population size: $\dot{N} = r N (1 - N/K)$, the logistic
+equation. Both are first-order ODEs; the first is linear in $N$, the
+second is not.
 
-\section{Worked examples: RC circuit, pendulum, predator-prey, drug kinetics}
-\TODO{Section prose.}
+\textbf{Mass-balance.} A tank receives a substance at known
+concentration and rate, mixes it perfectly, and discharges at a
+volume rate that may match or differ from the inflow. Conservation
+of mass for the dissolved species gives $\dot{m} = (\text{inflow
+rate}) - (\text{outflow rate})$, where each term is a function of
+$m(t)$ and $t$. Mass-balance is the most common applied source of
+first-order ODEs across chemical, environmental, biomedical, and
+process engineering. Drug pharmacokinetics, lake pollution
+clearance, well-stirred reactor models, and household water-heater
+dynamics are all mass-balance ODEs in disguise.
 
+\begin{archetype}[Stability, formally introduced here]
+The stability archetype was previewed in Chapter 3 (rotation as
+structure-preserving) and named in Volume I as the recurring
+question: when a system is perturbed, does it return to where it
+was, drift away, or settle into a new state? In ODE language the
+question is asked of \engterm{equilibria}: points $y^{*}$ where
+$\dot{y} = f(y^{*}) = 0$. An equilibrium is \engterm{stable} (in
+the sense of Lyapunov) if a small perturbation produces a small
+deviation, and \engterm{asymptotically stable} if the perturbation
+decays back to zero. The chapter develops the criterion through
+linearisation in §7.7. The full Lyapunov-function machinery, by
+which stability is certified without solving the equation, is
+previewed in §7.7 and developed at working depth in Volume X.
+\end{archetype}
 
-\section{Project}
-\TODO{simulate a pendulum at large angles; compare numerical and small-angle answers}
+\subsection{Existence, uniqueness, and what an engineer needs from them}\pathtag{standard}
+
+The Picard-Lindel\"of theorem says that the IVP $\dot{y} = f(t, y)$
+with $y(t_{0}) = y_{0}$ has a unique solution on an interval around
+$t_{0}$ provided $f$ is continuous in $t$ and Lipschitz continuous
+in $y$ near $(t_{0}, y_{0})$. The proof, by the contraction-mapping
+theorem applied to the integral equation
+$y(t) = y_{0} + \int_{t_{0}}^{t} f(s, y(s))\,ds$, lives in a course
+on real analysis. The engineering reader does not need the proof.
+The reader needs three working consequences.
+
+First, the standard right-hand sides of physics, chemistry, and
+biology (smooth functions of $y$ and $t$) satisfy the hypotheses on
+their working domain, and the IVP has a unique solution.
+
+Second, when the right-hand side fails to be Lipschitz, uniqueness
+can fail. The textbook example is $\dot{y} = \sqrt{y}$ with $y(0) =
+0$: the trivial solution $y \equiv 0$ and the family of
+late-launching solutions $y(t) = (t - t_{0})^{2}/4$ for any $t_{0}
+\geq 0$ all satisfy the equation and the initial condition. A
+real-world echo: at the moment a lubricated bearing transitions
+between regimes, the friction law has a kink and an idealised model
+loses uniqueness. Engineers respond by smoothing the model,
+restricting the operating regime, or treating the transition as a
+switching event.
+
+Third, even when uniqueness holds locally, solutions can fail to
+extend to all $t$. The equation $\dot{y} = y^{2}$ with $y(0) = 1$
+has the solution $y(t) = 1/(1 - t)$, which blows up at $t = 1$.
+Models that produce finite-time blow-up typically signal that the
+modelled mechanism (combustion, contagion in an unbounded domain,
+gravitational collapse) saturates physically before the model says
+so. The model is correct on its working interval and wrong about
+the singularity; the engineer's job is to know the working
+interval.
+
+\begin{estimation}
+\textbf{Question.} An RC circuit with $R = 10\,\si{\kilo\ohm}$ and
+$C = 100\,\si{\micro\farad}$ is charged to $5\,\si{\volt}$ and
+allowed to discharge through the resistor. Estimate the time to
+fall to half its initial voltage and the time to fall below
+$50\,\si{\milli\volt}$, both before reaching for the formal
+solution.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The time scale of an RC circuit is $\tau = RC = 10^{4}\,\si{\ohm}
+\times 10^{-4}\,\si{\farad} = 1\,\si{\second}$. An exponential
+discharge falls by a factor of $e \approx 2.72$ per time constant.
+To fall by a factor of $2$ takes $\ln 2 \approx 0.69$ time
+constants, so the half-time is about $0.69\,\si{\second}$. To fall
+from $5\,\si{\volt}$ to $50\,\si{\milli\volt}$ is a factor-of-100
+drop, or $\ln 100 \approx 4.6$ time constants, so about
+$4.6\,\si{\second}$. The estimate sets expectations: the
+oscilloscope trace settles within five seconds, and a measurement
+that wants four-digit precision on the residual voltage should
+sample for at least seven time constants ($e^{-7} \approx 10^{-3}$).
+
+The formal solution in §7.2 will give $v(t) = 5 e^{-t/\tau}$ and
+confirm both estimates. The estimation is what an engineer does
+before fitting an oscilloscope trace; the calculation is what
+follows.
+\end{estimation}
+
+\subsection{Linearity and the working classification}
+
+The chapter's working taxonomy is small. An ODE is \engterm{linear}
+if it can be written as a linear combination of $y$ and its
+derivatives, with coefficients that depend on $t$ but not on $y$:
+\[
+a_{n}(t)\, y^{(n)} + a_{n-1}(t)\, y^{(n-1)} + \cdots + a_{0}(t)\, y = q(t).
+\]
+The function $q(t)$ is the \engterm{forcing}; when $q \equiv 0$ the
+equation is \engterm{homogeneous}. When the coefficients $a_{i}$
+do not depend on $t$, the equation has \engterm{constant
+coefficients}; otherwise it has variable coefficients. An ODE that
+is not linear is \engterm{nonlinear}. A first-order ODE that can be
+written $\dot{y} = g(t)\, h(y)$ is \engterm{separable}; separable
+equations may be linear or nonlinear.
+
+The classification matters because the solution methods follow it.
+Linear equations have a structured solution theory (superposition of
+homogeneous solutions plus a particular solution); separable
+equations integrate by quadrature; nonlinear non-separable equations
+generally require numerical methods.
+
+\section{First-order linear ODEs}\pathtag{core}
+
+The standard form of a first-order linear ODE is
+\[
+\dot{y} + p(t)\, y = q(t),
+\]
+where $p$ and $q$ are known continuous functions of $t$ on the
+interval of interest. Every first-order linear ODE can be brought
+to this form by dividing through by the coefficient of $\dot{y}$.
+
+\subsection{The integrating factor}
+
+The trick that solves the standard form is an old one: multiply
+both sides by an as-yet-unknown function $\mu(t)$, and choose $\mu$
+so that the left-hand side becomes the derivative of a product.
+Recall the product rule: $\frac{d}{dt}(\mu y) = \dot{\mu} y + \mu
+\dot{y}$. Multiplying the equation by $\mu$ gives
+\[
+\mu \dot{y} + \mu p\, y = \mu q.
+\]
+For the left-hand side to equal $\frac{d}{dt}(\mu y) = \dot{\mu} y +
+\mu \dot{y}$, we need $\dot{\mu} = \mu p$, an ODE for $\mu$ alone
+that we can solve by inspection: $\mu(t) = \exp\bigl(\int p(t)\,dt\bigr)$.
+We choose any antiderivative; the constant of integration cancels
+in the next step. The function
+\[
+\mu(t) = \exp\!\left(\int p(t)\,dt\right)
+\]
+is the \engterm{integrating factor}.
+
+With $\mu$ in hand, the equation becomes
+\[
+\frac{d}{dt}(\mu(t)\, y(t)) = \mu(t)\, q(t),
+\]
+which integrates directly:
+\[
+\mu(t)\, y(t) = \int \mu(t)\, q(t)\,dt + C,
+\]
+or, written for the IVP with $y(t_{0}) = y_{0}$,
+\[
+y(t) = \frac{1}{\mu(t)}\!\left[\mu(t_{0})\, y_{0} + \int_{t_{0}}^{t} \mu(s)\, q(s)\,ds\right].
+\]
+This is the closed-form solution to every first-order linear IVP,
+provided the integral on the right can be evaluated. Whether it can
+or cannot is a question about $p$ and $q$, not about the method.
+
+\subsection{The RC discharge worked through}
+
+Take the discharge problem $RC \dot{v} + v = 0$ with $v(0) =
+V_{0}$. Bring to standard form by dividing through by $RC$:
+$\dot{v} + (1/RC) v = 0$. Here $p(t) = 1/(RC) = 1/\tau$ is
+constant; $q(t) = 0$.
+
+The integrating factor is $\mu(t) = \exp(t/\tau)$. The right-hand
+integral is zero. The IVP solution reduces to $\mu(t) v(t) =
+\mu(0) V_{0}$, or
+\[
+v(t) = V_{0}\, e^{-t/\tau}.
+\]
+Substituting $V_{0} = 5\,\si{\volt}$ and $\tau = 1\,\si{\second}$
+recovers $v(0.69) = 2.5\,\si{\volt}$ and $v(4.6) =
+0.050\,\si{\volt}$, matching the estimation.
+
+\subsection{The driven RC circuit}
+
+Now drive the circuit with a constant input $V_{0}$ starting at
+$t = 0$, with $v(0) = 0$ (capacitor initially empty). The equation
+is $RC \dot{v} + v = V_{0}$ for $t > 0$. Standard form:
+$\dot{v} + (1/\tau) v = V_{0}/\tau$. Integrating factor $\mu =
+e^{t/\tau}$. Multiplying:
+\[
+\frac{d}{dt}(e^{t/\tau} v) = \frac{V_{0}}{\tau}\, e^{t/\tau}.
+\]
+Integrating from $0$ to $t$:
+\[
+e^{t/\tau} v(t) - v(0) = V_{0}\bigl(e^{t/\tau} - 1\bigr),
+\]
+so
+\[
+v(t) = V_{0}\bigl(1 - e^{-t/\tau}\bigr).
+\]
+The solution rises from $0$ toward $V_{0}$, reaching $63\,\%$ of
+$V_{0}$ at one time constant, $86\,\%$ at two, $95\,\%$ at three,
+$99\,\%$ at five. The reader who works with first-order systems
+should know these percentages cold; they are the working calibration
+of "how long is long enough" in any process whose response is set
+by a single time constant.
+
+\subsection{Linearity in action: superposition}
+
+The general first-order linear equation $\dot{y} + p y = q$ has
+solution $y = y_{h} + y_{p}$, where $y_{h}$ is any solution of the
+homogeneous equation $\dot{y} + p y = 0$ and $y_{p}$ is any
+particular solution of the full equation. The homogeneous solutions
+form a one-parameter family (multiples of $1/\mu(t)$); the
+particular solution carries the response to $q$. The
+initial condition pins the constant in front of $y_{h}$. This
+structure is the entire content of "linear" for first-order
+equations and recurs at higher order.
+
+\subsection{Variable coefficients: a worked example}
+
+Solve $\dot{y} + 2 y / t = t$ on $t > 0$ with $y(1) = 0$.
+
+In standard form, $p(t) = 2/t$ and $q(t) = t$. The integrating
+factor is
+\[
+\mu(t) = \exp\!\left(\int \frac{2}{t}\,dt\right) = \exp(2 \ln t) = t^{2}.
+\]
+The equation becomes $\frac{d}{dt}(t^{2} y) = t^{3}$, integrating
+to $t^{2} y = t^{4}/4 + C$. The initial condition $y(1) = 0$ gives
+$C = -1/4$. The solution is
+\[
+y(t) = \frac{t^{2}}{4} - \frac{1}{4 t^{2}}.
+\]
+A check: at $t = 1$, $y = 0$. The derivative is $\dot{y} = t/2 +
+1/(2 t^{3})$. Substituting back, $\dot{y} + 2 y/t = (t/2 + 1/(2
+t^{3})) + 2(t^{2}/4 - 1/(4 t^{2}))/t = t/2 + 1/(2 t^{3}) + t/2 -
+1/(2 t^{3}) = t$. The solution checks.
+
+The reader should always check a solved ODE by substitution. It
+costs ten seconds and catches sign errors that would otherwise
+travel into the next calculation.
+
+\section{Separable equations}\pathtag{core}
+
+A first-order ODE is \engterm{separable} if it can be written
+$\dot{y} = g(t) h(y)$. Separation rearranges to
+$\frac{dy}{h(y)} = g(t)\,dt$ and integrates both sides:
+\[
+\int \frac{dy}{h(y)} = \int g(t)\,dt + C.
+\]
+The result is an implicit equation for $y$ as a function of $t$;
+solving for $y$ explicitly is sometimes possible and sometimes not.
+
+\subsection{Logistic growth worked through}
+
+The logistic equation $\dot{N} = r N (1 - N/K)$ is separable, with
+$g(t) = r$ (constant) and $h(N) = N (1 - N/K)$. Separate and
+integrate:
+\[
+\int \frac{dN}{N (1 - N/K)} = \int r\,dt.
+\]
+The left-hand integrand decomposes by partial fractions:
+$\frac{1}{N (1 - N/K)} = \frac{1}{N} + \frac{1/K}{1 - N/K}$.
+Integrating gives $\ln |N| - \ln |1 - N/K| = r t + C$, or, after
+exponentiation and absorbing the constant,
+\[
+\frac{N}{1 - N/K} = A\, e^{r t},
+\]
+with $A$ determined by $N(0) = N_{0}$. Solving for $N$:
+\[
+N(t) = \frac{K\, N_{0}\, e^{r t}}{K + N_{0}(e^{r t} - 1)}.
+\]
+The solution rises from $N_{0}$ toward $K$ as $t \to \infty$. The
+inflection point, where the growth rate is maximised, is at $N =
+K/2$. The reader who fits a logistic model to data should know
+this property: the data point at peak rate identifies $K/2$
+directly.
+
+\subsection{Separable but not closed-form}
+
+The equation $\dot{y} = e^{-t^{2}}/(1 + y^{2})$ is separable, with
+$h(y) = 1/(1 + y^{2})$ and $g(t) = e^{-t^{2}}$. Separation gives
+$(1 + y^{2})\,dy = e^{-t^{2}}\,dt$. The left integrates to $y +
+y^{3}/3$; the right does not have an elementary antiderivative
+(the error function $\operatorname{erf}$ is not elementary, and
+$\int e^{-t^{2}}\,dt = (\sqrt{\pi}/2) \operatorname{erf}(t)$ is the
+canonical example of an integral the reader can name but not
+elementary-evaluate). The solution exists in closed form once
+$\operatorname{erf}$ is treated as known; it does not exist in
+elementary closed form.
+
+The lesson recurs throughout the chapter: separability is a
+structural property that promises a quadrature; whether the
+quadrature evaluates to elementary functions is a separate
+question.
+
+\section{Second-order linear with constant coefficients}\pathtag{core}
+
+The canonical second-order linear ODE with constant coefficients is
+\[
+m \ddot{x} + c \dot{x} + k x = F(t),
+\]
+where $m, c, k$ are positive constants. Physically, $m$ is mass, $c$
+is damping (in $\si{\newton\second\per\meter}$), $k$ is stiffness
+(in $\si{\newton\per\meter}$), and $F$ is the external forcing
+(force in $\si{\newton}$). The form covers a mass-spring-dashpot
+system, a series RLC circuit (with $L$ playing the role of $m$, $R$
+of $c$, $1/C$ of $k$), the small-amplitude pendulum, and any
+linearised second-order system the engineer encounters.
+
+\subsection{The homogeneous problem and the characteristic polynomial}
+
+Set $F = 0$ first. The homogeneous equation
+$m \ddot{x} + c \dot{x} + k x = 0$ has solutions of the form $x(t) =
+e^{\lambda t}$ for some constant $\lambda$, on the strength of the
+fact that $\frac{d}{dt}e^{\lambda t} = \lambda e^{\lambda t}$. Plug
+in:
+\[
+m \lambda^{2} e^{\lambda t} + c \lambda e^{\lambda t} + k e^{\lambda t} = e^{\lambda t}(m \lambda^{2} + c \lambda + k) = 0.
+\]
+Since $e^{\lambda t}$ is never zero, the equation reduces to the
+\engterm{characteristic polynomial}
+\[
+m \lambda^{2} + c \lambda + k = 0,
+\]
+with roots
+\[
+\lambda_{\pm} = \frac{-c \pm \sqrt{c^{2} - 4 m k}}{2 m}.
+\]
+The discriminant $c^{2} - 4 m k$ classifies the homogeneous
+behaviour into three regimes.
+
+\textbf{Overdamped} ($c^{2} > 4 m k$): two distinct real negative
+roots; the solution is $x(t) = A_{1} e^{\lambda_{1} t} + A_{2}
+e^{\lambda_{2} t}$, a sum of two decaying exponentials. The system
+returns to equilibrium without oscillating. Worst case for response
+time; useful when no overshoot is acceptable.
+
+\textbf{Critically damped} ($c^{2} = 4 m k$): a repeated real root
+$\lambda = -c/(2 m)$; the solution is $x(t) = (A_{1} + A_{2} t)\,
+e^{\lambda t}$. Fastest non-oscillating return to equilibrium.
+Standard target in instrument and door-closer design.
+
+\textbf{Underdamped} ($c^{2} < 4 m k$): two complex conjugate roots
+$\lambda = -\zeta \omega_{0} \pm i \omega_{d}$, where
+$\omega_{0} = \sqrt{k/m}$ is the \engterm{natural frequency}, $\zeta
+= c / (2 \sqrt{m k})$ is the \engterm{damping ratio}, and
+$\omega_{d} = \omega_{0}\sqrt{1 - \zeta^{2}}$ is the
+\engterm{damped frequency}. The solution is
+\[
+x(t) = e^{-\zeta \omega_{0} t} \bigl(A \cos(\omega_{d} t) + B \sin(\omega_{d} t)\bigr),
+\]
+an exponentially decaying sinusoid. Most physical oscillators
+(pendulum, vibrating string, AC circuit) sit in this regime.
+
+The form $\omega_{0}, \zeta$ is the engineer's working notation.
+The reader should be able to read off $\omega_{0}$ and $\zeta$ from
+$m, c, k$ by inspection.
+
+\subsection{Worked example: the underdamped oscillator}
+
+Take $m = 1\,\si{\kilogram}$, $c = 0.5\,\si{\newton\second\per\meter}$,
+$k = 100\,\si{\newton\per\meter}$. Then $\omega_{0} = \sqrt{k/m} =
+10\,\si{\radian\per\second}$, and $\zeta = c / (2\sqrt{m k}) = 0.5
+/ 20 = 0.025$. The damping ratio is small; the system is
+lightly damped. The damped frequency is $\omega_{d} = 10
+\sqrt{1 - 0.025^{2}} \approx 9.997\,\si{\radian\per\second}$, very
+close to $\omega_{0}$ for light damping. The decay rate is $\zeta
+\omega_{0} = 0.25\,\si{\per\second}$, giving a $1/e$ amplitude
+decay time of $4\,\si{\second}$, or about $40$ oscillation periods
+($T = 2\pi/\omega_{d} \approx 0.628\,\si{\second}$).
+
+A bell, a tuning fork, and a high-quality pendulum clock all sit in
+this lightly damped regime. The \engterm{quality factor} $Q = 1 /
+(2 \zeta) = 20$ counts the oscillation periods to amplitude decay
+of $e^{-\pi}$; $Q = 20$ is modest. A laboratory tuning fork has $Q
+\sim 10^{4}$.
+
+\subsection{The complex-exponential representation}
+
+The complex-exponential form $x(t) = \operatorname{Re}\bigl(\hat{x}\,
+e^{\lambda t}\bigr)$ with $\hat{x}$ complex is more compact than
+the cosine-plus-sine form and is the working notation for the rest
+of the chapter and Volumes III, VIII, and IX. The reader who has
+worked Chapter 3 on complex phasors should recognise the apparatus
+without strain. The two real parameters $A, B$ become one complex
+parameter $\hat{x}$; the cosine and sine become the real and
+imaginary parts of $e^{i \omega_{d} t}$.
+
+\section{Forced response: resonance, beating}\pathtag{core}
+
+Set $F(t) = F_{0} \cos(\omega t)$ in $m \ddot{x} + c \dot{x} + k x =
+F(t)$. The full solution is $x = x_{h} + x_{p}$, with $x_{h}$ the
+homogeneous solution (decaying exponential or decaying sinusoid)
+and $x_{p}$ the steady-state response to the drive.
+
+Try $x_{p}(t) = A \cos(\omega t - \varphi)$ with amplitude $A$ and
+phase lag $\varphi$ to be found. Substitute and use the
+trigonometric expansions; or, more cleanly, work in complex
+exponentials. With $F(t) = \operatorname{Re}(F_{0}\, e^{i \omega
+t})$ and $x_{p}(t) = \operatorname{Re}(\hat{X}\, e^{i \omega t})$:
+\[
+m (i\omega)^{2} \hat{X} + c (i\omega) \hat{X} + k \hat{X} = F_{0},
+\]
+giving
+\[
+\hat{X} = \frac{F_{0}}{(k - m \omega^{2}) + i c \omega}.
+\]
+The amplitude is the modulus, the phase lag is the argument:
+\[
+A(\omega) = \frac{F_{0}}{\sqrt{(k - m\omega^{2})^{2} + (c\omega)^{2}}},
+\quad
+\tan\varphi(\omega) = \frac{c\omega}{k - m\omega^{2}}.
+\]
+
+\subsection{Resonance}
+
+The amplitude $A(\omega)$ has a maximum at the \engterm{resonant
+frequency} $\omega_{r} = \omega_{0}\sqrt{1 - 2\zeta^{2}}$, slightly
+below $\omega_{0}$ for nonzero damping. At resonance, the amplitude
+is approximately
+\[
+A(\omega_{r}) \approx \frac{F_{0}}{c \omega_{0}} = \frac{F_{0}}{k}\, \frac{1}{2\zeta\sqrt{1-\zeta^{2}}} \approx \frac{F_{0}}{k} Q
+\]
+for light damping ($\zeta \ll 1$), where $Q$ is the quality factor.
+The static-deflection amplitude $F_{0}/k$ is multiplied by $Q$ at
+resonance: a $Q = 100$ system has $100\times$ static deflection at
+its resonance.
+
+The phase lag is $\pi/2$ at $\omega = \omega_{0}$. At low frequency
+the response follows the drive in phase; at high frequency the
+response lags the drive by $\pi$ (the inertia dominates); at the
+natural frequency the phase lag is exactly a quarter cycle.
+
+The Tacoma Narrows Bridge collapse of 7 November 1940 is the
+canonical popular example of resonance, although the actual
+mechanism was aeroelastic flutter, a more complicated
+fluid-structure coupling that is not steady-state forced response
+of a linear oscillator. The registry entry
+\repopath{docs/research/accidents/tacoma-narrows-1941.md} carries
+the careful discussion. Engineers do not invoke "resonance" as a
+shorthand for "vibration that grew." Resonance is a specific
+amplitude peak in the frequency response of a linear oscillator;
+flutter, parametric instability, and limit cycles are distinct
+mechanisms with distinct mathematics, taken up in Volumes III, VIII,
+and X.
+
+\subsection{Beating}
+
+When two sinusoids of nearby frequencies $\omega_{1}$ and
+$\omega_{2}$ add, the result is a fast oscillation at the average
+frequency $(\omega_{1} + \omega_{2})/2$ modulated by a slow envelope
+at the difference frequency $|\omega_{1} - \omega_{2}|/2$. The
+identity
+\[
+\cos(\omega_{1} t) + \cos(\omega_{2} t) = 2 \cos\!\left(\frac{\omega_{1} + \omega_{2}}{2} t\right) \cos\!\left(\frac{\omega_{1} - \omega_{2}}{2} t\right)
+\]
+is the trigonometric content. \engterm{Beating} is the audible
+signature: a piano tuner adjusting two strings to the same
+fundamental hears the beat slow and stop as the strings come into
+tune. In a forced oscillator with drive frequency near the natural
+frequency, the homogeneous transient and the steady-state response
+beat against each other for several time constants of damping
+before the transient decays.
+
+\subsection{Quality factor and bandwidth}
+
+The frequency response $A(\omega)$ has a half-power bandwidth
+$\Delta\omega = \omega_{0}/Q$ (approximately, for light damping).
+The quality factor is the working currency of resonant-system
+design: a high-$Q$ filter is selective in frequency but slow to
+settle (settling time $\sim Q/\omega_{0}$); a low-$Q$ filter is
+broad but fast. The trade-off is set by the physics, not by the
+engineer's preference. A radio receiver, a laser cavity, an
+electrochemical impedance spectrometer, a structural damper, and a
+mechanical vibration isolator all live inside this trade-off.
+
+\begin{principle}[The forced linear oscillator is the prototype of control]
+A second-order linear oscillator under sinusoidal drive admits an
+exact closed-form steady-state response with three working
+parameters: the natural frequency $\omega_{0}$, the damping ratio
+$\zeta$ (or the quality factor $Q = 1/(2\zeta)$), and the
+forcing-to-stiffness ratio $F_{0}/k$. Every control system that
+asks "how does the output follow a reference signal" begins with
+this prototype. The frequency response, the phase lag, the
+resonance peak, the bandwidth, and the trade-off between selectivity
+and settling time are the working vocabulary of Volumes VIII (Signals
+and control) and IX (Cyber-physical systems). The reader who has
+internalised the prototype will read those volumes as elaborations
+of a model already in hand.
+\end{principle}
+
+\section{Systems of ODEs}\pathtag{standard}
+
+A \engterm{system} of $n$ first-order ODEs has the form $\dot{\mathbf{y}}
+= \mathbf{f}(t, \mathbf{y})$, where $\mathbf{y} \in \R^{n}$ and
+$\mathbf{f} \colon \R \times \R^{n} \to \R^{n}$. The IVP carries an
+$n$-vector initial condition $\mathbf{y}(t_{0}) = \mathbf{y}_{0}$.
+
+Every higher-order ODE is a system in disguise. The second-order
+equation $\ddot{x} + 2 \zeta \omega_{0} \dot{x} + \omega_{0}^{2} x =
+0$ becomes the first-order system
+\[
+\dot{\mathbf{y}} = \begin{pmatrix} \dot{x} \\ \ddot{x} \end{pmatrix} = \begin{pmatrix} 0 & 1 \\ -\omega_{0}^{2} & -2\zeta\omega_{0} \end{pmatrix} \begin{pmatrix} x \\ \dot{x} \end{pmatrix},
+\]
+with state vector $\mathbf{y} = (x, \dot{x})^{T}$. The general
+$n$th-order ODE becomes an $n$-dimensional first-order system by
+the same trick, introducing one new variable for each derivative.
+This reduction is why almost every numerical ODE solver is
+written for first-order systems.
+
+\subsection{Linear systems with constant coefficients}
+
+A \engterm{linear} system has $\mathbf{f}(t, \mathbf{y}) =
+A(t)\mathbf{y} + \mathbf{q}(t)$ with matrix-valued coefficient
+$A(t)$ and vector-valued forcing $\mathbf{q}(t)$. With $A$
+constant and $\mathbf{q} = 0$, the homogeneous system $\dot{\mathbf{y}}
+= A\mathbf{y}$ has solution
+\[
+\mathbf{y}(t) = e^{A t}\, \mathbf{y}(0),
+\]
+where $e^{A t}$ is the \engterm{matrix exponential}, defined by
+the convergent power series
+\[
+e^{A t} = \sum_{n = 0}^{\infty} \frac{(A t)^{n}}{n!} = I + A t + \frac{(A t)^{2}}{2!} + \cdots.
+\]
+The series converges for every square matrix $A$ and every $t$.
+
+For diagonal $A$ with entries $\lambda_{1}, \ldots, \lambda_{n}$,
+the matrix exponential is diagonal with entries $e^{\lambda_{1} t},
+\ldots, e^{\lambda_{n} t}$. For diagonalisable $A = P D P^{-1}$,
+the matrix exponential is $e^{A t} = P e^{D t} P^{-1}$. For
+non-diagonalisable $A$ (defective matrices with Jordan blocks),
+$e^{A t}$ contains polynomial-times-exponential terms; we leave
+the working theory of the Jordan form to Chapter 10.
+
+The eigenvalues of $A$ are the system's \engterm{modes}: an
+eigenvalue with negative real part contributes a decaying mode, an
+eigenvalue with positive real part a growing mode, an eigenvalue
+on the imaginary axis a sustained oscillation, an eigenvalue at the
+origin a constant mode. The engineer reads stability off the
+spectrum of $A$ at a glance.
+
+\subsection{Forced linear systems and the variation-of-parameters formula}
+
+The driven system $\dot{\mathbf{y}} = A \mathbf{y} + \mathbf{q}(t)$
+with $\mathbf{y}(0) = \mathbf{y}_{0}$ has solution
+\[
+\mathbf{y}(t) = e^{A t}\, \mathbf{y}_{0} + \int_{0}^{t} e^{A (t - s)}\, \mathbf{q}(s)\,ds.
+\]
+The first term is the unforced response; the second is the
+convolution of the forcing with the system's impulse response. The
+integral form is the multivariable analogue of the integrating-factor
+formula in §7.2.
+
+\subsection{The heat equation as a system: bridge to PDEs}
+
+Discretising the heat equation $u_{t} = \alpha u_{xx}$ on $N$ grid
+points along an interval, with second-difference approximation for
+$u_{xx}$, produces a linear system $\dot{\mathbf{u}} = \alpha A
+\mathbf{u}$ where $A$ is the tridiagonal matrix with $-2$ on the
+diagonal and $1$ on the sub- and super-diagonals (divided by
+$\Delta x^{2}$). The eigenvalues of $A$ are real, negative, and
+range from approximately $-(\pi/L)^{2}$ for the smoothest mode to
+approximately $-4/(\Delta x)^{2}$ for the noisiest mode. The mode
+with eigenvalue $\lambda_{j}$ decays with time constant $-1/(\alpha
+\lambda_{j})$. This is the transport archetype's first appearance
+in matrix form; the apparatus carries through to Chapter 12 (PDEs)
+where the continuous version is treated, and to the formal stability
+analysis of Chapter 16 (Numerical methods). The transport archetype
+runs from a single time constant in the RC circuit, through an
+$n$-dimensional set of decay times in the discretised heat equation,
+to the continuous spectrum of the full PDE.
+
+\subsection{Nonlinear systems: linearisation}
+
+Most engineering systems are nonlinear. The standard approach
+linearises around an \engterm{equilibrium} $\mathbf{y}^{*}$ (a point
+where $\mathbf{f}(\mathbf{y}^{*}) = 0$): write $\mathbf{y} =
+\mathbf{y}^{*} + \mathbf{\delta}$ and Taylor-expand
+$\mathbf{f}(\mathbf{y}^{*} + \mathbf{\delta}) =
+J(\mathbf{y}^{*})\,\mathbf{\delta} + O(|\mathbf{\delta}|^{2})$,
+where
+\[
+J = \frac{\partial \mathbf{f}}{\partial \mathbf{y}}
+\]
+is the Jacobian matrix. The linearised system $\dot{\mathbf{\delta}} =
+J(\mathbf{y}^{*})\,\mathbf{\delta}$ controls the local behaviour
+near the equilibrium when $J$ is hyperbolic (no eigenvalues on the
+imaginary axis); the Hartman-Grobman theorem says the linear
+behaviour and the nonlinear behaviour are topologically equivalent
+in a neighbourhood of the equilibrium in that case. The proof
+belongs in a course on dynamical systems; the working consequence
+is that an engineer can certify local stability by computing the
+eigenvalues of one matrix.
+
+\section{Phase-plane analysis}\pathtag{standard}
+
+For a two-dimensional autonomous system $\dot{x} = f(x, y)$,
+$\dot{y} = g(x, y)$, the \engterm{phase plane} is the $(x, y)$
+plane. A solution is a curve $(x(t), y(t))$ traced out as $t$
+advances. The vector field $(f, g)$ assigns to each point a
+direction and speed; the solution at any point follows the local
+direction. The picture summarises every solution at once.
+
+\subsection{Equilibria and their classification by linearisation}
+
+An \engterm{equilibrium} is a point where $f = g = 0$. The
+linearisation at an equilibrium has Jacobian $J$ a $2 \times 2$
+matrix; its trace $T = J_{11} + J_{22}$ and determinant $D =
+J_{11} J_{22} - J_{12} J_{21}$ classify the equilibrium:
+
+\begin{itemize}[leftmargin=*]
+  \item $D < 0$: \engterm{saddle}. Two real eigenvalues of opposite
+    sign. Always unstable; trajectories approach along one
+    eigenvector and recede along the other.
+  \item $D > 0$, $T < 0$, $T^{2} > 4D$: \engterm{stable node}. Two
+    real negative eigenvalues; trajectories approach the equilibrium
+    along the eigenvectors.
+  \item $D > 0$, $T < 0$, $T^{2} < 4D$: \engterm{stable spiral}.
+    Complex conjugate eigenvalues with negative real part;
+    trajectories spiral in.
+  \item $D > 0$, $T > 0$, $T^{2} > 4D$: \engterm{unstable node}.
+    Two real positive eigenvalues; trajectories recede.
+  \item $D > 0$, $T > 0$, $T^{2} < 4D$: \engterm{unstable spiral}.
+    Complex eigenvalues with positive real part.
+  \item $D > 0$, $T = 0$: \engterm{centre}. Pure imaginary
+    eigenvalues; closed orbits in the linearisation. The
+    classification is fragile under nonlinear corrections; the
+    nonlinear system may have a stable spiral, an unstable spiral,
+    or genuine closed orbits (the case for Hamiltonian systems).
+\end{itemize}
+
+The trace-determinant plane summarises all four cases on a single
+picture: the parabola $T^{2} = 4 D$ separates real from complex
+eigenvalues, and the axes $D = 0$ and $T = 0$ separate the
+stability regimes. The engineer who has internalised the
+trace-determinant picture reads phase-plane behaviour off the
+linearisation by inspection.
+
+\subsection{Worked example: the predator-prey system}
+
+The Lotka-Volterra equations are
+\[
+\dot{x} = a x - b x y, \quad \dot{y} = -c y + d x y,
+\]
+with $a, b, c, d > 0$. The state $x$ is the prey population, $y$
+the predator population. There are two equilibria: $(0, 0)$ and
+$(c/d, a/b)$.
+
+At $(0, 0)$: the Jacobian is $\operatorname{diag}(a, -c)$. Trace
+$T = a - c$, determinant $D = -a c < 0$. Saddle: prey grows in
+absence of predators, predators decay in absence of prey.
+
+At $(c/d, a/b)$: the Jacobian is
+\[
+J = \begin{pmatrix} 0 & -b c/d \\ a d/b & 0 \end{pmatrix},
+\]
+with trace $T = 0$ and determinant $D = a c > 0$. The linearisation
+predicts a centre. The full nonlinear system has closed orbits
+(conserved quantity: $H(x, y) = d x - c \ln x + b y - a \ln y$;
+see the exercises). Predator and prey populations oscillate, with
+amplitude set by the initial condition.
+
+The model is a textbook idealisation; real ecology adds finite
+carrying capacity, age structure, refuge effects, and stochastic
+forcing. The lesson the model teaches at first reading is the
+phase-plane picture: a centre with closed orbits, oscillations
+without damping. The lesson on second reading is that the centre
+is fragile: small modelling additions push the equilibrium toward
+a stable spiral (typical) or an unstable spiral.
+
+\subsection{Lyapunov stability, previewed}
+
+A direct certificate of stability, when one is available, comes
+from a \engterm{Lyapunov function}: a scalar function $V(\mathbf{y})$
+that is positive in a neighbourhood of the equilibrium except at
+the equilibrium itself, where it vanishes, and whose time
+derivative along trajectories is non-positive. If $V$ exists, the
+equilibrium is stable; if $\dot{V} < 0$ strictly off the
+equilibrium, the equilibrium is asymptotically stable. The
+function $V$ is often a physical energy: kinetic plus potential for
+a mechanical oscillator, electrical plus magnetic for an LC
+circuit. The full Lyapunov apparatus, including the construction
+of $V$ for systems where physical energy is not the right
+candidate, is in Volume X; we mention it here so the reader can
+see the picture.
+
+\section{Numerical ODE solvers: Euler, RK4, stiffness}\pathtag{core}
+
+Most ODEs encountered in working engineering have no closed-form
+solution. The engineer integrates them numerically. The chapter
+covers three solver classes (forward Euler, classical RK4, implicit
+Euler) and the working diagnosis of \engterm{stiffness}. The full
+catalogue of methods, the formal order of accuracy proofs, and the
+modern adaptive-step solvers belong in Chapter 16.
+
+\subsection{Forward Euler}
+
+The simplest method advances $\mathbf{y}_{n+1} = \mathbf{y}_{n} + h
+\mathbf{f}(t_{n}, \mathbf{y}_{n})$, with $h$ the \engterm{step
+size} and $\mathbf{y}_{n} \approx \mathbf{y}(t_{n})$. The
+right-hand side at the current point is the slope estimate; the
+step extrapolates linearly. The local truncation error per step is
+$O(h^{2})$, and the global error after $N = T/h$ steps is $O(h)$:
+forward Euler is a \engterm{first-order} method.
+
+\subsection{Classical fourth-order Runge-Kutta (RK4)}
+
+RK4 advances by combining four slope estimates at the start, two
+intermediate points, and the end of each step:
+\[
+\begin{aligned}
+\mathbf{k}_{1} &= \mathbf{f}(t_{n}, \mathbf{y}_{n}), \\
+\mathbf{k}_{2} &= \mathbf{f}(t_{n} + h/2, \mathbf{y}_{n} + h\mathbf{k}_{1}/2), \\
+\mathbf{k}_{3} &= \mathbf{f}(t_{n} + h/2, \mathbf{y}_{n} + h\mathbf{k}_{2}/2), \\
+\mathbf{k}_{4} &= \mathbf{f}(t_{n} + h, \mathbf{y}_{n} + h\mathbf{k}_{3}), \\
+\mathbf{y}_{n+1} &= \mathbf{y}_{n} + \frac{h}{6}(\mathbf{k}_{1} + 2\mathbf{k}_{2} + 2\mathbf{k}_{3} + \mathbf{k}_{4}).
+\end{aligned}
+\]
+The method's local truncation error is $O(h^{5})$, and its global
+error is $O(h^{4})$: RK4 is a \engterm{fourth-order} method. For
+the same step size, RK4 is roughly four right-hand-side
+evaluations per step, four times the cost of Euler, but the error
+falls as $h^{4}$ instead of $h$, so a tenfold reduction in step
+size buys $10^{4}$ times the accuracy with $40\times$ the work.
+For smooth, non-stiff right-hand sides at moderate accuracy, RK4 is
+the standard first-pass choice.
+
+\subsection{Implicit Euler and the stability story}
+
+The \engterm{implicit Euler} method solves at each step
+$\mathbf{y}_{n+1} = \mathbf{y}_{n} + h \mathbf{f}(t_{n+1},
+\mathbf{y}_{n+1})$. The new state appears on both sides;
+$\mathbf{y}_{n+1}$ is computed by solving a (possibly nonlinear)
+algebraic equation per step. The method is also first-order
+accurate, but it has a property forward Euler lacks: it is
+unconditionally stable for the test equation $\dot{y} = \lambda y$
+with $\lambda < 0$.
+
+The test equation $\dot{y} = \lambda y$ exposes the stability
+distinction. Forward Euler gives $y_{n+1} = (1 + h \lambda) y_{n}$;
+the iterates remain bounded only if $|1 + h \lambda| \leq 1$,
+which for $\lambda$ real negative requires $h \leq 2/|\lambda|$.
+Implicit Euler gives $y_{n+1} = y_{n}/(1 - h \lambda)$; for
+$\lambda$ real negative, $|1 - h \lambda| \geq 1$ always, so the
+iterates always damp. The cost is the per-step solve.
+
+\subsection{Stiffness}
+
+A system is \engterm{stiff} when its eigenvalues span a wide range
+of magnitudes, the fastest decaying mode is much faster than the
+slowest, and the engineer cares about the long-term behaviour.
+Forward Euler must use a step size set by the fastest mode
+(stability constraint) even though the slow modes are what the
+engineer wants to track; the resulting computation is dominated by
+short-step integration of fast modes that have already decayed.
+Implicit methods integrate the fast modes correctly without the
+short-step penalty.
+
+The classic test: $\dot{y}_{1} = -1000 y_{1}$, $\dot{y}_{2} =
+-y_{2}$. The fast mode decays in milliseconds; the slow mode in
+seconds. Forward Euler requires $h < 2/1000 = 2\,\si{\milli\second}$
+for stability even after the fast mode has already decayed below
+machine precision. Implicit Euler can use $h = 0.1\,\si{\second}$,
+$50\times$ larger, and produce the slow mode accurately.
+
+The diagnosis of stiffness is partly mathematical (compute the
+Jacobian's spectrum) and partly empirical (the explicit solver
+takes thousands of steps to advance one slow time scale). Modern
+adaptive solvers detect stiffness by monitoring step-size
+rejection, but the engineer must know the symptom and the response.
+
+\subsection{Step-size error analysis: a worked example}
+
+Take $\dot{y} = -y$, $y(0) = 1$, exact solution $y(t) = e^{-t}$.
+At $t = 1$, the exact value is $e^{-1} \approx 0.3679$.
+
+Forward Euler with $h = 0.1$ requires ten steps. After ten steps,
+$y_{10} = (1 - 0.1)^{10} = 0.9^{10} \approx 0.3487$. The error is
+$0.0192$, about $5.2\,\%$. Halving the step size to $h = 0.05$
+gives $y_{20} = (0.95)^{20} \approx 0.3585$, error $0.0094$,
+about $2.6\,\%$. The error halves with the step size: first-order.
+
+RK4 with $h = 0.1$ gives $y_{10} \approx 0.367879$; the error is
+about $4 \times 10^{-7}$. Halving the step size to $h = 0.05$
+reduces the error by a factor of $16$ (fourth-order), well below
+single-precision representation. For most non-stiff problems at
+working engineering tolerances, RK4 is the default; the step size
+chosen by accuracy lies far above the stability bound.
+
+\section{Failure: numerical instability and the stiffness trap}\pathtag{core}
+
+ODE solvers fail in three distinguishable ways: by numerical
+instability (the answer grows because the method does, not because
+the system does), by slow accumulation of arithmetic error (the
+answer drifts because each step rounds), and by silent migration
+between attractors (the answer is qualitatively wrong because the
+method's modified equation has different long-term behaviour).
+Each failure has a working diagnosis. Each has an institutional
+example.
+
+\subsection{Numerical instability}
+
+The forward-Euler stability constraint $h \leq 2/|\lambda|$ for the
+linear test equation generalises (in approximate form) to any
+linear system: the step size must be smaller than $2/\rho(A)$,
+where $\rho(A)$ is the spectral radius of the Jacobian. For a
+stiff system whose largest eigenvalue is $-10^{6}\,\si{\per
+\second}$, the explicit solver requires $h < 2 \times 10^{-6}\,\si
+{\second}$, even if the engineer cares about a one-second
+phenomenon. Running an explicit solver on a stiff problem with too
+large a step does not produce a slowly diverging answer; it
+produces an exploding answer that the user, watching the screen,
+typically attributes to a bug in the right-hand side rather than to
+a stability violation.
+
+The diagnosis: the answer oscillates with growing amplitude,
+typically with period $2 h$ (the Nyquist frequency of the
+discretisation). The response: switch to an implicit method, or
+shrink the step size below the stability bound. Both work; only
+the first is cost-effective on stiff problems.
+
+\subsection{The stiffness trap}
+
+Stiffness traps the unwary in two ways. First, an engineer who
+reaches for a default explicit solver on a stiff problem watches
+the integration take thousands of steps per unit time and
+typically concludes either that the problem is hard or that the
+solver is broken; the correct conclusion is that the method is
+mismatched to the problem. Second, a problem that starts non-stiff
+can become stiff as a slow mode catches up to a fast one or as a
+limit cycle approaches a relaxation regime; an adaptive solver
+that does not detect the transition will silently switch from
+accurate-but-slow to fast-but-wrong, depending on which heuristic
+its step controller follows.
+
+The standard discipline:
+
+\begin{enumerate}[leftmargin=*]
+  \item Estimate the spectral range of the right-hand side's
+    Jacobian. If the ratio of largest to smallest magnitude exceeds
+    $10$ to $100$, suspect stiffness.
+  \item Run the candidate explicit solver at modest tolerance and
+    inspect the per-step cost. Thousands of steps per unit time on
+    a smooth problem signals stiffness.
+  \item Switch to an implicit method (BDF, implicit Runge-Kutta,
+    Rosenbrock) when stiffness is suspected. The cost per step
+    rises (a Newton solve is required); the cost per unit time
+    typically falls.
+  \item Verify the integrated solution against an analytical or
+    asymptotic answer in the regime where one exists. A solver that
+    silently produces wrong answers in the easy regime will not be
+    rescued by the hard regime.
+\end{enumerate}
+
+\subsection{Accumulated arithmetic error: the Patriot pattern in numerical integration}
+
+The Patriot missile system at Dhahran (1991) is the canonical
+software case of accumulated arithmetic error in a long-running
+clock; the registry entry is at
+\repopath{docs/research/accidents/patriot-dhahran-1991.md} and the
+mechanism is summarised in Volume I Chapter 6's failure section.
+The same mechanism appears in long-running numerical ODE
+integration. Each step's roundoff error is bounded above by machine
+epsilon times the working numbers, but errors accumulate. For a
+non-stiff stable solver running for $N$ steps with floating-point
+machine epsilon $\epsilon$ and per-step propagation factor close
+to one, the cumulative error grows roughly as $\sqrt{N}\, \epsilon\,
+\|y\|$ (random-walk roundoff) or as $N \epsilon \|y\|$ (worst
+case, correlated roundoff). The Patriot accumulated about
+$0.34\,\si{\second}$ in $3.6 \times 10^{6}$ counter increments,
+each rounded by about $9.5 \times 10^{-8}$; the cumulative error
+is the linear product $3.6 \times 10^{6} \times 9.5 \times 10^{-8}
+\approx 0.34$
+\cite{acc:gao-patriot-1992}.
+
+The lesson for ODE integration is the same as the lesson for the
+Patriot's range-gate clock: a small per-step error, propagated
+without correction across a long run, becomes operationally
+significant. The discipline is to know the run length, the per-step
+error, and the application's accuracy budget before starting.
+Modern simulation codes for climate, plasma, fluid, and orbital
+mechanics all maintain runtime estimates of accumulated roundoff
+and switch to extended precision when the accumulated estimate
+crosses a tolerance.
+
+\subsection{Silent attractor migration}
+
+A modified-equation analysis reveals that a numerical scheme does
+not solve the original ODE exactly; it solves a modified ODE that
+matches the original to the order of the method's accuracy, plus
+higher-order terms. For a Hamiltonian system, the modified
+equation generally is not Hamiltonian, and the modified system's
+trajectories generally do not conserve the original's energy. A
+naive RK4 integration of the predator-prey centre over many
+oscillations either spirals slowly inward or slowly outward,
+because RK4's modified equation has weak damping or anti-damping.
+The system does not have damping; the integrator does. The
+solution to a Hamiltonian problem with naive RK4 will eventually
+collapse to the equilibrium or escape, neither of which is a
+property of the original.
+
+The response is \engterm{symplectic} integrators (leapfrog,
+Verlet, symplectic Runge-Kutta), which are designed so the
+modified equation remains Hamiltonian, and the long-term energy
+behaviour of the integration matches the long-term energy
+behaviour of the system. Orbital mechanics, molecular dynamics,
+and plasma simulation use symplectic methods routinely. The full
+working theory is in Chapter 16.
+
+\section{Worked examples}\pathtag{standard}
+
+We close with four worked applications across domains, each
+following the same pattern: dimensional analysis, model setup,
+solution (analytical, numerical, or both), and a note on what
+fails or accumulates.
+
+\subsection{The RC discharge in detail}
+
+The discharge $RC \dot{v} + v = 0$, $v(0) = V_{0}$, has solution
+$v(t) = V_{0} e^{-t/\tau}$ with $\tau = RC$. Quick numerical
+check: an RC circuit with $R = 10\,\si{\kilo\ohm}$, $C =
+100\,\si{\micro\farad}$, $V_{0} = 5\,\si{\volt}$ has $\tau = 1\,\si
+{\second}$, $v(1) = 5/e \approx 1.84\,\si{\volt}$, $v(5)
+\approx 0.034\,\si{\volt}$.
+
+What fails: the linear discharge model assumes a constant capacitance.
+Real electrolytic capacitors lose capacitance with age, voltage
+swing, and temperature; ceramic capacitors with class-2 dielectrics
+lose capacitance with applied voltage. A precision discharge
+measurement requires the capacitor type and recent calibration
+state in the laboratory record. The first-order model is not the
+answer; it is the answer near the working point of a freshly
+calibrated capacitor.
+
+\subsection{The simple pendulum}
+
+A point mass $m$ at the end of a rigid massless rod of length
+$\ell$ in a gravitational field $g$, with no friction, swinging in
+a vertical plane, satisfies
+\[
+\ddot{\theta} + \frac{g}{\ell} \sin\theta = 0,
+\]
+with $\theta$ the angle from the downward vertical. The equation
+is nonlinear; the small-angle approximation $\sin\theta \approx
+\theta$ produces the linear oscillator $\ddot{\theta} +
+\omega_{0}^{2} \theta = 0$ with $\omega_{0} = \sqrt{g/\ell}$, period
+$T_{0} = 2\pi\sqrt{\ell/g}$.
+
+The first amplitude correction comes from expanding $\sin\theta =
+\theta - \theta^{3}/6 + O(\theta^{5})$ and applying perturbation
+methods (the working derivation is in §7.10's exercise);
+\[
+T(\theta_{0}) \approx T_{0}\!\left(1 + \frac{\theta_{0}^{2}}{16} + \frac{11 \theta_{0}^{4}}{3072} + \cdots\right).
+\]
+For $\theta_{0} = 10^{\circ} \approx 0.175$ rad, the first
+correction is $0.175^{2}/16 \approx 1.9 \times 10^{-3}$, or
+$0.19\,\%$. For $\theta_{0} = 90^{\circ}$ the first correction
+is $\pi^{2}/64 \approx 0.154$, or $15\,\%$, and higher-order
+terms contribute several percent more; the small-angle formula
+under-predicts the period materially. The chapter project
+quantifies the error across the full range.
+
+What fails: the small-angle approximation drops a $\theta^{3}$
+term that becomes comparable to $\theta$ at large amplitudes. The
+linearised oscillator is exact for an oscillator the engineer has
+designed to be linear (sufficiently stiff spring, sufficiently
+small driver); it is approximate for a pendulum operated near its
+linearity boundary; it is wrong for a pendulum swung past
+$45^{\circ}$ if the engineer wants better than five-percent
+period accuracy.
+
+\subsection{Predator-prey and conserved quantities}
+
+The Lotka-Volterra system $\dot{x} = a x - b x y$, $\dot{y} = -c y
++ d x y$ has the conserved quantity
+\[
+H(x, y) = d x - c \ln x + b y - a \ln y.
+\]
+The reader can check by computing $\dot{H} = (d - c/x)\dot{x} +
+(b - a/y)\dot{y}$ and substituting; the result is identically
+zero. Trajectories trace level curves of $H$ in the phase plane,
+which are closed orbits.
+
+A naive RK4 integration with $h = 0.01$ over $1{,}000$ time units
+shows $H$ drifting by a few percent: the modified equation is not
+exactly Hamiltonian. A symplectic integrator preserves $H$ to
+machine precision over the same span. The exercise asks the reader
+to confirm the difference numerically.
+
+What fails: the textbook predator-prey system is structurally
+unstable as a closed-orbit system. Adding a small density-dependent
+mortality $-\epsilon x^{2}$ to $\dot{x}$ (logistic correction)
+turns the centre into a stable spiral, and the closed orbits decay
+to the coexistence equilibrium. Real ecology routinely involves
+exactly this correction, and ecologists rarely interpret real
+predator-prey time series as the textbook centre.
+
+\subsection{Drug pharmacokinetics: the one-compartment model}
+
+A drug administered intravenously distributes into a single
+well-mixed compartment of volume $V$ and is cleared at a rate
+proportional to its concentration. Mass balance:
+$\dot{m} = -k m$, where $m$ is the drug mass and $k$ has units of
+inverse time. The concentration is $C = m/V$. The solution is
+$m(t) = m_{0} e^{-k t}$, with $m_{0}$ the dose. The
+\engterm{half-life} is $t_{1/2} = \ln 2 / k$.
+
+For acetaminophen (paracetamol) at therapeutic doses, the working
+elimination half-life is approximately $2$ to $3$ hours
+(pharmacokinetic; the exact value depends on dose, route,
+metabolic state, and patient population; clinical references
+should be consulted for binding numbers). After five half-lives,
+about $97\,\%$ of the dose has been cleared; this is the working
+basis of the four-to-six-hour interval between doses. A multi-dose
+regimen produces a sequence of decay curves added with the proper
+delay; the steady-state peak and trough concentrations follow
+geometric-series sums that are exact under the linear assumption.
+
+What fails: the one-compartment linear model assumes
+first-order kinetics. Many drugs follow Michaelis-Menten
+saturation kinetics at high concentrations, where the elimination
+rate plateaus at a maximum velocity instead of growing linearly
+with concentration. Ethanol is the canonical example: the
+elimination rate is roughly constant rather than proportional to
+concentration, so the time to clear a dose grows linearly with the
+dose rather than logarithmically.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[The pendulum at large amplitudes]
+The reader simulates the simple pendulum $\ddot{\theta} +
+(g/\ell)\sin\theta = 0$ over the amplitude range
+$\theta_{0} = 5^{\circ}$ to $90^{\circ}$ and produces a quantitative
+comparison of three predicted periods: the small-angle period
+$T_{0} = 2\pi\sqrt{\ell/g}$, the first-correction period $T_{1} =
+T_{0}(1 + \theta_{0}^{2}/16)$, and the full numerical period
+$T_{\text{num}}$. Per Q55-vol02-ch07 the project track is
+simulation with analysis at hazard class none; the reader does not
+build a physical pendulum.
+
+\textbf{Hazard class}: none. The project is fully numerical. No
+physical apparatus, no biological subject, no mains power. The
+reader uses paper and pencil for the analytical work and a
+programming environment of choice (Python with SciPy, MATLAB,
+Julia, or any environment with an ODE solver) for the simulation.
+
+\textbf{Tools}. Paper, pencil, calculator. A programming
+environment with an explicit ODE integrator (RK4 is sufficient;
+the working environment's default adaptive solver, e.g.\ SciPy
+\path{solve_ivp} with method \path{RK45} or \path{DOP853}, is
+preferred at higher amplitudes). A plotting tool. A reference
+value for $g$ at the reader's location (the local Earth gravity
+varies from about $9.78\,\si{\meter\per\second\squared}$ at the
+equator to $9.83\,\si{\meter\per\second\squared}$ at the poles;
+the reader chooses a single working value, typically
+$9.81\,\si{\meter\per\second\squared}$, and documents the choice).
+
+\textbf{Procedure}.
+
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Set up the system}. Choose a length $\ell$, for
+    example $\ell = 1\,\si{\meter}$, and the local $g$. Compute
+    the small-angle period $T_{0} = 2\pi\sqrt{\ell/g}$. For
+    $\ell = 1\,\si{\meter}$, $g = 9.81\,\si{\meter\per\second
+    \squared}$: $T_{0} \approx 2.006\,\si{\second}$.
+
+  \item \emph{Convert to a first-order system}. Let $\mathbf{y} =
+    (\theta, \dot\theta)^{T}$. Then $\dot{\mathbf{y}} =
+    (\dot\theta, -(g/\ell)\sin\theta)^{T}$. Code the right-hand
+    side as a function of $t$ and $\mathbf{y}$.
+
+  \item \emph{Numerical period extraction}. For each amplitude
+    $\theta_{0}$ in the test grid (e.g.\ $5^{\circ}, 10^{\circ},
+    20^{\circ}, 30^{\circ}, 45^{\circ}, 60^{\circ}, 75^{\circ},
+    90^{\circ}$), integrate the system from $\theta(0) =
+    \theta_{0}$, $\dot\theta(0) = 0$ over enough time to capture
+    several periods. Extract the period from the time between
+    successive zero crossings of $\dot\theta$ in the negative-to-
+    positive direction (or any other consistent crossing
+    convention). Use linear interpolation between the two samples
+    that bracket the crossing for sub-step resolution. Report the
+    average period over at least five oscillations to suppress
+    integration drift.
+
+  \item \emph{Compare the three predictions}. Tabulate $T_{0}$
+    (small-angle), $T_{1} = T_{0}(1 + \theta_{0}^{2}/16)$ (first
+    correction), and $T_{\text{num}}$ (numerical). Compute the
+    fractional errors $(T_{0} - T_{\text{num}})/T_{\text{num}}$
+    and $(T_{1} - T_{\text{num}})/T_{\text{num}}$ at each
+    amplitude.
+
+  \item \emph{Plot}. Produce one figure with three curves: the
+    small-angle prediction, the first-correction prediction, and
+    the numerical period, all as functions of amplitude
+    $\theta_{0}$ from $5^{\circ}$ to $90^{\circ}$. Produce a
+    second figure with two curves: the fractional error of each
+    approximation against amplitude, on a logarithmic vertical
+    axis. Identify the amplitude at which each approximation
+    crosses the $1\,\%$ and $5\,\%$ error thresholds.
+
+  \item \emph{Step-size convergence study}. At
+    $\theta_{0} = 60^{\circ}$, repeat the numerical period
+    extraction at four step sizes $h$ in geometric progression
+    (e.g.\ $h = 0.01, 0.005, 0.0025, 0.00125\,\si{\second}$).
+    Plot the period error against $h$ on log-log axes. Confirm
+    that the error scales as $h^{4}$ for RK4 (slope $4$ on the
+    log-log plot) and as $h$ for forward Euler (slope $1$, if
+    Euler is included for comparison).
+
+  \item \emph{Conservation diagnostic}. The pendulum's mechanical
+    energy $E = \tfrac{1}{2}\ell^{2}\dot\theta^{2} + g\ell(1 -
+    \cos\theta)$ (per unit mass) is conserved by the exact
+    dynamics. For each amplitude, compute the maximum drift in
+    $E$ over the simulation interval. Report the drift as a
+    fraction of the initial $E$. Compare RK4 against a symplectic
+    integrator (leapfrog or velocity-Verlet) at the same step
+    size.
+\end{enumerate}
+
+\textbf{Record}. The deliverable is a notebook (Jupyter, MATLAB
+live script, or Pluto) or a script-plus-report containing: the
+right-hand-side definition; the period-extraction routine; the
+period-versus-amplitude tabulation and plot; the error-versus-
+amplitude plot; the step-size convergence study and plot; the
+conservation diagnostic and plot; and a 1500-word reflection
+addressing the questions below.
+
+\textbf{Reflection (1500 words)}. The reader writes a 1500-word
+narrative addressing:
+
+\begin{itemize}[leftmargin=*]
+  \item At what amplitude does the small-angle period exceed the
+    numerical period by more than $1\,\%$? By more than $5\,\%$?
+    Compare the answers to the first-correction prediction's
+    crossing of the same thresholds, and explain the gap in
+    physical terms.
+  \item How does the fourth-order convergence of RK4 manifest in
+    the period-error plot, and what limits the achievable
+    precision at the smallest step size? (Hint: floating-point
+    roundoff begins to dominate truncation error at sufficiently
+    small $h$; the reader should observe this floor.)
+  \item How does the energy drift of RK4 compare with the energy
+    drift of the symplectic integrator at the same step size?
+    What does the comparison say about the choice of integrator
+    for problems where the long-term qualitative behaviour
+    matters?
+  \item One physical effect (air resistance, finite rod mass,
+    pivot friction, bob deformation) that the simple-pendulum
+    model neglects but a real pendulum experiences. State, in
+    physical terms, the order of magnitude of the effect for a
+    one-metre laboratory pendulum, and identify whether the
+    correction is larger or smaller than the leading
+    nonlinearity correction at $\theta_{0} = 30^{\circ}$.
+  \item What numerical and analytical methods buy each other.
+    The numerical method gives the answer the analytical method
+    cannot, and the analytical method gives the structure
+    (small-angle period as the leading order, the
+    $\theta_{0}^{2}/16$ correction as the next term, the
+    elliptic-integral exact answer as the closed form) that the
+    numerical method by itself does not surface.
+\end{itemize}
+
+\textbf{Time}. Setup and small-angle implementation: one to two
+hours. Period extraction across the amplitude grid: one to two
+hours. Convergence study and conservation diagnostic: one to two
+hours. Reflection: two to three hours. Total reader time
+approximately five to nine hours.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 45 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises run from first-order quadrature through forced
+response, systems, phase-plane diagnosis, numerical solver tuning,
+and the failure-analysis case studies that close the chapter.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Solve the IVP $\dot{y} + 2 y = e^{-t}$, $y(0) = 1$, by the
+integrating-factor method. Verify by substitution.
+\end{exercise}
+
+\begin{exercise}
+Solve the separable IVP $\dot{y} = y \cos t$, $y(0) = 2$. Identify
+the period and amplitude of the oscillating solution envelope.
+\end{exercise}
+
+\begin{exercise}
+For the second-order ODE $\ddot{x} + 4 \dot{x} + 13 x = 0$ with
+$x(0) = 1$, $\dot{x}(0) = 0$, compute the natural frequency
+$\omega_{0}$, the damping ratio $\zeta$, the damped frequency
+$\omega_{d}$, and write the explicit solution. Identify the
+half-life of the amplitude envelope.
+\end{exercise}
+
+\begin{exercise}
+For an RC circuit with $R = 1\,\si{\kilo\ohm}$ and $C =
+1\,\si{\micro\farad}$ initially at $10\,\si{\volt}$, compute the
+voltage at $t = 1\,\si{\milli\second}$ and the time required for
+the voltage to fall below $1\,\si{\milli\volt}$.
+\end{exercise}
+
+\begin{exercise}
+A drug administered as a single $500\,\si{\milli\gram}$ IV bolus
+into a one-compartment model has elimination rate constant
+$k = 0.231\,\si{\per\hour}$. Compute the concentration as a
+fraction of initial concentration at $t = 1, 3, 6,
+12\,\si{\hour}$. Compute the half-life. Estimate the time at
+which the concentration falls below $5\,\%$ of its initial value.
+\end{exercise}
+
+\begin{exercise}
+Compute the matrix exponential $e^{A t}$ for $A = \begin{pmatrix}
+-1 & 1 \\ 0 & -2 \end{pmatrix}$. Verify by checking that
+$\frac{d}{dt}e^{A t}\bigl|_{t=0} = A$.
+\end{exercise}
+
+\begin{exercise}
+For the predator-prey system with $a = 1$, $b = 0.5$, $c = 0.75$,
+$d = 0.25$, locate the coexistence equilibrium and compute the
+linearisation's eigenvalues. State the predicted oscillation
+period from the imaginary part of the eigenvalues.
+\end{exercise}
+
+\begin{exercise}
+For $\dot{y} = -10 y + \cos t$ with $y(0) = 0$, write down the
+steady-state response amplitude and phase using the
+forced-oscillator formula adapted to first order. Verify that the
+homogeneous transient decays with time constant $0.1\,\si
+{\second}$.
+\end{exercise}
+
+\begin{exercise}
+A mass-spring-dashpot system with $m = 2\,\si{\kilogram}$, $c =
+3\,\si{\newton\second\per\meter}$, $k = 50\,\si{\newton\per\meter}$
+is driven by $F(t) = 5\cos(\omega t)\,\si{\newton}$. Compute the
+steady-state amplitude as a function of $\omega$, identify the
+resonant frequency, and compute the amplitude at the resonant
+frequency. Compute the quality factor $Q$.
+\end{exercise}
+
+\begin{exercise}
+For the system $\dot{x} = -x + 2 y$, $\dot{y} = -3 x - 4 y$,
+write the matrix $A$, compute its eigenvalues and eigenvectors,
+and write the general solution. Identify whether the origin is a
+stable node, a stable spiral, a saddle, or otherwise.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the integrating-factor formula $\mu(t) = \exp(\int p(t)\,dt)$
+for the standard first-order linear ODE $\dot{y} + p(t) y = q(t)$.
+Show, by direct substitution, that any antiderivative for the
+integral defines an integrating factor, with the constant of
+integration cancelling in the final solution.
+\end{exercise}
+
+\begin{exercise}
+Derive the characteristic polynomial $m \lambda^{2} + c \lambda +
+k = 0$ for the second-order linear constant-coefficient ODE by
+substituting $x = e^{\lambda t}$ into $m \ddot{x} + c \dot{x} +
+k x = 0$. Show that the discriminant $c^{2} - 4 m k$ classifies
+the homogeneous behaviour into the three regimes (overdamped,
+critically damped, underdamped) and identify the boundary case.
+\end{exercise}
+
+\begin{exercise}
+Derive the steady-state amplitude and phase for the forced linear
+oscillator $m \ddot{x} + c \dot{x} + k x = F_{0}\cos(\omega t)$
+using complex exponentials. Show that the amplitude is maximised
+at $\omega_{r} = \omega_{0}\sqrt{1 - 2\zeta^{2}}$ and that the
+peak amplitude is approximately $F_{0}/(c\omega_{0})$ for light
+damping.
+\end{exercise}
+
+\begin{exercise}
+Show by direct calculation that $H(x, y) = d x - c \ln x + b y -
+a \ln y$ is conserved along the flow of the Lotka-Volterra system
+$\dot{x} = a x - b x y$, $\dot{y} = -c y + d x y$. Sketch the
+level curves in the $(x, y)$ plane for one choice of parameters.
+\end{exercise}
+
+\begin{exercise}
+Derive the first amplitude correction to the simple-pendulum
+period. Starting from $\ddot\theta + \omega_{0}^{2}\sin\theta =
+0$, expand $\sin\theta = \theta - \theta^{3}/6 + O(\theta^{5})$,
+assume a solution of the form $\theta(t) =
+\theta_{0}\cos(\omega t)$ with $\omega = \omega_{0}(1 +
+\alpha\theta_{0}^{2} + O(\theta_{0}^{4}))$, and determine $\alpha$
+by requiring the equation to balance at order $\theta_{0}^{3}$.
+The result is $\alpha = -1/16$ for the angular frequency, which
+gives $T = T_{0}(1 + \theta_{0}^{2}/16 + \cdots)$ for the period.
+\end{exercise}
+
+\begin{exercise}
+Show that forward Euler applied to $\dot{y} = \lambda y$ produces
+$y_{n+1} = (1 + h\lambda) y_{n}$, and that implicit Euler
+produces $y_{n+1} = y_{n}/(1 - h\lambda)$. State the stability
+region in the complex $h\lambda$ plane for each method.
+\end{exercise}
+
+\begin{exercise}
+Derive the local truncation error of forward Euler from the
+Taylor expansion $y(t + h) = y(t) + h\dot{y}(t) +
+(h^{2}/2)\ddot{y}(t) + O(h^{3})$. Show that the leading error per
+step is $(h^{2}/2)\ddot{y}(t)$, and that the global error after
+$N = T/h$ steps is $O(h)$ on a finite interval.
+\end{exercise}
+
+\begin{exercise}
+Derive the variation-of-parameters formula
+$\mathbf{y}(t) = e^{A t}\mathbf{y}_{0} + \int_{0}^{t} e^{A(t -
+s)}\mathbf{q}(s)\,ds$ for the driven linear system
+$\dot{\mathbf{y}} = A\mathbf{y} + \mathbf{q}(t)$ with
+$\mathbf{y}(0) = \mathbf{y}_{0}$. Hint: try $\mathbf{y}(t) = e^{A
+t}\mathbf{c}(t)$ and determine $\dot{\mathbf{c}}$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate, before computing, the time for the voltage on a $C =
+1\,\si{\micro\farad}$ capacitor discharging through a $R =
+1\,\si{\mega\ohm}$ resistor to fall from $10\,\si{\volt}$ to
+$0.1\,\si{\volt}$. Compare to the formal answer.
+\end{exercise}
+
+\begin{exercise}
+Estimate the natural frequency of a simple pendulum of length
+$25\,\si{\centi\meter}$. Estimate the period at small amplitude
+and at $\theta_{0} = 60^{\circ}$. Compare the two and identify
+the fractional change attributable to amplitude.
+\end{exercise}
+
+\begin{exercise}
+Estimate the quality factor $Q$ of a guitar string of mass per
+unit length $\mu = 5 \times 10^{-4}\,\si{\kilogram\per\meter}$,
+length $0.65\,\si{\meter}$, tension $80\,\si{\newton}$, with the
+sustained sound decaying audibly over $\sim 5\,\si{\second}$.
+State the assumption that converts an audible decay time into a
+$1/e$ amplitude time. The fundamental frequency follows from $f =
+(1/2L)\sqrt{T/\mu}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time scale on which the linear logistic model
+$\dot{N} = r N (1 - N/K)$ transitions from approximately
+exponential to approximately saturating, for a population whose
+initial size is $N_{0} = K/100$ and growth rate $r =
+0.1\,\si{\per\day}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the step size required for a forward-Euler integration
+of the stiff system $\dot{y}_{1} = -1000 y_{1} + y_{2}$,
+$\dot{y}_{2} = -y_{2}$ over a $1\,\si{\second}$ window. Compare
+to the step size that an implicit Euler method would tolerate at
+the same target accuracy.
+\end{exercise}
+
+\begin{exercise}
+Estimate the resonant amplification of a mechanical system whose
+quality factor is $Q = 50$ when driven sinusoidally at exactly
+its natural frequency. Estimate the steady-state amplitude when
+the same system is driven at $1.5\omega_{0}$, well above
+resonance. State the dimensionless ratio that controls the
+high-frequency rolloff.
+\end{exercise}
+
+\begin{exercise}
+Estimate, before computing, the time at which a logistic
+population $\dot{N} = 0.5 N (1 - N/1000)$ with $N(0) = 10$
+reaches half of its carrying capacity. Compare to the formal
+answer obtained by solving the closed-form expression.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement forward Euler and RK4 in a programming environment of
+your choice. Apply each to the test problem $\dot{y} = -y$,
+$y(0) = 1$, on the interval $[0, 5]$. Plot the absolute error at
+$t = 5$ as a function of step size for $h \in \{0.5, 0.1, 0.01,
+0.001\}$. Confirm the predicted slopes ($1$ for Euler, $4$ for
+RK4) on log-log axes.
+\end{exercise}
+
+\begin{exercise}
+Simulate the underdamped oscillator $\ddot{x} + 0.1 \dot{x} + x =
+0$ with $x(0) = 1$, $\dot{x}(0) = 0$. Plot $x(t)$ and the
+amplitude envelope $e^{-\zeta\omega_{0} t}$ on the same axes.
+Extract the damped frequency from the simulation by zero-crossing
+detection and compare to the analytical $\omega_{d}$.
+\end{exercise}
+
+\begin{exercise}
+Simulate the forced oscillator $\ddot{x} + 0.1 \dot{x} + x =
+\cos(\omega t)$ for $\omega \in \{0.5, 0.9, 1.0, 1.1, 1.5\}$.
+Allow each simulation to run long enough for the transient to
+decay (at least $100$ time units). Extract the steady-state
+amplitude and phase. Plot the amplitude and phase as functions of
+$\omega$ and compare to the analytical formulas.
+\end{exercise}
+
+\begin{exercise}
+Simulate the predator-prey system $\dot{x} = x - 0.5 x y$,
+$\dot{y} = -0.75 y + 0.25 x y$ with $x(0) = 5$, $y(0) = 2$, over
+$1{,}000$ time units. Plot the trajectory in the $(x, y)$ plane.
+Compute the conserved quantity $H(x, y)$ along the trajectory and
+plot it as a function of time; observe the drift. Repeat with a
+symplectic integrator and compare.
+\end{exercise}
+
+\begin{exercise}
+Simulate the stiff system $\dot{y}_{1} = -1000 y_{1} + 999 y_{2}$,
+$\dot{y}_{2} = y_{1} - 2 y_{2}$ with $y_{1}(0) = 1$, $y_{2}(0) =
+0$, on the interval $[0, 10]$ using forward Euler with $h =
+0.001$, $0.0015$, $0.0025$. Identify the step size at which the
+explicit method becomes unstable. Solve the same problem with
+implicit Euler at $h = 0.1$ and confirm the slow mode is
+captured correctly.
+\end{exercise}
+
+\begin{exercise}
+Simulate the simple pendulum $\ddot\theta + \sin\theta = 0$ with
+$\theta(0) = 1.0\,\si{\radian}$ ($\approx 57^{\circ}$),
+$\dot\theta(0) = 0$. Use RK4 with $h = 0.01$ over $50$ time
+units. Extract the period and compare to the small-angle
+prediction $T_{0} = 2\pi$ and the first-correction prediction
+$T_{1} = T_{0}(1 + \theta_{0}^{2}/16)$. Compute the energy drift
+over the run.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design an RC low-pass filter with $-3\,\si{\decibel}$ corner
+frequency at $1\,\si{\kilo\hertz}$ for an audio signal-conditioning
+chain. State the values of $R$ and $C$, the transient response
+time, and the filter's behaviour at $f = 100\,\si{\hertz}$ and
+$f = 10\,\si{\kilo\hertz}$. Identify a regime where the
+first-order rolloff is not sharp enough and a second-order
+filter would be required.
+\end{exercise}
+
+\begin{exercise}
+Design a critically damped door closer for a $5\,\si{\kilogram}$
+door. Choose the spring constant $k$ to give the desired closing
+time of approximately $4\,\si{\second}$ for a 90-degree opening
+and the damping coefficient $c$ to satisfy the
+critical-damping condition $c = 2\sqrt{m k}$. State the
+assumptions about the moment of inertia and the dependency on
+door geometry; identify which assumption dominates the design
+uncertainty.
+\end{exercise}
+
+\begin{exercise}
+Design a numerical integration strategy for a long-running
+orbital simulation: a satellite around Earth tracked over one
+year. State the integrator family (symplectic versus
+non-symplectic), the step size, the tolerance, the conserved
+quantity used for runtime monitoring, and the threshold at which
+the simulation triggers a manual review. Identify the dominant
+expected source of long-term integration error.
+\end{exercise}
+
+\begin{exercise}
+Design a dosing schedule for a one-compartment drug whose
+half-life is $4\,\si{\hour}$ that maintains the trough
+concentration above a minimum effective concentration $C_{\min}$
+and the peak concentration below a toxicity threshold $C_{\max}$
+in a steady-state regimen. State the dose, the dosing interval,
+and the time to reach steady state. Identify the design
+parameter that is most sensitive to inter-patient variability
+in the elimination rate constant.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A laboratory ODE simulation of a cooling object's temperature
+shows the temperature continuously oscillating with growing
+amplitude despite the physics predicting monotone decay. State
+three plausible mechanisms (forward Euler stability violation,
+sign error in the right-hand side, time-step-dependent driving
+term) and propose the diagnostic test that distinguishes them.
+\end{exercise}
+
+\begin{exercise}
+A simulation of a chemical reactor's concentration uses an
+explicit RK4 integrator with $h = 10^{-3}\,\si{\second}$. The
+simulation runs for several minutes of model time, then the
+output blows up. The reactor's fastest mode has time constant
+$\sim 10^{-4}\,\si{\second}$. State the most likely cause and
+the corrective action.
+\end{exercise}
+
+\begin{exercise}
+A pharmacokinetic simulation of a multi-dose regimen shows
+steady-state drug concentrations $50\,\%$ above the predictions
+of a one-compartment linear model. State three plausible
+mechanisms (saturation of elimination kinetics, accumulation due
+to inadequate clearance interval, second compartment with slower
+exchange) and propose the experimental measurement that would
+distinguish them.
+\end{exercise}
+
+\begin{exercise}
+A predator-prey simulation produces trajectories that slowly
+spiral into the coexistence equilibrium over $1{,}000$ time
+units, contrary to the textbook prediction of closed orbits.
+State the most likely cause (numerical dissipation in the
+integrator) and propose the measurement that confirms it
+(comparison against a symplectic integrator). State a second
+candidate (model includes a small dissipation term that the
+analyst missed) and propose the verification.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+The Patriot case at Dhahran (1991) is canonical for accumulated
+arithmetic error in long-running numerical computation. Argue, in
+200 to 300 words, what additional verification or operational
+discipline would have detected the mechanism before the Dhahran
+incident, citing the GAO report \cite{acc:gao-patriot-1992}.
+Identify the analogue in long-running ODE integration: the
+runtime estimate of accumulated roundoff that modern simulation
+codes maintain.
+\end{exercise}
+
+\begin{exercise}
+A spacecraft attitude-control simulation uses a non-symplectic
+integrator and accumulates a small angular-momentum drift over
+a multi-year mission. Argue, in 200 to 300 words, the failure
+mode by which the drift could compromise mission performance,
+the diagnostic that would detect it during testing, and the
+discipline (symplectic integrator, runtime conservation
+monitoring, periodic recalibration against an independent
+reference) that bounds the failure.
+\end{exercise}
+
+\begin{exercise}
+A control system for a chemical reactor is designed using a
+linearised model around the steady-state operating point. After
+deployment, the reactor experiences a transient that takes the
+state into a regime where the linearisation is poor, and the
+control system fails to restore the steady state. Argue, in
+200 to 300 words, the failure mechanism in terms of the
+phase-plane structure: the linearisation captured local
+behaviour around one equilibrium; the transient pushed the
+state past the basin of attraction. Identify the design
+discipline that bounds the failure (controller saturation
+analysis, basin-of-attraction estimation, fail-safe state
+detection).
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A junior engineer proposes to verify a pharmacokinetic ODE
+simulation by running the integrator for $1{,}000\,\si{\hour}$
+and observing whether the steady-state concentration matches the
+analytical prediction. Write a one-paragraph response that takes
+the proposal seriously, identifies the regime in which it is
+informative (if the integrator is stable and accurate over that
+window), and identifies the regime in which it is misleading (if
+accumulated roundoff is dominant or the slow mode is sub-critically
+sampled).
+\end{exercise}
+
+\begin{exercise}
+Argue, in 200 to 300 words, when a closed-form analytical
+solution of an ODE is preferable to a numerical solution, and
+when the inverse holds. Take a position on a class of system
+(linear time-invariant with constant forcing, weakly nonlinear
+near a stable equilibrium, strongly nonlinear far from
+equilibrium, stiff multi-scale) and identify which approach the
+working engineer reaches for first.
+\end{exercise}
+
+\begin{exercise}
+A first-year analyst proposes to model a population whose growth
+rate clearly varies with season as a single-rate exponential
+$\dot{N} = r N$ with $r$ chosen as the annual average. Write a
+two-paragraph response identifying the regime in which the
+average-rate model is informative and the regime in which the
+seasonal forcing must be retained. Identify the diagnostic that
+distinguishes the two cases.
+\end{exercise}

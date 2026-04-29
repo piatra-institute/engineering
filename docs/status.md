@@ -12,10 +12,12 @@ Last updated: 2026-04-29.
 - `\repopath{}` macro added to `preamble.tex` to render long repository paths in prose without margin overflow.
 - Audit tooling: `make audit-docs` (stale references), `make accidents` (named-case discipline), `make exercise-counts` (per-chapter exercise count vs chapmeta target). All pass across the current state.
 
-**Phase 1: production prose at scale.** In progress as of 2026-04-29. Two open lanes:
+**Phase 1: production prose at scale.** In progress as of 2026-04-29. The forward-motion lane has begun: Volume II opener prose written, and Volume II Chapters 1-9 drafted on 2026-04-29 by nine parallel agents with editor-led pre-flight (opener prose, Q55-vol02-ch01 through Q55-vol02-ch09 settled in `editorial-decisions.md`, four math-text bib entries added, `\spn`/`\col`/`\rank`/`\nul`/`\sgn`/`\proj` operators promoted to `eng-macros.sty`) and integration. Vol II Ch 1-9 sit at ~238 pages of first-draft prose (TOC pp. 229-466) against an ~880-page target for the first nine chapters; same first-draft density Vol I landed at. All nine are at Stage 4 awaiting Codex review.
 
-- Volume II opener and Volume II prose (continue forward).
-- Volume I production-density pass: figures, project artifacts, expanded solution sets, case-study expansions, code/data co-located with each chapter. Volume I currently runs ~220 pages of first-draft prose against a ~720-page target. Q57 (page density vs. target) is the open question that gates which lane runs first.
+Two lanes remain open:
+
+- Continue forward: Volume II Chapters 10-18 (eigenvalues, multivariable calculus, PDEs, probability, statistical inference, optimisation, numerical methods, discrete mathematics, mathematical modelling) or Volume III opener.
+- Volume I production-density pass: figures, project artifacts, expanded solution sets, case-study expansions, code/data co-located with each chapter. Volume I currently runs ~220 pages of first-draft prose against a ~720-page target. Q57 (page density vs. target) is the open question that gates whether this lane runs at all.
 
 Phase 0.6 (curriculum expansion). Complete on 2026-04-28. Closed eleven substantive curriculum gaps (acoustics, mass transfer, plasma physics, bioinformatics, quantum computing, power electronics, MEMS, project management, user research, defence systems, space infrastructure) plus four naming/register fixes and the explicit stigmergy hook in Vol IX.
 
@@ -31,14 +33,16 @@ Earlier phase: **Phase 0** (scaffolding + outline). Complete on 2026-04-26.
 | Per-volume dossiers | 12 |
 | `\chapmeta` blocks in chapter shells | 174 |
 | Half-life: TBD remaining | 0 |
-| TODO markers in TeX | ~1760 |
-| Empty epigraphs in chapter shells | 165 (9 written for Vol I) |
+| TODO markers in TeX | ~1660 |
+| Empty epigraphs in chapter shells | 156 (9 Vol I + 9 Vol II written) |
 | Section headings in chapter shells | ~1640 |
-| Bibliography entries | 86 |
+| Bibliography entries | 90 |
 | Named-case registry entries | 15 |
 | Vol I chapters at Stage 5 | 9 of 9 |
-| `main.pdf` page count (last build) | ~696 |
+| Vol II chapters at Stage 4 | 9 of 18 (Ch 1-9 awaiting review) |
+| `main.pdf` page count (last build) | ~928 |
 | Volume I current page span | ~220 (target ~720) |
+| Volume II Ch 1-9 current page span | ~238 (target ~880) |
 
 Run `make stats` for the live numbers.
 
@@ -61,7 +65,7 @@ Run `make stats` for the live numbers.
 - Release checklist at `docs/release-checklist.md`.
 - Research pipeline at `docs/research-pipeline.md`.
 - Build pipeline: `make`, `make watch`, `make scaffolding`, `make outline`, `make strict`, `make check`, `make stats`, `make clean`, `make distclean`, `make audit-docs`, `make accidents`, `make exercise-counts`.
-- A working PDF build, currently around 696 pages including all nine Volume I chapters at Stage 5. Volume I prose is complete and reviewed at first-draft density (~220 pages of 720 target).
+- A working PDF build, currently around 928 pages. Volume I prose is complete and reviewed at first-draft density (~220 pages of 720 target). Volume II Chapters 1-9 are drafted at first-draft density (~238 pages of 880 target for that arc) and await Codex review.
 - Named-cases registry with 15 entries, schema-conformant, audited by `make accidents`.
 - Volume I review log: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`. Each review carries a `Resolved: 2026-04-NN` banner and the integration record.
 - Post-expansion drift cleanup (2026-04-28): all eight expanded volumes' arc paragraphs and editorial-question chapter numbers refreshed to match the 174-chapter sequence; status, research-pipeline, landscape, generator comments, Makefile `outline`, and appD-reading-list paths updated; README anchor numbering fixed; new `make audit-docs` target enforces the cleanup.
@@ -102,7 +106,7 @@ The current build runs cleanly:
 make distclean && make
 ```
 
-Produces `main.pdf` at approximately 696 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
+Produces `main.pdf` at approximately 928 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
 
 ## Operational notes
 

@@ -1,43 +1,1904 @@
 \chapter{Differentiation}
 \label{vol02:ch05}
 
-\epigraph{}{}
+\epigraph{The reckoning of motion is the science of comparing
+quantities that change by quantities that vanish, and thereby
+recovering ratios that remain.}{A working paraphrase of the
+seventeenth-century calculus, in the engineer's vocabulary.}
 
-\chapmeta{Half-life: foundational. Archetypes: optimisation, transport (gradient as flux). Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational. Archetypes: optimisation (first
+formal introduction), transport (gradient as flux density, informal
+preview). Exercise target: 40. Project track: simulation with
+analysis. Hazard class: none. Reader path default: standard, with
+sections explicitly tagged. Named cases: Patriot missile system,
+Dhahran (1991), revisited as a numerical-precision case in the
+failure section.}
 
 \noindent
-\TODO{Volume 2, Chapter 5. Approx 110 pp.}
+The derivative is the rate at which one quantity changes with
+respect to another. Volume I taught the reader to measure quantities
+and report them with their uncertainty; this chapter teaches the
+reader to compute how a quantity moves. We define the derivative as
+the limit of a difference quotient, derive the working rules,
+develop the local linearisation that the engineer uses for almost
+every quick calculation, and confront the numerical instability
+that meets the same idea on a finite-precision machine.
 
-\section{The derivative as rate}
-\TODO{Section prose.}
+\section{The derivative as rate}\pathtag{core}
 
-\section{Rules: product, chain, quotient, implicit}
-\TODO{Section prose.}
+A quantity changes. Position changes with time, voltage changes
+with current, temperature changes with depth into a wall, the bank
+balance changes with the day, the population of a culture changes
+with the hour. The change is sometimes fast, sometimes slow,
+sometimes uniform, sometimes accelerating. Engineering begins with
+measurement; once the measurement is in hand, the next question is
+the rate.
 
-\section{Higher-order derivatives}
-\TODO{Section prose.}
+\subsection{The motivating example: position and velocity}
 
-\section{Local linearisation}
-\TODO{Section prose.}
+A car drives along a straight road. Let $x(t)$ denote its position
+at time $t$, with $x$ measured in metres and $t$ in seconds. Two
+readings of the position taken at times $t_{1}$ and $t_{2}$, with
+$t_{2} > t_{1}$, give a change in position
+$\Delta x = x(t_{2}) - x(t_{1})$ over an elapsed time
+$\Delta t = t_{2} - t_{1}$. The ratio
 
-\section{Mean value theorem and L'H\^opital}
-\TODO{Section prose.}
+\[
+\bar{v} = \frac{\Delta x}{\Delta t} = \frac{x(t_{2}) - x(t_{1})}
+{t_{2} - t_{1}}
+\]
 
-\section{Optimisation of one variable}
-\TODO{Section prose.}
+has units of metres per second. We call it the average velocity
+between $t_{1}$ and $t_{2}$. The average velocity is a property of
+the interval, not of any single instant: a car that travels from
+$\SI{0}{\meter}$ to $\SI{100}{\meter}$ between $t_{1} = 0$ and
+$t_{2} = 10\,\si{\second}$ has average velocity
+$10\,\si{\meter\per\second}$ over that interval, regardless of how
+the trip was distributed over the ten seconds. The car may have
+been stationary for nine seconds and then sprinted; it may have
+travelled at exactly $10\,\si{\meter\per\second}$ throughout; it
+may have accelerated and decelerated.
 
-\section{Numerical differentiation, why it is hard}
-\TODO{Section prose.}
+The instantaneous velocity at time $t$ is what the speedometer
+reports. It is the rate of change of position at the instant $t$,
+not over an interval. To recover it from positional measurements,
+the engineer has to take the average velocity over an interval that
+contains $t$ and shrink the interval. The shrinking is not a
+metaphor; it is a numerical procedure. We measure the position at
+$t$ and at $t + \Delta t$ for some small $\Delta t$, compute the
+average velocity over $[t, t + \Delta t]$, and ask what this number
+approaches as $\Delta t$ becomes small.
 
-\section{Failure: discontinuities, kinks, derivatives that do not exist}
-\TODO{Section prose.}
+For an idealised model, a car whose position obeys
+$x(t) = \tfrac{1}{2} a t^{2}$ with constant $a > 0$, the calculation
+runs as follows. The average velocity between $t$ and $t + \Delta t$
+is
 
-\section{Worked examples across domains}
-\TODO{Section prose.}
+\[
+\bar{v} = \frac{x(t + \Delta t) - x(t)}{\Delta t} =
+\frac{\tfrac{1}{2} a (t + \Delta t)^{2} - \tfrac{1}{2} a t^{2}}
+{\Delta t} = \frac{a t \Delta t + \tfrac{1}{2} a (\Delta t)^{2}}
+{\Delta t} = a t + \tfrac{1}{2} a \Delta t.
+\]
 
+For any $\Delta t > 0$, the average velocity exceeds $a t$ by
+$\tfrac{1}{2} a \Delta t$. As $\Delta t$ shrinks toward zero, the
+correction $\tfrac{1}{2} a \Delta t$ shrinks toward zero, and the
+average velocity approaches $a t$. The instantaneous velocity at
+time $t$ is $v(t) = a t$. We arrived at it by the limiting
+procedure: difference, divide, shrink.
 
-\section{Project}
-\TODO{numerically differentiate noisy data; defend a smoothing strategy}
+The procedure is general. The instantaneous rate of change of any
+quantity $y$ with respect to any quantity $x$ is the limit of the
+difference quotient $(y(x + \Delta x) - y(x)) / \Delta x$ as
+$\Delta x \to 0$, when that limit exists.
+
+\subsection{The formal definition}
+
+\begin{definition}[Derivative]
+Let $f$ be a real-valued function of a real variable, defined on
+an interval containing the point $x$. The \engterm{derivative} of
+$f$ at $x$, written $f'(x)$ or $\dv{f}{x}\big|_{x}$, is
+
+\[
+f'(x) = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h},
+\]
+
+provided the limit exists. When the limit exists, $f$ is said to
+be \engterm{differentiable} at $x$. When $f$ is differentiable at
+every point of an interval, $f$ is said to be differentiable on
+that interval, and the function $x \mapsto f'(x)$ is the
+\engterm{derivative function} of $f$.
+\end{definition}
+
+The notation $\dv{f}{x}$, due to Leibniz, captures the structure of
+the construction: a small change $\dd f$ in the function divided by
+a small change $\dd x$ in the argument. The notation $f'(x)$, due
+to Lagrange, is shorter and treats the derivative as a function of
+$x$. We use both, choosing the one that reads more naturally in
+context.
+
+The phrase "provided the limit exists" carries weight. The
+difference quotient is well-defined for any $h \neq 0$, but the
+limit as $h \to 0$ may fail to exist for several reasons. The
+function may have a jump at $x$, in which case the difference
+quotient is unbounded as $h \to 0$ from one side. The function may
+have a sharp corner at $x$ (a kink), in which case the limit from
+the left and the limit from the right exist but differ. The
+function may oscillate so rapidly near $x$ that the difference
+quotient never settles. Section~5.8 takes up these failure modes;
+for this section the reader assumes the functions in view are
+smooth enough that the limit exists.
+
+\begin{archetype}[Optimisation, first formal introduction]
+The derivative is the engineer's first tool for choosing among
+feasible alternatives. Given a function that maps a design
+parameter to a cost, a yield, an efficiency, or any other figure
+of merit, the points where the derivative vanishes are the
+candidates for the maximum and minimum. Section~5.6 develops
+this. The optimisation archetype recurs in every later volume
+that asks the engineer to choose: thermal design under cost
+constraint, structural design under weight constraint, network
+routing under latency constraint, biological dose under toxicity
+constraint. The pattern enters here, in one variable, with the
+condition $f'(x) = 0$.
+\end{archetype}
+
+\subsection{Geometric reading: the slope of the tangent line}
+
+The derivative has a geometric reading. Plot the graph of $y =
+f(x)$ in the $xy$-plane. Two distinct points on the graph,
+$(x, f(x))$ and $(x + h, f(x + h))$, define a secant line whose
+slope is the difference quotient $(f(x + h) - f(x)) / h$. As $h$
+shrinks, the secant rotates about the fixed point $(x, f(x))$, and
+the second point slides along the graph toward the first. In the
+limit $h \to 0$, the secant becomes the tangent line at $(x,
+f(x))$, and the difference quotient becomes the slope of the
+tangent. The derivative $f'(x)$ is the slope of the tangent line
+to the graph at the point $x$.
+
+The geometric reading is more than decoration. It tells the
+engineer where the function is increasing (positive slope), where
+it is decreasing (negative slope), where it is locally flat (zero
+slope), and where it is steep (large absolute slope). It also
+sets up the local linearisation of section~5.4: a smooth function
+near a point looks, to first order, like its tangent line.
+
+\subsection{Units and dimensions}
+
+The derivative inherits its units from the ratio that defines it.
+If $f$ has units $[f]$ and $x$ has units $[x]$, then $f'(x)$ has
+units $[f]/[x]$. For position $x(t)$ in metres and time $t$ in
+seconds, the derivative $\dv{x}{t}$ has units of
+$\si{\meter\per\second}$, which is velocity. For temperature
+$T(z)$ in degrees Celsius and depth $z$ in metres, the derivative
+$\dv{T}{z}$ has units of $\si{\degreeCelsius\per\meter}$, which is
+a thermal gradient. For voltage $V(I)$ in volts as a function of
+current $I$ in amperes, the derivative $\dv{V}{I}$ has units of
+$\si{\volt\per\ampere} = \si{\ohm}$, which is the differential
+resistance. The unit-balance discipline of Volume I extends to
+calculus: every derivative is a ratio of dimensioned quantities,
+and its units must be tracked through every calculation.
+
+\begin{estimation}
+\textbf{Question.} A car accelerates from rest under constant
+power. The kinetic energy at time $t$ obeys, approximately,
+$E(t) = P t$ where $P$ is the power. If the car has mass $m$, the
+velocity satisfies $v(t) = \sqrt{2 P t / m}$. Estimate the
+acceleration at $t = 5\,\si{\second}$ for a $m = 1500\,\si{\kg}$
+car with $P = 100\,\si{\kilo\watt}$, and compare the answer to the
+acceleration at $t = 1\,\si{\second}$.
+
+\textbf{Estimate.} At $t = 5\,\si{\second}$ the velocity is
+$v = \sqrt{2 \cdot 10^{5} \cdot 5 / 1500} = \sqrt{667} \approx
+26\,\si{\meter\per\second}$. The acceleration is
+$\dv{v}{t} = \tfrac{1}{2}(2 P / m)^{1/2} t^{-1/2} = (P / (2 m
+t))^{1/2}$, so at $t = 5\,\si{\second}$ we expect
+$a \approx (10^{5} / (2 \cdot 1500 \cdot 5))^{1/2} = (10^{5} / 1.5
+\times 10^{4})^{1/2} \approx 2.6\,\si{\meter\per\second\squared}$.
+At $t = 1\,\si{\second}$ the same formula gives $a \approx
+(10^{5} / 3000)^{1/2} \approx 5.8\,\si{\meter\per\second\squared}$.
+The acceleration falls as $t^{-1/2}$ because the constant-power
+constraint forces the car to spend more energy per unit
+acceleration as the velocity rises. The estimate matches what a
+working driver knows: a constant-power car accelerates fastest at
+low speed.
+\end{estimation}
+
+\subsection{Examples computed from the definition}
+
+We compute three derivatives directly from the limit definition.
+The point of the exercise is to see the limit do real work; the
+working rules of section~5.2 will then let the engineer compute
+the same derivatives in two lines.
+
+\engterm{Linear function}. Let $f(x) = a x + b$ with $a, b$
+constants. Then $f(x + h) - f(x) = a(x + h) + b - (a x + b) = a h$,
+so $(f(x + h) - f(x)) / h = a$. The limit as $h \to 0$ is $a$. The
+derivative of a linear function is the slope of the line.
+
+\engterm{Square function}. Let $f(x) = x^{2}$. Then $f(x + h) -
+f(x) = (x + h)^{2} - x^{2} = 2 x h + h^{2}$, so $(f(x + h) -
+f(x)) / h = 2 x + h$. The limit as $h \to 0$ is $2 x$. The
+derivative of $x^{2}$ is $2 x$.
+
+\engterm{Reciprocal}. Let $f(x) = 1/x$ for $x \neq 0$. Then
+$f(x + h) - f(x) = 1/(x + h) - 1/x = -h/(x(x + h))$, so
+$(f(x + h) - f(x)) / h = -1/(x(x + h))$. The limit as $h \to 0$
+is $-1/x^{2}$. The derivative of $1/x$ is $-1/x^{2}$.
+
+The pattern that emerges, called the \engterm{power rule}, is
+that the derivative of $x^{n}$ is $n x^{n - 1}$ for integer $n$.
+The proof from the definition uses the binomial expansion
+$(x + h)^{n} = x^{n} + n x^{n-1} h + \tbinom{n}{2} x^{n-2} h^{2} +
+\cdots$; only the linear-in-$h$ term survives the division by $h$
+and the limit. The same formula extends to non-integer exponents
+once the chain rule and the exponential function are in hand
+(section~5.2).
+
+\subsection{Derivatives of the elementary functions}
+
+The reader will use the following derivatives without re-deriving
+them in routine calculation. We list them here and prove the
+non-obvious cases later in the chapter.
+
+\begin{itemize}[leftmargin=*]
+  \item $\dv{}{x}(x^{n}) = n x^{n - 1}$ for any real $n$, with
+    $x > 0$ when $n$ is non-integer.
+  \item $\dv{}{x}(\sin x) = \cos x$ and $\dv{}{x}(\cos x) = -\sin
+    x$, with $x$ in radians.
+  \item $\dv{}{x}(e^{x}) = e^{x}$. The exponential is, up to a
+    multiplicative constant, the unique function whose derivative
+    equals itself.
+  \item $\dv{}{x}(\ln x) = 1/x$ for $x > 0$.
+  \item $\dv{}{x}(a^{x}) = a^{x} \ln a$ for $a > 0$.
+  \item $\dv{}{x}(\log_{a} x) = 1/(x \ln a)$ for $a > 0$, $a \neq
+    1$, $x > 0$.
+  \item $\dv{}{x}(\tan x) = \sec^{2} x = 1 / \cos^{2} x$.
+  \item $\dv{}{x}(\arcsin x) = 1/\sqrt{1 - x^{2}}$ for $|x| < 1$.
+  \item $\dv{}{x}(\arctan x) = 1/(1 + x^{2})$.
+\end{itemize}
+
+The trigonometric derivatives require $x$ in radians. A reader who
+computes $\dv{}{x}(\sin x)$ with $x$ in degrees will recover an
+extra factor of $\pi / 180$: in degrees, $\dv{}{x}(\sin x) =
+(\pi / 180) \cos x$. Volume I reported angles in radians by
+default, and Volume II continues the convention. The radian is the
+SI-coherent unit of angle, and calculus on trigonometric functions
+is dimensionally clean only when angles are measured in radians.
+
+\section{Rules: product, chain, quotient, implicit}\pathtag{core}
+
+The limit definition gives the derivative directly, but a working
+engineer rarely returns to the limit. Instead, the engineer uses a
+small set of algebraic rules that combine known derivatives into
+the derivative of a more complex expression. We derive the rules
+here and apply them.
+
+\subsection{Linearity}
+
+Differentiation is linear: if $f$ and $g$ are differentiable at
+$x$ and $a, b$ are constants, then $(a f + b g)$ is differentiable
+at $x$ and
+
+\[
+(a f + b g)'(x) = a f'(x) + b g'(x).
+\]
+
+The derivation is direct from the limit definition. The difference
+quotient of $a f + b g$ is
+
+\[
+\frac{(a f + b g)(x + h) - (a f + b g)(x)}{h} = a \cdot
+\frac{f(x + h) - f(x)}{h} + b \cdot \frac{g(x + h) - g(x)}{h}.
+\]
+
+Each term on the right has a limit as $h \to 0$, namely $a f'(x)$
+and $b g'(x)$, so the sum has a limit, and that limit is $a f'(x)
++ b g'(x)$. Linearity says: differentiate term by term, factor out
+constants.
+
+\subsection{The product rule}
+
+\begin{theorem}[Product rule]
+If $f$ and $g$ are differentiable at $x$, then so is $f g$, and
+
+\[
+(f g)'(x) = f'(x) g(x) + f(x) g'(x).
+\]
+\end{theorem}
+
+\begin{proof}
+We compute the difference quotient of $f g$ at $x$:
+
+\[
+\frac{(f g)(x + h) - (f g)(x)}{h} = \frac{f(x + h) g(x + h) -
+f(x) g(x)}{h}.
+\]
+
+Add and subtract $f(x + h) g(x)$ in the numerator:
+
+\[
+= \frac{f(x + h) g(x + h) - f(x + h) g(x) + f(x + h) g(x) -
+f(x) g(x)}{h} =
+f(x + h) \frac{g(x + h) - g(x)}{h} + g(x) \frac{f(x + h) - f(x)}{h}.
+\]
+
+As $h \to 0$, the first factor on the right approaches $f(x)$ (a
+differentiable function is continuous, a fact taken from
+Chapter~4), the second factor approaches $g'(x)$, and the third
+group of terms converges to $g(x) f'(x)$. Adding,
+
+\[
+(f g)'(x) = f(x) g'(x) + f'(x) g(x).
+\]
+\end{proof}
+
+The mnemonic "first times derivative of second, plus second times
+derivative of first" captures the formula. The product rule is
+not the rule a reader who has met only the linearity might guess;
+the derivative of a product is not the product of the derivatives.
+
+A worked check. Let $f(x) = x^{2}$ and $g(x) = x^{3}$. The
+product is $f(x) g(x) = x^{5}$, whose derivative by the power
+rule is $5 x^{4}$. The product rule gives $(x^{2})' x^{3} + x^{2}
+(x^{3})' = 2 x \cdot x^{3} + x^{2} \cdot 3 x^{2} = 2 x^{4} + 3
+x^{4} = 5 x^{4}$, agreeing.
+
+\subsection{The chain rule}
+
+\begin{theorem}[Chain rule]
+If $g$ is differentiable at $x$ and $f$ is differentiable at
+$g(x)$, then the composition $(f \circ g)$ is differentiable at
+$x$, and
+
+\[
+(f \circ g)'(x) = f'(g(x)) \cdot g'(x).
+\]
+\end{theorem}
+
+We derive the rule heuristically and indicate where the heuristic
+needs care. Let $u = g(x)$ and write $f(g(x)) = f(u)$. A small
+change $\Delta x$ in $x$ produces a small change $\Delta u =
+g(x + \Delta x) - g(x)$ in $u$, and a small change $\Delta f =
+f(u + \Delta u) - f(u)$ in $f$. We have
+
+\[
+\frac{\Delta f}{\Delta x} = \frac{\Delta f}{\Delta u} \cdot
+\frac{\Delta u}{\Delta x},
+\]
+
+provided $\Delta u \neq 0$. As $\Delta x \to 0$, $\Delta u \to 0$
+because $g$ is differentiable hence continuous, $\Delta f / \Delta
+u \to f'(u) = f'(g(x))$, and $\Delta u / \Delta x \to g'(x)$. The
+product on the right approaches $f'(g(x)) g'(x)$, which is the
+claim.
+
+The case $\Delta u = 0$ for some sequence of $\Delta x$ values,
+which can happen if $g$ is locally constant, requires a more
+careful argument; the standard fix replaces the troublesome ratio
+$\Delta f / \Delta u$ by a continuous extension. The conclusion
+holds in all cases the engineer encounters in practice.
+
+In Leibniz notation the chain rule reads
+
+\[
+\dv{f}{x} = \dv{f}{u} \cdot \dv{u}{x},
+\]
+
+a form so suggestive that it can be remembered by treating
+derivatives as fractions and "cancelling" $\dd u$. The cancellation
+is heuristic; the formula it produces is correct.
+
+A worked use. Let $h(x) = \sin(x^{2})$. Setting $u = x^{2}$ and
+$f(u) = \sin u$, we have $f'(u) = \cos u$ and $u'(x) = 2 x$, so
+$h'(x) = \cos(x^{2}) \cdot 2 x = 2 x \cos(x^{2})$.
+
+Another. Let $h(x) = (3 x^{2} + 1)^{5}$. Setting $u = 3 x^{2} +
+1$ and $f(u) = u^{5}$, we have $f'(u) = 5 u^{4}$ and $u'(x) = 6
+x$, so $h'(x) = 5 (3 x^{2} + 1)^{4} \cdot 6 x = 30 x (3 x^{2} +
+1)^{4}$.
+
+A nested case. Let $h(x) = \sin(\cos(x))$. Two applications of
+the chain rule give $h'(x) = \cos(\cos(x)) \cdot (-\sin(x)) =
+-\sin(x) \cos(\cos(x))$.
+
+\subsection{The quotient rule}
+
+\begin{theorem}[Quotient rule]
+If $f$ and $g$ are differentiable at $x$ and $g(x) \neq 0$, then
+$f / g$ is differentiable at $x$, and
+
+\[
+\left(\frac{f}{g}\right)'(x) = \frac{f'(x) g(x) - f(x) g'(x)}
+{g(x)^{2}}.
+\]
+\end{theorem}
+
+Two derivations. The first uses the product and chain rules. Write
+$f / g = f \cdot (1/g)$. The chain rule applied to $1/g$ with outer
+function $u \mapsto 1/u$ (whose derivative is $-1/u^{2}$) gives
+$(1/g)'(x) = -g'(x) / g(x)^{2}$. The product rule then gives
+
+\[
+\left(\frac{f}{g}\right)'(x) = f'(x) \cdot \frac{1}{g(x)} + f(x)
+\cdot \frac{-g'(x)}{g(x)^{2}} = \frac{f'(x) g(x) - f(x) g'(x)}
+{g(x)^{2}}.
+\]
+
+The second derivation is from the limit definition; the algebra is
+the routine subtraction-of-fractions manipulation.
+
+A worked use. Let $h(x) = (x^{2} + 1) / (x - 3)$ for $x \neq 3$.
+With $f = x^{2} + 1$, $g = x - 3$, $f' = 2 x$, $g' = 1$,
+
+\[
+h'(x) = \frac{2 x (x - 3) - (x^{2} + 1) \cdot 1}{(x - 3)^{2}} =
+\frac{2 x^{2} - 6 x - x^{2} - 1}{(x - 3)^{2}} = \frac{x^{2} -
+6 x - 1}{(x - 3)^{2}}.
+\]
+
+\subsection{Implicit differentiation}
+
+Some functional relationships are not given as $y = f(x)$ but as
+$F(x, y) = 0$. The circle $x^{2} + y^{2} = 1$ is the canonical
+example: it does not define $y$ as a single-valued function of
+$x$, because for each $x \in (-1, 1)$ there are two values of $y$
+satisfying the relation. The engineer who wants the slope of the
+tangent to the circle at a particular point still wants
+$\dv{y}{x}$ at that point. \engterm{Implicit differentiation}
+recovers it without solving for $y$ explicitly.
+
+The technique: differentiate both sides of $F(x, y) = 0$ with
+respect to $x$, treating $y$ as a function of $x$, and apply the
+chain rule wherever $y$ appears. For $x^{2} + y^{2} = 1$,
+
+\[
+2 x + 2 y \dv{y}{x} = 0 \implies \dv{y}{x} = -\frac{x}{y}.
+\]
+
+At the point $(x_{0}, y_{0}) = (3/5, 4/5)$ on the unit circle, the
+slope of the tangent is $-3/4$. The technique works wherever the
+relation defines $y$ as a differentiable function of $x$ in a
+neighbourhood of the point of interest, which the implicit
+function theorem (chapter~11 of this volume) makes precise.
+
+A second example, where solving for $y$ explicitly would be
+algebraically painful: $x \sin y + y \cos x = e^{x y}$.
+Differentiating both sides with respect to $x$, applying the
+product rule on each term and the chain rule on $\sin y$, $\cos
+x$, and $e^{x y}$, gives
+
+\[
+\sin y + x \cos y \dv{y}{x} + \dv{y}{x} \cos x - y \sin x =
+e^{x y} \left(y + x \dv{y}{x}\right).
+\]
+
+Solving for $\dv{y}{x}$:
+
+\[
+\dv{y}{x} (x \cos y + \cos x - x e^{x y}) = y e^{x y} + y \sin x
+- \sin y \implies \dv{y}{x} = \frac{y e^{x y} + y \sin x - \sin y}
+{x \cos y + \cos x - x e^{x y}}.
+\]
+
+The slope of the tangent at any specific point is recovered by
+substituting the point's coordinates. The expression is unwieldy,
+but it is also exact, and the engineer who needs the slope at a
+single point reads it off in one substitution.
+
+\subsection{Logarithmic differentiation}
+
+Implicit differentiation has a useful special case for products,
+quotients, and powers: take the logarithm first. If $y = f(x)
+g(x) / h(x)$, then $\ln y = \ln f(x) + \ln g(x) - \ln h(x)$.
+Differentiating both sides with respect to $x$ and applying the
+chain rule on the left,
+
+\[
+\frac{1}{y} \dv{y}{x} = \frac{f'(x)}{f(x)} + \frac{g'(x)}{g(x)} -
+\frac{h'(x)}{h(x)},
+\]
+
+so
+
+\[
+\dv{y}{x} = y \left(\frac{f'(x)}{f(x)} + \frac{g'(x)}{g(x)} -
+\frac{h'(x)}{h(x)}\right) = \frac{f g}{h} \left(\frac{f'}{f} +
+\frac{g'}{g} - \frac{h'}{h}\right).
+\]
+
+The technique converts a product-quotient mess into a sum of
+logarithmic derivatives. It is the engineer's preferred way to
+differentiate expressions like $y = x^{x}$, where neither the
+power rule nor the exponential rule applies directly. With $\ln y
+= x \ln x$, differentiating gives $(1/y) \dv{y}{x} = \ln x + 1$,
+so $\dv{y}{x} = x^{x} (\ln x + 1)$.
+
+\subsection{Working tactics}
+
+A reader confronted with a derivative they do not recognise asks
+three questions in order. First, is this a sum or scalar multiple
+of simpler pieces? If yes, apply linearity and reduce to the
+pieces. Second, is this a product, quotient, or composition? If
+yes, apply the product, quotient, or chain rule. Third, is this
+implicit, or does it have a structure that logarithmic
+differentiation simplifies? If yes, take the logarithm or
+differentiate implicitly.
+
+After the structural decomposition, every leaf of the
+decomposition is one of the elementary derivatives listed in
+section~5.1. The composite derivative reassembles by applying the
+combination rules backward.
+
+\section{Higher-order derivatives}\pathtag{core}
+
+The derivative of $f$ is itself a function of $x$, and one may
+ask for its derivative.
+
+\begin{definition}[Higher-order derivative]
+The \engterm{second derivative} of $f$, written $f''(x)$ or
+$\frac{\dd^{2} f}{\dd x^{2}}$, is the derivative of $f'(x)$:
+
+\[
+f''(x) = \dv{}{x} f'(x) = \lim_{h \to 0} \frac{f'(x + h) -
+f'(x)}{h}.
+\]
+
+The \engterm{$n$-th derivative} $f^{(n)}(x)$ or $\frac{\dd^{n}
+f}{\dd x^{n}}$ is defined recursively as the derivative of the
+$(n - 1)$-th derivative.
+\end{definition}
+
+The first three derivatives of position $x(t)$ have engineering
+names. The first is velocity $v(t) = \dv{x}{t}$. The second is
+acceleration $a(t) = \dv{v}{t} = \frac{\dd^{2} x}{\dd t^{2}}$.
+The third is sometimes called jerk, the rate of change of
+acceleration, relevant in vehicle ride comfort and in aerospace
+attitude control. Beyond the third, the named derivatives become
+specialised.
+
+For polynomials, repeated differentiation eventually produces
+zero. The function $f(x) = a_{n} x^{n} + a_{n - 1} x^{n - 1} +
+\cdots + a_{0}$ has $f^{(n)}(x) = n! a_{n}$, a constant, and
+$f^{(k)}(x) = 0$ for $k > n$. For non-polynomial functions, the
+higher derivatives may be nonzero at every order. The exponential
+$f(x) = e^{x}$ has $f^{(k)}(x) = e^{x}$ for every $k$.
+Trigonometric functions cycle: $\sin^{(0)} = \sin$,
+$\sin^{(1)} = \cos$, $\sin^{(2)} = -\sin$, $\sin^{(3)} = -\cos$,
+$\sin^{(4)} = \sin$, repeating with period four.
+
+\subsection{The second derivative reads concavity}
+
+The second derivative carries geometric information about the
+graph of $f$. Where $f''(x) > 0$, the graph is curving upward (the
+graph lies above its tangent line in a neighbourhood of $x$); we
+say $f$ is \engterm{concave up} or \engterm{convex} at $x$. Where
+$f''(x) < 0$, the graph is curving downward; we say $f$ is
+\engterm{concave down} or \engterm{concave} at $x$. Where $f''(x)
+= 0$ and $f''$ changes sign, the graph has an \engterm{inflection
+point}.
+
+The convexity reading is the engineer's working tool for
+optimisation. A function whose second derivative is positive
+everywhere has at most one local minimum, which is also its
+global minimum, on a convex domain. A function whose second
+derivative is negative everywhere has at most one local maximum,
+which is also its global maximum. We return to this in
+section~5.6 and treat it formally in chapter~15 of this volume,
+where convex optimisation is the working framework for many
+engineering design problems.
+
+\subsection{Higher derivatives carry function shape}
+
+Beyond the second, higher derivatives carry progressively finer
+information about the function's shape near a point. The third
+derivative tells us how the curvature is changing: a negative
+third derivative at a point of zero second derivative is the
+signature of a peak in curvature. The fourth derivative carries
+information about how the curvature changes its rate of change.
+For a function known to be smooth (infinitely differentiable),
+the entire sequence of derivatives at a single point determines
+the function in a neighbourhood of that point, via the Taylor
+series of section~5.4.
+
+For an engineering reader, the higher derivatives matter most in
+three places. First, in numerical methods, where higher
+derivatives appear in the truncation-error terms of finite
+differences and quadrature rules, and where the rate of
+convergence depends on which derivatives are bounded. Second, in
+local linearisation and Taylor approximation, where the engineer
+chooses how many terms to keep based on the desired accuracy.
+Third, in the dynamics of physical systems, where conservation
+laws and material constants relate the second derivative of a
+field to forcing terms (Newton's second law, the wave equation,
+the heat equation, the Schrödinger equation). The reader will
+meet the higher derivatives most often through these three uses.
+
+\section{Local linearisation}\pathtag{core}
+
+The single most useful consequence of differentiability, for
+engineering practice, is the local linearisation: a smooth
+function near a working point looks, to first order, like its
+tangent line. Many engineering calculations replace the function
+by its tangent line over a small range of input, and the answer
+is correct to within the chapter's stated accuracy. We make the
+approximation precise.
+
+\subsection{Taylor's theorem to first order}
+
+\begin{theorem}[Taylor's theorem, first-order remainder form]
+If $f$ is differentiable on an interval containing $a$, and $f''$
+is continuous on that interval, then for any $x$ in the interval
+
+\[
+f(x) = f(a) + f'(a)(x - a) + R_{1}(x; a),
+\]
+
+where the remainder satisfies $R_{1}(x; a) = \tfrac{1}{2}
+f''(\xi) (x - a)^{2}$ for some $\xi$ between $a$ and $x$.
+\end{theorem}
+
+The expression $L_{a}(x) = f(a) + f'(a)(x - a)$ is the
+\engterm{linear approximation} or \engterm{tangent-line
+approximation} of $f$ at $a$. It is the unique linear function
+that agrees with $f$ at $a$ both in value and in slope. The
+remainder $R_{1}$ measures the error of the approximation; it is
+quadratic in the displacement $(x - a)$, with a coefficient set
+by the second derivative at some intermediate point.
+
+A reader who has been carrying error bars from Volume I notices
+the structure: the linear approximation is a model, and the
+remainder is the error of the model. The error scales as the
+square of the displacement and as the magnitude of the second
+derivative. A function that is gently curving (small $f''$) admits
+a wide working range; a function that curves sharply (large
+$f''$) admits a narrow working range.
+
+\subsection{Worked examples}
+
+We linearise three functions at three working points and report
+the range over which the linearisation is good to a stated
+tolerance.
+
+\engterm{Square root near unity}. Let $f(x) = \sqrt{x}$. We
+linearise at $a = 1$. Then $f(1) = 1$, $f'(x) = 1/(2\sqrt{x})$,
+$f'(1) = 1/2$. The linear approximation is $L_{1}(x) = 1 +
+\tfrac{1}{2}(x - 1)$, equivalent to $\sqrt{1 + h} \approx 1 + h/2$
+for $h = x - 1$ small. The second derivative is $f''(x) = -1/(4
+x^{3/2})$, so $|f''| \leq 1/4$ for $x \geq 1$. The remainder bound
+gives $|R_{1}| \leq \tfrac{1}{2} \cdot \tfrac{1}{4} \cdot h^{2} =
+h^{2}/8$. For $h = 0.1$, the linear approximation gives
+$\sqrt{1.1} \approx 1.05$, and the remainder bound is at most
+$(0.1)^{2}/8 = 0.00125$. The actual value is $\sqrt{1.1} =
+1.0488\ldots$, so the linear approximation overestimates by
+$0.0012$, within the bound.
+
+\engterm{Sine at zero}. Let $f(x) = \sin x$. We linearise at
+$a = 0$. Then $f(0) = 0$, $f'(x) = \cos x$, $f'(0) = 1$. The
+linear approximation is $L_{0}(x) = x$, the small-angle
+approximation $\sin x \approx x$ from chapter~4 of this volume.
+The second derivative is $f''(x) = -\sin x$, with $|f''| \leq 1$
+for all $x$. The remainder bound gives $|R_{1}| \leq x^{2}/2$.
+For $x = 0.1\,\si{\radian}$, the linear approximation gives
+$\sin x \approx 0.1$ with remainder bound $0.005$; the actual
+value is $0.0998\ldots$, so the linear approximation overestimates
+by $0.002$, well within the bound. For $x = 0.5\,\si{\radian}$,
+the bound is $0.125$, the linear approximation gives $0.5$, and
+the actual value is $0.479\ldots$, so the actual error is $0.021$,
+again within the bound.
+
+\engterm{Logarithm at one}. Let $f(x) = \ln x$. We linearise at
+$a = 1$. Then $f(1) = 0$, $f'(x) = 1/x$, $f'(1) = 1$. The linear
+approximation is $L_{1}(x) = x - 1$, equivalent to $\ln(1 + h)
+\approx h$ for $h$ small. The second derivative is $f''(x) =
+-1/x^{2}$, so $|f''| \leq 1$ for $x \geq 1$. For $h = 0.05$, the
+linear approximation gives $\ln(1.05) \approx 0.05$ with remainder
+bound $0.00125$; the actual value is $0.0488\ldots$, error $0.001$.
+
+\subsection{The working approximation}
+
+The pattern is general. Whenever an engineer needs the value of a
+smooth function at an input near a working point where the
+function value and derivative are known, the linear approximation
+
+\[
+f(a + h) \approx f(a) + f'(a) h
+\]
+
+is correct to order $h^{2}$. The error scales with $h^{2}$ and
+with the second derivative; the engineer who wants more accuracy
+keeps the next term in the Taylor expansion, $\tfrac{1}{2}
+f''(a) h^{2}$, and accepts an error of order $h^{3}$.
+
+The local linearisation is the formal home of three Volume I
+working tools: the small-angle approximation $\sin\theta \approx
+\theta$ for $|\theta|$ small (Volume I chapter~7 used it
+informally), the binomial approximation $(1 + h)^{n} \approx 1 +
+n h$ for $|h|$ small (Volume I chapter~9), and the
+algebraic-propagation rule for uncertainty $(u(y)/y)^{2} =
+\sum_{i} p_{i}^{2} (u(x_{i})/x_{i})^{2}$ for products of powers
+(Volume I chapter~4). Each is a Taylor approximation to first
+order, and each acquires its remainder bound here.
+
+\section{Mean value theorem and L'H\^opital}\pathtag{core}
+
+Two classical results connect the derivative to the function's
+behaviour over an interval. The first, the mean value theorem,
+tells us that the average rate of change over an interval is
+realised at some interior point. The second, L'H\^opital's rule,
+lets us evaluate certain limits by replacing each side of a ratio
+by its derivative.
+
+Volume I Chapter 4 deferred the general partial-derivative form of
+the GUM uncertainty propagation formula to this chapter on the
+grounds that calculus had not yet arrived. We retroactively
+legitimise it here. The
+working forms of section~5.4, applied to a function of several
+variables, give precisely the GUM general formula
+$u^{2}(y) = \sum_{i} (\partial f / \partial x_{i})^{2} u^{2}(x_{i})$,
+with the understanding that the partial derivatives are introduced
+formally in chapter~11 of this volume on multivariable calculus.
+The reader who returns to that Volume I mastery box now has the
+calculus to read the formula as a first-order Taylor expansion in
+the input deviations, with the partial derivatives playing the
+role of one-variable derivatives in each input direction.
+
+\subsection{The mean value theorem}
+
+\begin{theorem}[Mean value theorem]
+If $f$ is continuous on the closed interval $[a, b]$ and
+differentiable on the open interval $(a, b)$, then there exists at
+least one point $c \in (a, b)$ such that
+
+\[
+f'(c) = \frac{f(b) - f(a)}{b - a}.
+\]
+\end{theorem}
+
+The right side is the average rate of change of $f$ over $[a, b]$.
+The theorem says: the average rate of change over an interval is
+the instantaneous rate of change at some point inside the interval.
+
+A geometric reading: there is a point on the graph where the
+tangent is parallel to the secant connecting the endpoints. A
+physical reading: a car that travels from $A$ to $B$ in a stated
+time has, at some moment between $A$ and $B$, an instantaneous
+velocity equal to the average velocity over the trip. The theorem
+does not say where that moment is; it says only that it exists.
+
+The proof is short. Define $g(x) = f(x) - L(x)$ where $L(x)$ is
+the linear function passing through $(a, f(a))$ and $(b, f(b))$.
+Then $g(a) = g(b) = 0$. By Rolle's theorem (which is the special
+case $f(a) = f(b)$ of the mean value theorem, proved from the
+extreme value theorem), there exists $c \in (a, b)$ with $g'(c) =
+0$. Computing $g'$ from $f$ and $L$ gives $f'(c) = L'(c) = (f(b)
+- f(a))/(b - a)$.
+
+The mean value theorem has consequences the engineer uses without
+re-deriving them. If $f'(x) = 0$ for all $x$ in an interval, then
+$f$ is constant on the interval. If $f'(x) > 0$ for all $x$ in an
+interval, then $f$ is strictly increasing on the interval. If
+$|f'(x)| \leq M$ for all $x$ in $[a, b]$, then $|f(b) - f(a)| \leq
+M (b - a)$. Each is a direct consequence of the mean value
+theorem, applied to a difference of function values at two
+points.
+
+\subsection{L'H\^opital's rule}
+
+A common practical question: what is the limit of a ratio
+$f(x)/g(x)$ as $x \to a$, when $f(a) = g(a) = 0$? The ratio is
+the indeterminate form $0/0$ at $x = a$, and the limit is not
+recovered by direct substitution.
+
+\begin{theorem}[L'H\^opital's rule]
+Let $f$ and $g$ be differentiable in a neighbourhood of $a$, with
+$g'(x) \neq 0$ near $a$ (except possibly at $a$). Suppose
+$\lim_{x \to a} f(x) = \lim_{x \to a} g(x) = 0$ (or both limits
+are $\pm \infty$). If $\lim_{x \to a} f'(x)/g'(x)$ exists (or is
+$\pm \infty$), then $\lim_{x \to a} f(x)/g(x)$ exists and equals
+the limit of the ratio of derivatives.
+\end{theorem}
+
+The rule has the geometric reading: near $a$, both $f$ and $g$
+are approximately linear, so $f(x) \approx f'(a)(x - a)$ and
+$g(x) \approx g'(a)(x - a)$. The ratio is approximately
+$f'(a)/g'(a)$, exact in the limit if that quotient is finite.
+
+A worked use. $\lim_{x \to 0} \sin x / x$. Direct substitution
+gives $0/0$. By L'H\^opital, the limit equals $\lim_{x \to 0}
+\cos x / 1 = 1$. The reader who wants to confirm this from first
+principles can use the Taylor expansion $\sin x = x - x^{3}/6 +
+\cdots$, so $\sin x / x = 1 - x^{2}/6 + \cdots \to 1$.
+
+Another. $\lim_{x \to 0} (e^{x} - 1)/x = \lim_{x \to 0} e^{x}/1
+= 1$. And $\lim_{x \to 0} (1 - \cos x)/x^{2} = \lim_{x \to 0}
+\sin x / (2 x) = \tfrac{1}{2}$, where the second equality uses
+L'H\^opital again because the intermediate ratio is still $0/0$
+at $x = 0$.
+
+The rule extends, with a certain amount of care, to other
+indeterminate forms ($\infty/\infty$, $0 \cdot \infty$,
+$\infty - \infty$, $0^{0}$, $1^{\infty}$, $\infty^{0}$). Each
+non-quotient form is converted to a $0/0$ or $\infty/\infty$ ratio
+by algebraic manipulation, often using $\ln$ to handle exponential
+forms.
+
+\begin{mastery}
+The mean value theorem extends in several directions. The Cauchy
+mean value theorem replaces the linear function $L$ with a more
+flexible parametric statement. The integral mean value theorem
+expresses the integral of a continuous function over an interval
+as the function's value at some interior point times the interval
+length. Both extensions appear in chapter~6 (integration) and in
+the foundational results of numerical analysis. The Cauchy form
+is also the engine of L'H\^opital's rule's proof; we omit the
+formal derivation and refer the reader to a standard analysis
+text.
+\end{mastery}
+
+\section{Optimisation of one variable}\pathtag{core}
+
+The engineer's first formal use of the derivative is to find the
+maximum or minimum of a function. The chapter has been preparing
+this subject from its opening: the derivative locates the rate, the
+second derivative locates the curvature, and the optimisation
+archetype is announced in section~5.1. We now formalise the
+procedure.
+
+\begin{archetype}[Optimisation in one variable]
+Given a function $f$ defined on a domain (an interval, the whole
+real line, a finite set of allowed points), the optimisation
+problem is to find the input that maximises or minimises $f$. In
+one continuous variable, the candidate inputs are the points where
+$f'(x) = 0$ (interior critical points) and the endpoints of the
+domain. The second derivative test selects among the interior
+critical points. The endpoint test compares values at the
+boundaries.
+\end{archetype}
+
+\subsection{First-order necessary condition}
+
+\begin{theorem}[Fermat's stationary-point theorem]
+If $f$ has a local maximum or minimum at an interior point $c$ of
+its domain, and $f$ is differentiable at $c$, then $f'(c) = 0$.
+\end{theorem}
+
+The proof is a sign-of-difference-quotient argument. If $f$ has a
+local maximum at $c$, then for $h$ small, $f(c + h) \leq f(c)$,
+so $(f(c + h) - f(c))/h \leq 0$ for $h > 0$ and
+$(f(c + h) - f(c))/h \geq 0$ for $h < 0$. Taking the limit from
+each side gives $f'(c) \leq 0$ and $f'(c) \geq 0$, so $f'(c) =
+0$. The argument for a minimum is symmetric.
+
+A point where $f'(x) = 0$ is called a \engterm{stationary point}
+or \engterm{critical point} of $f$. The theorem says: every
+interior local maximum or minimum of a differentiable function is
+a critical point. The converse is false. The function $f(x) =
+x^{3}$ has $f'(0) = 0$ but is neither a maximum nor a minimum at
+$x = 0$; it is an inflection point with horizontal tangent.
+
+\subsection{Second-order sufficient condition}
+
+\begin{theorem}[Second-derivative test]
+Let $f$ be twice continuously differentiable on an interval
+containing $c$, with $f'(c) = 0$. If $f''(c) > 0$, then $c$ is a
+local minimum. If $f''(c) < 0$, then $c$ is a local maximum. If
+$f''(c) = 0$, the test is inconclusive.
+\end{theorem}
+
+The proof reads the second derivative as concavity. If $f''(c) >
+0$ and $f''$ is continuous, then $f'' > 0$ in a neighbourhood of
+$c$, so $f'$ is increasing through zero at $c$. The function $f$
+is therefore decreasing on a left neighbourhood of $c$ (where
+$f' < 0$) and increasing on a right neighbourhood (where $f' >
+0$); the value $f(c)$ is a local minimum.
+
+When $f''(c) = 0$, the test fails and the engineer needs further
+information. Higher-order terms determine the answer: if $f'''(c)
+\neq 0$, the point is an inflection (neither a maximum nor a
+minimum); if $f'''(c) = 0$ and $f''''(c) > 0$, the point is a
+local minimum; and so on. The fourth-order case is rare in
+practical engineering optimisation; the second-derivative test
+covers most working problems.
+
+\subsection{Worked examples}
+
+\engterm{Aluminium can}. A cylindrical can of fixed volume $V$ has
+radius $r$ and height $h$ with $\pi r^{2} h = V$. The surface
+area, including top and bottom, is $A(r) = 2\pi r^{2} + 2\pi r h
+= 2\pi r^{2} + 2 V / r$. The first derivative is $A'(r) = 4\pi r
+- 2 V / r^{2}$, vanishing at $r^{*} = (V / (2\pi))^{1/3}$. The
+second derivative is $A''(r) = 4\pi + 4 V / r^{3} > 0$, so the
+critical point is a local minimum. At the optimum, $h^{*} = V/
+(\pi (r^{*})^{2}) = 2 r^{*}$: the optimal can is twice as tall as
+it is wide. (Real soup cans are taller than this, because labels,
+shipping, and grip preferences enter the cost function alongside
+material.)
+
+\engterm{Power transfer to a resistor}. A battery with electromotive
+force $\mathcal{E}$ and internal resistance $R_{i}$ delivers power
+$P(R) = \mathcal{E}^{2} R / (R + R_{i})^{2}$ to an external load
+$R$. We maximise $P$ over $R > 0$. Using the quotient rule,
+$P'(R) = \mathcal{E}^{2} ((R + R_{i})^{2} - R \cdot 2(R + R_{i}))
+/ (R + R_{i})^{4} = \mathcal{E}^{2} (R_{i} - R) / (R + R_{i})^{3}$.
+This vanishes at $R^{*} = R_{i}$. The second derivative is
+negative there, so the critical point is a maximum. Maximum power
+transfer occurs when the load resistance equals the internal
+resistance. The maximum power is $P^{*} = \mathcal{E}^{2} / (4
+R_{i})$.
+
+\engterm{Drag minimisation for a fixed cruising speed}. The drag
+on a body in air at low speed has two components: a viscous drag
+proportional to velocity, $F_{\text{visc}} = \alpha v$, and an
+induced drag (for a lifting body) inversely proportional to the
+square of velocity, $F_{\text{ind}} = \beta / v^{2}$. The total
+drag is $F(v) = \alpha v + \beta / v^{2}$. Setting $F'(v) =
+\alpha - 2 \beta / v^{3} = 0$ gives $v^{*} = (2 \beta /
+\alpha)^{1/3}$. The second derivative $F''(v) = 6 \beta / v^{4}$
+is positive, so $v^{*}$ minimises drag. The cruise speed of an
+aircraft, current as of 2026 in commercial design practice, is
+chosen near this optimum, modified by engine efficiency and
+flight-time considerations.
+
+\subsection{Constrained optimisation in one variable}
+
+When the domain is a closed interval $[a, b]$, the optimum may
+occur at an interior critical point, at $x = a$, or at $x = b$.
+The procedure is to compute $f$ at every interior critical point
+(found via $f'(x) = 0$) and at the two endpoints, and pick the
+largest value (for a maximum) or the smallest value (for a
+minimum). The procedure is exhaustive: every candidate is on the
+list.
+
+\engterm{A worked constrained problem}. Maximise $f(x) = x e^{-x}$
+on $[0, 3]$. The first derivative is $f'(x) = e^{-x} (1 - x)$,
+vanishing at $x = 1$ (the only interior critical point in the
+domain). Compute $f(0) = 0$, $f(1) = 1/e \approx 0.368$, $f(3) =
+3 e^{-3} \approx 0.149$. The maximum on $[0, 3]$ is at $x = 1$
+with value $1/e$, and the minimum is at $x = 0$ with value $0$.
+
+The same procedure applies to chapter~15's multivariable
+constrained optimisation, with critical points replaced by
+gradient-zero conditions and Lagrange multipliers handling
+equality constraints. We introduce the multivariable case
+formally there.
+
+\section{Numerical differentiation, why it is hard}\pathtag{core}
+
+Up to this point we have computed derivatives analytically. In
+many engineering settings the function $f$ is not given by a
+formula but by a sequence of measurements, a black-box simulation,
+or a tabulated lookup. The derivative must be approximated from
+function values alone. \engterm{Numerical differentiation} is the
+discipline of doing this on a finite-precision machine.
+
+The discipline is harder than its analytical counterpart, for a
+reason we will derive: numerical differentiation amplifies noise
+and floating-point error in a way that integration, in
+chapter~6, does not. The engineer who does it badly produces a
+derivative whose error is many times the function's error; the
+engineer who does it well produces a derivative whose error is at
+the floor set by the function's measurement uncertainty.
+
+\subsection{Forward, backward, and central differences}
+
+The simplest approximation to $f'(x)$ uses two function values.
+The forward difference is
+
+\[
+D_{+}(x; h) = \frac{f(x + h) - f(x)}{h}.
+\]
+
+This is the difference quotient itself, evaluated at finite $h$
+rather than in the limit. The backward difference is
+
+\[
+D_{-}(x; h) = \frac{f(x) - f(x - h)}{h},
+\]
+
+which uses the function value to the left of $x$. The central
+difference is
+
+\[
+D_{0}(x; h) = \frac{f(x + h) - f(x - h)}{2 h}.
+\]
+
+\subsection{Truncation error: the bias}
+
+Each formula has a truncation error: the difference between the
+formula's output and the exact $f'(x)$, computed assuming infinite
+precision arithmetic. We compute it from Taylor's theorem.
+
+For the forward difference, expand $f(x + h)$ around $x$:
+
+\[
+f(x + h) = f(x) + f'(x) h + \tfrac{1}{2} f''(x) h^{2} +
+\tfrac{1}{6} f'''(\xi) h^{3},
+\]
+
+for some $\xi$ between $x$ and $x + h$. Substituting and dividing
+by $h$,
+
+\[
+D_{+}(x; h) = f'(x) + \tfrac{1}{2} f''(x) h + \tfrac{1}{6}
+f'''(\xi) h^{2}.
+\]
+
+The truncation error of the forward difference is approximately
+$\tfrac{1}{2} f''(x) h$ for $h$ small, which scales as $\oom{h}$.
+The forward difference is a first-order method.
+
+The backward difference has the same first-order truncation error,
+with $f''$ evaluated at $x$ minus a small correction.
+
+For the central difference, expand both $f(x + h)$ and $f(x - h)$
+around $x$:
+
+\[
+f(x \pm h) = f(x) \pm f'(x) h + \tfrac{1}{2} f''(x) h^{2} \pm
+\tfrac{1}{6} f'''(x) h^{3} + \tfrac{1}{24} f''''(\xi^{\pm}) h^{4}.
+\]
+
+The difference $f(x + h) - f(x - h)$ has the even-order terms
+cancel and the odd-order terms double:
+
+\[
+f(x + h) - f(x - h) = 2 f'(x) h + \tfrac{1}{3} f'''(x) h^{3} +
+\oom{h^{5}}.
+\]
+
+Dividing by $2h$,
+
+\[
+D_{0}(x; h) = f'(x) + \tfrac{1}{6} f'''(x) h^{2} + \oom{h^{4}}.
+\]
+
+The truncation error of the central difference scales as $\oom
+{h^{2}}$, one order better than the forward and backward
+differences. Wherever the function is smooth and the values can
+be computed at $x \pm h$, the central difference is the engineer's
+default.
+
+\subsection{Round-off error: the variance}
+
+Truncation error is not the only error in numerical
+differentiation. The function values $f(x \pm h)$ are computed in
+finite precision: a 64-bit floating-point number stores $f$ to
+about $10^{-16}$ relative accuracy. If $f(x) \sim O(1)$, the
+absolute error in each function value is $\varepsilon \sim
+10^{-16}$. When we form the central difference
+
+\[
+D_{0}(x; h) = \frac{f(x + h) - f(x - h)}{2 h},
+\]
+
+the numerator is the difference of two numbers that are very close
+to each other when $h$ is small. The function values
+$f(x \pm h)$ each carry an error of order $\varepsilon$; the
+difference carries an error of order $\varepsilon$ (in the worst
+case, the errors do not cancel); the divided difference carries
+an error of order $\varepsilon / h$.
+
+The total error in $D_{0}(x; h)$ as an estimate of $f'(x)$ is then
+
+\[
+|D_{0}(x; h) - f'(x)| \lesssim \tfrac{1}{6} |f'''(x)| h^{2} +
+\frac{C \varepsilon}{h},
+\]
+
+with $C$ a small constant depending on how the function value is
+computed. The truncation term decreases with $h$; the round-off
+term increases with $h$. The total has a minimum.
+
+Setting the derivative of the total error with respect to $h$ to
+zero, the optimal step is $h^{*} \sim (\varepsilon / |f'''|)^{1/3}$
+for the central difference (and $h^{*} \sim (\varepsilon /
+|f''|)^{1/2}$ for the forward difference). The optimal error scales
+as $\varepsilon^{2/3}$ for the central difference and as
+$\varepsilon^{1/2}$ for the forward difference. With double-
+precision $\varepsilon \approx 10^{-16}$, the central-difference
+optimal error is about $10^{-11}$ and the forward-difference
+optimal error is about $10^{-8}$. A naive engineer who picks $h =
+10^{-8}$ for the central difference, or $h = 10^{-10}$ for the
+forward difference, will lose precision rapidly to round-off.
+
+This is \engterm{catastrophic cancellation}: the loss of significant
+digits when subtracting two nearly equal numbers. It is the
+operative noise mechanism of numerical differentiation, and it is
+the reason numerical differentiation is harder than numerical
+integration.
+
+\subsection{The bias-variance tradeoff}
+
+The structure of the total error reveals a tradeoff that recurs
+throughout numerical analysis and statistics: bias against
+variance, or in this language, truncation error against round-off
+error. Reducing $h$ reduces the bias (the systematic, function-
+dependent component of the error) but increases the variance (the
+noise-driven component). A larger $h$ reduces variance but
+increases bias.
+
+The same tradeoff reappears, with statistics and noisy data
+replacing floating-point arithmetic, when the engineer differentiates
+a measured time series. Smaller windows and shorter smoothing
+filters reduce bias against the underlying signal but amplify the
+measurement noise. Larger windows reduce noise but smear
+genuine signal features. The chapter's project (section~5.10)
+walks the reader through this tradeoff on a real signal.
+
+\subsection{Higher-order finite differences}
+
+For greater accuracy at fixed $h$, the engineer can use more
+function values. A symmetric four-point stencil gives
+
+\[
+D_{4}(x; h) = \frac{-f(x + 2h) + 8 f(x + h) - 8 f(x - h) +
+f(x - 2h)}{12 h},
+\]
+
+with truncation error $\oom{h^{4}}$. Each additional function
+value buys two additional orders of accuracy (because the central-
+symmetry of the stencil cancels another pair of even-order Taylor
+terms). The cost is that the round-off problem is similar: the
+numerator is the difference of nearly equal terms, so the noise
+amplification by $1/h$ remains. The optimal step now scales as
+$\varepsilon^{1/5}$ and the optimal error as $\varepsilon^{4/5}$,
+better than the two-point central difference but at the cost of
+more function evaluations and a wider stencil.
+
+For a function that can be evaluated cheaply and is smooth, the
+four-point stencil is a good default. For a function that is
+expensive to evaluate (a long simulation, a slow measurement), the
+two-point central difference is the better trade. For functions
+with derivative discontinuities, all stencils break and section~5.8
+applies.
+
+\subsection{Differentiating noisy data}
+
+When the function is a measured time series, the noise in each
+sample sets the floor for $h$. If the standard deviation of the
+measurement noise is $\sigma$, the round-off-equivalent error
+floor in the central difference is $\sigma / h$, and the optimal
+$h$ scales as $(\sigma / |f'''|)^{1/3}$. For a signal with
+$|f'''| \sim 1$ and $\sigma \sim 10^{-3}$, the optimal $h$ is
+roughly $0.1$, and the optimal error in the derivative estimate
+is roughly $10^{-2}$. The optimum is conservative: the engineer
+should take a small range of $h$ values around the predicted
+optimum, compute the derivative at each, and look for a plateau.
+The width of the plateau and the value of the plateau set the
+defensible derivative estimate.
+
+The alternative, when the engineer knows something about the
+underlying signal, is to fit a smooth model to the data first
+(polynomial, spline, Savitzky-Golay filter) and differentiate the
+model. The model's smoothness controls the variance, and the
+goodness of the fit controls the bias. We return to this in the
+project of section~5.10.
+
+\section{Failure: discontinuities, kinks, derivatives that do not exist}\pathtag{core}
+
+The chapter's apparatus assumes the function is smooth. We now
+catalogue the cases where the assumption fails and the apparatus
+breaks. The catalogue is the engineer's guard against using a
+calculus tool on a function that does not admit it.
+
+\subsection{Jump discontinuities}
+
+A function with a jump at $x = a$ has $\lim_{h \to 0^{+}} f(a +
+h) \neq \lim_{h \to 0^{-}} f(a + h)$. The forward and backward
+difference quotients at $x = a$ both diverge as $h \to 0$, and
+the derivative does not exist at $a$. The function $f(x) = x$ for
+$x \geq 0$, $f(x) = x - 1$ for $x < 0$, has a jump of magnitude
+$1$ at $x = 0$.
+
+Engineering examples include phase-change boundaries (a material's
+heat capacity is discontinuous across a phase transition), saturating
+amplifiers (the output is one value below saturation and another
+above), digital control signals (a step input from a controller),
+and accounting boundaries (tax brackets, regulatory thresholds).
+At a jump, the derivative is not defined; the engineer must work
+with one-sided derivatives or with a generalised derivative
+concept (the Dirac delta at the jump).
+
+\subsection{Kinks: continuous but not differentiable}
+
+A function with a kink at $a$ is continuous (no jump) but has
+$f'(a^{-}) \neq f'(a^{+})$: the left and right derivatives exist
+but are unequal, and the derivative at $a$ is not defined.
+
+The canonical example is $f(x) = |x|$. The function is continuous
+at $x = 0$, with $f(0) = 0$. The right derivative is $\lim_{h \to
+0^{+}} (|h| - 0)/h = 1$, the left derivative is $\lim_{h \to
+0^{-}} (|h| - 0)/h = -1$. The two are unequal; the derivative at
+$0$ does not exist.
+
+Engineering examples: rectifier outputs ($v_{\text{out}}(v_{\text
+{in}}) = \max(0, v_{\text{in}})$), tension cables (cable force
+is zero in compression, positive in tension, with a kink at zero
+elongation), surface contact stresses (Hertzian contact has a
+square-root singularity in the contact-pressure derivative at the
+contact-zone edge), elastic-perfectly-plastic material models (the
+stress-strain curve has a kink at yield).
+
+For a kink, optimisation methods that use $f'(x) = 0$ may miss
+the optimum if the optimum lies at the kink. The function
+$f(x) = |x|$ has its global minimum at $x = 0$, where the
+derivative is undefined. The minimum is found not by $f'(x) = 0$
+but by inspecting the kink directly. A reader who solves
+$f'(x) = 0$ on a piecewise-linear function will get the wrong
+answer if the optimum is at a corner; the right procedure is to
+compute the function at every kink point and at every endpoint
+of every smooth piece, and pick the smallest (or largest) value.
+
+\subsection{Cusps and vertical tangents}
+
+A cusp at $a$ is a point where $f$ is continuous, the derivative
+exists in a one-sided sense, and that one-sided derivative is
+$\pm\infty$. The function $f(x) = x^{2/3}$ has a cusp at $x = 0$:
+the derivative $f'(x) = (2/3) x^{-1/3}$ blows up to $+\infty$ from
+both sides as $x \to 0$. The graph has a vertical tangent at $x =
+0$, and the function is not differentiable there in the ordinary
+sense.
+
+Engineering examples: stress concentrations at sharp corners
+(theoretical stress is infinite, physical reality includes a
+notch radius, plastic yielding, or fracture), capillary rise at
+a corner of a wetting wall, and certain power-law approximations
+of phase-transition critical behaviour.
+
+\subsection{Wildly oscillating functions}
+
+A function may be continuous and bounded yet fail to be
+differentiable because the difference quotient never settles. The
+classic example is $f(x) = x^{2} \sin(1/x)$ for $x \neq 0$ and
+$f(0) = 0$. This function is differentiable everywhere, including
+at $0$, with $f'(0) = 0$, but $f'$ is not continuous at $0$: the
+derivative oscillates between $\pm 1$ as $x \to 0$. A worse
+example, $f(x) = x \sin(1/x)$ for $x \neq 0$ and $f(0) = 0$, is
+continuous but not differentiable at $0$.
+
+Engineering examples include high-frequency vibrations near
+resonance, optical interference patterns near caustics, and the
+tail of a fast-oscillating thermal-noise signal. Numerical
+differentiation of such signals returns garbage; the right
+treatment is to filter or downsample to a frequency band where
+the signal admits a useful derivative.
+
+\subsection{Derivatives that exist but are bad working tools}
+
+A function may be differentiable in the technical sense and yet
+have a derivative that fluctuates so much over working scales
+that the derivative is useless. A noisy time series has a well-
+defined derivative on every smooth approximation but the
+approximation's choice changes the derivative wildly.
+
+The engineering response is to admit that the derivative is not
+the right summary of the signal and to look for a different
+quantity: a moving average, a peak height, a frequency-domain
+energy in a band, a counted number of events above a threshold.
+The discipline is to choose the summary that is robust to the
+noise mechanism, not to insist on the derivative when the
+function does not support it.
+
+\subsection{The Patriot case as a numerical-differentiation
+analogue}
+
+A clean engineering case where accumulated numerical error
+defeated a differentiation-like calculation is the Patriot missile
+system at Dhahran, Saudi Arabia, on 25 February 1991
+\cite{acc:gao-patriot-1992}. The Patriot's tracking software
+represented elapsed time as integer tenths of a second and
+converted to real seconds using a 24-bit fixed-point representation
+of $1/10$. The exact decimal $0.1$ has no exact binary
+representation; the truncation introduced a per-conversion error
+of about $9.5 \times 10^{-8}$ that accumulated linearly with the
+counter. After approximately $100\,\si{\hour}$ of continuous
+operation, the cumulative error had reached about $0.34\,\si
+{\second}$. The Patriot's range-gate prediction used the converted
+time to compute the incoming target's predicted position via,
+effectively, a velocity-times-elapsed-time formula; an incoming
+Scud at about $1{,}676\,\si{\meter\per\second}$ over a $0.34\,
+\si{\second}$ time error was predicted at a position offset by
+about $570\,\si{\meter}$ from the actual position, larger than the
+range gate, and the system reported "no track". An Iraqi Scud
+struck a US Army barracks; 28 service members died and
+approximately 100 were wounded. The accident is recorded in the
+named-cases registry at \repopath{docs/research/accidents/patriot
+-dhahran-1991.md}.
+
+The lesson for this chapter: a numerical calculation that subtracts
+or differences two large nearly-equal quantities is sensitive to
+the precision with which each is represented. The Patriot's
+integer counter accumulated for $100$ hours; the conversion factor
+multiplied by the counter accumulated the small per-conversion
+error to a large total; the differenced quantity (the predicted
+position) inherited the full accumulated error. Numerical
+differentiation has the same architecture: it differences nearby
+function values and divides by a small step. Each step is a
+chance for catastrophic cancellation. The defensive disciplines
+are the same: track the precision through every operation, choose
+the step size against the noise floor, validate the calculation
+against an independent computation, and bound the operating
+regime against the assumptions of the model.
+
+\subsection{The principle, restated}
+
+\begin{principle}[The derivative serves the function it differentiates]
+A derivative is a tool for analysing a function over a regime in
+which the function is smooth enough to admit one. Outside that
+regime (jumps, kinks, cusps, oscillations, accumulated round-off,
+or measurement noise overwhelming the signal), the derivative is
+either undefined or so noisy that it ceases to be informative.
+The engineering action is to identify the regime before applying
+the tool, and to choose a different tool when the regime fails.
+\end{principle}
+
+\section{Worked examples across domains}\pathtag{standard}
+
+We close the analytical apparatus with worked examples from four
+engineering domains. Each takes a working quantity, identifies the
+derivative the engineer wants, computes it, and reads the answer.
+
+\subsection{Kinematics: position to velocity to acceleration}
+
+A small mass on a vertical spring oscillates with displacement
+$y(t) = A \cos(\omega t + \phi)$, where $A$ is the amplitude,
+$\omega$ is the angular frequency, $\phi$ is the phase. The
+velocity is the derivative with respect to time:
+
+\[
+v(t) = \dv{y}{t} = -A \omega \sin(\omega t + \phi).
+\]
+
+The acceleration is the second derivative:
+
+\[
+a(t) = \dv{v}{t} = -A \omega^{2} \cos(\omega t + \phi) =
+-\omega^{2} y(t).
+\]
+
+The acceleration is proportional to the displacement and opposite
+in sign. This is the defining equation of simple harmonic motion:
+$\ddot{y} + \omega^{2} y = 0$. The peak acceleration is $A
+\omega^{2}$, occurring when the displacement is at its extremes
+and the velocity is zero. The peak velocity is $A \omega$,
+occurring when the displacement is zero. A reader designing a
+mechanical system that must withstand vibration uses the peak
+acceleration, not the peak displacement, to size the components.
+Volume III takes up vibration formally; the calculus enters here.
+
+\subsection{Electrical engineering: capacitor current}
+
+A capacitor of capacitance $C$ holds a charge $q(t) = C v(t)$
+where $v(t)$ is the voltage across it. The current into the
+capacitor is the rate of change of charge:
+
+\[
+i(t) = \dv{q}{t} = C \dv{v}{t}.
+\]
+
+The capacitor current is proportional to the rate of change of
+the voltage, not to the voltage itself. A capacitor with a
+constant voltage carries zero current; a capacitor with a fast-
+changing voltage carries a large current. This is the defining
+linear-element relationship of the capacitor.
+
+For a sinusoidal voltage $v(t) = V_{0} \cos(\omega t)$, the current
+is $i(t) = -C V_{0} \omega \sin(\omega t)$. The current leads the
+voltage by $\pi/2$ in phase, and its amplitude is $C V_{0} \omega$.
+The capacitor's reactance is $1/(C \omega)$, derived from the
+ratio of voltage amplitude to current amplitude. Volume II
+chapter~3 (complex numbers and phasors) introduced the phasor
+representation that makes this manipulation algebraic; the
+calculus underlies it.
+
+For a capacitor charging through a resistor from a constant
+voltage source, the voltage approaches the source value
+exponentially: $v(t) = V_{\text{source}} (1 - e^{-t/(RC)})$. The
+current is $i(t) = (V_{\text{source}}/R) e^{-t/(RC)}$. At $t = 0$
+the capacitor draws maximum current; as $t \to \infty$ the
+current decays to zero. The exponential time constant is $\tau =
+RC$, with units of seconds; after one time constant the voltage
+has reached $1 - 1/e \approx 0.632$ of the source value, and after
+five time constants it has reached about $0.993$. The exponential
+solution is recovered formally in chapter~7 of this volume,
+which takes up first-order ordinary differential equations.
+
+\subsection{Thermodynamics: heat capacity and Newton's law of cooling}
+
+The heat capacity of a substance is the derivative of the heat
+required to raise its temperature: $C_{p} = \dv{Q}{T}$ at constant
+pressure. For most substances, $C_{p}$ is a slowly-varying
+function of temperature; engineering heat-transfer calculations
+usually treat it as a constant over a working temperature range.
+
+Newton's law of cooling states that the rate of heat loss from a
+body to its surroundings is proportional to the temperature
+difference between the body and the surroundings:
+
+\[
+\dv{T}{t} = -k (T - T_{\infty}),
+\]
+
+where $k$ is a heat-transfer coefficient with units of
+$\si{\per\second}$ and $T_{\infty}$ is the ambient temperature. The
+solution is $T(t) = T_{\infty} + (T_{0} - T_{\infty}) e^{-k t}$,
+exponential approach to ambient with time constant $1/k$. The
+calculus enters through the time derivative on the left and through
+the exponential solution; chapter~7 again handles the formal ODE
+solution.
+
+A worked check. A mug of coffee at $80\,\si{\degreeCelsius}$ is
+left in a $20\,\si{\degreeCelsius}$ room and reaches $40\,\si
+{\degreeCelsius}$ after twenty minutes. The cooling constant
+satisfies $40 = 20 + 60 e^{-k \cdot 20}$, so $e^{-20 k} = 1/3$ and
+$k = \ln 3 / 20 \approx 0.055\,\si{\per\minute}$. The half-life
+of the cooling is $\ln 2 / k \approx 12.6\,\si{\minute}$. The
+mug's temperature is described by a single derivative-driven
+relationship; the same calculus describes a building's thermal
+response, an exhausting battery, and a transient electronic
+component reaching equilibrium.
+
+\subsection{Biology: logistic growth}
+
+A bacterial population in a closed flask grows according to the
+logistic equation
+
+\[
+\dv{N}{t} = r N \left(1 - \frac{N}{K}\right),
+\]
+
+where $N(t)$ is the population, $r$ is the intrinsic growth rate,
+and $K$ is the carrying capacity. The right side is the rate at
+which the population changes; it is $r N$ at small $N$ (where the
+factor $(1 - N/K)$ is approximately $1$) and approaches zero as
+$N \to K$. The growth rate per individual, $\dv{N}{t} \big/ N = r
+(1 - N/K)$, is maximal at small $N$ and decreases linearly with
+population.
+
+The peak rate of population change occurs where the second
+derivative $\frac{\dd^{2} N}{\dd t^{2}}$ is zero. Differentiating
+the logistic equation with respect to time and using the chain
+rule:
+
+\[
+\frac{\dd^{2} N}{\dd t^{2}} = r \dv{N}{t} \left(1 - \frac{2 N}
+{K}\right).
+\]
+
+The right side vanishes when $\dv{N}{t} = 0$ (at $N = 0$ or $N =
+K$, both extrema of the population) or when $N = K/2$. At
+$N = K/2$, the population's rate of change is at its maximum:
+$\dv{N}{t} = r K/4$. A microbiologist who wants the fastest
+growth, in absolute terms, harvests at $N = K/2$. The same
+calculation, with different $r$ and $K$, governs viral spread,
+animal-population management, and many engineered fermentation
+processes.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Numerically differentiate a noisy signal; defend a smoothing strategy]
+
+The reader takes a real or synthesised noisy time series of their
+choice and computes its derivative numerically by at least three
+methods. Each method has free parameters (step size, filter
+length, polynomial order); the reader chooses each parameter,
+documents the rationale, and reports the resulting derivative
+estimate with its uncertainty.
+
+\textbf{Track}. Simulation with analysis. \textbf{Hazard class}:
+none. \textbf{Tools}. Paper, pencil, programming environment of
+the reader's choice (Python, MATLAB, Julia, or equivalent).
+
+\textbf{Source data}. The reader chooses one of:
+
+\begin{itemize}[leftmargin=*]
+  \item A time series from a Volume I project (the reader's
+    pendulum swing, building-height shadow record, refrigerator-
+    temperature log, or other dataset).
+  \item A publicly available sensor record (smartphone
+    accelerometer, weather-station temperature, public-utility
+    power consumption, financial price series, biological tracking
+    data).
+  \item A synthesised signal $y(t) = f_{\text{true}}(t) +
+    \varepsilon(t)$ with the reader's choice of $f_{\text{true}}$
+    (a sinusoid, a polynomial, an exponential decay, a step plus
+    ramp) and $\varepsilon(t) \sim \mathcal{N}(0, \sigma^{2})$ with
+    a stated $\sigma$. For the synthesised case, the reader has the
+    ground-truth derivative for comparison.
+\end{itemize}
+
+The data should contain at least $200$ samples; more is better.
+The reader should record the sampling rate, the units of the
+quantity being differentiated, and any pre-processing (mean-
+removal, detrending) applied before the derivative is computed.
+
+\textbf{Method 1: finite differences}. Compute the derivative by
+the forward difference, the backward difference, and the central
+difference at each interior sample. Sweep the effective step size
+by sub-sampling the data: at sample spacing $\Delta t$, $2\Delta
+t$, $4\Delta t$, $8\Delta t$. For each step size, compute the
+mean and standard deviation of the derivative estimate over a
+plateau region of the signal. Plot the derivative estimate and
+its scatter as a function of step size on log-log axes. Identify
+the optimal step size from the plot.
+
+\textbf{Method 2: smoothing then differentiation}. Apply a moving-
+average filter or a Savitzky-Golay filter of polynomial order $p$
+and window width $w$ to the data, then differentiate the smoothed
+signal by central differences. Sweep the window width and the
+polynomial order. Compare the derivative estimates; identify a
+window width and polynomial order that give the smoothest
+derivative without removing genuine signal features. (The
+Savitzky-Golay filter has a closed-form derivative that the
+reader can use directly without re-differentiating after
+smoothing.)
+
+\textbf{Method 3: parametric fit then differentiation}. Fit a
+parametric model to the data (a polynomial, a sum of sinusoids,
+a logistic or exponential family, the reader's choice based on
+the data's structure), compute the model's parameters by least-
+squares, and differentiate the model analytically. Report the
+parameter uncertainties and propagate them into the derivative
+estimate.
+
+\textbf{Comparison}. The three methods produce three derivative
+estimates. The reader produces a table with one column per
+method, one row per a chosen set of evaluation points, and one
+additional column per method giving the estimated derivative
+uncertainty at each point. For synthesised data, an extra column
+gives the ground-truth derivative and the absolute error of each
+method's estimate.
+
+\textbf{Deliverables}. (1) The data record (with units and
+sampling rate). (2) The derivative-estimate table. (3) Three
+plots: derivative estimate versus step size for Method 1; effect
+of filter parameters for Method 2; parameter uncertainties for
+Method 3. (4) A 1500-word reflection on the bias-variance
+tradeoff in the project's setting. The reflection addresses:
+which method gave the smoothest defensible derivative, where the
+methods agreed and where they disagreed, what the bias-variance
+tradeoff looks like in this signal, and what the reader's
+confidence in the derivative would change for a real engineering
+deployment.
+
+\textbf{Time}. Two to four hours of coding and analysis, plus two
+to three hours of writing. Total approximately five to seven
+hours, distributed across two or three days.
+
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises train calculation, derivation, estimation,
+simulation, design, diagnosis, failure analysis, and judgment.
+Calculation and derivation problems have full solutions; open-
+ended problems have rubrics. Exercises are tagged with their
+reader-path tier.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the derivative of $f(x) = 3 x^{4} - 2 x^{3} + x - 7$.
+\end{exercise}
+
+\begin{exercise}
+Compute the derivative of $f(x) = x^{2} \sin x$.
+\end{exercise}
+
+\begin{exercise}
+Compute the derivative of $f(x) = e^{-x^{2}/2}$.
+\end{exercise}
+
+\begin{exercise}
+Compute the derivative of $f(x) = (x^{2} + 1)/(x^{2} - 1)$ for
+$x \neq \pm 1$.
+\end{exercise}
+
+\begin{exercise}
+Compute $\dv{y}{x}$ at $(x, y) = (1, 2)$ for the implicit
+relation $x^{2} y + x y^{3} = 12$.
+\end{exercise}
+
+\begin{exercise}
+Compute the second derivative of $f(t) = t e^{-\alpha t}$ with
+respect to $t$, where $\alpha > 0$ is a constant.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the derivative of $f(x) = \cos x$ from the limit
+definition, using the trigonometric identity $\cos(x + h) =
+\cos x \cos h - \sin x \sin h$ and the limits
+$\lim_{h \to 0} \sin h / h = 1$, $\lim_{h \to 0} (1 - \cos h)/h
+= 0$.
+\end{exercise}
+
+\begin{exercise}
+Derive the chain rule for $f(g(x))$ from the limit definition,
+assuming $g$ is differentiable at $x$ and $f$ is differentiable
+at $g(x)$. State the assumptions explicitly and identify where
+the heuristic argument fails when $g$ is locally constant.
+\end{exercise}
+
+\begin{exercise}
+Derive the second-derivative test for a local maximum from
+Taylor's theorem to second order. State the assumption that
+fails when $f''(c) = 0$.
+\end{exercise}
+
+\begin{exercise}
+Derive the truncation error of the central difference formula
+$D_{0}(x; h) = (f(x + h) - f(x - h))/(2 h)$ from Taylor's theorem,
+giving the leading-order term in $h$ and the conditions under
+which the next term is negligible.
+\end{exercise}
+
+\begin{exercise}
+Derive the optimal step size $h^{*}$ for the forward difference
+$D_{+}(x; h) = (f(x + h) - f(x))/h$ in the presence of round-off
+error of magnitude $\varepsilon$ in each function value, by
+balancing the truncation error against the round-off error.
+Report $h^{*}$ and the optimal total error in terms of $|f''|$
+and $\varepsilon$.
+\end{exercise}
+
+\begin{exercise}
+Derive Newton's iteration for finding the root of a function $g$
+by linearising $g$ at the current iterate $x_{n}$ and setting the
+linearisation to zero. Report the iteration $x_{n + 1} = x_{n} -
+g(x_{n})/g'(x_{n})$ and identify the conditions under which the
+iteration converges.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the rate of change of the kilometre-readout on a car's
+odometer for a car cruising at $90\,\si{\kilo\meter\per\hour}$.
+Report your estimate in odometer-units per second, then propagate
+to the derivative the speedometer would read in metres per second.
+\end{exercise}
+
+\begin{exercise}
+Estimate the maximum acceleration a person can comfortably tolerate
+for a few seconds, in units of $g \approx 9.8\,\si{\meter\per
+\second\squared}$. Use the result to estimate the minimum
+stopping distance of a passenger car at $100\,\si{\kilo\meter\per
+\hour}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the rate at which the surface temperature of a hot cup
+of tea decreases at room temperature in the first minute of
+cooling. Use Newton's law of cooling with reasonable assumptions
+about the heat-transfer coefficient and the surface area.
+\end{exercise}
+
+\begin{exercise}
+Estimate the rate of change of the tide height at a coastal
+location at the time the tide is rising fastest. Use the height
+range, the period, and the assumption of approximately sinusoidal
+tides. State whether your estimate is the peak rate or a typical
+rate.
+\end{exercise}
+
+\begin{exercise}
+Estimate the optimal step size for numerical differentiation of
+a measured signal whose noise standard deviation is $10^{-2}$
+times the signal amplitude, assuming the underlying signal has
+$|f'''| \sim 1$ in the units of the problem. Compare your
+estimate to the double-precision floating-point optimum.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+In a language of the reader's choice, generate a sinusoidal signal
+$y(t) = \sin(2\pi t)$ at $200$ samples per period over five
+periods, contaminate the signal with Gaussian noise of standard
+deviation $\sigma = 0.05$, and compute the derivative by central
+differences at each interior sample. Compare to the true
+derivative $y'(t) = 2\pi \cos(2\pi t)$, and report the root-mean-
+square error of the numerical derivative.
+\end{exercise}
+
+\begin{exercise}
+For the same signal as above, compute the derivative by smoothing
+with a Savitzky-Golay filter of polynomial order $3$ and window
+widths $w = 5, 11, 21, 41$. Plot the root-mean-square error of the
+derivative against window width, and identify the optimum.
+\end{exercise}
+
+\begin{exercise}
+Implement Newton's iteration for solving $g(x) = 0$ where
+$g(x) = x^{3} - 2 x - 5$. Start from $x_{0} = 2$, run for ten
+iterations, and report the convergence rate empirically.
+Compare to the theoretical quadratic convergence.
+\end{exercise}
+
+\begin{exercise}
+Sweep the step size $h$ over the range $h = 10^{-1}, 10^{-2},
+\ldots, 10^{-15}$ for the central-difference approximation to
+$f'(1)$ where $f(x) = e^{x}$. Plot the absolute error against $h$
+on log-log axes and identify the regime where truncation error
+dominates and the regime where round-off dominates. Estimate the
+optimal $h$ from the plot.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a numerical-differentiation strategy for the velocity of a
+vehicle measured by GPS at $1\,\si{\hertz}$ with horizontal
+position uncertainty of $5\,\si{\meter}$ per sample. State the
+filter or step size you would use, the resulting expected
+uncertainty in the velocity estimate, and the regime (constant
+velocity, accelerating, turning) in which your strategy is
+defensible.
+\end{exercise}
+
+\begin{exercise}
+Design a tank optimisation: a cylindrical hot-water storage tank
+must hold a fixed volume $V$ and minimise heat loss through its
+walls. Assume the heat loss per unit area is constant and that
+the tank is open-topped (no top surface). Find the optimal radius
+and height ratio. Compare your answer to the closed-cylinder case
+in the chapter's worked example, and explain the qualitative
+difference.
+\end{exercise}
+
+\begin{exercise}
+Design a one-variable optimisation for the resistance of an
+external load that maximises power transfer from a source with
+internal resistance $R_{i}$ and an additional in-line wire
+resistance $R_{w}$. Find the optimal load resistance and the
+maximum power transferred.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A spreadsheet computes $\dv{y}{x}$ for a measured time series
+using $D_{+}(x; h) = (y(x + h) - y(x))/h$ with the smallest
+available $h$, and reports a derivative estimate that fluctuates
+wildly between adjacent samples. Identify the most likely cause
+of the fluctuation and propose a correction.
+\end{exercise}
+
+\begin{exercise}
+A control system computes the derivative of a process variable
+by central differences and uses the derivative in a feedback
+loop. The system is unstable. Identify three plausible numerical-
+differentiation defects that would produce instability and
+propose a diagnostic test for each.
+\end{exercise}
+
+\begin{exercise}
+A chemistry laboratory computes a reaction rate by differencing
+two concentration measurements taken at $t_{1}$ and $t_{2}$. The
+reported rate has a standard deviation $50\,\%$ of its mean.
+Identify the source of the noise and propose a measurement
+strategy that reduces it.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+The Patriot missile system at Dhahran (1991) failed to engage an
+incoming Scud because of an accumulated software-clock error of
+about $0.34\,\si{\second}$ over $100\,\si{\hour}$ of continuous
+operation \cite{acc:gao-patriot-1992}. Argue, in 200 to 300 words,
+how the per-conversion error of about $9.5 \times 10^{-8}$
+accumulated to a tracking failure, and identify the engineering
+discipline (numerical-precision audit, restart procedure,
+operational guidance) that would have caught the defect before
+deployment.
+\end{exercise}
+
+\begin{exercise}
+A consumer thermostat reports the rate of change of the
+temperature it is controlling. The thermostat's sensor has a
+quantisation step of $0.1\,\si{\degreeCelsius}$ and reports the
+sensor value once per minute. Argue, in 200 to 300 words,
+whether the thermostat's reported rate of change is meaningful at
+the minute scale, and identify the engineering correction that
+would make it meaningful.
+\end{exercise}
+
+\begin{exercise}
+A small-amplitude pendulum is modelled by simple harmonic motion
+with $\theta(t) = \theta_{0} \cos(\omega t)$, where $\omega =
+\sqrt{g/L}$. The model breaks for large amplitudes. Identify the
+amplitude scale at which the model's prediction of the period
+deviates from reality by $5\,\%$ (chapter~4 of this volume gives
+the leading-order correction). Identify the failure mode of the
+linearised derivative-based analysis at this amplitude.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A colleague reports the derivative of a noisy measurement series
+without specifying the differentiation method. Write a one-
+paragraph response that takes the colleague seriously, identifies
+the specific information missing to interpret the result, and
+proposes a minimum acceptable form for the report.
+\end{exercise}
+
+\begin{exercise}
+A regulatory agency requires a manufacturer to report the rate
+of change of a quantity but specifies neither the time scale nor
+the differentiation method. Argue, in 200 to 300 words, whether
+the regulation is well-posed, and propose a specification that
+makes the requirement testable.
+\end{exercise}
+
+\begin{exercise}
+A business publishes a chart showing the "rate of growth" of a
+quantity over time, computed by a method the reader cannot
+verify. Argue, in 200 to 300 words, what the chart cannot tell
+the reader without disclosure of the differentiation method, and
+identify the reader's defensive options.
+\end{exercise}
+
+\begin{exercise}
+Argue, in one paragraph, whether engineering training should
+emphasise analytical or numerical differentiation. Take a
+position and defend it with a specific example from your own
+experience or a documented case.
+\end{exercise}
+
+\begin{exercise}
+A sensor manufacturer states the noise floor of a measurement at
+$\sigma = 10^{-3}$ in the measured units, with samples available
+at $f_{s}$ samples per second. Write the differentiation strategy
+for the smallest defensible derivative the manufacturer could
+quote, including the optimal step size and the resulting
+derivative noise floor.
+\end{exercise}
+
+\begin{exercise}
+Compute the derivative of $f(x) = \ln(\sqrt{x^{2} + 1})$ by
+applying the chain rule and the logarithmic-derivative
+manipulation. Compare the result to the answer obtained by first
+simplifying $\ln(\sqrt{x^{2} + 1}) = \tfrac{1}{2}\ln(x^{2} + 1)$.
+\end{exercise}
+
+\begin{exercise}
+Compute, from the limit definition, the derivative of $f(x) =
+\sqrt{x}$ at an arbitrary point $x > 0$. Use the conjugate-
+multiplication trick to simplify the difference quotient
+$(\sqrt{x + h} - \sqrt{x})/h$ before taking the limit.
+\end{exercise}
+
+\begin{exercise}
+A photochemical reaction has rate $r = k [A]^{2} [B]$ where $k$
+is constant and $[A], [B]$ are concentrations measured with
+relative uncertainties $u([A])/[A] = 0.05$ and $u([B])/[B] =
+0.10$. Use the local-linearisation form of uncertainty
+propagation (the GUM general formula, now legitimised by
+this chapter) to compute the relative uncertainty in $r$ assuming
+$[A]$ and $[B]$ are uncorrelated.
+\end{exercise}
+
+\begin{exercise}
+For the function $f(x) = \tan(x)$, identify all points in the
+interval $(-2\pi, 2\pi)$ where the derivative does not exist.
+For each such point, classify the failure (jump, kink, vertical
+tangent, oscillation). Write a one-paragraph engineering
+implication: a control system that uses $\tan$ as part of its
+gain schedule must guard against operation near these points.
+\end{exercise}
+
+\begin{exercise}
+Estimate the central-difference derivative of a smartphone
+accelerometer signal sampled at $100\,\si{\hertz}$ with noise
+standard deviation $\sigma = 0.01\,\si{\meter\per\second\squared}$
+in each sample. State the sample spacing at which the central-
+difference noise floor in the derivative is comparable to a
+$0.5\,\si{\meter\per\second\cubed}$ jerk signal, and propose a
+filtering strategy that recovers a usable jerk estimate.
+\end{exercise}

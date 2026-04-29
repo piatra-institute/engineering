@@ -1,40 +1,1334 @@
 \chapter{Linear algebra}
 \label{vol02:ch09}
 
-\epigraph{}{}
+% \spn, \col, \nul, \rank, \sgn, \proj are defined in eng-macros.sty.
 
-\chapmeta{Half-life: foundational. Archetypes: optimisation, uncertainty. Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\epigraph{The column space tells you what is reachable; the null space
+tells you what is invisible; everything else in linear algebra
+follows from understanding these two subspaces.}{Paraphrase of
+the working orientation in Strang, \emph{Introduction to Linear
+Algebra}, 5th ed.\ \cite[ch.~3]{text:strang2016}.}
+
+\chapmeta{Half-life: foundational. Archetypes: optimisation
+(least-squares fitting as the canonical convex problem), uncertainty
+(conditioning as the formal handling of input-error amplification).
+Exercise target: 40. Project track: simulation with analysis (a
+polynomial fit by three methods with conditioning comparison, plus a
+1500-word reflection). Hazard class: none. Reader path default:
+standard, with sections explicitly tagged. Named cases: Ariane 5
+Flight 501 (1996), as the canonical case of a numerical conversion
+that should have been refused.}
 
 \noindent
-\TODO{Volume 2, Chapter 9. Approx 110 pp.}
+A linear system is the engineer's working notation for a problem in
+which several quantities depend, jointly and proportionally, on
+several others. Volume I Chapter 8 fitted a straight line to data by
+formulas the reader took on trust; this chapter supplies the
+apparatus that earns the formulas. The same apparatus carries the
+reader from a hand-solved $3 \times 3$ system to the polynomial fit
+of section 9.6, the conditioning analysis of section 9.7, and the
+refusal discipline of section 9.8.
 
-\section{Vector spaces}
-\TODO{Section prose.}
+\section{Vector spaces}\pathtag{core}
 
-\section{Matrices as linear maps}
-\TODO{Section prose.}
+A \engterm{vector space} over the real numbers is a set $V$ on which
+two operations are defined, vector addition and scalar
+multiplication, satisfying the eight axioms recorded in any
+linear-algebra text \cite[ch.~3]{text:strang2016}. We do not treat
+the axioms as a memorisation exercise. The working content for an
+engineer sits in three concepts that follow from them: the
+\emph{spanning set}, the \emph{linearly independent set}, and the
+\emph{basis}.
 
-\section{Solving linear systems: Gaussian elimination, LU, QR}
-\TODO{Section prose.}
+The standard concrete example is $\R^{n}$, the set of $n$-tuples of
+real numbers under componentwise addition and scalar multiplication.
+A vector $\vect{v} \in \R^{n}$ is written as a column,
 
-\section{Determinants}
-\TODO{Section prose.}
+\[
+\vect{v} = \begin{pmatrix} v_{1} \\ v_{2} \\ \vdots \\ v_{n}
+\end{pmatrix},
+\qquad v_{i} \in \R.
+\]
 
-\section{Inner products, norms, orthogonality}
-\TODO{Section prose.}
+We adopt the column convention throughout, consistent with Volume I
+Chapter 8's regression notation. Row vectors appear when we transpose
+a column with $\transpose$.
 
-\section{Projection, least squares}
-\TODO{Section prose.}
+\subsection{Spans, independence, basis}
 
-\section{Conditioning and numerical sensitivity}
-\TODO{Section prose.}
+A \engterm{linear combination} of vectors $\vect{v}_{1}, \ldots,
+\vect{v}_{k}$ is any vector of the form $\sum_{i=1}^{k} c_{i}
+\vect{v}_{i}$ with scalar coefficients $c_{i}$. The \engterm{span}
+$\spn(\vect{v}_{1}, \ldots, \vect{v}_{k})$ is the set of all such
+combinations. Spans are subspaces: the span of a finite set of
+vectors is closed under addition and scalar multiplication.
 
-\section{Failure: ill-conditioned systems and what to refuse to solve}
-\TODO{Section prose.}
+A set $\{\vect{v}_{1}, \ldots, \vect{v}_{k}\}$ is \engterm{linearly
+independent} when the only solution of $\sum c_{i} \vect{v}_{i} =
+\vect{0}$ is $c_{1} = \cdots = c_{k} = 0$. Equivalently, no vector
+in the set is a linear combination of the others. When a set fails
+this condition it is \engterm{linearly dependent}, and at least one
+vector carries no information that the others do not already carry.
 
+A \engterm{basis} for a subspace $W$ is a linearly independent set
+that spans $W$. Every basis of a finite-dimensional subspace has the
+same number of vectors; that number is the \engterm{dimension}
+$\dim W$. The standard basis of $\R^{n}$ is $\{\vect{e}_{1}, \ldots,
+\vect{e}_{n}\}$, where $\vect{e}_{i}$ has $1$ in position $i$ and
+zeros elsewhere.
 
-\section{Project}
-\TODO{fit a polynomial to data three ways (normal equations, QR, SVD) and compare conditioning}
+The engineering working content of these definitions is direct.
+Spanning answers \emph{which targets are reachable} by combining the
+chosen building blocks. Independence answers \emph{which building
+blocks are wasted}. A basis is the smallest set of building blocks
+that still reaches everything; its size is the dimension, and the
+dimension is what counts the system's degrees of freedom.
+
+\subsection{Subspaces of real coordinate space}
+
+Three subspaces recur. The \engterm{zero subspace} $\{\vect{0}\}$ has
+dimension zero. A \engterm{line through the origin} is a one-dimensional
+subspace; its basis is any one nonzero vector on the line. A
+\engterm{plane through the origin} is two-dimensional; its basis is
+any two linearly independent vectors in the plane. The phrase
+``through the origin'' is load-bearing: a line that does not pass
+through the origin is an \emph{affine} subset, not a subspace, because
+it is not closed under scalar multiplication.
+
+Affine subsets matter for engineering. The set of solutions of a
+linear system $\mat{A}\vect{x} = \vect{b}$ with $\vect{b} \neq
+\vect{0}$ is affine, not linear. We return to this distinction in
+section 9.3.
+
+\begin{estimation}
+\textbf{Question.} A small mechanical truss has $n = 8$ joints, each
+with two degrees of freedom in the plane, and four joints constrained
+to the ground. How many independent displacement modes does the
+truss have, before any member stiffness is computed?
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The unconstrained displacement space has dimension $2n = 16$. Each
+ground-constrained joint loses two degrees of freedom; the four
+constrained joints remove $8$. The remaining displacement space has
+dimension $16 - 8 = 8$. The number is the working dimension the
+engineer carries into the stiffness analysis. The constraint
+counting is exact only when the constraints themselves are linearly
+independent, which is the rank check of section 9.3.
+\end{estimation}
+
+\section{Matrices as linear maps}\pathtag{core}
+
+A matrix $\mat{A} \in \R^{m \times n}$ is a rectangular array of
+real numbers with $m$ rows and $n$ columns. The matrix-vector
+product $\mat{A}\vect{x}$ for $\vect{x} \in \R^{n}$ produces a
+vector $\vect{A}\vect{x} \in \R^{m}$ whose $i$-th component is
+
+\[
+(\mat{A}\vect{x})_{i} = \sum_{j=1}^{n} A_{ij} x_{j}.
+\]
+
+Two interpretations of this product are routinely useful, and an
+engineer should be fluent in switching between them.
+
+\subsection{The column-space view}
+
+Write $\mat{A} = [\vect{a}_{1} \mid \vect{a}_{2} \mid \cdots \mid
+\vect{a}_{n}]$, where $\vect{a}_{j} \in \R^{m}$ is the $j$-th column.
+Then
+
+\[
+\mat{A}\vect{x} = x_{1}\vect{a}_{1} + x_{2}\vect{a}_{2} + \cdots
++ x_{n}\vect{a}_{n}.
+\]
+
+The product $\mat{A}\vect{x}$ is a linear combination of the
+columns of $\mat{A}$, with the entries of $\vect{x}$ as coefficients.
+The \engterm{column space} $\col(\mat{A})$ is the span of the
+columns. It is a subspace of $\R^{m}$, and it is the set of all
+right-hand sides $\vect{b}$ for which $\mat{A}\vect{x} = \vect{b}$
+has at least one solution.
+
+This view is the one to default to. When the reader looks at a
+matrix, the question \emph{what does this matrix do} is answered by
+\emph{which combinations of its columns are reachable}.
+
+\subsection{The map view}
+
+A matrix $\mat{A} \in \R^{m \times n}$ defines a function $T:
+\R^{n} \to \R^{m}$ by $T(\vect{x}) = \mat{A}\vect{x}$. The function
+is \engterm{linear}: $T(\alpha\vect{x} + \beta\vect{y}) = \alpha
+T(\vect{x}) + \beta T(\vect{y})$ for any scalars $\alpha, \beta$ and
+vectors $\vect{x}, \vect{y}$. Conversely, every linear map between
+finite-dimensional real vector spaces is realised by a unique matrix
+once bases are fixed. The matrix \emph{is} the linear map, in
+coordinates.
+
+\subsection{Rank, null space, and the four subspaces}
+
+The \engterm{rank} of $\mat{A}$, written $\rank \mat{A}$, is the
+dimension of $\col(\mat{A})$. Equivalently, it is the maximum number
+of linearly independent columns, which equals the maximum number of
+linearly independent rows.
+
+The \engterm{null space} $\nul(\mat{A}) \subseteq \R^{n}$ is the set
+of vectors $\vect{x}$ with $\mat{A}\vect{x} = \vect{0}$. Its
+dimension is the \engterm{nullity}. The fundamental relation, the
+\emph{rank-nullity theorem}, is
+
+\[
+\rank \mat{A} + \dim \nul(\mat{A}) = n.
+\]
+
+The theorem is the formal accounting of degrees of freedom: the $n$
+input dimensions split into directions that the matrix uses (rank)
+and directions it ignores (nullity). We quote the result; the proof
+is one page in any text \cite[ch.~3]{text:strang2016}.
+
+Two further subspaces fill out the picture and recur in least
+squares (section 9.6). The \engterm{row space} of $\mat{A}$ is
+$\col(\mat{A}^{\transpose}) \subseteq \R^{n}$; the \engterm{left
+null space} is $\nul(\mat{A}^{\transpose}) \subseteq \R^{m}$. The
+four subspaces stand in two orthogonal pairs: in $\R^{n}$, the row
+space and the null space are orthogonal complements; in $\R^{m}$,
+the column space and the left null space are orthogonal complements.
+
+\subsection{Special matrices}
+
+Four special structures repay recognition. A matrix is
+\engterm{diagonal} when all off-diagonal entries are zero; its action
+on $\vect{x}$ is componentwise scaling. It is \engterm{symmetric}
+when $\mat{A}^{\transpose} = \mat{A}$; symmetric matrices appear
+whenever the underlying problem has a quadratic form with no
+preferred orientation, including least squares (section 9.6) and
+energy methods in Volume III. It is \engterm{orthogonal} when
+$\mat{Q}^{\transpose}\mat{Q} = \mat{I}$; orthogonal matrices preserve
+length and inner product, and the $\mat{Q}$ in QR decomposition
+(section 9.3) is orthogonal in the rectangular sense
+$\mat{Q}^{\transpose}\mat{Q} = \mat{I}$ even when $\mat{Q}\mat{Q}^{\transpose}
+\neq \mat{I}$. It is \engterm{positive definite} when $\vect{x}^{\transpose}
+\mat{A}\vect{x} > 0$ for all nonzero $\vect{x}$; positive-definite
+matrices have positive eigenvalues, are invertible, and admit a
+Cholesky factorisation. The Gram matrix $\mat{A}^{\transpose}\mat{A}$
+of a full-column-rank $\mat{A}$ is positive definite, a fact the
+normal equations of section 9.6 rest on.
+
+\section{Solving linear systems: Gaussian elimination, LU, QR}\pathtag{core}
+
+A square linear system $\mat{A}\vect{x} = \vect{b}$ with $\mat{A}
+\in \R^{n \times n}$ has a unique solution when $\mat{A}$ is
+invertible, no solutions when $\vect{b} \notin \col(\mat{A})$, and
+infinitely many when $\rank \mat{A} < n$ and $\vect{b} \in
+\col(\mat{A})$. The classification is exact. The numerical
+question, taken up in section 9.7, is whether the unique solution
+the algebra promises is the solution the floating-point arithmetic
+returns.
+
+\subsection{Gaussian elimination}
+
+\engterm{Gaussian elimination} reduces $\mat{A}$ to upper-triangular
+form by adding multiples of one row to another. The standard
+algorithm processes columns left to right; in column $j$, the
+pivot is $A_{jj}$ (after any previous updates), and rows below row
+$j$ are modified to zero out their entries in column $j$. The
+operation count is $\tfrac{2}{3}n^{3} + O(n^{2})$ flops for the
+elimination phase and $O(n^{2})$ for the back substitution
+\cite[ch.~20]{text:trefethen-bau1997}. For $n = 100$ the elimination
+takes about $6.7 \times 10^{5}$ flops, a millisecond on any working
+machine; for $n = 10^{6}$ the count climbs to $\oom{10^{18}}$ flops,
+which is years on a single core. The cubic scaling is the central
+fact: doubling the problem size multiplies the work by eight.
+
+When a pivot $A_{jj}$ is zero, or small relative to the entries
+below it, the algorithm uses \engterm{partial pivoting}: swap row
+$j$ with a row $k > j$ whose entry $A_{kj}$ is largest in absolute
+value, then proceed. Partial pivoting is the default in any
+production solver. It does not change the complexity but it
+controls the growth factor in the elimination, which controls the
+floating-point error.
+
+\subsection{LU factorisation}
+
+The work of Gaussian elimination factors into two parts: a unit
+lower-triangular matrix $\mat{L}$ (whose entries record the row
+multipliers used) and an upper-triangular matrix $\mat{U}$ (whose
+rows are the elimination's final rows). The relation is
+
+\[
+\mat{P}\mat{A} = \mat{L}\mat{U},
+\]
+
+where $\mat{P}$ is the permutation matrix that records the row
+swaps. The factorisation costs the same $\tfrac{2}{3}n^{3}$ flops
+as the elimination itself; it pays for itself the second time a
+system with the same $\mat{A}$ but a different $\vect{b}$ is
+solved.
+
+Once $\mat{P}$, $\mat{L}$, and $\mat{U}$ are stored, solving
+$\mat{A}\vect{x} = \vect{b}$ becomes three cheap steps. Permute
+$\vect{b}$ to $\mat{P}\vect{b}$. Solve $\mat{L}\vect{y} =
+\mat{P}\vect{b}$ by forward substitution ($O(n^{2})$ flops). Solve
+$\mat{U}\vect{x} = \vect{y}$ by back substitution ($O(n^{2})$
+flops). The reuse pattern is the right discipline whenever the
+engineer faces many right-hand sides on the same matrix, as in
+finite-element analysis with multiple load cases.
+
+\subsection{QR factorisation}
+
+A second factorisation, $\mat{A} = \mat{Q}\mat{R}$, writes a
+full-column-rank matrix $\mat{A} \in \R^{m \times n}$ ($m \geq n$)
+as the product of an orthogonal $\mat{Q} \in \R^{m \times n}$
+(satisfying $\mat{Q}^{\transpose}\mat{Q} = \mat{I}_{n}$) and an
+upper-triangular $\mat{R} \in \R^{n \times n}$. Three algorithms
+compute QR. \engterm{Classical Gram-Schmidt} orthogonalises columns
+of $\mat{A}$ one at a time; it is unstable in floating point and
+should not be used in production. \engterm{Modified Gram-Schmidt}
+orthogonalises in a different order and is markedly better, though
+not best. \engterm{Householder reflections} reduce $\mat{A}$ to
+upper-triangular form by a sequence of orthogonal reflections; the
+algorithm is backward stable and is the standard production choice
+\cite[ch.~10]{text:trefethen-bau1997}.
+
+The Householder QR costs $2mn^{2} - \tfrac{2}{3}n^{3}$ flops, which
+for square matrices ($m = n$) is $\tfrac{4}{3}n^{3}$, twice the cost
+of LU. The factor of two is the price for orthogonality, and the
+price is well spent in least-squares problems (section 9.6) and in
+ill-conditioned systems (section 9.7).
+
+\subsection{Worked example}
+
+Consider the system
+
+\[
+\mat{A}\vect{x} = \vect{b}, \quad
+\mat{A} = \begin{pmatrix} 2 & 1 & 1 \\ 4 & 3 & 3 \\ 8 & 7 & 9
+\end{pmatrix}, \quad
+\vect{b} = \begin{pmatrix} 4 \\ 10 \\ 30 \end{pmatrix}.
+\]
+
+Gaussian elimination subtracts $2 \cdot R_{1}$ from $R_{2}$ and
+$4 \cdot R_{1}$ from $R_{3}$, yielding
+
+\[
+\begin{pmatrix} 2 & 1 & 1 \\ 0 & 1 & 1 \\ 0 & 3 & 5 \end{pmatrix}
+\vect{x} = \begin{pmatrix} 4 \\ 2 \\ 14 \end{pmatrix}.
+\]
+
+A second pass subtracts $3 \cdot R_{2}$ from $R_{3}$:
+
+\[
+\begin{pmatrix} 2 & 1 & 1 \\ 0 & 1 & 1 \\ 0 & 0 & 2 \end{pmatrix}
+\vect{x} = \begin{pmatrix} 4 \\ 2 \\ 8 \end{pmatrix}.
+\]
+
+Back substitution gives $x_{3} = 4$, $x_{2} = 2 - 4 = -2$, $x_{1} =
+(4 - (-2) - 4)/2 = 1$. The solution is $\vect{x} = (1, -2, 4)$, and
+the LU factors recorded by the elimination are
+
+\[
+\mat{L} = \begin{pmatrix} 1 & 0 & 0 \\ 2 & 1 & 0 \\ 4 & 3 & 1
+\end{pmatrix}, \quad
+\mat{U} = \begin{pmatrix} 2 & 1 & 1 \\ 0 & 1 & 1 \\ 0 & 0 & 2
+\end{pmatrix}.
+\]
+
+The reader who multiplies $\mat{L}\mat{U}$ recovers $\mat{A}$.
+
+\begin{archetype}[Optimisation]
+The least-squares problem (section 9.6) minimises $\norm{\mat{A}
+\vect{x} - \vect{b}}_{2}^{2}$ over $\vect{x} \in \R^{n}$. It is the
+canonical convex optimisation problem: the objective is a positive
+semidefinite quadratic, the feasible set is all of $\R^{n}$, and
+the minimum is attained whenever $\mat{A}$ has full column rank.
+Every routine engineering fit (Volume I Chapter 8's straight line,
+Volume III's truss equilibrium, Volume IX's Kalman update) is a
+specialisation of this template. The optimisation archetype, named
+in the volume opener, takes its formal home here and recurs in
+Chapter 15 with the apparatus of constrained optimisation.
+\end{archetype}
+
+\section{Determinants}\pathtag{standard}
+
+The \engterm{determinant} $\det \mat{A}$ of a square matrix is a
+scalar that records two pieces of information at once: a sign that
+tells whether $\mat{A}$ preserves or reverses orientation, and a
+magnitude that tells how $\mat{A}$ scales $n$-dimensional volume.
+
+\subsection{Geometric definition}
+
+For $\mat{A} \in \R^{n \times n}$, $\abs{\det \mat{A}}$ is the
+factor by which $\mat{A}$ multiplies $n$-dimensional volume.
+Concretely, the unit cube in $\R^{n}$, with edges along
+$\vect{e}_{1}, \ldots, \vect{e}_{n}$, maps under $\vect{x} \mapsto
+\mat{A}\vect{x}$ to a parallelepiped with edges $\vect{a}_{1},
+\ldots, \vect{a}_{n}$. The volume of that parallelepiped is
+$\abs{\det \mat{A}}$. The sign of $\det \mat{A}$ is positive when
+the columns form a right-handed system (the orientation of
+$\vect{e}_{1}, \ldots, \vect{e}_{n}$ is preserved) and negative
+when they form a left-handed system.
+
+The geometric definition gives the determinant's properties for
+free. A matrix with two equal columns has zero volume in its image,
+so $\det \mat{A} = 0$. A matrix with linearly dependent columns
+collapses the cube into lower dimension, so its determinant is
+zero. Multiplying a column by $c$ scales the volume by $c$, so
+$\det$ is linear in each column separately. Swapping two columns
+flips orientation, so $\det$ changes sign under a column swap.
+
+\subsection{Algebraic recognition}
+
+The determinant has a sum-over-permutations formula,
+
+\[
+\det \mat{A} = \sum_{\sigma \in S_{n}} \sgn(\sigma) \prod_{i=1}^{n}
+A_{i, \sigma(i)},
+\]
+
+where $S_{n}$ is the set of permutations of $\{1, \ldots, n\}$. The
+formula is the bridge between the geometric definition and any
+practical computation. We mention it at recognition level: the
+reader should know it exists and what it expresses. Computing a
+$10 \times 10$ determinant by the permutation formula would require
+$10!\approx 3.6 \times 10^{6}$ products and is never the chosen
+method.
+
+For practical computation the determinant is read off the LU
+factorisation: $\det \mat{A} = \det \mat{P}^{-1} \cdot \det \mat{L}
+\cdot \det \mat{U} = (\pm 1) \cdot 1 \cdot \prod_{i=1}^{n} U_{ii}$,
+where $\mat{P}^{-1}$'s determinant is $+1$ or $-1$ depending on the
+parity of the row swaps. The cost is the LU cost: $\tfrac{2}{3}n^{3}$
+flops, the same as solving a system.
+
+\subsection{Properties used in practice}
+
+Three properties carry their weight in engineering work. First,
+$\det(\mat{A}\mat{B}) = \det \mat{A} \cdot \det \mat{B}$, so the
+determinant of a product is the product of determinants. Second,
+$\det \mat{A}^{\transpose} = \det \mat{A}$, so row and column
+operations on the determinant are interchangeable. Third, $\mat{A}$
+is invertible if and only if $\det \mat{A} \neq 0$; the converse
+provides a clean test of singularity at the level of pencil-and-paper
+work, though for finite-precision computation the condition number
+of section 9.7 is more informative than the determinant.
+
+The classroom result \engterm{Cramer's rule} expresses each
+component of the solution to $\mat{A}\vect{x} = \vect{b}$ as a
+ratio of determinants. Cramer's rule is theoretically clean and
+practically useless: solving an $n \times n$ system by Cramer's
+rule requires $n + 1$ determinant evaluations, costing
+$\oom{n \cdot n^{3}} = \oom{n^{4}}$ flops, against $\oom{n^{3}}$
+for elimination. We mention Cramer's rule for recognition; we do
+not use it.
+
+\section{Inner products, norms, orthogonality}\pathtag{core}
+
+Linear algebra acquires geometry through the inner product. The
+\engterm{Euclidean inner product} (or dot product) on $\R^{n}$ is
+
+\[
+\inner*{\vect{u}, \vect{v}} = \vect{u}^{\transpose} \vect{v}
+= \sum_{i=1}^{n} u_{i} v_{i}.
+\]
+
+Three properties define an inner product abstractly: bilinearity (it
+is linear in each argument), symmetry ($\inner*{\vect{u}, \vect{v}}
+= \inner*{\vect{v}, \vect{u}}$), and positive definiteness
+($\inner*{\vect{v}, \vect{v}} \geq 0$, with equality if and only if
+$\vect{v} = \vect{0}$). The Euclidean inner product satisfies all
+three. Other inner products, weighted by a positive-definite matrix
+$\mat{W}$ as $\inner*{\vect{u}, \vect{v}}_{\mat{W}} =
+\vect{u}^{\transpose}\mat{W}\vect{v}$, recur in weighted
+least-squares (Volume I Chapter 4 measurement uncertainty meets
+section 9.6 here) and in numerical solvers for partial differential
+equations (Chapter 16).
+
+\subsection{Norms}
+
+A \engterm{norm} on $\R^{n}$ is a function $\norm{\cdot}: \R^{n} \to
+[0, \infty)$ satisfying $\norm{\vect{v}} = 0 \iff \vect{v} =
+\vect{0}$, $\norm{c\vect{v}} = \abs{c}\norm{\vect{v}}$, and the
+triangle inequality $\norm{\vect{u} + \vect{v}} \leq \norm{\vect{u}}
++ \norm{\vect{v}}$. The Euclidean norm $\norm{\vect{v}}_{2} =
+\sqrt{\inner*{\vect{v}, \vect{v}}}$ is the one any inner product
+defines. Two other norms are routinely useful. The 1-norm
+$\norm{\vect{v}}_{1} = \sum_{i} \abs{v_{i}}$ measures total
+absolute deviation; it appears in robust regression and in
+compressed-sensing problems. The infinity-norm $\norm{\vect{v}}_{\infty}
+= \max_{i} \abs{v_{i}}$ measures the worst component; it is the
+engineering tolerance norm.
+
+The three norms agree on $\vect{v} = \vect{0}$ and disagree
+elsewhere. They are all equivalent on $\R^{n}$ in the sense that
+each bounds the others up to a dimension-dependent constant; the
+engineering reading of equivalence is that the choice of norm
+matters when $n$ is large and the constants matter for the
+inequality the engineer is using.
+
+A matrix norm $\norm{\mat{A}}$ measures how much $\mat{A}$ can
+amplify a vector: $\norm{\mat{A}} = \max_{\vect{x} \neq \vect{0}}
+\norm{\mat{A}\vect{x}}/\norm{\vect{x}}$. The induced 2-norm equals
+the largest singular value $\sigma_{1}(\mat{A})$, a fact we use in
+section 9.7.
+
+\subsection{Orthogonality}
+
+Two vectors $\vect{u}$ and $\vect{v}$ are \engterm{orthogonal} when
+$\inner*{\vect{u}, \vect{v}} = 0$. The Pythagorean identity holds
+for orthogonal pairs: $\norm{\vect{u} + \vect{v}}_{2}^{2} =
+\norm{\vect{u}}_{2}^{2} + \norm{\vect{v}}_{2}^{2}$. A set
+$\{\vect{q}_{1}, \ldots, \vect{q}_{k}\}$ is \engterm{orthonormal}
+when its members are mutually orthogonal and each has unit norm.
+An orthonormal basis is a basis of orthonormal vectors.
+
+Orthonormal bases simplify computation. If $\{\vect{q}_{1}, \ldots,
+\vect{q}_{n}\}$ is an orthonormal basis of a subspace $W$ and
+$\vect{w} \in W$, then the coordinates of $\vect{w}$ are inner
+products with the basis vectors: $\vect{w} = \sum_{i} \inner*{\vect{w},
+\vect{q}_{i}}\vect{q}_{i}$. The expansion is the engineer's working
+form of the Fourier expansion the reader will meet in
+Chapter 16.
+
+\subsection{Cauchy-Schwarz and the angle}
+
+The Cauchy-Schwarz inequality $\abs{\inner*{\vect{u}, \vect{v}}}
+\leq \norm{\vect{u}}_{2} \norm{\vect{v}}_{2}$ holds for any inner
+product. It justifies defining the angle $\theta$ between two
+nonzero vectors by
+
+\[
+\cos \theta = \frac{\inner*{\vect{u}, \vect{v}}}
+{\norm{\vect{u}}_{2} \norm{\vect{v}}_{2}}.
+\]
+
+The cosine is in $[-1, 1]$ by Cauchy-Schwarz, and the formula
+recovers the elementary-geometry definition of angle in $\R^{2}$
+and $\R^{3}$. The angle is a working notion of \emph{how far} two
+directions disagree, and it underwrites the projection formulas of
+section 9.6.
+
+\section{Projection, least squares}\pathtag{core}
+
+A linear system $\mat{A}\vect{x} = \vect{b}$ may have no exact
+solution, either because $\vect{b} \notin \col(\mat{A})$ or because
+the system is overdetermined ($m > n$ with no redundancy in
+$\vect{b}$). The least-squares problem replaces \emph{solve} with
+\emph{come closest}: find $\hat{\vect{x}}$ minimising
+$\norm{\mat{A}\vect{x} - \vect{b}}_{2}^{2}$.
+
+\subsection{Orthogonal projection}
+
+Let $W$ be a subspace of $\R^{m}$ and $\vect{b} \in \R^{m}$. The
+\engterm{orthogonal projection} of $\vect{b}$ onto $W$ is the
+unique vector $\proj_{W}\vect{b} \in W$ such that $\vect{b} -
+\proj_{W}\vect{b}$ is orthogonal to every vector in $W$. The
+projection minimises $\norm{\vect{b} - \vect{w}}_{2}$ over
+$\vect{w} \in W$.
+
+When $W = \col(\mat{A})$ for full-column-rank $\mat{A}$, the
+projection is
+
+\[
+\proj_{\col(\mat{A})}\vect{b} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose}\vect{b}.
+\]
+
+The matrix $\mat{P} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose}$ is the projection matrix onto $\col(\mat{A})$;
+it satisfies $\mat{P}^{2} = \mat{P}$ (idempotent) and
+$\mat{P}^{\transpose} = \mat{P}$ (symmetric), the algebraic
+fingerprint of an orthogonal projection.
+
+\subsection{The normal equations}
+
+Setting the gradient of $\norm{\mat{A}\vect{x} - \vect{b}}_{2}^{2}$
+to zero gives the \engterm{normal equations}:
+
+\[
+\mat{A}^{\transpose}\mat{A}\hat{\vect{x}} = \mat{A}^{\transpose}\vect{b}.
+\]
+
+When $\mat{A}$ has full column rank, $\mat{A}^{\transpose}\mat{A}$
+is positive definite and invertible, and
+
+\[
+\hat{\vect{x}} = (\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose}\vect{b}.
+\]
+
+This is the formula Volume I Chapter 8 used for the slope and
+intercept of a linear fit. The chapter is now in a position to read
+it as projection: the fitted values $\mat{A}\hat{\vect{x}}$ are the
+orthogonal projection of the data $\vect{b}$ onto the column space
+of the design matrix.
+
+The normal equations are the canonical least-squares formula. They
+are also numerically dangerous when $\mat{A}$ is ill-conditioned, a
+fact section 9.7 makes precise. The condition number of
+$\mat{A}^{\transpose}\mat{A}$ is the square of the condition number
+of $\mat{A}$. Forming $\mat{A}^{\transpose}\mat{A}$ explicitly
+amplifies whatever conditioning trouble $\mat{A}$ already has.
+
+\subsection{The QR alternative}
+
+If $\mat{A} = \mat{Q}\mat{R}$ with $\mat{Q} \in \R^{m \times n}$
+orthogonal in the rectangular sense and $\mat{R} \in \R^{n \times n}$
+upper triangular, then $\mat{A}^{\transpose}\mat{A} =
+\mat{R}^{\transpose}\mat{Q}^{\transpose}\mat{Q}\mat{R} =
+\mat{R}^{\transpose}\mat{R}$. The normal equations become
+$\mat{R}^{\transpose}\mat{R}\hat{\vect{x}} = \mat{R}^{\transpose}
+\mat{Q}^{\transpose}\vect{b}$, which simplifies to
+
+\[
+\mat{R}\hat{\vect{x}} = \mat{Q}^{\transpose}\vect{b}.
+\]
+
+The system is upper triangular and back-solves in $O(n^{2})$ flops
+once $\mat{Q}$ and $\mat{R}$ are in hand. The QR route avoids ever
+forming $\mat{A}^{\transpose}\mat{A}$, and it works in a regime
+where the normal equations would be numerically dangerous. Its
+backward error is governed by the conditioning of $\mat{A}$, not
+the squared conditioning of $\mat{A}^{\transpose}\mat{A}$
+\cite[ch.~19]{text:trefethen-bau1997}.
+
+\subsection{Worked example: a straight-line fit}
+
+Volume I Chapter 8's straight-line fit had the design matrix
+
+\[
+\mat{A} = \begin{pmatrix} 1 & x_{1} \\ 1 & x_{2} \\ \vdots & \vdots
+\\ 1 & x_{m} \end{pmatrix}, \quad
+\vect{b} = \begin{pmatrix} y_{1} \\ y_{2} \\ \vdots \\ y_{m}
+\end{pmatrix}.
+\]
+
+The first column carries the intercept and the second the slope.
+The Gram matrix is
+
+\[
+\mat{A}^{\transpose}\mat{A} = \begin{pmatrix} m & \sum x_{i} \\
+\sum x_{i} & \sum x_{i}^{2} \end{pmatrix}.
+\]
+
+The normal equations recover the closed-form expressions Volume I
+Chapter 8 stated for the intercept $\hat{\beta}_{0}$ and slope
+$\hat{\beta}_{1}$:
+
+\[
+\hat{\beta}_{1} = \frac{m\sum x_{i} y_{i} - \sum x_{i} \sum y_{i}}
+{m\sum x_{i}^{2} - (\sum x_{i})^{2}}, \quad
+\hat{\beta}_{0} = \bar{y} - \hat{\beta}_{1}\bar{x}.
+\]
+
+The reader who works through the algebra sees that the $(1,1)$
+entry of $(\mat{A}^{\transpose}\mat{A})^{-1}$ multiplied by the
+appropriate component of $\mat{A}^{\transpose}\vect{b}$ produces
+$\hat{\beta}_{0}$, and similarly for the slope. The Volume I
+formula is the matrix formula in two-dimensional coordinates.
+
+\subsection{Higher-degree polynomial fits}
+
+Replace the design matrix with the \engterm{Vandermonde matrix}
+
+\[
+\mat{V} = \begin{pmatrix} 1 & x_{1} & x_{1}^{2} & \cdots & x_{1}^{p}
+\\ 1 & x_{2} & x_{2}^{2} & \cdots & x_{2}^{p} \\ \vdots & \vdots &
+\vdots & \ddots & \vdots \\ 1 & x_{m} & x_{m}^{2} & \cdots &
+x_{m}^{p} \end{pmatrix},
+\]
+
+and the same least-squares formulas fit a polynomial of degree $p$.
+The Vandermonde matrix is the canonical example of an
+ill-conditioned design matrix as $p$ grows: its columns become
+nearly linearly dependent (the higher powers of $x$ correlate
+strongly with each other on any interval that does not include
+zero), and the condition number of $\mat{V}^{\transpose}\mat{V}$
+explodes. Section 9.7 quantifies the trouble; the project of this
+chapter walks the reader through it.
+
+\section{Conditioning and numerical sensitivity}\pathtag{core}
+
+A linear system $\mat{A}\vect{x} = \vect{b}$ has a unique solution
+when $\mat{A}$ is invertible. Whether floating-point arithmetic
+returns that solution accurately depends on the conditioning of
+$\mat{A}$, a quantity that measures how much small perturbations
+in $\mat{A}$ or $\vect{b}$ amplify into changes in $\vect{x}$.
+
+\subsection{The condition number}
+
+For an invertible square matrix $\mat{A}$, the \engterm{condition
+number} (in the 2-norm) is
+
+\[
+\kappa(\mat{A}) = \norm{\mat{A}}_{2} \cdot \norm{\mat{A}^{-1}}_{2}
+= \frac{\sigma_{1}(\mat{A})}{\sigma_{n}(\mat{A})},
+\]
+
+where $\sigma_{1} \geq \cdots \geq \sigma_{n} > 0$ are the singular
+values of $\mat{A}$ \cite[ch.~12]{text:trefethen-bau1997}. The
+ratio of largest to smallest singular value answers the question
+\emph{how much can $\mat{A}$ stretch some directions while it
+shrinks others}.
+
+The standard sensitivity bound, valid for any consistent norm, is
+
+\[
+\frac{\norm{\Delta\vect{x}}}{\norm{\vect{x}}} \leq \kappa(\mat{A})
+\left(\frac{\norm{\Delta\mat{A}}}{\norm{\mat{A}}}
++ \frac{\norm{\Delta\vect{b}}}{\norm{\vect{b}}}\right) + O(\epsilon^{2}),
+\]
+
+where $\Delta\mat{A}$ and $\Delta\vect{b}$ are perturbations and
+$\Delta\vect{x}$ is the resulting change in the solution. The
+inequality reads as a budget. A relative perturbation of size
+$\epsilon$ in the data can produce a relative change of size up to
+$\kappa(\mat{A}) \cdot \epsilon$ in the solution. When
+$\kappa(\mat{A}) = 10^{6}$ and the data are accurate to $10^{-8}$
+(double precision near the machine epsilon $2.2 \times 10^{-16}$
+times typical magnitude), the solution is accurate to about
+$10^{-2}$.
+
+\subsection{The rule of thumb}
+
+The working rule of thumb: a matrix with condition number
+$\kappa$ loses about $\log_{10}\kappa$ decimal digits of accuracy
+in the solution relative to the data. Double-precision floating
+point carries about 16 decimal digits; a condition number of
+$10^{8}$ leaves about 8 digits in the solution, a condition number
+of $10^{12}$ leaves about 4, and a condition number above $10^{16}$
+leaves nothing.
+
+The rule is loose. Backward stability of the algorithm, structure
+in the right-hand side, and the specific norm in use all change
+the constant. The rule's value is as a triage: the engineer who
+sees $\kappa = 10^{14}$ knows, before any computation, that the
+problem in this formulation has at most one or two reliable
+digits.
+
+\subsection{The condition number of the Gram matrix}
+
+For $\mat{A} \in \R^{m \times n}$ with full column rank, the Gram
+matrix $\mat{A}^{\transpose}\mat{A}$ has condition number
+$\kappa(\mat{A}^{\transpose}\mat{A}) = \kappa(\mat{A})^{2}$. The
+squaring is the central numerical fact about the normal equations.
+A design matrix with $\kappa(\mat{A}) = 10^{4}$ produces a Gram
+matrix with $\kappa(\mat{A}^{\transpose}\mat{A}) = 10^{8}$. Solving
+the normal equations directly carries the squared conditioning;
+solving via QR (section 9.6) carries the original conditioning.
+
+This is why a polynomial fit of moderate degree on closely-spaced
+data is the canonical example of when not to use the normal
+equations. The Vandermonde columns correlate strongly, the matrix
+is ill-conditioned, and the squared conditioning of the Gram matrix
+makes the normal-equations solution numerically meaningless before
+the engineer notices.
+
+\subsection{Singular value decomposition (recognition)}
+
+Every real $m \times n$ matrix factors as
+
+\[
+\mat{A} = \mat{U}\mat{\Sigma}\mat{V}^{\transpose},
+\]
+
+where $\mat{U} \in \R^{m \times m}$ and $\mat{V} \in \R^{n \times n}$
+are orthogonal, and $\mat{\Sigma} \in \R^{m \times n}$ is
+``diagonal'' (the entries off the main diagonal are zero) with
+non-negative entries $\sigma_{1} \geq \cdots \geq \sigma_{r} > 0$
+on the diagonal, where $r = \rank \mat{A}$. The factorisation is the
+\engterm{singular value decomposition}, or SVD
+\cite[ch.~4]{text:trefethen-bau1997}. Volume II Chapter 10 develops
+its derivation; this chapter introduces it at recognition level
+because the project relies on it.
+
+The SVD reveals exactly what the conditioning analysis hides. The
+singular values $\sigma_{i}$ are the rank-revealing diagonals: a
+small $\sigma_{i}$ means a near-singular direction, and the column
+$\vect{v}_{i}$ of $\mat{V}$ associated with it is the input direction
+the matrix nearly annihilates. A least-squares solution computed
+with the SVD can truncate the smallest singular values explicitly
+(the \engterm{truncated SVD}), which gives a regularised solution
+whose conditioning the engineer controls. The QR and the normal
+equations do not offer this control without further work.
+
+\subsection{Floating-point overflow as a related failure}
+
+Conditioning is one numerical failure mode; \engterm{overflow} is
+another. A floating-point representation has a finite range. The
+IEEE 754 double-precision format ranges from about $2.2 \times
+10^{-308}$ to $1.8 \times 10^{308}$; the single-precision format
+ranges from about $1.2 \times 10^{-38}$ to $3.4 \times 10^{38}$;
+the 16-bit signed integer ranges from $-32768$ to $32767$. A
+computation that produces a value outside the format's range
+overflows. The IEEE float standard specifies that overflow yields
+$\pm\infty$, and subsequent arithmetic propagates the infinity
+deterministically; integer overflow has no such standard, and
+languages and platforms differ in whether they wrap, saturate,
+trap, or behave as undefined.
+
+A matrix entry, an intermediate product, or a derived quantity that
+overflows produces wrong results indistinguishable in the program's
+output from correct ones. The discipline is to bound the magnitudes
+that flow through the computation and to choose a representation
+whose range covers the bound. Section 9.8 returns to this point
+through a named case.
+
+\section{Failure: ill-conditioned systems and what to refuse to solve}\pathtag{core}
+
+An ill-conditioned linear system is not a system that fails to have
+a solution. The unique solution exists, in exact arithmetic, when
+the matrix is invertible. Ill-conditioning is a failure mode of the
+\emph{computed} solution: the algebra promises a number, the
+floating-point arithmetic delivers something else, and the engineer
+who treats the delivered number as the algebraic answer is in
+trouble.
+
+\subsection{What to refuse}
+
+A working list, in increasing severity:
+
+\begin{itemize}[leftmargin=*]
+  \item Refuse the normal-equations formulation when the design
+    matrix has condition number above about $10^{7}$ in double
+    precision. Use QR. Above about $10^{15}$, refuse QR as well
+    and use the truncated SVD with an explicit cutoff stated in
+    the report.
+  \item Refuse a polynomial fit of degree higher than about five
+    or six on data spread over an interval that does not include
+    the origin, in the monomial basis. The Vandermonde
+    conditioning blows up. Reformulate in the orthogonal-polynomial
+    basis (Legendre, Chebyshev) or in the SVD-truncated form.
+  \item Refuse to invert a matrix whose smallest singular value is
+    below the rounding-error floor of the entries. The matrix is,
+    for the precision in use, indistinguishable from a singular
+    matrix.
+  \item Refuse a numerical conversion between two representations
+    whose ranges have not been verified against the operating
+    envelope of the data the conversion handles. The Ariane 5
+    case below makes this concrete.
+  \item Refuse the report when the conditioning is not stated.
+    A least-squares fit reported without its design-matrix
+    condition number is incomplete.
+\end{itemize}
+
+The discipline is to make the conditioning visible, then to choose
+the formulation whose conditioning the engineer can defend.
+
+\subsection{The Ariane 5 case}
+
+Ariane 5 Flight 501, the maiden flight of the European Space Agency's
+new launcher, broke up about 39 seconds after main engine ignition
+on 4 June 1996. The Lions Inquiry Board identified the cause as an
+unhandled software exception in the inertial reference system (SRI),
+triggered when a 64-bit floating-point representation of an internal
+horizontal-bias variable was converted to a 16-bit signed integer
+and the result exceeded the integer's range $[-32768, 32767]$.
+The conversion occurred inside an alignment function reused unchanged
+from Ariane 4. For Ariane 4, the trajectory kept the variable within
+range; for Ariane 5, the trajectory developed horizontal velocity
+faster, and the variable did not. The exception was unhandled;
+the primary SRI shut down; the back-up SRI, running the same software,
+shut down for the same reason. The on-board computer interpreted
+diagnostic output from the SRIs as flight data, commanded extreme
+nozzle deflections, and the launcher broke up under aerodynamic
+loads \cite{acc:ariane501-ifr}.
+
+The case is canonical for this chapter for two reasons. First, the
+underlying numerical operation, conversion of a real number to an
+integer, is the simplest possible numerical procedure. There is no
+matrix factorisation, no conditioning analysis, no
+near-singularity. The failure is range overflow, the related
+floating-point failure mode named in section 9.7. Second, the
+verification discipline that should have refused the operation is
+the same discipline this chapter has been building. The conversion
+was a \emph{procedure with a precondition}: the input must lie in
+the integer's range. The procedure ran in a context (Ariane 5
+trajectory) whose envelope the engineers had not analysed against
+the precondition. The Inquiry Board's framing was that this was a
+verification-domain failure: software qualified for one launcher
+was reused on another whose flight envelope had not been
+re-analysed against the reused code.
+
+The lesson generalises. Whenever a piece of numerical code is
+ported across operating envelopes (a control law, a Kalman filter,
+a finite-element solver, a regression pipeline), the engineer
+verifies that the new envelope's data fall inside the preconditions
+of every numerical operation the code performs. The matrix-conditioning
+discipline of section 9.7 is one instance of this verification; the
+Ariane 5 conversion is another. The discipline that prevents both
+failure modes is the same: \emph{name the precondition, verify the
+input meets it, and refuse the operation when verification fails}.
+
+\subsection{The principle}
+
+\begin{principle}[Refusal of unsafe numerical operations]
+A numerical operation has a precondition: a range, a rank, a
+conditioning bound, or a representation envelope inside which the
+operation's output is defensible. The engineer states the
+precondition, verifies the input meets it, and refuses the
+operation when verification fails. A reported result without a
+record of the verification is, for engineering purposes, not a
+result. The discipline is independent of the algorithm and of the
+problem's domain; the numerical conversion that destroyed Ariane 5
+Flight 501 and the polynomial fit whose Gram matrix has a condition
+number of $10^{14}$ are the same failure mode at different scales.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Polynomial fit by three methods, with conditioning comparison]
+The reader fits a polynomial of degree $p \geq 5$ to a noisy dataset
+of their choice (the reader's own data from a Volume I project, or
+a public dataset that is genuinely noisy and not synthetic), by
+three methods, and produces a comparative analysis with a
+1500-word reflection.
+
+\textbf{Track}. Simulation with analysis. \textbf{Hazard class}: none.
+\textbf{Tools}. Paper, pencil, and a programming environment with
+linear-algebra primitives (LU, QR, SVD): Python with NumPy, MATLAB,
+Julia, Octave, R, or equivalent.
+
+\textbf{Dataset choice}. The reader chooses a dataset of $m \geq 30$
+points $(x_{i}, y_{i})$, with $y_{i}$ noisy, that supports a smooth
+underlying trend over the $x$-range. Public-data candidates: a
+weather-station daily temperature record over a year, a household
+electricity-meter reading over a month, a stock index closing price
+over a quarter, a Volume I commute-time dataset, or any dataset the
+reader has collected with a clear independent variable. The reader
+records the dataset, its source, and the date range.
+
+\textbf{Three formulations}. The reader computes the polynomial fit
+of degree $p$ in the monomial basis $\{1, x, x^{2}, \ldots, x^{p}\}$,
+producing the Vandermonde design matrix $\mat{V}$ of size $m \times
+(p+1)$, by three methods:
+
+\begin{enumerate}[leftmargin=*]
+  \item \engterm{Normal equations}. Form $\mat{V}^{\transpose}\mat{V}$
+    explicitly, form $\mat{V}^{\transpose}\vect{y}$, solve
+    $\mat{V}^{\transpose}\mat{V}\hat{\vect{c}} = \mat{V}^{\transpose}\vect{y}$
+    by LU. Record the condition number of $\mat{V}^{\transpose}\mat{V}$.
+  \item \engterm{QR}. Compute $\mat{V} = \mat{Q}\mat{R}$ by the
+    Householder algorithm (the standard library routine in any of
+    the listed environments). Solve $\mat{R}\hat{\vect{c}} =
+    \mat{Q}^{\transpose}\vect{y}$ by back substitution. Record the
+    condition number of $\mat{V}$.
+  \item \engterm{SVD}. Compute $\mat{V} = \mat{U}\mat{\Sigma}
+    \mat{V}_{r}^{\transpose}$. Solve in the SVD form,
+    $\hat{\vect{c}} = \mat{V}_{r}\mat{\Sigma}^{+}\mat{U}^{\transpose}
+    \vect{y}$, where $\mat{\Sigma}^{+}$ is the pseudoinverse with
+    a stated cutoff (any singular value below $\epsilon \cdot
+    \sigma_{1}$ for $\epsilon = 10^{-12}$ is set to zero). Record
+    the singular values and the cutoff applied.
+\end{enumerate}
+
+\textbf{Reporting}. The reader produces:
+
+\begin{itemize}[leftmargin=*]
+  \item A table of the three coefficient vectors $\hat{\vect{c}}$,
+    one column per method.
+  \item The three condition numbers, side by side.
+  \item A plot of the data with the three fits overlaid (in any
+    plotting environment).
+  \item The residual norm $\norm{\mat{V}\hat{\vect{c}} -
+    \vect{y}}_{2}$ for each method.
+  \item A statement of the regime in which each method gives the
+    most defensible answer.
+\end{itemize}
+
+\textbf{Reflection (1500 words)}. The reader writes a 1500-word
+narrative addressing:
+
+\begin{itemize}[leftmargin=*]
+  \item Why the normal equations formulation is dangerous when the
+    design matrix is ill-conditioned. The reader should refer to
+    the squaring of the condition number and to a specific
+    decimal-digit estimate from section 9.7's rule of thumb.
+  \item What the SVD revealed that the normal equations
+    concealed. The reader names at least one singular value of the
+    Vandermonde matrix that fell near or below the cutoff and
+    describes its associated input direction.
+  \item How the polynomial fit would change if the reader rescaled
+    $x$ to the interval $[-1, 1]$ before forming the design
+    matrix, and why the rescaling is a defence against
+    ill-conditioning rather than a mathematical change of the
+    problem.
+  \item Whether a polynomial of degree $p$ was the right model
+    for the dataset, or whether the conditioning trouble pointed
+    at a different model (a piecewise fit, a spline, a Fourier
+    expansion). The reflection takes the conditioning seriously
+    as a model-selection signal, not a numerical nuisance.
+  \item What the reader would refuse to report from the three
+    fits, in line with the refusal discipline of section 9.8.
+\end{itemize}
+
+\textbf{Deliverable}. The dataset, the code, the three fitted
+coefficient vectors, the condition numbers, the residual norms,
+the plot, and the 1500-word reflection. The general editor's
+reference solution on a published-temperature dataset is available
+online; the reader compares only after completing their own.
+
+\textbf{Time}. Approximately one hour to choose and clean the
+dataset, two to three hours to implement the three methods, one
+hour to produce the table and plot, and three to four hours to
+write the reflection. Total approximately seven to nine hours.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises test calculation, derivation, estimation, simulation,
+design, diagnosis, failure analysis, and judgment. The editor
+should attach the solution and rubric file before release.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute, by Gaussian elimination, the solution of $\mat{A}\vect{x}
+= \vect{b}$ for $\mat{A} = \begin{psmallmatrix} 1 & 2 & -1 \\ 2 &
+1 & 1 \\ -1 & 1 & 2 \end{psmallmatrix}$ and $\vect{b} = (3, 4,
+1)^{\transpose}$. Record the LU factors $\mat{L}$ and $\mat{U}$
+and verify $\mat{L}\mat{U} = \mat{A}$.
+\end{exercise}
+
+\begin{exercise}
+For the matrix $\mat{A} = \begin{psmallmatrix} 1 & 2 & 3 \\ 2 & 4
+& 6 \\ 1 & 1 & 1 \end{psmallmatrix}$, find a basis for the column
+space, the null space, and the row space. State the rank and
+verify the rank-nullity theorem.
+\end{exercise}
+
+\begin{exercise}
+Compute the QR factorisation of $\mat{A} = \begin{psmallmatrix} 1
+& 1 \\ 1 & 0 \\ 0 & 1 \end{psmallmatrix}$ by the Gram-Schmidt
+procedure on the columns. Verify that $\mat{Q}^{\transpose}\mat{Q}
+= \mat{I}_{2}$ and that $\mat{Q}\mat{R} = \mat{A}$.
+\end{exercise}
+
+\begin{exercise}
+Compute the determinant of $\mat{A} = \begin{psmallmatrix} 2 & 1
+& 1 \\ 4 & 3 & 3 \\ 8 & 7 & 9 \end{psmallmatrix}$ by reading it
+off the LU factorisation of the worked example in section 9.3.
+Verify by cofactor expansion along the first row.
+\end{exercise}
+
+\begin{exercise}
+Compute the orthogonal projection of $\vect{b} = (1, 2, 3)^{\transpose}$
+onto the column space of $\mat{A} = \begin{psmallmatrix} 1 & 0 \\
+0 & 1 \\ 1 & 1 \end{psmallmatrix}$ using the projection formula
+$\mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}\mat{A}^{\transpose}
+\vect{b}$. Verify that $\vect{b} - \proj\vect{b}$ is orthogonal
+to each column of $\mat{A}$.
+\end{exercise}
+
+\begin{exercise}
+Compute the least-squares straight-line fit through the four
+points $(0,1), (1,3), (2,4), (3,7)$ by setting up and solving the
+normal equations. Compare the slope and intercept to the
+closed-form Volume I Chapter 8 expressions.
+\end{exercise}
+
+\begin{exercise}
+For the matrix $\mat{A} = \begin{psmallmatrix} 1 & 1 \\ 1 & 1.0001
+\end{psmallmatrix}$, compute $\mat{A}^{-1}$, the singular values
+$\sigma_{1}, \sigma_{2}$, and the condition number $\kappa(\mat{A})$.
+State how many decimal digits of accuracy the rule of thumb predicts
+in the solution to $\mat{A}\vect{x} = \vect{b}$ given input data
+accurate to $10^{-10}$.
+\end{exercise}
+
+\begin{exercise}
+Compute the angle between the vectors $\vect{u} = (1, 2, 2)^{\transpose}$
+and $\vect{v} = (2, -1, 2)^{\transpose}$ using the inner-product
+formula. Verify the Cauchy-Schwarz inequality numerically.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that the column space and the null space of a matrix $\mat{A}
+\in \R^{m \times n}$ satisfy $\dim \col(\mat{A}) + \dim \nul(\mat{A})
+= n$. State, but do not derive, the analogous identity for the row
+and left-null spaces.
+\end{exercise}
+
+\begin{exercise}
+Show that the matrix $\mat{P} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose}$, when $\mat{A}$ has full column rank,
+satisfies $\mat{P}^{2} = \mat{P}$ and $\mat{P}^{\transpose} =
+\mat{P}$. Use only the algebraic properties of transpose and
+inverse.
+\end{exercise}
+
+\begin{exercise}
+Starting from $\norm{\mat{A}\vect{x} - \vect{b}}_{2}^{2}$, derive
+the normal equations $\mat{A}^{\transpose}\mat{A}\hat{\vect{x}} =
+\mat{A}^{\transpose}\vect{b}$ by setting the gradient with respect
+to $\vect{x}$ to zero. State the assumption on $\mat{A}$ that
+guarantees a unique minimiser.
+\end{exercise}
+
+\begin{exercise}
+Show that a square matrix $\mat{A}$ is invertible if and only if
+$\det \mat{A} \neq 0$, by combining the multiplicative property
+$\det(\mat{A}\mat{B}) = \det \mat{A} \cdot \det \mat{B}$ with
+$\det \mat{I} = 1$.
+\end{exercise}
+
+\begin{exercise}
+Show that for a full-column-rank matrix $\mat{A}$, the Gram matrix
+$\mat{A}^{\transpose}\mat{A}$ is symmetric and positive definite.
+Use the symmetric and positive-definite properties to argue that
+the Cholesky factorisation $\mat{A}^{\transpose}\mat{A} =
+\mat{L}\mat{L}^{\transpose}$ exists.
+\end{exercise}
+
+\begin{exercise}
+Show that the condition number satisfies $\kappa(\mat{A}^{\transpose}
+\mat{A}) = \kappa(\mat{A})^{2}$ for a full-column-rank $\mat{A}$.
+Use the singular-value characterisation $\kappa(\mat{A}) =
+\sigma_{1}/\sigma_{n}$ and the relation between the singular values
+of $\mat{A}$ and those of $\mat{A}^{\transpose}\mat{A}$.
+\end{exercise}
+
+\begin{exercise}
+Show that the Householder reflector $\mat{H} = \mat{I} - 2\vect{v}
+\vect{v}^{\transpose}/\norm{\vect{v}}_{2}^{2}$ is orthogonal and
+symmetric, where $\vect{v}$ is any nonzero vector. State the
+geometric action of $\mat{H}$ on a vector $\vect{x}$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the floating-point operations required to solve a dense
+linear system of size $n = 10^{4}$ by LU factorisation. Compare to
+the operations required to solve the same system by inverting
+$\mat{A}$ explicitly and multiplying. State the working rule of
+thumb that makes explicit inversion the wrong choice.
+\end{exercise}
+
+\begin{exercise}
+Estimate the condition number of the $5 \times 5$ Hilbert matrix
+$H_{ij} = 1/(i+j-1)$, given that the Hilbert matrix is the
+canonical ill-conditioned example. State, by the rule of thumb,
+how many decimal digits of accuracy a double-precision solution
+to $\mat{H}\vect{x} = \vect{b}$ retains.
+\end{exercise}
+
+\begin{exercise}
+Estimate the condition number of the $11 \times 11$ Vandermonde
+matrix on the equally-spaced points $x_{i} = (i-1)/10$ for $i = 1,
+\ldots, 11$. State whether you would trust a degree-10 polynomial
+fit on these points in double precision and which alternative
+formulation you would recommend.
+\end{exercise}
+
+\begin{exercise}
+A least-squares regression has a design matrix with condition
+number $10^{6}$. The data are accurate to four decimal digits.
+Estimate the relative accuracy of the fitted coefficients in the
+QR formulation and in the normal-equations formulation, and state
+which is reportable.
+\end{exercise}
+
+\begin{exercise}
+Estimate the dimension of the displacement space of a planar truss
+with $n = 50$ joints, of which $10$ are pinned to the ground (each
+removing two degrees of freedom) and $5$ are constrained to a
+roller (each removing one degree of freedom). State the rank check
+that turns this estimate into an exact count.
+\end{exercise}
+
+\begin{exercise}
+Estimate the wall-clock time to solve a dense linear system of
+size $n = 5000$ on a single core that sustains $10^{10}$ flops per
+second. Then estimate the time for $n = 50000$, using the cubic
+scaling. State the largest $n$ for which a one-hour solve is
+feasible at this throughput, and the implication for choosing
+between dense and sparse formulations.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+In a programming environment of the reader's choice, generate a
+$100 \times 5$ Vandermonde matrix on $100$ equally spaced points
+in $[0, 1]$. Compute its condition number. Then rescale the points
+to $[-1, 1]$ and recompute. Quantify the conditioning improvement
+and explain it in terms of the orthogonality of the column space.
+\end{exercise}
+
+\begin{exercise}
+Simulate a least-squares fit of a degree-$10$ polynomial to $200$
+points generated from $y = \sin(2\pi x) + \epsilon$ with
+$\epsilon \sim \mathcal{N}(0, 0.05^{2})$ and $x \in [0, 1]$.
+Implement the normal-equations and QR formulations. Compare the
+fitted coefficients and the residual norms. Identify the
+coefficient that disagrees most between the two methods and explain
+the disagreement using the conditioning analysis of section 9.7.
+\end{exercise}
+
+\begin{exercise}
+Simulate a perturbation experiment: generate a $20 \times 20$
+random matrix $\mat{A}$, compute the solution $\vect{x}$ of
+$\mat{A}\vect{x} = \vect{b}$, then perturb $\mat{A}$ by a random
+matrix of size $\norm{\Delta\mat{A}}/\norm{\mat{A}} = 10^{-8}$ and
+recompute. Plot the relative error $\norm{\Delta\vect{x}}/
+\norm{\vect{x}}$ against the condition number $\kappa(\mat{A})$
+over $100$ random matrices and verify the sensitivity bound of
+section 9.7.
+\end{exercise}
+
+\begin{exercise}
+Implement the Householder QR algorithm from scratch on a $6 \times
+4$ matrix and verify the result against the library routine. The
+goal is to see, by working through the algorithm, why Householder
+reflections are numerically stable while classical Gram-Schmidt
+is not.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a procedure for fitting a polynomial of degree $p$ to a
+noisy dataset that explicitly checks the conditioning of the
+design matrix and chooses among the normal-equations, QR, and
+truncated-SVD formulations based on a stated condition-number
+threshold. State the thresholds used and justify them with the
+rule of thumb of section 9.7.
+\end{exercise}
+
+\begin{exercise}
+Design a verification check for a numerical-conversion operation
+between two representations (e.g., 32-bit float to 16-bit integer)
+in a flight-software context. The check should state the
+operation's precondition (range), the verification method, and
+the action when verification fails. Reference the Ariane 5 case
+of section 9.8 in the design rationale.
+\end{exercise}
+
+\begin{exercise}
+Design a sparse-matrix linear solver for a finite-element
+stiffness problem of size $n = 10^{6}$ with bandwidth $b = 100$.
+State the storage requirement, the operation count, and the
+factorisation method (banded LU, Cholesky, or sparse-direct). Mark
+this exercise mastery if the chapter has not introduced sparse
+factorisation; provide the storage and complexity scaling
+otherwise.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A colleague reports a least-squares fit with residual norm
+$10^{-12}$ on data measured to three decimal digits. Identify
+the three things that should make the engineer suspicious of the
+report and propose follow-up questions.
+\end{exercise}
+
+\begin{exercise}
+A linear system $\mat{A}\vect{x} = \vect{b}$ in a control
+application produces a solution that changes by a factor of two
+when the right-hand side changes by one part in $10^{4}$. Diagnose
+the conditioning regime of $\mat{A}$ and propose two reformulations
+that would stabilise the computation.
+\end{exercise}
+
+\begin{exercise}
+A polynomial fit of degree $8$ to $40$ data points produces wildly
+oscillating coefficients despite a small residual. Identify the
+conditioning failure that produces oscillation, propose two
+alternative formulations (rescaling, orthogonal-polynomial basis,
+truncated SVD) and state which would be the right choice without
+running the computation.
+\end{exercise}
+
+\begin{exercise}
+A finite-element analysis of a truss returns a stiffness matrix
+$\mat{K}$ with $\det \mat{K} = 10^{-30}$. Identify the physical
+meaning of the small determinant, diagnose whether the structure
+is genuinely under-constrained or merely poorly numbered, and
+propose the diagnostic check that distinguishes the two.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+Argue, in 200 to 300 words, why the Ariane 5 Flight 501 numerical
+conversion should have been refused, given the verification
+discipline this chapter develops. Identify the specific
+precondition that the conversion's input violated and the
+verification procedure that would have detected the violation
+during qualification rather than at $H_{0} + 39 \,\si{\second}$.
+\end{exercise}
+
+\begin{exercise}
+A regression analysis on a clinical dataset reports a coefficient
+estimate $\hat{\beta} = 2.4$ with standard error $0.3$. A
+replication on a slightly different sample produces $\hat{\beta}
+= -1.1$ with standard error $0.4$. Argue, in 200 to 300 words,
+whether the disagreement is consistent with conditioning trouble
+in the design matrix or with a real difference in the underlying
+populations, and identify the diagnostic that would distinguish
+the two.
+\end{exercise}
+
+\begin{exercise}
+A simulation of a chemical reactor, using a $1000 \times 1000$
+linear system at every time step, begins to produce nonsense
+after $1000$ time steps although the early steps appeared
+correct. Argue, in 200 to 300 words, whether the trouble is
+likely to be ill-conditioning of the time-step matrix, error
+accumulation across steps, or a genuine instability of the
+underlying physical model, and propose the diagnostic that
+identifies which.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A vendor reports a polynomial calibration of degree $9$ for a
+sensor, with the coefficients given to $12$ significant digits.
+Argue, in one paragraph, whether the precision is meaningful
+and what the engineer should ask the vendor before adopting the
+calibration.
+\end{exercise}
+
+\begin{exercise}
+A senior colleague proposes solving a $10^{6} \times 10^{6}$ dense
+linear system by computing $\mat{A}^{-1}$ explicitly and
+multiplying. Argue, in one paragraph, why this is the wrong
+approach, and propose the right approach for the most likely use
+case (multiple right-hand sides on the same matrix, single
+right-hand side, structured matrix).
+\end{exercise}
+
+\begin{exercise}
+An engineer is offered two implementations of a least-squares
+solver: the normal-equations formulation, which is faster, and
+the QR formulation, which is slower but more accurate. The
+application is a real-time signal-processing pipeline whose
+design matrix has condition number $10^{4}$. Argue, in 200 to
+300 words, which implementation the engineer should choose and
+state the conditioning threshold above which the choice would
+flip.
+\end{exercise}
+
+\begin{exercise}
+A research group reports a linear-algebraic claim with no
+condition-number information and no statement of which
+factorisation was used. Argue, in 200 to 300 words, what the
+engineer should ask the group before treating the claim as
+load-bearing for design, and what disclosures the engineer should
+demand for any future submission.
+\end{exercise}
+
+\begin{exercise}
+A reader of this chapter argues that, since the SVD reveals
+everything the conditioning analysis hides, every linear-algebra
+problem should be solved by the SVD. Argue, in one paragraph, why
+this is wrong as a default, identifying both the cost argument
+(SVD is more expensive than QR or LU) and the structure argument
+(many problems have structure that LU or QR exploits and SVD
+discards).
+\end{exercise}

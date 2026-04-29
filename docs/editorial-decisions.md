@@ -564,6 +564,42 @@ Vol I Ch 9 project track: **analysis only**. Hazard class: **none**. Tools: pape
 
 The remaining 165 chapters' project-track resolution is carried forward as Q55-remaining and tracked in `open-questions.md`.
 
+### Settled 2026-04-29 (Q55-vol02-ch01)
+
+Vol II Ch 1 project track: **analysis only**. Hazard class: **none**. Tools: a real published engineering paper of the reader's choice (textbook chapter, technical report, journal article, standards document); paper, pencil; LaTeX or another typesetting tool. Artifact: a rewritten version of one to three pages of the chosen paper with notation defects fixed (every symbol introduced before use, every quantity carrying its unit, every variable defined in a notation table, every equation properly numbered and cross-referenced), plus a 1500-word reflection on which notation defects were the most common, which were the most consequential, and which the reader's own notation habits also contain.
+
+### Settled 2026-04-29 (Q55-vol02-ch02)
+
+Vol II Ch 2 project track: **analysis only**. Hazard class: **none**. Tools: ten plots from primary engineering literature (selected by the reader from textbooks, journal articles, standards documents, or industry reports); paper, pencil; optionally a plotting tool to reproduce a plot at a corrected scale. Artifact: a 10-plot diagnostic write-up identifying for each plot what each axis is hiding (linear vs. log scale, truncated baseline, units omitted, scale break, missing data range, suppressed uncertainty, asymmetric scale on a symmetric quantity), plus a 1500-word reflection on which patterns recurred and which would change the reader's interpretation of a result.
+
+### Settled 2026-04-29 (Q55-vol02-ch03)
+
+Vol II Ch 3 project track: **analysis with optional simulation**. Hazard class: **none**. Tools: paper, pencil, calculator, optionally a programming environment for the simulation track. Artifact: a hand-derived solution for the steady-state response of a series RLC circuit driven by a sinusoidal source, expressed as a complex-number phasor calculation (impedance, current, voltage across each element, phase relationships), plus a 1500-word reflection on what the phasor representation buys over time-domain integration. Optional simulation: numerically integrate the same circuit, compare the steady-state result to the phasor solution.
+
+### Settled 2026-04-29 (Q55-vol02-ch04)
+
+Vol II Ch 4 project track: **analysis only**. Hazard class: **none**. Tools: paper, pencil, calculator. Artifact: derivations of the standard small-angle approximations (sine, cosine, tangent, the pendulum period correction, the relativistic kinetic-energy reduction to Newtonian, the binomial $1+x$ expansion) with explicit error bounds at $5^{\circ}$, $10^{\circ}$, $25^{\circ}$, and $45^{\circ}$ where applicable, plus a 1500-word reflection on when each approximation is safe and when it should be replaced with the exact form.
+
+### Settled 2026-04-29 (Q55-vol02-ch05)
+
+Vol II Ch 5 project track: **simulation with analysis**. Hazard class: **none**. Tools: paper, pencil, programming environment (Python, MATLAB, Julia, or equivalent). Artifact: a noisy time-series dataset of the reader's choice (could be a Volume I project's data, a publicly available sensor record, or a synthesised signal), numerically differentiated by at least three methods (finite differences, smoothing then differentiation, parametric fit then differentiation), with a defended choice of smoothing strategy and an error analysis, plus a 1500-word reflection on the bias-variance tradeoff in numerical differentiation.
+
+### Settled 2026-04-29 (Q55-vol02-ch06)
+
+Vol II Ch 6 project track: **household + analysis (hybrid)**. Hazard class: **none**. Tools: a household object whose moment of inertia about a chosen axis can be computed (a book, a soup can, a hammer, a yoga ball); a kitchen scale, ruler, calliper if available; paper, pencil, calculator. Artifact: the moment of inertia of the chosen object computed three ways (analytical decomposition into simple shapes, numerical integration on a measured cross-section profile, and the parallel-axis theorem applied to a sub-decomposition), with the three results reconciled within a stated combined uncertainty, plus a 1500-word reflection on which decomposition was hardest and why.
+
+### Settled 2026-04-29 (Q55-vol02-ch07)
+
+Vol II Ch 7 project track: **simulation with analysis**. Hazard class: **none**. Tools: paper, pencil, programming environment (Python, MATLAB, Julia, or equivalent) with an ODE solver. Artifact: a numerical simulation of the simple pendulum at large amplitudes (initial angles up to about $90^{\circ}$), comparing the small-angle analytical solution (period $T = 2\pi\sqrt{L/g}$) against the numerical solution including the first amplitude correction $\theta_{0}^{2}/16$ and against the full numerical solution. Plot the period error as a function of amplitude over the range $5^{\circ}$ to $90^{\circ}$, and identify the amplitudes at which each successive approximation falls below $1\,\%$ and $5\,\%$ error. Plus a 1500-word reflection on what numerical and analytical methods buy each other.
+
+### Settled 2026-04-29 (Q55-vol02-ch08)
+
+Vol II Ch 8 project track: **household + analysis (hybrid)**. Hazard class: **none**. Tools: a household object similar to the Volume I Chapter 7 project (a stone, a small tool, a piece of fruit), a kitchen scale, ruler, beaker or graduated cylinder, paper, pencil, calculator, optionally a programming environment for surface mesh handling. Artifact: a derivation of the chosen object's volume by the divergence theorem applied to a sampled surface (sample at least 30 surface points along measured cross-sections, build a triangulated approximation of the closed surface, apply the divergence theorem in the form $V = \tfrac{1}{3}\oint \mathbf{r}\cdot\mathbf{n}\,dA$), reconciled within stated uncertainty against the Volume I water-displacement result, plus a 1500-word reflection on what the divergence theorem buys over Volume I's purely empirical method.
+
+### Settled 2026-04-29 (Q55-vol02-ch09)
+
+Vol II Ch 9 project track: **simulation with analysis**. Hazard class: **none**. Tools: paper, pencil, programming environment (Python, MATLAB, Julia, or equivalent) with linear-algebra primitives (LU, QR, SVD). Artifact: a polynomial fit of degree $5$ or higher to a noisy dataset of the reader's choice (could be a Vol I project dataset), computed three ways (normal equations $A^{T}Ax = A^{T}b$, QR decomposition, SVD), with the conditioning number reported for each formulation, the residual fits compared, and the regimes identified in which each method gives the most defensible answer. Plus a 1500-word reflection on why the normal-equations formulation is dangerous when the design matrix is ill-conditioned and what the SVD reveals that the normal equations conceal.
+
 ## 56. Named-cases registry
 
 Should a separate registry govern the way named accidents are cited and described in chapter prose?
