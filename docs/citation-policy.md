@@ -24,6 +24,7 @@ A claim that does not have a citation at the appropriate tier is either reframed
 | `hist:` | Historical primary sources, archival material, scholarly histories | Historical attribution |
 | `text:` | Classical handbooks and established textbooks | Settled technical material |
 | `paper:` | Peer-reviewed research papers, conference proceedings | Recent technical claims |
+| `method:` | Research-methods literature (statistical practice, replication studies, p-hacking, HARKing, forking paths) | Methodological claims about evidence quality |
 | `data:` | Datasets, public-record data, empirical compilations | Empirical performance claims |
 | `web:` | Online primary or companion sources (institutional pages, official documentation) | Time-stamped current-state claims |
 
@@ -39,6 +40,8 @@ text:timoshenko-mechanics-of-materials
 text:incropera-heat-transfer
 paper:shannon1948
 paper:vaughan-challenger
+method:simmons-nelson-simonsohn-2011
+method:open-science-collaboration-2015
 data:iea-energy-2024
 web:nist-traceability-policy
 ```

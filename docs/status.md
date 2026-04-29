@@ -1,15 +1,14 @@
 # Engineering: project status
 
-Last updated: 2026-04-28.
+Last updated: 2026-04-29.
 
 ## Phase
 
-**Phase 0.7: registry foundation and pilot prose.** In progress as of 2026-04-28. Includes:
+**Phase 0.7: registry foundation and pilot prose.** In progress as of 2026-04-29. Includes:
 
-- Vol I Chapter 1 ("Why we measure"): pilot prose written and reviewed (Codex, 40 fixes applied; review resolved at `docs/reviews/ch01-pilot-review.md`).
-- Vol I Chapter 2 ("Units and dimensions"): prose written and reviewed (Codex, 30 fixes applied; review resolved at `docs/reviews/vol01-ch02-review.md`).
-- Vol I opener prose written; archetype list now lists balance alongside scaling, failure, and uncertainty.
-- Named-cases registry foundation (Q56 partial): schema (`docs/research/accidents/SCHEMA.md`); twelve initial entries (every accident cited in Ch 1 / Ch 2 plus seven Volume X high-priority cases); index (`docs/research/accidents/README.md`); citation-policy update with closest-equivalent clause; reviewer-guide registry-check requirement (items 24-27); `make accidents` target.
+- Volume I prose: all nine chapters at Stage 5 (Ch 1 "Why we measure", Ch 2 "Units and dimensions", Ch 3 "Calibration and traceability", Ch 4 "Error and uncertainty", Ch 5 "Sensors and instruments", Ch 6 "Time, frequency, and signals", Ch 7 "Length, area, volume, mass", Ch 8 "Statistics for engineers", Ch 9 "The discipline of estimation") with Codex reviews resolved across the full volume (~280 specific fixes applied). Volume I opener prose written; archetype list lists six Volume I archetypes (scaling, balance, failure, uncertainty, interface, transport). Citation policy now includes a `method:` prefix for research-methods literature (replication studies, p-hacking, HARKing, forking paths).
+- Named-cases registry: schema (`docs/research/accidents/SCHEMA.md`); fifteen entries on disk (every accident cited in any Volume I chapter plus the original twelve foundation entries); index (`docs/research/accidents/README.md`); citation-policy update with closest-equivalent clause; reviewer-guide registry-check requirement (items 24-27); `make accidents` target with both cite-resolution and prose-name scan.
+- Audit tooling: `make audit-docs` (stale references), `make accidents` (named-case discipline), `make exercise-counts` (per-chapter exercise count vs chapmeta target). All pass across the current state.
 
 Phase 0.6 (curriculum expansion). Complete on 2026-04-28. Closed eleven substantive curriculum gaps (acoustics, mass transfer, plasma physics, bioinformatics, quantum computing, power electronics, MEMS, project management, user research, defence systems, space infrastructure) plus four naming/register fixes and the explicit stigmergy hook in Vol IX.
 
@@ -31,7 +30,7 @@ Next phase: **Phase 1** (production prose at scale, after Phase 0.7 completes).
 | Empty epigraphs in chapter shells | 174 |
 | Section headings in chapter shells | ~1640 |
 | Bibliography entries | 34 |
-| `main.pdf` page count (last build) | ~491 |
+| `main.pdf` page count (last build) | ~696 |
 
 Run `make stats` for the live numbers.
 
@@ -53,7 +52,7 @@ Run `make stats` for the live numbers.
 - Release checklist at `docs/release-checklist.md`.
 - Research pipeline at `docs/research-pipeline.md`.
 - Build pipeline: `make`, `make watch`, `make scaffolding`, `make outline`, `make strict`, `make check`, `make stats`, `make clean`, `make distclean`.
-- A working PDF build, currently around 491 pages of structural content.
+- A working PDF build, currently around 696 pages including all nine Volume I chapters at Stage 5. Volume I prose is complete and reviewed.
 - Post-expansion drift cleanup (2026-04-28): all eight expanded volumes' arc paragraphs and editorial-question chapter numbers refreshed to match the 174-chapter sequence; status, research-pipeline, landscape, generator comments, Makefile `outline`, and appD-reading-list paths updated; README anchor numbering fixed; new `make audit-docs` target enforces the cleanup.
 
 ## What is queued
@@ -88,7 +87,7 @@ The current build runs cleanly:
 make distclean && make
 ```
 
-Produces `main.pdf` at approximately 491 pages. `make check` reports `PASS`. `make stats` reports the at-a-glance counts above.
+Produces `main.pdf` at approximately 696 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
 
 ## Operational notes
 

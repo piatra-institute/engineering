@@ -1,40 +1,1627 @@
 \chapter{Statistics for engineers}
 \label{vol01:ch08}
 
-\epigraph{}{}
+\epigraph{Statistics is the science of learning from data, and of
+measuring, controlling, and communicating uncertainty.}{Marquardt's
+working definition, paraphrased and adopted as a chapter motto in
+Wasserman's \emph{All of Statistics} \cite[p.~vii]{text:wasserman2004}.}
 
-\chapmeta{Half-life: foundational. Archetypes: uncertainty (deepened), failure (statistical malpractice). Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational. Archetypes: uncertainty (deepened
+from Chapter 4), failure (statistical malpractice).
+Exercise target: 35. Project track: analysis with optional household
+component (hybrid). Hazard class: none for analysis, low if the
+chosen experiment uses household instruments. Reader path default: standard,
+with sections explicitly tagged. Named cases: none in this chapter.
+Replication-crisis discussion in section 8.8 stays generic per the
+chapter's editorial brief.}
 
 \noindent
-\TODO{Volume 1, Chapter 8. Approx 90 pp.}
+A measurement has an uncertainty; a population of measurements has a
+distribution; an inference has a power, a coverage, and a way of
+being wrong. Chapter 4 made the first quantity operational. A
+statistical report earns trust when it states the data summary, the
+distributional model, the inference from sample to population, and
+the analytical practices it refused.
 
-\section{Summary statistics: mean, median, mode, variance, IQR}
-\TODO{Section prose.}
+\section{Summary statistics: mean, median, mode, variance, IQR}\pathtag{core}
 
-\section{Distributions: normal, log-normal, Weibull, Poisson, exponential}
-\TODO{Section prose.}
+A sample is a set of $n$ measurements $x_{1}, x_{2}, \ldots, x_{n}$
+drawn from an underlying population by a stated sampling process.
+The summary statistics compress the sample into a few numbers that
+describe its centre and spread \cite[ch.~6]{text:wasserman2004}. The
+compression is lossy. The discipline is to state which information
+the chosen summary discards.
 
-\section{Hypothesis testing in engineering context}
-\TODO{Section prose.}
+\subsection{Centre: mean, median, mode}
 
-\section{Confidence vs prediction intervals}
-\TODO{Section prose.}
+The \engterm{sample mean} is
 
-\section{Bayesian intuition for the practitioner}
-\TODO{Section prose.}
+\[
+\bar{x} = \frac{1}{n}\sum_{i=1}^{n} x_{i}.
+\]
 
-\section{Sample size and statistical power}
-\TODO{Section prose.}
+The mean is the centre of mass of the sample. It uses every value.
+Its strength is sensitivity: a single large reading shifts the mean
+in the direction of that reading. Its weakness is the same: a single
+contaminated reading shifts the mean even when the rest of the
+sample agrees on a different centre.
 
-\section{P-hacking, garden of forking paths, and what to refuse}
-\TODO{Section prose.}
+The \engterm{sample median} is the middle value of the sorted
+sample, with the convention that for even $n$ the median is the
+average of the two middle values. The median is the value that
+splits the sample into halves of equal count. Its strength is
+resistance to outliers: fewer than half the sample can be moved to
+extreme values before the median is forced to follow. Its weakness
+is information: the median discards the magnitude of values away
+from the centre.
 
-\section{Failure: replication crises across engineering disciplines}
-\TODO{Section prose.}
+The \engterm{sample mode} is the most frequent value, or for
+continuous data, the location of the highest density. The mode is
+useful for categorical or discrete data and for distributions with a
+clear peak; for continuous engineering measurements with finite
+sample size, the mode is usually estimated from a histogram or a
+kernel density estimate, both of which have their own bin-width or
+bandwidth choices.
 
+For a Gaussian distribution all three coincide. For an asymmetric
+distribution they separate. The Pearson rule of thumb places the
+median between the mode and the mean when the distribution is
+skewed: skewed right (long upper tail), the order is mode, median,
+mean from left to right; skewed left, the order reverses. The
+working consequence is that quoting only one number for a skewed
+sample loses the asymmetry the data is trying to report.
 
-\section{Project}
-\TODO{run a 30-trial experiment of the reader's choice; report properly}
+\subsection{Spread: variance, standard deviation, range, IQR}
+
+The \engterm{sample variance} is
+
+\[
+s^{2} = \frac{1}{n - 1}\sum_{i=1}^{n}(x_{i} - \bar{x})^{2}.
+\]
+
+The denominator $n - 1$ rather than $n$ is the Bessel correction. It
+makes $s^{2}$ an unbiased estimator of the population variance
+$\sigma^{2}$ when the sample mean is used in place of the unknown
+population mean. The reader will see $1/n$ in some textbooks; both
+estimators are in use, and the choice matters when $n$ is small. For
+$n \geq 30$ the difference is below five percent and rarely
+load-bearing.
+
+The \engterm{sample standard deviation} $s = \sqrt{s^{2}}$ has the
+same units as the data. It is the canonical spread statistic when the
+distribution is roughly Gaussian; for heavy-tailed or strongly
+skewed distributions it is misleading.
+
+The \engterm{range} is $x_{\max} - x_{\min}$. It uses only two
+numbers and is therefore both quick and statistically poor: each
+additional sample can only widen it, and a single outlier dominates.
+The range is acceptable for a quick sketch and for sample sizes of
+two or three; beyond that it wastes data.
+
+The \engterm{interquartile range} (IQR) is $Q_{3} - Q_{1}$, where
+$Q_{1}$ is the first quartile (the value below which a quarter of
+the sample lies) and $Q_{3}$ is the third. The IQR is the spread of
+the middle half of the data. It resists isolated extremes better
+than the range, but it is not immune to changes in the lower or
+upper quarter of the sample.
+
+A common rule for outlier flagging uses the IQR: a point is an
+outlier candidate if it lies more than $1.5 \cdot \text{IQR}$ below
+$Q_{1}$ or above $Q_{3}$. The rule is convention. Statistics can
+flag the point; domain knowledge decides whether it is
+contamination, a real tail observation, or a rare event.
+
+\subsection{Boxplot, histogram, scatter}
+
+Three plots cover most of what an engineer needs to see in a sample
+before fitting anything.
+
+\engterm{Boxplot}: a box from $Q_{1}$ to $Q_{3}$, a line at the
+median, whiskers to $\min(x)$ and $\max(x)$ within $1.5 \cdot
+\text{IQR}$ of the box edges, and dots for points beyond the
+whiskers. The boxplot reports centre, spread, asymmetry, and
+extreme values in a single graphic.
+
+\engterm{Histogram}: a bar chart of binned counts. Bin width is a
+working choice; too narrow and the histogram is noisy, too wide and
+features are smoothed away. The Sturges rule ($k = \lceil \log_{2} n
+\rceil + 1$) and the Freedman-Diaconis rule (bin width $\approx 2
+\cdot \text{IQR} / n^{1/3}$) are common starting points. The
+discipline is to try at least two bin widths before believing any
+shape claim.
+
+\engterm{Scatter plot}: pairs $(x_{i}, y_{i})$. The first thing the
+reader does with two-variable data is plot it. Many regression
+problems are diagnosed in the scatter plot before any model is fit.
+
+\subsection{Worked example}
+
+A reader times their morning commute on $30$ working days. The
+sample is, in minutes:
+
+\[
+\begin{aligned}
+&27, 28, 29, 26, 32, 30, 27, 28, 29, 28,\\
+&31, 27, 26, 28, 29, 30, 28, 27, 32, 28,\\
+&29, 27, 30, 28, 31, 29, 28, 27, 28, 35.
+\end{aligned}
+\]
+
+Using the printed sample, the sample mean is $\bar{x} \approx 28.73
+\,\text{min}$. The median, after sorting, is $28 \,\text{min}$. The
+sample standard deviation is $s \approx 1.98 \,\text{min}$. The
+range is $35 - 26 = 9 \,\text{min}$. Using the linear percentile
+convention, the first and third quartiles are $Q_{1} = 27.25
+\,\text{min}$ and $Q_{3} = 29.75 \,\text{min}$, giving an IQR of
+$2.50 \,\text{min}$. A different quartile convention (for instance,
+Tukey hinges) would give slightly different values; the analyst's
+job is to state the convention and use it consistently.
+
+Three observations follow. The mean is about three quarters of a
+minute above the median, suggesting a small right skew driven by
+the $35$-minute day. The IQR is markedly smaller than the range,
+reflecting that one or two long days inflate the range without much
+affecting the central half. For a Gaussian distribution,
+$\text{IQR}/1.349$ estimates $\sigma$; here that comparison is only
+a rough check because the sample is small and the upper tail
+contains the $35$-minute day. The reader who reports only the mean
+has lost the information that several working days are longer than
+the central cluster.
+
+\begin{archetype}[Uncertainty, deepened from Chapter 4]
+Chapter 4 carried uncertainty as a single number $u(x)$ beside each
+measurement. This chapter asks where $u(x)$ comes from when the
+underlying mechanism is variation across a sample rather than a
+single measurement's instrument noise. The summary statistics
+$\bar{x}$ and $s$ are estimators: $\bar{x}$ estimates the population
+mean $\mu$, and $s$ estimates the population standard deviation
+$\sigma$. The standard uncertainty of the mean, $u(\bar{x}) =
+s/\sqrt{n}$, is the bridge between Chapter 4's framework and this
+chapter's. The bridge is sturdy when the sample is independent and
+identically distributed; it bends when either condition fails.
+\end{archetype}
+
+\section{Distributions: normal, log-normal, Weibull, Poisson, exponential}\pathtag{core}
+
+A sample is a finite window onto a population. The population is
+modelled by a probability distribution. For continuous data, the
+density $p(x)$ assigns probability to intervals through area under
+the curve; for discrete data, the probability mass function assigns
+probability to values. Five distributions are common enough that
+the reader should recognize their mechanisms before fitting data
+\cite[ch.~3-4]{text:devore2015}. We state each in the form a working
+engineer needs: its shape, its parameters, the mechanism that
+produces it, and the engineering quantities it commonly models.
+
+\subsection{Normal (Gaussian)}
+
+The normal distribution $\mathcal{N}(\mu, \sigma^{2})$ has density
+
+\[
+p(x) = \frac{1}{\sigma\sqrt{2\pi}} \exp\!\left(-\frac{(x - \mu)^{2}}
+{2\sigma^{2}}\right).
+\]
+
+The mean is $\mu$, the variance is $\sigma^{2}$, and the
+distribution is symmetric. The total probability under the curve is
+unity, a result that follows from the Gaussian normalisation
+integral; we quote the result without deriving it. The probability
+that a single draw lies within $\pm 1\sigma$ of the mean is about
+$0.683$; within $\pm 2\sigma$, about $0.954$; within $\pm 3\sigma$,
+about $0.997$. These coverage values match the coverage factors
+$k = 1, 2, 3$ from Chapter 4 §4.6.
+
+The normal distribution is the limiting distribution of sums of many
+small independent contributions, by the central limit theorem
+(Chapter 4 §4.4). Engineering quantities that often follow the
+normal distribution include the reading on a digital instrument
+operating in its linear range, the displacement of a mechanical
+sensor under thermal noise, the timing jitter of a synchronous
+clock, and any quantity whose error is the sum of many small,
+roughly equal contributions.
+
+The normal distribution is misused when the underlying mechanism is
+multiplicative rather than additive (use lognormal), bounded below
+at zero (use lognormal, half-normal, or a truncated form), or
+heavy-tailed (use a $t$-distribution or a Pareto). A normal fit to
+heavy-tailed data underestimates the probability of extreme events,
+sometimes by orders of magnitude. The cost of that underestimate
+falls on whoever sized the system for the typical case.
+
+\subsection{Log-normal}
+
+A quantity $X$ is \engterm{log-normal} if $\ln X$ is normally
+distributed. Equivalently, $X = e^{Y}$ with $Y \sim \mathcal{N}(\mu,
+\sigma^{2})$. The density of $X$, for $x > 0$, is
+
+\[
+p(x) = \frac{1}{x \sigma \sqrt{2\pi}}
+\exp\!\left(-\frac{(\ln x - \mu)^{2}}{2\sigma^{2}}\right).
+\]
+
+In this distribution, $\mu$ and $\sigma$ describe $\ln X$; the mean
+of $X$ is $e^{\mu + \sigma^{2}/2}$ and the median of $X$ is $e^{\mu}$.
+The distribution is right-skewed and bounded below at zero.
+
+The log-normal arises from multiplicative mechanisms: a quantity is
+the product of many small independent factors. Examples in
+engineering include particle-size distributions in milling and
+grinding, file-size distributions in storage and network systems,
+positive concentration measurements in chemical processes, asset
+prices or multiplicative cost factors under simple financial
+models, and biological growth quantities. Many
+quantities that look skewed when plotted on linear axes look
+roughly Gaussian when plotted on a logarithmic axis; the engineer
+who suspects a multiplicative mechanism plots on log axes early.
+
+\subsection{Weibull}
+
+The Weibull distribution is a flexible model for time-to-failure
+data. Its survival function (probability that the lifetime exceeds
+$t$) is
+
+\[
+S(t) = e^{-(t/\eta)^{\beta}}, \quad t \geq 0,
+\]
+
+with shape parameter $\beta > 0$ and scale parameter $\eta > 0$. The
+shape parameter $\beta$ controls how the failure rate evolves over
+time: $\beta < 1$ models a decreasing failure rate (infant
+mortality, where defective units fail early and the survivors are
+sturdy); $\beta = 1$ reduces to the exponential, modelling a
+constant failure rate; $\beta > 1$ models an increasing failure rate
+(wear-out, where surviving units accumulate damage). The scale
+$\eta$ is the time at which $63.2 \,\%$ of units have failed, which
+follows by setting $t = \eta$ in $S(t)$.
+
+The Weibull is the standard reliability distribution in mechanical,
+electrical, and aerospace engineering for components whose failure
+mode is fatigue, wear, or stochastic damage accumulation. It is
+flexible enough to fit many lifetime datasets but fitted parameters
+should be checked against the underlying physical mechanism: a
+Weibull with $\beta = 0.5$ that is being applied to a wear-out
+process is a fitting error, not a feature of the data.
+
+\subsection{Poisson}
+
+The Poisson distribution describes counts of events that occur
+independently at a constant average rate. The probability of
+observing exactly $k$ events in a fixed interval, given a mean
+$\lambda$, is
+
+\[
+\Pr(K = k) = \frac{\lambda^{k} e^{-\lambda}}{k!}, \quad k = 0, 1, 2,
+\ldots
+\]
+
+The mean equals the variance: $\E[K] = \Var(K) = \lambda$. The
+standard deviation is $\sqrt{\lambda}$. The Poisson applies when
+events are rare on the scale of the observing interval, are
+independent, and occur at a stable rate. Examples in engineering
+include radiation counts at a detector, defect counts on a
+manufactured surface, and packet arrivals at a network interface
+during low-traffic intervals. Earthquake counts can be modelled as
+Poisson only under a restricted background-rate model that excludes
+clustering from aftershocks and other nonstationary effects.
+
+A common diagnostic is the variance-to-mean ratio: a sample whose
+ratio is much less than one is under-dispersed (the events are not
+independent and the system has some self-correction); a sample
+whose ratio is much greater than one is over-dispersed (the events
+cluster, often because the rate itself fluctuates). For routine
+defect-count data, a variance-to-mean ratio near one is a screening
+sign that a Poisson model may be plausible. How far from one is
+acceptable depends on sample size, process context, and the cost of
+a wrong model.
+
+\subsection{Exponential}
+
+The exponential distribution describes the waiting time between
+events in a Poisson process, or any positive random quantity with a
+constant per-unit-time hazard. Its density is
+
+\[
+p(t) = \frac{1}{\tau} e^{-t/\tau}, \quad t \geq 0,
+\]
+
+with mean $\tau$ and standard deviation also $\tau$. The
+distribution has the memorylessness property: the probability of a
+further wait of $\Delta t$ does not depend on how long the wait has
+already lasted. This is a strong assumption and it is the source of
+most exponential-fit failures in engineering. Wear-out, ageing,
+fatigue, and warm-up effects all violate memorylessness; use Weibull
+when the hazard rate changes with age.
+
+The exponential is the right model for inter-arrival times in a
+true Poisson process, for time to the first failure of a system
+whose failure mechanism is dominated by random external shocks
+rather than internal ageing, and for radioactive-decay times of a
+single nucleus. The reader will encounter it again in queueing
+theory (Volume IX) and in reliability analysis (Volume X).
+
+\subsection{Choosing a distribution}
+
+The engineer chooses a distribution from three considerations:
+mechanism, plot, and fit diagnostic.
+
+The mechanism considers which generative process plausibly produced
+the data. A Gaussian is plausible when the variation is the sum of
+many small independent contributions. A log-normal is plausible when
+the variation is the product. A Weibull is plausible when the data
+are positive lifetimes with a hazard rate that may vary with age. A
+Poisson is plausible when the data are counts of rare independent
+events. An exponential is plausible when the data are waiting times
+in a memoryless process.
+
+The plot reveals the shape. A normal-probability plot (a Q-Q plot
+against the normal distribution) makes deviations from Gaussian
+visible. A log-scale histogram makes deviations from log-normal
+visible. A Weibull plot, which uses a transformation that linearises
+$\ln(-\ln S(t))$ against $\ln t$, makes Weibull data fall on a
+straight line.
+
+The fit diagnostic checks the chosen distribution against the data
+quantitatively. A goodness-of-fit test (Kolmogorov-Smirnov,
+Anderson-Darling, chi-square) returns a $p$-value for the null
+hypothesis that the data come from the proposed distribution. If
+parameters were fitted from the same data, the reference
+distribution for the test statistic may need adjustment or
+simulation; the chi-square test in particular needs adequate
+expected counts and defined bins. A $p$-value below the chosen
+significance level rejects the model; a $p$-value above fails to
+reject it and does not prove the model. The reader should not rely
+on the diagnostic alone: a tiny sample produces a non-rejecting test
+even for badly mis-specified distributions, and a huge sample
+produces a rejecting test even for trivial deviations that do not
+change any engineering decision.
+
+\section{Hypothesis testing in engineering context}\pathtag{core}
+
+A hypothesis test asks whether a sample is consistent with a
+specified claim about the population it came from
+\cite[ch.~10]{text:wasserman2004}. The framework is precise. Its
+misuse is also precise, and is the subject of section 8.7.
+
+\subsection{Null and alternative}
+
+The \engterm{null hypothesis} $H_{0}$ is a specific statement about
+the population: a parameter equals a value, two populations have
+equal means, a process is on target, the rate is unchanged. The
+\engterm{alternative hypothesis} $H_{1}$ is the complement, or a
+specific direction of deviation. The test is set up to reject $H_{0}$
+in favour of $H_{1}$ when the sample is sufficiently inconsistent
+with $H_{0}$.
+
+The test produces a \engterm{test statistic}, a function of the
+sample whose distribution under $H_{0}$ is known. The observed value
+of the test statistic is compared to that distribution. The
+\engterm{$p$-value} is the probability, under $H_{0}$, of observing a
+test statistic at least as extreme as the one observed. A $p$-value
+below a chosen significance level $\alpha$ rejects $H_{0}$.
+
+The convention $\alpha = 0.05$ is a working default in many
+engineering and scientific fields. It is convention. The appropriate
+$\alpha$ depends on how the null is framed and on the relative cost
+of false positives and false negatives. A safety-critical test first
+states which error would allow an unsafe decision, then allocates
+$\alpha$ and power to control that error.
+
+\subsection{Two errors}
+
+A hypothesis test can be wrong in two ways. A \engterm{Type I
+error} (false positive) is rejecting $H_{0}$ when it is true; its
+probability is $\alpha$ by construction. A \engterm{Type II error}
+(false negative) is failing to reject $H_{0}$ when $H_{1}$ is true;
+its probability is $\beta$, and depends on the true effect size, the
+sample size, and $\alpha$. The \engterm{power} of the test is
+$1 - \beta$: the probability of rejecting $H_{0}$ when $H_{1}$ is
+true at a specified effect size.
+
+The engineer designs the test by choosing $\alpha$ from the cost of
+a Type I error and choosing $n$ to achieve a target power $1 - \beta$
+at the smallest effect size that matters. Section 8.6 takes up
+sample size and power as a planning quantity.
+
+\subsection{Common tests}
+
+Three tests cover most engineering work.
+
+\engterm{One-sample t-test}. The sample comes from a population with
+unknown mean $\mu$ and unknown standard deviation. The null
+hypothesis $H_{0}: \mu = \mu_{0}$ is tested against $H_{1}: \mu \neq
+\mu_{0}$ (two-sided) or $H_{1}: \mu > \mu_{0}$ (one-sided). The test
+statistic is
+
+\[
+t = \frac{\bar{x} - \mu_{0}}{s/\sqrt{n}},
+\]
+
+which under $H_{0}$ follows Student's $t$-distribution with $n - 1$
+degrees of freedom. The reader will recognise the denominator as the
+standard uncertainty of the mean from Chapter 4 §4.4.
+
+\engterm{Two-sample t-test}. Two independent samples have means
+$\bar{x}_{1}$ and $\bar{x}_{2}$, sample standard deviations $s_{1}$
+and $s_{2}$, and sizes $n_{1}$ and $n_{2}$. The null hypothesis
+$H_{0}: \mu_{1} = \mu_{2}$ is tested against an inequality. The test
+statistic, in the Welch form that does not assume equal variances,
+is
+
+\[
+t = \frac{\bar{x}_{1} - \bar{x}_{2}}
+{\sqrt{s_{1}^{2}/n_{1} + s_{2}^{2}/n_{2}}}.
+\]
+
+The Welch formula uses an adjusted degrees-of-freedom calculation
+(the Welch-Satterthwaite formula); statistical software returns it
+automatically. The two-sample test is the workhorse for comparing a
+new process to an existing one, a treatment to a control, or a
+specimen batch to a reference batch.
+
+\engterm{Chi-square goodness-of-fit}. Observed counts $O_{i}$ in
+$k$ categories are compared to expected counts $E_{i}$ under a
+hypothesised distribution. The test statistic is
+
+\[
+\chi^{2} = \sum_{i=1}^{k} \frac{(O_{i} - E_{i})^{2}}{E_{i}},
+\]
+
+which under the null follows a chi-square distribution with degrees
+of freedom equal to $k$ minus one minus the number of fitted
+parameters. The chi-square test is the standard tool for asking
+whether a categorical sample (defect-mode counts, traffic-direction
+counts, fault-class counts) is consistent with a specified
+distribution.
+
+Other tests follow the same pattern: write the null and alternative,
+compute a statistic, compare to its known null distribution. The
+NIST/SEMATECH e-Handbook \cite{web:nist-eshandbook} catalogues the
+common tests with worked examples. Wasserman gives the
+distributional theory \cite[ch.~10]{text:wasserman2004}.
+
+\subsection{What a $p$-value is and is not}
+
+The $p$-value is the probability, under $H_{0}$ and the specified
+alternative, of a test statistic at least as extreme as the one
+observed. It answers one narrow question: how often the null model
+would produce a statistic this extreme. The truth of $H_{0}$, the
+probability of replication, the effect size, and the engineering
+importance require other evidence.
+
+These misreadings are common and load-bearing. Section 8.7 develops
+them as failure modes; for now, the working engineer reads a
+$p$-value as: \emph{if the population were as the null says, we would
+see data this extreme this often by chance}. A small $p$-value is
+evidence that the data are unlikely under the null; whether that
+evidence is decisive depends on the prior plausibility of the null,
+the effect size, and the cost of the two errors.
+
+\subsection{Engineering examples}
+
+Three examples ground the framework.
+
+A process-control engineer wants to know whether the mean fill
+weight of a production line equals the nominal $500 \,\si{\gram}$.
+A sample of $n = 25$ bottles has $\bar{x} = 498.7 \,\si{\gram}$ and
+$s = 3.2 \,\si{\gram}$. The one-sample $t$-statistic is $t = (498.7
+- 500)/(3.2/5) = -2.03$; with $24$ degrees of freedom, the
+two-sided $p$-value is about $0.054$. At $\alpha = 0.05$ the engineer
+fails to reject the null; at $\alpha = 0.10$ they reject it. The
+engineering question is which threshold the regulatory or contractual
+context demands.
+
+A quality engineer compares two suppliers' bearing diameters. Sample
+$1$ has $n_{1} = 30$, $\bar{x}_{1} = 10.005 \,\si{\milli\meter}$,
+$s_{1} = 0.012 \,\si{\milli\meter}$; sample $2$ has $n_{2} = 30$,
+$\bar{x}_{2} = 10.015 \,\si{\milli\meter}$, $s_{2} = 0.014
+\,\si{\milli\meter}$. The Welch $t$-statistic is $t \approx -2.97$,
+$p \approx 0.004$. The engineer rejects the equal-means null at any
+of the standard thresholds. The follow-up question is whether the
+$0.010 \,\si{\milli\meter}$ difference matters in the assembly's
+tolerance; statistical significance and engineering relevance are
+distinct.
+
+A reliability engineer counts $42$ defects on a wafer that nominally
+produces a Poisson-mean of $\lambda = 30$ defects. The
+chi-square-equivalent test (or, equivalently, a one-sample test for
+the Poisson mean) gives $p \approx 0.04$. The engineer notes the
+disagreement with nominal but also asks whether the wafer condition
+or the inspection procedure has changed since the nominal was set.
+
+\section{Confidence vs prediction intervals}\pathtag{core}
+
+Chapter 4 §4.6 introduced the confidence interval as an engineering
+tool: a range of values, computed from a sample, that is intended to
+contain the true value of a measured quantity with a stated coverage
+probability. The frequentist definition is procedural: the interval-
+computing method, in repeated application, contains the true
+parameter the stated fraction of the time
+\cite[ch.~6]{text:wasserman2004}.
+
+This chapter draws a distinction Chapter 4 did not need: the
+\engterm{confidence interval} is for a parameter (the mean, the
+slope of a regression, the proportion of defects). The
+\engterm{prediction interval} is for the next observation. The
+prediction interval is wider, sometimes much wider. A reader who
+uses a confidence interval for a next-unit decision will usually
+understate operational scatter.
+
+\subsection{The confidence interval for a mean}
+
+For a sample of $n$ observations from a distribution with unknown
+mean $\mu$ and unknown standard deviation, the $100(1 - \alpha) \,\%$
+confidence interval for $\mu$ is
+
+\[
+\bar{x} \pm t_{1-\alpha/2, n-1} \cdot \frac{s}{\sqrt{n}},
+\]
+
+where $t_{1-\alpha/2, n-1}$ is the positive critical value of
+Student's $t$-distribution with $n - 1$ degrees of freedom. The
+half-width $t_{1-\alpha/2, n-1} \cdot s/\sqrt{n}$ is the standard uncertainty of
+the mean times a coverage factor. For $n \geq 30$ and $\alpha =
+0.05$, the critical value is close to $1.96$; for $n = 10$ it is
+about $2.26$; for $n = 5$ it is about $2.78$. The reader sees the
+small-sample correction directly in the wider interval.
+
+The width of the confidence interval shrinks as $1/\sqrt{n}$. To
+halve the width takes four times the data; to reduce by a factor of
+ten takes a hundred times. This is the same $1/\sqrt{n}$ wall
+Chapter 4 §4.7 named.
+
+\subsection{The prediction interval for the next observation}
+
+The prediction interval answers a different question. Given the
+observed sample, what range will the next single observation fall
+into with stated probability? A new draw has the population's
+inherent variability $\sigma$ added to the uncertainty of the
+estimated mean. For a single new observation from a Gaussian
+population, the $100(1 - \alpha) \,\%$ prediction interval is
+
+\[
+\bar{x} \pm t_{1-\alpha/2, n-1} \cdot s \cdot \sqrt{1 + \frac{1}{n}}.
+\]
+
+The factor $\sqrt{1 + 1/n}$ replaces the $1/\sqrt{n}$ of the
+confidence interval. As $n \to \infty$, the factor approaches one,
+so the prediction interval tends to $\bar{x} \pm t_{\alpha/2} \cdot
+s$, which is the inherent population scatter. The confidence
+interval, in the same limit, shrinks to zero width: the mean is
+known exactly. The prediction interval cannot shrink below the
+population's variability no matter how much data the engineer
+collects.
+
+\subsection{Why the distinction is operational}
+
+A laboratory quality control engineer reports a $95 \,\%$ confidence
+interval for the mean of a key process variable. A production
+operator reads the report and assumes that $95 \,\%$ of new units
+will fall within that interval. The operator is wrong, often by a
+factor of three or more. The interval the operator wanted is the
+prediction interval, which is wider.
+
+A medical device engineer reports a $95 \,\%$ confidence interval
+for the mean response time of a sensor. A clinical user reads the
+report and assumes $95 \,\%$ of new readings will fall within that
+interval. Same error.
+
+The discipline is to ask, before constructing the interval, what
+question the interval is meant to answer. If the question is about
+the parameter (the mean of the process, the calibration coefficient,
+the average rate), the answer is a confidence interval. If the
+question is about the next observation (what will the next reading
+be, what range should we tolerate, what specification should we
+write), the answer is a prediction interval.
+
+A third interval, the \engterm{tolerance interval}, contains a
+specified proportion of the population with a specified confidence.
+Tolerance intervals are the right tool for setting acceptance bounds
+that should contain, say, $99 \,\%$ of all production units with
+$95 \,\%$ confidence. The Devore text \cite[ch.~7]{text:devore2015}
+gives the engineering tables; we mention tolerance intervals here so
+the reader recognises the third option without computing it in this
+chapter.
+
+\subsection{Worked example: the commute revisited}
+
+Return to the $30$-day commute sample of section 8.1, with $\bar{x}
+= 28.73 \,\text{min}$, $s = 1.98 \,\text{min}$, $n = 30$. The
+$95 \,\%$ confidence interval for the mean is
+
+\[
+28.73 \pm 2.05 \cdot \frac{1.98}{\sqrt{30}}
+= 28.73 \pm 0.74 \,\text{min},
+\]
+
+so approximately $[28.0, 29.5] \,\text{min}$. This interval comes
+from a procedure with $95 \,\%$ long-run coverage for the
+population mean, assuming the model conditions hold.
+
+The $95 \,\%$ prediction interval for the next morning's commute is
+
+\[
+28.73 \pm 2.05 \cdot 1.98 \cdot \sqrt{1 + 1/30}
+= 28.73 \pm 4.11 \,\text{min},
+\]
+
+so approximately $[24.6, 32.8] \,\text{min}$. The prediction
+statement concerns the next commute, not the long-run average. The
+prediction interval is more than five times wider than the
+confidence interval.
+
+The operational consequence is direct. The confidence interval
+supports a claim about the long-run average commute. The prediction
+interval supports a claim about tomorrow's commute. A schedule
+promise for one future trip must use the prediction interval or a
+percentile model, not the confidence interval.
+
+\section{Bayesian intuition for the practitioner}\pathtag{standard}
+
+A frequentist reads probability as long-run frequency: the
+probability of a coin landing heads is the fraction of heads in many
+tosses. A Bayesian reads probability as degree of belief: the
+probability of a hypothesis is how strongly the evidence supports it
+\cite[ch.~11]{text:wasserman2004}. With large enough data and weak
+prior information, frequentist and Bayesian analyses often give
+similar numerical estimates for routine engineering questions. They
+still differ in interpretation and in how they represent prior
+information. Chapter 4 §4.6 said this in
+passing; we now develop it operationally without computing
+integrals.
+
+\subsection{Bayes' rule on a small contingency table}
+
+A diagnostic test for a manufacturing defect has the following
+characteristics, established by extensive testing on calibration
+samples:
+
+\begin{itemize}[leftmargin=*]
+  \item Sensitivity (true positive rate): $95 \,\%$. A truly
+    defective unit is flagged $95 \,\%$ of the time.
+  \item Specificity (true negative rate): $98 \,\%$. A truly good
+    unit is cleared $98 \,\%$ of the time.
+  \item Prior: $1 \,\%$ of units coming off the line are actually
+    defective.
+\end{itemize}
+
+A unit tests positive. What is the probability it is actually
+defective?
+
+The intuition that says ``$95 \,\%$, since the test is $95 \,\%$
+sensitive'' is wrong. The correct calculation works on a population.
+Imagine $10{,}000$ units. One hundred of them are defective
+($1 \,\%$ of $10{,}000$). Of those hundred, the test flags $95$ on
+average ($95 \,\%$ of $100$). The remaining $9{,}900$ are good. Of
+those, the test falsely flags $198$ ($2 \,\%$ of $9{,}900$). The
+total positives are $95 + 198 = 293$. Of those, $95/293 \approx
+0.324$ are actually defective. About one in three positive tests
+identifies a real defect; about two in three are false alarms.
+
+The result is direct: with a $1 \,\%$ defect prior, this $95 \,\%$-sensitive
+and $98 \,\%$-specific test returns false alarms for about two
+thirds of positive results. The intuition
+that pinned the probability of true defect at $95 \,\%$ confused the
+sensitivity (a property of the test, conditional on the unit being
+defective) with the posterior (a property of the unit, conditional
+on the test result). The two are different by a factor near three
+when the prior is small.
+
+\subsection{The general form}
+
+Bayes' rule, in the discrete case, is
+
+\[
+\Pr(H \mid D) =
+\frac{\Pr(D \mid H) \Pr(H)}{\Pr(D)},
+\]
+
+where $H$ is the hypothesis (the unit is defective), $D$ is the
+data (the test was positive), $\Pr(H)$ is the prior probability of
+the hypothesis, $\Pr(D \mid H)$ is the likelihood of the data given
+the hypothesis, and $\Pr(D)$ is the marginal probability of the
+data across all hypotheses. The denominator is the normalising
+constant.
+
+In the defect example, $\Pr(H) = 0.01$, $\Pr(D \mid H) = 0.95$,
+and the marginal $\Pr(D) = \Pr(D \mid H) \Pr(H) + \Pr(D \mid \bar H)
+\Pr(\bar H) = 0.95 \cdot 0.01 + 0.02 \cdot 0.99 = 0.0095 + 0.0198 =
+0.0293$. The posterior is
+
+\[
+\Pr(H \mid D) = \frac{0.0095}{0.0293} \approx 0.324,
+\]
+
+agreeing with the population calculation. The contingency table
+that underwrites the same calculation is the working presentation
+an engineer should produce when the answer matters:
+
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+& Test positive & Test negative & Total \\
+\midrule
+Defective & $95$ & $5$ & $100$ \\
+Good & $198$ & $9{,}702$ & $9{,}900$ \\
+\midrule
+Total & $293$ & $9{,}707$ & $10{,}000$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The table makes each rate visible: the $95$ true positives come
+from $100 \cdot 0.95$; the $198$ false positives come from $9{,}900
+\cdot 0.02$; the posterior is $95/293 \approx 0.324$. An engineer
+who is unsure of a Bayesian calculation should write the contingency
+table and check every count.
+
+\subsection{Updating, sequentially}
+
+Bayes' rule supports sequential updating. The posterior after
+observing data $D_{1}$ becomes the prior before observing $D_{2}$,
+and the posterior after $D_{1}$ and $D_{2}$ is the same whether the
+data are processed jointly or one at a time. Bayesian methods are
+therefore natural for online estimation, sensor fusion, and
+sequential testing.
+
+Continuing the defect example: a unit tests positive. The posterior
+probability of defect is $0.324$. The unit is then re-tested with a
+second test whose errors are conditionally independent of the first
+test given the unit's true state. If it tests positive again, the
+new prior is $0.324$ and the new posterior is
+
+\[
+\frac{0.95 \cdot 0.324}{0.95 \cdot 0.324 + 0.02 \cdot 0.676}
+= \frac{0.3078}{0.3213} \approx 0.958.
+\]
+
+After a second independent positive, the probability of true defect
+rises to about $96 \,\%$, which is decision-relevant. This is the
+principle behind two-step screening in industrial quality control
+and in medical diagnostics: a single positive on a low-prior
+population is weak evidence; two independent positives are strong.
+
+\subsection{Priors as engineering judgement}
+
+The prior in a Bayesian analysis is the engineer's claim about the
+plausibility of each hypothesis before the data arrive. In the
+defect example, the prior of $1 \,\%$ came from production records.
+In other settings the prior comes from previous studies, similar
+processes, physical models, or expert judgement.
+
+A non-informative prior tries to encode ignorance: a uniform
+distribution over a parameter, a wide Gaussian, or one of several
+formal choices. With enough data the posterior becomes nearly
+independent of the prior, which is the operational sense in which
+the frequentist and Bayesian numerical answers converge for routine
+engineering questions. The Bayesian framework's distinctive
+contribution is its handling of small samples, expert prior
+information, and decision-making with explicit utility functions.
+For working calculations, an engineer who has used both frameworks
+chooses the one whose assumptions match the problem.
+
+\subsection{When to reach for Bayesian thinking}
+
+Three signals point to Bayesian methods:
+
+\begin{itemize}[leftmargin=*]
+  \item Strong prior information that the engineer trusts more than
+    the small dataset they have just collected. A new sensor whose
+    calibration is being verified by ten readings is a Bayesian
+    problem; the prior comes from the manufacturer's calibration
+    history.
+  \item Sequential updating with online data, where new measurements
+    arrive one at a time and the engineer wants to revise their
+    estimate continuously.
+  \item Decision-making with explicit consequences, where the cost
+    of being wrong differs across hypotheses and the engineer wants
+    to integrate over the posterior to find the action with minimum
+    expected cost.
+\end{itemize}
+
+The framework recurs in Volume IX (systems and control) and Volume
+X (failure analysis), where Bayesian network models and Bayesian
+reliability updating are the standard tools.
+
+\section{Sample size and statistical power}\pathtag{standard}
+
+A test that fails to reject the null may do so because the null is
+true or because the test had insufficient power to detect a true
+effect. The discipline of designing a test before running it is to
+choose a sample size large enough that a meaningful effect will be
+detected with high probability \cite[ch.~14]{text:devore2015}.
+
+\subsection{The four quantities}
+
+A sample-size calculation for a hypothesis test relates four
+quantities, with one fixed by the experiment and the other three
+chosen by the engineer:
+
+\begin{itemize}[leftmargin=*]
+  \item The significance level $\alpha$, the probability of a false
+    positive. Typical: $0.05$.
+  \item The power $1 - \beta$, the probability of detecting an
+    effect of stated size when one is present. Typical: $0.80$.
+  \item The effect size $\delta$, the smallest difference that
+    matters for the engineering decision. Set by the application.
+  \item The sample size $n$.
+\end{itemize}
+
+Fixing any three determines the fourth. The most common direction
+is to fix $\alpha$, $1 - \beta$, and $\delta$, and solve for $n$.
+
+\subsection{The two-sample t-test rule of thumb}
+
+For a two-sample $t$-test comparing means with equal sample sizes,
+under standard assumptions (Gaussian populations, equal variances,
+two-sided test at $\alpha = 0.05$, power $0.80$), the required
+sample size per group is approximately
+
+\[
+n \approx \frac{16 \sigma^{2}}{\delta^{2}},
+\]
+
+where $\sigma$ is the population standard deviation and $\delta$ is
+the smallest mean difference the engineer wants to detect. The
+factor $16$ comes from the squared sum of the critical values
+$z_{\alpha/2} + z_{\beta} \approx 1.96 + 0.84 \approx 2.80$, with
+$2 \cdot (2.80)^{2} \approx 15.7$. The reader applies the formula
+as a planning approximation. The derivation uses the standard error
+of the difference of means and the normal critical values; the
+exercises ask the reader to carry that algebra for the
+equal-variance case.
+
+\begin{estimation}
+\textbf{Question.} A process engineer wants to detect a $1 \,\%$
+mean difference in fill weight between two production lines, with
+$\alpha = 0.05$ and power $0.80$. The process standard deviation is
+$\sigma = 5 \,\si{\gram}$ and the nominal mean is $500 \,\si{\gram}$.
+How many units per line are required?
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+A $1 \,\%$ mean difference at nominal $500 \,\si{\gram}$ is $\delta
+= 5 \,\si{\gram}$. The relevant ratio is $\sigma/\delta = 5/5 = 1$,
+so the rule of thumb gives $n \approx 16$ per line. To detect a
+$0.1 \,\%$ difference instead ($\delta = 0.5 \,\si{\gram}$,
+$\sigma/\delta = 10$), $n \approx 1600$ per line. The cost of
+detecting small effects scales as the inverse square of the effect,
+which is the central fact of experimental design.
+
+A $10 \,\%$ difference at the same $\sigma$ gives a formal value
+$n \approx 0.16$. That number does not mean a two-sample $t$-test
+can be run with one observation per group; the test still needs
+enough observations to estimate the within-group variance, check
+the process, and tolerate at least a small disturbance. A practical
+minimum (often $n \geq 5$ to $10$ per group, with more required
+when the variance is uncertain) overrides the formula in this
+regime: the rule of thumb confirms that the effect is far larger
+than the process scatter, not that an inadmissible test is now
+admissible.
+\end{estimation}
+
+The formula is approximate and assumes Gaussian populations and
+equal variances. Welch's correction, unequal sample sizes, and
+non-Gaussian distributions all change the constant. Statistical
+software returns the exact required $n$ for the chosen test. The
+rule of thumb is for planning, not for the final calculation.
+
+\subsection{Why power matters}
+
+A study run with insufficient power has two characteristic
+failures.
+
+A negative result is uninformative: failure to reject the null could
+mean the null is true or the test could not have detected the effect.
+The reader who reports ``no significant difference'' from an
+under-powered test has reported almost nothing.
+
+A positive result is overstated: when an under-powered study does
+reach significance, the estimated effect is biased upward (the only
+way to reach $p < \alpha$ with low power is for the random sample to
+land on the high tail of the effect's true distribution), and the
+result is often unreplicable. This is the statistical mechanism
+behind much of what section 8.8 discusses.
+
+\subsection{Pre-registration}
+
+The discipline that makes a sample-size calculation honest is
+\engterm{pre-registration}: the engineer specifies, before collecting
+data, the hypothesis, the test, the significance level, the target
+power, the effect size of interest, the sample size, and the analysis
+procedure. The pre-registration is recorded in a notebook, an
+internal repository, or a public registry. After data collection,
+the analysis follows the pre-registration; deviations are documented
+and explained.
+
+Pre-registration reduces the failure modes section 8.7 develops:
+selecting analyses to favour the result, redefining hypotheses after
+seeing the data, stopping data collection at convenient sample sizes,
+and reporting only the analyses that worked. It works only when
+deviations are recorded and reported. The framework is independent
+of frequentist or Bayesian methods; it is a discipline about what
+the engineer commits to before the data are in hand.
+
+\section{P-hacking, garden of forking paths, and what to refuse}\pathtag{core}
+
+A statistically significant result has confirmatory weight only
+when the analysis that produced it was specified before the data
+were seen \cite[ch.~10]{text:wasserman2004}. The same framework
+fails when the analysis plan is chosen after the data are visible.
+
+\subsection{P-hacking}
+
+\engterm{P-hacking} is the practice of running multiple analyses on
+the same dataset and reporting the one that crosses a significance
+threshold \cite{method:simmons-nelson-simonsohn-2011}. The mechanism
+is statistical: if the null is true, a test at $\alpha = 0.05$
+produces a false positive once in twenty runs. An analyst who tries
+twenty different specifications has, on average, one significant
+result by chance. Reporting that one without disclosing the other
+nineteen is a misleading confirmatory claim.
+
+The same mechanism applies to subgroup analyses. Splitting a sample
+by gender, age, region, time of day, condition, and so on, then
+running the test in each subgroup, multiplies the number of tests
+and the false-positive rate. As the number of subgroups grows, the
+probability of at least one false positive approaches one even when
+the null holds in every population.
+
+The remedy is multiple-comparison correction (Bonferroni: divide
+$\alpha$ by the number of tests; Benjamini-Hochberg: control the
+false discovery rate; permutation methods for empirical correction).
+The deeper remedy is to avoid generating the comparisons in the first
+place: pre-register the analyses; report all results, not the
+significant subset; and treat exploratory subgroup analyses as
+hypothesis-generating rather than hypothesis-testing.
+
+\subsection{Garden of forking paths}
+
+The \engterm{garden of forking paths} is p-hacking's quieter cousin
+\cite{method:gelman-loken-forking-paths}. The analyst does not run
+twenty tests; they run one test, but the specification of that test
+was determined after seeing the data. At
+each branch in the analysis (which transformation, which subset,
+which covariate, which test, which correction) the analyst chose the
+specification that produced a clean result. The published analysis
+is one path; the unwalked paths are invisible.
+
+The forking-paths failure is harder to detect than direct p-hacking
+because no count of multiple tests appears in the report. The
+analyst genuinely ran only one test. They simply chose, branch by
+branch, the specification that worked. The statistical correction
+has to be against the entire decision tree of possible analyses,
+which is rarely available.
+
+The remedy, again, is pre-registration: write down the analysis
+plan, including the transformations, the subsets, the covariates,
+and the test, before the data are seen. Branches taken after the
+data are seen are flagged as exploratory in the published account.
+
+\subsection{HARKing}
+
+\engterm{HARKing} is hypothesising after the results are known
+\cite{method:kerr-harking-1998}: the analyst examines the data,
+finds a pattern, and writes the paper as if the pattern was the
+prediction. The hypothesis-test machinery
+assumes the hypothesis was specified before the data; using the data
+to specify the hypothesis breaks the inference, even when the
+arithmetic of the test is correct.
+
+The remedy is, once more, pre-registration. A clear separation
+between the confirmatory analysis (the pre-registered one) and the
+exploratory analysis (everything else, labelled honestly) preserves
+the inference for the confirmatory part and recovers honest
+hypothesis generation for the exploratory part.
+
+\subsection{Stopping rules}
+
+A test that allows the analyst to stop data collection when the
+result becomes significant inflates the false-positive rate. The
+mechanism is the same: with each additional sample, the test is
+re-run; if any of the running tests crosses the threshold, the
+analyst stops. The probability of crossing the threshold at some
+point during data collection is much higher than $\alpha$.
+
+Sequential testing methods (Wald's sequential probability ratio
+test, group sequential designs, alpha-spending functions) handle
+optional stopping correctly. They are standard in clinical trials
+and increasingly used in industrial A/B testing. An analyst who
+peeks at running results without using such methods is creating an
+under-disclosed multiple-testing problem.
+
+\subsection{What an engineer should refuse}
+
+The list of practices an engineer should refuse to perform on their
+own data, and refuse to accept from a colleague:
+
+\begin{itemize}[leftmargin=*]
+  \item Running multiple tests and reporting the significant one
+    without correction or disclosure.
+  \item Splitting the sample into subgroups after seeing the data
+    and reporting subgroup-level significance.
+  \item Choosing the analysis specification (transformation, subset,
+    covariate set) after seeing the data.
+  \item Stopping data collection when the result becomes
+    significant, without using a sequential method.
+  \item Reporting the hypothesis as the prediction when the data
+    suggested it.
+  \item Excluding outliers without a pre-specified rule and reporting
+    the result as if the rule had been pre-specified.
+  \item Reporting a single $p$-value as evidence of effect without
+    reporting the effect size and its confidence interval.
+  \item Claiming replication based on a directionally consistent
+    result that is itself not significant.
+\end{itemize}
+
+The engineer who refuses these practices loses some short-term
+results and gains a body of work that survives scrutiny. The cost
+is real; the alternative is reports that fall apart when an
+independent group tries to use the numbers.
+
+\subsection{The discipline, restated}
+
+\begin{principle}[Pre-registered analysis]
+The hypothesis, the test, the significance level, the target power,
+the effect size of interest, and the analysis specification are
+chosen before the data are seen and recorded in a form that another
+engineer can audit. The reported analysis is the pre-registered one.
+Departures from the pre-registration are flagged as exploratory and
+do not carry confirmatory weight. The reader who cannot find a
+pre-registration in a report should treat the reported $p$-values
+as exploratory until the pre-registration is produced.
+\end{principle}
+
+\section{Failure: replication crises across engineering disciplines}\pathtag{core}
+
+Engineering decisions rest on published numbers. When a body of
+published numbers fails to replicate, the engineering decisions
+built on it become unreliable. The pattern, current as of 2026, has
+appeared in multiple disciplines and is one of the major statistical
+failure modes a working engineer must recognize. We discuss the
+pattern in general terms; the registry does not yet contain
+replication-crisis cases and the chapter avoids naming specific
+scientific cases as named accidents.
+
+\subsection{The pattern}
+
+The 2015 Reproducibility Project: Psychology attempted replications
+of 100 studies from three psychology journals. Thirty-six percent
+of replications produced statistically significant results, and
+replication effect sizes were much smaller than original effect
+sizes \cite{method:open-science-collaboration-2015}. The 2021
+Reproducibility Project: Cancer Biology repeated 50 experiments
+from 23 papers and found smaller replication effects and mixed
+replication success by multiple criteria
+\cite{method:errington-cancer-biology-2021}.
+The mechanism is statistical: the published literature is enriched
+for false positives because journals selectively publish significant
+results, the original studies were under-powered to detect the
+true effects with confidence, and analytical flexibility (the
+practices section 8.7 names) inflated the apparent effects.
+
+The result, in any field that operates this way, is a literature in
+which the reported effect sizes are biased upward, the reported
+$p$-values are biased toward significance, and the failure-to-
+replicate rate is high. An engineer who reads such a literature and
+takes the published numbers at face value designs to numbers that
+overstate the strength of the effects.
+
+\subsection{Engineering exposure}
+
+The mechanism reaches engineering through three doors.
+
+The first is direct: engineering applications that build on
+scientific literature inherit the literature's reproducibility
+problems. Materials properties from a single study, drug effects
+from a single trial, biomarker thresholds from a single biostatistical
+model, sensor calibrations from a single test campaign are all
+exposed.
+
+The second is indirect: engineering practice itself uses
+statistical methods, and the same analytical flexibility that
+produces unreplicable scientific results produces unreplicable
+engineering results. A failure-rate estimate based on a single
+field study, a process-capability index based on a single sample, a
+reliability prediction based on a single accelerated test inherits
+the same exposure.
+
+The third is institutional: the same incentive structures that
+produce publication bias in science (positive results are
+publishable, replications are not) appear in engineering with
+slight modification. A reliability report that finds an effect is
+publishable, presentable, billable; a study that finds no effect is
+filed.
+
+\subsection{What an engineer does about it}
+
+Several practices, when adopted, harden engineering against the
+replication-crisis pattern.
+
+\engterm{Pre-registration} of hypotheses, sample sizes, and analysis
+plans, as section 8.6 and 8.7 specified. The discipline is the same
+whether the work is published or internal.
+
+\engterm{Multiple independent replications} before a result enters
+load-bearing use. A single study's effect size is an estimate, often
+selected from a literature that favours positive results.
+Replications and meta-analyses often reduce the effect-size
+estimate. The working rule is to size the engineering decision
+against a conservative defensible effect size and to state the
+source of that estimate.
+
+\engterm{Open data and reproducible analysis}. The data, the code,
+the analysis pipeline, and the random seeds are recorded so that an
+independent group can rerun the analysis and obtain the same numbers.
+Engineering laboratories increasingly use version-controlled analysis
+notebooks for this purpose.
+
+\engterm{Effect-size reporting alongside $p$-values}. A $p$-value
+without an effect size is a fragment. An effect size with a
+confidence interval is the engineering report; the $p$-value is a
+secondary indicator.
+
+\engterm{Skepticism toward single-study results}. A single study
+rarely deserves to be decisive when the result will enter
+load-bearing design. The engineer should ask for independent
+replication, a preregistered analysis, or a conservative uncertainty
+allowance before treating the number as design input.
+
+\subsection{The principle}
+
+\begin{principle}[Reproducibility is part of the result]
+A reported result is incomplete without the data, the analysis
+specification, and a record of the steps that an independent
+engineer could rerun to obtain the same numbers. A finding that
+cannot be reproduced is, for engineering purposes, a hypothesis,
+not a result. The discipline that distinguishes the two is the
+discipline that prevents an engineering decision from being
+silently built on a literature that overstates its effects.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Thirty-trial experiment of the reader's choice]
+The reader designs and runs a thirty-trial experiment, analyses it
+with the methods of this chapter, and writes a fifteen-hundred-word
+reflection on what would change if a colleague repeated the work.
+The project is the chapter's deliverable and the volume's notebook
+entry on statistics.
+
+\textbf{Track}. Analysis with optional household component (hybrid).
+The analysis track uses paper, pencil, a spreadsheet or a
+programming environment, and an existing dataset (the reader's own
+or a public one). The household track adds simple instruments for
+data collection.
+\textbf{Hazard class}: none for analysis; low if the experiment uses
+household instruments.
+\textbf{Tools}. Paper, pencil, calculator, a spreadsheet or
+programming environment. Optionally, household instruments such as a
+kitchen scale, a thermometer, a stopwatch, a tape measure, or a
+smartphone with a sensor app.
+
+\textbf{Choosing the experiment}. The reader chooses an experiment
+that produces a single quantitative measurement per trial and can
+produce thirty trials within a reasonable budget of time. Examples:
+
+\begin{enumerate}[leftmargin=*]
+  \item \engterm{Cooking-time variability}. The reader times how long
+    it takes to bring a fixed quantity of water to a rolling boil on
+    the same stove, repeated thirty times across at least two weeks.
+    The hypothesis: cooking time has a population mean within
+    $\pm 30 \,\si{\second}$ of a target value, or two stoves give
+    the same population mean.
+  \item \engterm{Daily commute time}. The reader times their commute
+    over thirty working days. The hypothesis: weekday and Friday
+    commutes have the same population mean, or the average is within
+    a stated tolerance of a published municipal estimate.
+  \item \engterm{Smartphone step-counter accuracy}. The reader
+    counts their steps manually over thirty walks of fixed length,
+    compares to the smartphone reading, and tests whether the
+    smartphone is biased.
+  \item \engterm{Household appliance energy use}. The reader records
+    energy use for thirty cycles of a fixed appliance task (kettle
+    boil of fixed water mass, dishwasher cycle, washing machine
+    cycle) and tests whether one cycle's mean differs from another's.
+  \item Any equivalent experiment that produces a single
+    quantitative measurement per trial and has a meaningful
+    null hypothesis the reader can pre-register.
+\end{enumerate}
+
+\textbf{Pre-registration}. Before collecting any data, the reader
+records, in a notebook or repository file:
+
+\begin{itemize}[leftmargin=*]
+  \item The hypothesis, written as a null and an alternative.
+  \item The test (one-sample $t$, two-sample $t$, chi-square, or
+    other) and its significance level $\alpha$.
+  \item The target power $1 - \beta$ and the smallest effect size
+    that matters for the engineering question, if the reader is
+    taking the standard path through section 8.6. For the core
+    path, the project uses the fixed sample size $n = 30$ and the
+    reader states what effect size that sample can plausibly detect.
+  \item The sample size $n$. Core path: $n = 30$ as fixed by the
+    project. Standard path: $n$ computed from the rule of thumb in
+    section 8.6 if a $t$-test is planned, or from a power
+    calculation appropriate to the chosen test.
+  \item The analysis specification: transformations applied (if
+    any), the rule for excluding outliers (if any), and the
+    summary statistics to be reported.
+\end{itemize}
+
+The pre-registration is dated and stored before any measurement is
+made.
+
+\textbf{Data collection}. The reader collects thirty trials,
+records each measurement with date, time, conditions, and any
+relevant context. Outlier candidates are noted but not excluded
+without applying the pre-registered rule.
+
+\textbf{Analysis}. The reader produces:
+
+\begin{itemize}[leftmargin=*]
+  \item Summary statistics: mean, median, standard deviation, IQR,
+    range, and the count of any flagged outliers.
+  \item A histogram and a boxplot of the data.
+  \item A normal-probability plot or a Q-Q plot to check the
+    distributional assumption of the chosen test.
+  \item The pre-registered hypothesis test, with the test statistic,
+    the $p$-value, the effect size, and the engineering conclusion.
+  \item A confidence interval for the relevant parameter at
+    $95 \,\%$ and a prediction interval for the next observation
+    at $95 \,\%$.
+  \item If an effect-size confidence interval is required (standard
+    path), provide the formula or a software recipe in the project
+    notes. Core readers may report a point estimate of the effect
+    size with a qualitative discussion of its uncertainty.
+\end{itemize}
+
+\textbf{Reflection (1500 words)}. The reader writes a 1500-word
+narrative addressing:
+
+\begin{itemize}[leftmargin=*]
+  \item What the engineering decision the experiment was designed
+    to inform actually was, and how the result changes that
+    decision.
+  \item Whether the chosen sample size was adequate for the effect
+    size that mattered, and whether the result would have been
+    different at twice or half the sample size.
+  \item Where the data violated the assumptions of the chosen test
+    (non-Gaussian shape, dependence between trials, drift over
+    the data-collection period) and what alternative analysis
+    would have been appropriate.
+  \item What a colleague repeating the experiment with their own
+    instruments and conditions might find, and what the reader's
+    confidence in the result would change if the colleague's
+    result disagreed.
+  \item Whether the reader's pre-registration anticipated the
+    branches in the analysis where forking-paths flexibility could
+    have entered, and how the report would have differed if the
+    pre-registration had been written after the data instead of
+    before.
+\end{itemize}
+
+\textbf{Deliverable}. The pre-registration document, the data
+record, the analysis output, and the reflection. The general
+editor's reference experiment and analysis are published online; the
+reader is encouraged to compare \emph{after} completing their own.
+
+\textbf{Time}. Approximately one hour of pre-registration,
+collection time depending on the chosen experiment (often spread
+across two to four weeks at one or two trials per day), three to
+four hours of analysis, and three to five hours of reflection
+writing. Total approximately six to ten hours of work, distributed
+across the chosen collection period.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises test calculation, derivation, estimation, simulation,
+design, diagnosis, failure analysis, and judgment. The editor should
+attach the solution and rubric file before release.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the sample mean, sample median, sample standard deviation
+(with the $n - 1$ denominator), range, and IQR of the dataset
+$\{12.1, 12.4, 12.0, 12.5, 12.3, 12.2, 12.7, 12.1, 12.4, 12.3\}$
+using the quartile convention stated in the solution notes. Report
+each statistic to one more decimal place than the data.
+\end{exercise}
+
+\begin{exercise}
+A sample of $n = 16$ resistors has $\bar{R} = 998 \,\si{\ohm}$ and
+$s = 12 \,\si{\ohm}$. Compute the $95 \,\%$ confidence interval for
+the mean resistance, using the appropriate $t$ critical value.
+Report bounds to the same precision as $\bar{R}$.
+\end{exercise}
+
+\begin{exercise}
+For the resistor sample of the previous exercise, compute the
+$95 \,\%$ prediction interval for the next resistor's resistance.
+Compare the width to the confidence interval and explain why the
+prediction interval is wider.
+\end{exercise}
+
+\begin{exercise}
+A diagnostic test has sensitivity $90 \,\%$, specificity $95 \,\%$,
+and is applied to a population with prior defect rate $5 \,\%$.
+Compute the probability that a unit testing positive is actually
+defective. Compute the probability after a second independent
+positive.
+\end{exercise}
+
+\begin{exercise}
+A Poisson process has mean rate $\lambda = 3$ events per minute.
+Compute the probability of zero events in a one-minute window, the
+probability of at least five events, and the standard deviation of
+the count.
+\end{exercise}
+
+\begin{exercise}
+A Weibull lifetime distribution has $\beta = 2.0$ and $\eta = 1000
+\,\si{\hour}$. Compute the probability that a unit survives to
+$500 \,\si{\hour}$, the probability that it survives to $1500 \,
+\si{\hour}$, and the time at which the cumulative failure
+probability is $50 \,\%$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that the sample mean $\bar{x}$ has expectation equal to the
+population mean $\mu$ when the sample is drawn independently from a
+distribution with mean $\mu$. Identify a sampling design under which
+this identity fails.
+\end{exercise}
+
+\begin{exercise}
+Show that for a Gaussian sample, the standard uncertainty of the
+mean is $\sigma/\sqrt{n}$, then derive the corresponding $95 \,\%$
+confidence interval expression. State explicitly which two
+quantities the interval estimates as the sample size grows.
+\end{exercise}
+
+\begin{exercise}
+Starting from the variance formula $\Var(X + Y) = \Var(X) + \Var(Y)
++ 2\Cov(X, Y)$ for two random variables, show that the standard
+deviation of the sum of $n$ uncorrelated variables with equal
+variance $\sigma^{2}$ is $\sigma\sqrt{n}$. Then show that the
+standard deviation of the mean is $\sigma/\sqrt{n}$.
+\end{exercise}
+
+\begin{exercise}
+For a Poisson distribution with parameter $\lambda$, show that the
+mean and variance both equal $\lambda$. Use the
+probability-generating function, the moment-generating function,
+or the direct sum form. If using the moment-generating function,
+state the derivative step explicitly.
+\end{exercise}
+
+\begin{exercise}
+Show that for a two-sample $t$-test with equal sample sizes and
+equal population variances $\sigma^{2}$, the standard error of the
+difference of means is $\sigma\sqrt{2/n}$. Use this to motivate
+the rule of thumb $n \approx 16 \sigma^{2}/\delta^{2}$ for $\alpha
+= 0.05$ and power $0.80$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate, by an order-of-magnitude calculation, the sample size
+needed to detect a $5 \,\%$ change in the mean of a process with
+relative standard deviation $10 \,\%$, at $\alpha = 0.05$ and
+power $0.80$. State your assumptions and compare to the rule-of-
+thumb formula.
+\end{exercise}
+
+\begin{exercise}
+Estimate the probability that the mean of $25$ independent samples
+from a Gaussian distribution falls within one standard error of the
+true mean. Compare to the same probability for $100$ samples and
+explain the relationship to the central limit theorem.
+\end{exercise}
+
+\begin{exercise}
+A factory produces $10{,}000$ units per day with a defect rate
+that the engineer estimates is between $0.5 \,\%$ and $1.5 \,\%$.
+Estimate the daily defect count and its uncertainty range. State
+the distributional assumption you used.
+\end{exercise}
+
+\begin{exercise}
+Estimate the half-width of a $95 \,\%$ confidence interval for a
+process mean given $n = 10$ samples and a process standard
+deviation $s = 0.5 \,\si{\milli\meter}$. Then estimate the same
+half-width for $n = 100$. Compare the cost of each sample size to
+the half-width reduction.
+\end{exercise}
+
+\begin{exercise}
+Estimate the probability that, in a class of thirty independent
+significance tests at $\alpha = 0.05$, at least one rejects a true
+null. State the assumption that allows you to compute the
+probability and explain why this calculation motivates multiple-
+comparison correction.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+In a programming environment of the reader's choice, simulate
+$10^{4}$ samples of size $n = 30$ from a Gaussian distribution with
+$\mu = 0$ and $\sigma = 1$. For each sample compute the sample mean.
+Plot the empirical distribution of the sample means and compare to
+the theoretical Gaussian with mean $0$ and standard deviation
+$1/\sqrt{30}$.
+\end{exercise}
+
+\begin{exercise}
+Simulate $10^{4}$ samples of size $n = 30$ from a heavily skewed
+distribution (e.g., exponential with rate $1$, or log-normal with
+$\mu = 0$ and $\sigma = 1$). Plot the distribution of sample means
+and compare to the central limit theorem prediction. Identify the
+sample size at which the means become approximately Gaussian.
+\end{exercise}
+
+\begin{exercise}
+Simulate an engineering trial in which the true effect size is
+zero. Run a two-sample $t$-test on $1000$ simulated trials at
+$\alpha = 0.05$ and verify that the false-positive rate is
+approximately $0.05$. Then implement p-hacking by, in each trial,
+running tests on three post hoc subgroups such as test rig, shift,
+and batch, and reporting the smallest $p$-value. Show that the
+empirical false-positive rate for the reported $p$-value is much
+higher than $0.05$.
+\end{exercise}
+
+\begin{exercise}
+Simulate the Bayes-rule defect-test calculation of section 8.5 by
+generating $10^{6}$ units with a $1 \,\%$ defect prior, applying a
+test with $95 \,\%$ sensitivity and $98 \,\%$ specificity, and
+empirically computing the posterior probability of defect given a
+positive test. Compare to the analytical $0.324$. Then repeat with
+a $10 \,\%$ prior and explain how the posterior depends on the
+prior at fixed test characteristics.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design an experimental protocol to determine whether a new
+manufacturing line produces units with the same mean weight as the
+existing line. State the hypothesis, the test, the significance
+level, the target power, the smallest effect size that would
+trigger an engineering response, and the sample size per line.
+Include the pre-registration document outline.
+\end{exercise}
+
+\begin{exercise}
+Design an A/B test for a software-deployment decision, assuming
+the metric is a continuous per-user response with known pilot
+standard deviation. State the null and alternative, the smallest
+effect size that matters, the sample-size calculation using the
+two-sample rule of thumb, the duration of the test, and a
+pre-specified stopping rule. If the metric remains daily active
+users as a count or proportion, move this exercise to mastery and
+provide the appropriate model.
+\end{exercise}
+
+\begin{exercise}
+Design a reliability test for a new component whose target lifetime
+distribution is Weibull with $\beta = 2$ and unknown scale $\eta$.
+The engineer needs evidence that the design meets a $10{,}000 \,\si
+{\hour}$ $B_{10}$ life (the time at which $10 \,\%$ of units have
+failed). State the required relationship between $B_{10}$ and
+$\eta$, the test duration, censoring plan, and analysis procedure.
+Mark this exercise mastery unless the chapter adds the
+reliability-test machinery.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A colleague reports that a process change produced a statistically
+significant improvement, $p = 0.04$, with $n = 12$ before and
+$n = 10$ after. Identify the information missing from this
+report that an engineering decision would require. Propose at
+least four follow-up questions.
+\end{exercise}
+
+\begin{exercise}
+A published study reports a $30 \,\%$ improvement in a sensor
+metric with $p < 0.001$ and $n = 8$. State why the small sample
+size is concerning even with a small $p$-value, and identify the
+specific failure mechanism that small underpowered studies
+exhibit when they reach significance.
+\end{exercise}
+
+\begin{exercise}
+A factory's defect-rate dashboard shows that one of $20$ inspection
+metrics crossed a $p < 0.05$ threshold this week. The dashboard
+has been running for a year. State whether the result is evidence
+of a real change and what additional information would resolve
+the question.
+\end{exercise}
+
+\begin{exercise}
+A laboratory reports a confidence interval $[1.20, 1.25]$ for a
+process mean and notes that the next ten observations all fell
+within this interval. Identify the conceptual error in interpreting
+this as a property of the confidence interval and state which
+interval should have been used.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+A reliability engineer reports a Weibull fit to a $20$-unit
+lifetime sample with $\beta = 0.7$. The component is known to fail
+by fatigue. Argue, in 200 to 300 words, whether the fit is
+trustworthy and what physical or statistical reason might produce
+$\beta < 1$ in a wear-out process.
+\end{exercise}
+
+\begin{exercise}
+A widely-cited engineering result, originally published with $n =
+15$ and $p = 0.03$, has been used as design input by multiple
+teams. A replication attempt with $n = 100$ finds an effect that
+is one-third the size of the original and not statistically
+significant at $\alpha = 0.05$. Argue, in 200 to 300 words, what
+the design teams should do, and identify the specific statistical
+mechanism that produced the disagreement.
+\end{exercise}
+
+\begin{exercise}
+A regulatory submission cites a single study to support a safety
+margin. The study reports a one-sided $t$-test at $p = 0.04$ with
+$n = 12$. Argue, in 200 to 300 words, whether the regulator should
+accept the submission, and identify the discipline (pre-
+registration, replication, effect-size reporting) that would
+strengthen the submission.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A senior colleague reports a $p = 0.049$ result and proposes
+publishing it as evidence of a real effect. The data were collected
+from three different test rigs and the analysis dropped two
+outliers. Write a one-paragraph response that takes the colleague
+seriously, identifies the missing information, and proposes a
+minimum acceptable form for the report.
+\end{exercise}
+
+\begin{exercise}
+An engineer is asked to analyse a dataset that has already been
+collected. They notice that one analysis specification gives
+$p = 0.04$ and another gives $p = 0.12$. Argue, in 200 to 300
+words, which $p$-value the engineer should report and what
+disclosures the report must contain.
+\end{exercise}
+
+\begin{exercise}
+Argue, in one paragraph, whether engineering training should
+emphasise frequentist or Bayesian methods. Take a position and
+defend it with a specific example from your own experience or a
+documented case.
+\end{exercise}
+
+\begin{exercise}
+A vendor reports a confidence interval for a sensor's accuracy and
+the customer interprets it as the range within which the next
+reading will fall. Write a 200-word note to the vendor proposing a
+report format that prevents the customer's interpretation while
+preserving the inferential content the vendor wants to communicate.
+\end{exercise}
+
+\begin{exercise}
+A reader's pre-registered hypothesis test fails to reject the null
+($p = 0.42$) at the planned sample size. The reader is tempted to
+add ten more samples and re-test. Argue, in 200 to 300 words,
+whether the reader should add the samples, what the addition does
+to the false-positive rate, and what the principled alternative is.
+\end{exercise}
