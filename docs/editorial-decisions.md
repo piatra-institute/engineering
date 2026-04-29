@@ -562,7 +562,24 @@ Vol I Ch 8 project track: **analysis with optional household component (hybrid)*
 
 Vol I Ch 9 project track: **analysis only**. Hazard class: **none**. Tools: paper, pencil, calculator, internet research access for ground-truth comparison after the reader's estimate is recorded. Artifact: solutions to 50 Fermi problems (the chapter's exercise set IS the project per the dossier) with the reader's working written out for each, comparison to ground truth where it can be looked up, and a 1500-word reflection on which problem types the reader's intuition was best at, which it was worst at, and what one or two estimation habits the reader has acquired across Volumes I that they did not have before.
 
-The remaining 165 chapters' project-track resolution is deferred to Phase 0.7.
+The remaining 165 chapters' project-track resolution is carried forward as Q55-remaining and tracked in `open-questions.md`.
+
+## 56. Named-cases registry
+
+Should a separate registry govern the way named accidents are cited and described in chapter prose?
+
+### Settled 2026-04-29
+
+Yes. The registry lives at `docs/research/accidents/`:
+
+- Schema: `docs/research/accidents/SCHEMA.md` defines the required structure for every entry (technical mechanism, organisational mechanism, primary source, closest-equivalent source, lessons by scale, short-form summaries, status).
+- Index: `docs/research/accidents/README.md` lists every entry by domain (aerospace, software, civil, medical, chemical, nuclear, automotive, infrastructure).
+- Entries: 15 on disk as of 2026-04-29 (Aloha 243, Air France 447, Challenger 1986, Columbia 2003, Mars Climate Orbiter, Hubble primary mirror 1990, Tacoma Narrows 1941, Hyatt Regency walkway 1981, Ariane 5 Flight 501, Patriot Dhahran 1991, Three Mile Island 1979, Chernobyl 1986, Volkswagen diesel 2015, Bhopal 1984, Gimli Glider 1983).
+- Citation policy: the closest-equivalent-to-primary clause in `docs/citation-policy.md` covers cases where no single official report exists. The registry entry, not the prose, is where the closest-equivalent designation is recorded.
+- Reviewer guide: items 24-27 require reviewers to verify that every named accident in chapter prose resolves to a registry entry, that the chapter's `\chapmeta{... Named cases: ...}` matches, and that the cited keys are the registry's primary or closest-equivalent.
+- Audit: `make accidents` runs cite-resolution (every `\cite{acc:*}` in chapter prose has a registry entry) and prose-name scan (every accident named in prose has at least one of its registry keys cited).
+
+The convention for new entries: a chapter may not narrate a named accident without first writing the registry entry. The schema-driven workflow takes ~20-30 minutes per entry when the primary source is in hand. New entries accumulate as later-volume chapters cite them.
 
 # How to use this file
 

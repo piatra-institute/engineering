@@ -2,6 +2,14 @@
 
 Date: 2026-04-28
 
+> **Note (2026-04-29).** This diagnostic captures the repository state at the
+> end of Phase 0.6. Phase 0.7 has since landed: Volume I now carries first-draft
+> prose for all nine chapters, each reviewed and resolved (`docs/reviews/`),
+> with a `~696`-page PDF instead of the `491`-page structural state described
+> below. The diagnostic's three top risks (source-of-truth drift, scale honesty,
+> verification discipline) are now partially mitigated; see `docs/status.md`
+> for the current treatment. The diagnostic is preserved as a snapshot.
+
 This diagnostic is a second pass over the current repository after the
 Phase 0.6 expansion. It supersedes the earlier diagnostic that described the
 retired `books/` layout and the 163-chapter state. The current project lives

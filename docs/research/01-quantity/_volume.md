@@ -1,7 +1,9 @@
 # Volume I: Quantity
 
 **Working chapter count**: 9
-**Working page total**: ~720
+**Working page total (target)**: ~720
+**Current page span (first-draft prose)**: ~220 (see Q57 in `docs/open-questions.md`)
+**Stage**: all nine chapters at Stage 5 (reviewed and resolved). No release packaging yet.
 **Half-life of the contents**: foundational. Almost nothing in this book ages.
 
 ## Scope
@@ -48,6 +50,22 @@ The reader builds a personal measurement notebook over the course of the book. B
 
 ## Open editorial questions for this book
 
-- Whether Bayesian reasoning gets one section here (8.5) or its own chapter. Currently one section. Revisit if the section consistently runs over 12 pp.
-- Whether the Buckingham pi theorem (2.5) should be deferred to Volume II as a topic in dimensional analysis-as-mathematics. Currently here. Working assumption: it is more useful in I.2 as a debugging tool than in II as a theorem.
-- Whether Chapter 6 should split into a clock chapter and a signal-sampling chapter. Currently combined. Working assumption: combined, with the heavier signal-processing material deferred to Volume IV (waves) and Volume VII (signal processing).
+- Whether Bayesian reasoning gets one section here (8.5) or its own chapter. Currently one section. Revisit if the section consistently runs over 12 pp. As written, it sits at recognition level inside §8.5 and the Vol I Ch 8 review accepted that placement.
+- Whether the Buckingham pi theorem (2.5) should be deferred to Volume II as a topic in dimensional analysis-as-mathematics. Currently here. Working assumption: it is more useful in I.2 as a debugging tool than in II as a theorem. The Ch 2 review accepted that placement.
+- Whether Chapter 6 should split into a clock chapter and a signal-sampling chapter. Currently combined. Working assumption: combined, with the heavier signal-processing material deferred to Volume IV (waves) and Volume VII Chapter 15 (signal processing). The Ch 6 review accepted the combined form once forward references were corrected.
+
+## Stage 5 record
+
+All nine chapters carried Codex reviews to resolution between 2026-04-28 and 2026-04-29. Each review file at `docs/reviews/vol01-chNN-review.md` carries a `Resolved: 2026-04-NN` banner with a per-chapter summary of the G fixes applied:
+
+- Ch 1: pilot review (~40 fixes); voice, citation discipline, structure pinned.
+- Ch 2: ~30 fixes; reader-path violation caught (core project depending on standard section).
+- Ch 3: ~30 fixes; long-path overflow first surfaced, fixed with `\repopath{}`.
+- Ch 4: ~30 fixes; Q2-alignment crisis (calculus-free propagation) resolved by demoting partial-derivative form to a mastery box with forward reference to Volume II.
+- Ch 5: ~38 fixes; voltage-divider orientation contradiction caught and fixed; Steinhart-Hart dimensional fix.
+- Ch 6: ~31 fixes; GPS error magnitudes corrected; wagon-wheel arithmetic; project safety tightened; Patriot/Dhahran registry entry added.
+- Ch 7: ~35 fixes; gigatonne-bulk-carrier figure corrected; equal-arm vs force-restoration balance distinction restored; Hubble figure error stated correctly.
+- Ch 8: ~42 fixes; commute summary statistics corrected; sample-size estimation block fixed; replication-crisis citations added; `method:` citation prefix introduced.
+- Ch 9: ~35 fixes; human-lifetime energy upper bound corrected (off by ~100x); Chicago piano-tuner citations replaced with primary BLS/Census; Fermi 50 promoted to mastery and tied to anthropogenic-mass paper.
+
+Across the volume, the bibliography grew from 34 to 86 entries, and the named-cases registry grew from 12 to 15 entries.

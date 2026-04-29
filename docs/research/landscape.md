@@ -1,6 +1,6 @@
 # Engineering: cross-volume landscape
 
-The single document that holds the twelve volumes together. Every per-volume dossier should be readable on its own; this one is read first, by anyone trying to understand why the volumes are sequenced as they are and how the recurring patterns work. Last updated: 2026-04-28.
+The single document that holds the twelve volumes together. Every per-volume dossier should be readable on its own; this one is read first, by anyone trying to understand why the volumes are sequenced as they are and how the recurring patterns work. Last updated: 2026-04-29.
 
 ## The arc
 
@@ -82,6 +82,8 @@ The settlements (Q11, Q12) imply approximately the following totals. Treat as pl
 | | **Total** | **174** | **~106** | **~18,400** |
 
 After the Phase-0.6 expansion (acoustics, mass transfer, plasma, bioinformatics, quantum computing, power electronics, MEMS, project management, user research, defence, space) the page total is roughly 18,400 — closer to the canonical 20K target. Remaining shortfall represents room to grow as labs, projects, and case studies are written. A serious second-edition pass could push the total to 19-21K without losing focus.
+
+**Current status as of 2026-04-29.** Volume I has all nine chapters at Stage 5 (first-draft prose, reviewed and resolved). Vol I currently runs ~220 pages against the ~720 target: per-chapter spans are Ch 1 18pp, Ch 2 20pp, Ch 3 22pp, Ch 4 22pp, Ch 5 22pp, Ch 6 28pp, Ch 7 22pp, Ch 8 30pp, Ch 9 28pp, averaging ~24pp/ch against the ~80pp/ch target. The gap is the open subject of Q57 in `docs/open-questions.md`: chapters are dense at first-draft density but lack figures, expanded worked examples, project-artifact templates, full solution sets, and inline diagrams. Volumes II-XII remain at structural-shell density (~1-3pp per chapter). The main `main.pdf` is ~696 pages.
 
 ## Problem and project budget
 

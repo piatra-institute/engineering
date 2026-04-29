@@ -237,16 +237,19 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 - **Phase 0** (scaffolding + outline) **Complete** 2026-04-26.
 - **Phase 0.5** (structural hardening) **Complete** 2026-04-28.
 - **Phase 0.6** (curriculum expansion: 11 new chapters, 4 renames) **Complete** 2026-04-28.
-- **Phase 0.7** (registry foundation and pilot prose) **In progress**.
-- **Phase 1** (production prose at scale) Pending.
+- **Phase 0.7** (registry foundation and pilot prose) **Complete** 2026-04-29.
+- **Phase 1** (production prose at scale) **In progress**. Two open lanes: Volume II prose, or Volume I production-density pass. Q57 in `docs/open-questions.md` gates which lane runs first.
 
-Verified at last edit:
+Verified at last edit (2026-04-29):
 
 - 12 volumes / 174 chapters / 174 dossiers.
-- ~531-page structural PDF.
-- Two chapters at Stage 5 (Vol I Ch 1, Vol I Ch 2).
-- 12 named-case registry entries (`make accidents` PASS).
-- `make check`, `make audit-docs`, `make accidents` all PASS.
+- ~696-page PDF.
+- 9 chapters at Stage 5 (all of Volume I, written 2026-04-28 to 2026-04-29 by parallel agents with editor-led integration, then carried through Codex review individually). Volume I prose currently spans ~220 pages of a ~720-page target.
+- 165 chapters at Stage 1 (Volumes II-XII structural shells).
+- 86 bibliography entries.
+- 15 named-case registry entries (`make accidents` PASS).
+- Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS.
 
 ## What not to do
 
