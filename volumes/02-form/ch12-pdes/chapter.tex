@@ -1,40 +1,1778 @@
-\chapter{Partial differential equations}
+\chapter{Partial differential equations: heat, wave, Laplace}
 \label{vol02:ch12}
 
-\epigraph{}{}
+\epigraph{Each problem that I solved became a rule which served afterwards to solve other problems.}{Ren\'e Descartes, \textit{Discourse on the Method}, Part II (1637).}
 
-\chapmeta{Half-life: foundational. Archetypes: transport, stability. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational for the three canonical equations
+(heat, wave, Laplace) and their derivation from balance laws,
+foundational for the d'Alembert solution and the maximum principle,
+durable for separation of variables and the working Fourier-series
+apparatus, durable for the basic finite-difference schemes (FTCS,
+backward Euler, Crank-Nicolson) and the CFL stability condition,
+medium-life for the specific finite-element packages and array
+libraries of any given decade. Archetypes: transport (the formal
+home of the heat equation as the prototype of diffusive transport,
+extending the discrete chain previewed in Chapter 7), stability
+(developed here as well-posedness in the Hadamard sense and as the
+CFL condition for explicit time-stepping). Exercise target: 35.
+Project track: simulation with analysis, per Q55-vol02-ch12.
+Hazard class: none. Reader path default: standard, with sections
+explicitly tagged. Named cases: none.}
 
 \noindent
-\TODO{Volume 2, Chapter 12. Approx 120 pp.}
+A partial differential equation, a PDE, is the formal handling of a
+quantity that varies with more than one independent variable. The
+reader has met the ordinary differential equation in Chapter 7 as
+the language of dynamics in time and the divergence theorem in
+Chapter 8 as the connection between local and global flux. The
+present chapter takes those two pieces and stitches them: a balance
+law applied to a field that varies in space and time produces a
+PDE, and the three canonical examples (heat, wave, Laplace) are
+the prototypes of every distributed engineering phenomenon the
+reader meets in Volumes III through XII. The chapter teaches the
+reader to derive each prototype from a physical balance, to solve
+the canonical boundary-value problems by separation of variables,
+to read the qualitative behaviour off the type (parabolic,
+hyperbolic, elliptic), to integrate numerically by finite
+differences with proper attention to the CFL condition, and to
+name the failure mode by which a poorly posed problem either has no
+solution, has too many, or has a solution that does not depend
+continuously on the data.
 
-\section{Why distributed phenomena need PDEs}
-\TODO{Section prose.}
+\section{Why distributed phenomena need PDEs}\pathtag{core}
 
-\section{The heat equation}
-\TODO{Section prose.}
+A field is a quantity that has a value at every point in space. The
+temperature in a room, the pressure in a pipe, the displacement of
+a vibrating membrane, the electric potential between charged
+plates, the concentration of a pollutant in a river, the stress
+distribution inside a loaded beam: all are fields. Each varies
+with position, and most vary with time as well. A model that
+treats a field as if it had a single value (a lumped model) is the
+right model for some questions and the wrong model for others.
+Chapter 7 worked the lumped case throughout: the RC circuit had
+one voltage, the mass-spring-dashpot had one displacement, the
+well-stirred reactor had one concentration. The lumped assumption
+holds when transport across the system is fast compared with the
+dynamics of interest. When transport is slow, or when the
+phenomenon is the transport itself, the lumped model lies, and the
+engineer reaches for a PDE.
 
-\section{The wave equation}
-\TODO{Section prose.}
+\subsection{The lumped-versus-distributed distinction}
 
-\section{Laplace's equation}
-\TODO{Section prose.}
+Take a copper rod of length $L = 1\,\si{\meter}$ and cross section
+$A = 1\,\si{\centi\meter\squared}$, with one end held at
+$100\,\degC$ and the other end held at $0\,\degC$. A lumped model
+asks: what is the rod's temperature? The question is poorly posed.
+The rod has no single temperature. The temperature varies from
+$100\,\degC$ at one end to $0\,\degC$ at the other, and the
+profile in between is determined by Fourier's law of heat
+conduction together with the rod's geometry, its thermal
+conductivity, and its boundary conditions. A distributed model
+asks: what is the temperature \textit{at each point}? The answer
+is a function $u(x, t)$ of position $x \in [0, L]$ and time $t \geq
+0$, obeying the heat equation $u_{t} = \alpha u_{xx}$ with
+$\alpha$ the thermal diffusivity, together with the boundary
+values $u(0, t) = 100$ and $u(L, t) = 0$ and an initial condition
+$u(x, 0)$ pinned by how the rod was prepared.
 
-\section{Separation of variables, Fourier series introduction}
-\TODO{Section prose.}
+The distinction has a working diagnostic. A lumped model is
+appropriate when the \engterm{Biot number} $\text{Bi} = h L / k$
+is much less than one, where $h$ is the convective heat-transfer
+coefficient at the boundary, $k$ the conductivity, and $L$ a
+characteristic length scale. $\text{Bi} \ll 1$ means the rod
+equilibrates internally faster than it loses heat to its
+surroundings; one temperature suffices. $\text{Bi} \gtrsim 1$
+means the internal gradients are comparable to the surface drop;
+the rod must be modelled as distributed. The same dimensionless
+ratio appears under different names in mass transfer
+(Sherwood number context), momentum transfer (boundary-layer
+thickness over body size), and electrical engineering
+(transmission-line wavelength over circuit size). The reader who
+internalises one specific case carries the diagnostic across
+domains.
 
-\section{Boundary and initial conditions: the engineer's craft}
-\TODO{Section prose.}
+\subsection{The three canonical PDEs}
 
-\section{Numerical PDEs: finite difference, finite element preview}
-\TODO{Section prose.}
+Three linear second-order PDEs cover most of the working ground in
+engineering: the heat equation, the wave equation, and Laplace's
+equation. Each is the working prototype of a class of behaviour.
 
-\section{Failure: ill-posed problems and the cost of bad boundary conditions}
-\TODO{Section prose.}
+\textbf{Heat equation, parabolic}: $u_{t} = \alpha \, u_{xx}$ in
+one space dimension, or $u_{t} = \alpha \laplacian u$ in higher
+dimensions. The prototype of \textit{diffusion}: smooth out
+gradients, march toward equilibrium, lose information about
+initial detail at a rate set by $\alpha$. Heat conduction, mass
+diffusion, viscous momentum smoothing, neutron diffusion in a
+moderator, image denoising by isotropic blur, the Black-Scholes
+equation in finance: all parabolic, all governed by the same
+prototype.
 
+\textbf{Wave equation, hyperbolic}: $u_{tt} = c^{2} u_{xx}$ in one
+space dimension, or $u_{tt} = c^{2} \laplacian u$ in higher
+dimensions. The prototype of \textit{propagation}: information
+travels at finite speed $c$ along characteristics, signals retain
+their shape (in one dimension) or decay according to known laws
+(in two and three dimensions), reflections occur at boundaries
+with predictable phase. Acoustics, electromagnetics in vacuum,
+elastic waves in solids, vibrating strings and membranes,
+shallow-water waves in the linear regime: all hyperbolic, all
+governed by the same prototype.
 
-\section{Project}
-\TODO{solve the 1D heat equation in a rod numerically; compare to analytical solution}
+\textbf{Laplace's equation, elliptic}: $\laplacian u = 0$, with
+no time dependence. The prototype of \textit{steady state}:
+equilibrium under fixed boundary data, no transient, the value at
+each interior point is the average of nearby values in a precise
+sense made formal by the mean-value theorem and the maximum
+principle. Steady-state heat conduction, electrostatic potential
+in a charge-free region, irrotational incompressible flow, the
+Newtonian gravitational potential outside masses, the
+displacement of a stretched membrane: all elliptic, all governed
+by Laplace or its inhomogeneous cousin Poisson's equation
+$\laplacian u = -f$.
+
+The classification by type (parabolic, hyperbolic, elliptic) is
+not arbitrary. It corresponds to the discriminant of the
+second-order operator and predicts the qualitative behaviour: the
+domain of dependence, the smoothing or propagating character, the
+appropriate boundary and initial data, and the numerical methods
+that converge.
+
+\subsection{Notation, conventions, working domains}
+
+We write $u_{t} = \pdv{u}{t}$, $u_{x} = \pdv{u}{x}$, $u_{xx} =
+\pdv{}{x}\!\left(\pdv{u}{x}\right)$, and so on; the subscript
+notation is standard in PDEs and conserves vertical space when an
+equation contains many derivatives. The Laplacian is
+$\laplacian u = u_{xx} + u_{yy} + u_{zz}$ in three Cartesian
+dimensions, $\laplacian u = u_{xx} + u_{yy}$ in two, and
+$\laplacian u = u_{xx}$ in one. Coordinate-system variants
+(polar, cylindrical, spherical) appear when the geometry calls
+for them; we treat the Cartesian case as the working default and
+note translations as needed.
+
+The independent variables are $t$ for time and $x, y, z$ for
+space. The dependent variable $u$ stands in for whatever physical
+quantity the equation models: temperature, pressure, displacement,
+potential, concentration. The reader who has fluent dimensional
+analysis (Volume I Chapter 4) will track units through every
+equation and verify that each derivative has the units it must
+have for the equation to balance. We do this routinely in the
+worked examples.
+
+\begin{archetype}[Transport, in continuous form]
+The transport archetype was previewed in Volume I as the recurring
+question: how does a quantity move from where it is to where it
+isn't? Volume I treated transport at the scale of a flux through a
+boundary; Chapter 7 treated transport as a chain of decay-coupled
+states (the heat equation as a discrete linear system); Chapter 8
+gave transport its formal connection to balance via the divergence
+theorem. The PDE chapter places the archetype in its continuous
+home. The heat equation $u_{t} = \alpha \laplacian u$ is the
+canonical diffusion law; the wave equation $u_{tt} = c^{2}
+\laplacian u$ is the canonical propagation law; the
+convection-diffusion equation $u_{t} + \mathbf{v}\cdot \grad u =
+\alpha \laplacian u$ combines drift and spread. Transport
+recurs in every distributed-phenomenon chapter of Volumes III
+through XII: thermal management in Volume III, fluid mechanics in
+Volume IV, heat-and-mass transfer in Volume IV, electromagnetics in
+Volume VII, signal propagation in Volume VIII, and the working
+mathematics of finite-element solvers in Volume XII.
+\end{archetype}
+
+\begin{estimation}
+\textbf{Question.} A copper rod $1\,\si{\meter}$ long is initially
+at $20\,\degC$ everywhere. At $t = 0$ one end is plunged into
+boiling water at $100\,\degC$ while the other end is held at
+$20\,\degC$. Estimate the time for the midpoint to reach
+$60\,\degC$, before reaching for the formal solution.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The thermal diffusivity of copper is $\alpha \approx 1.1 \times
+10^{-4}\,\si{\meter\squared\per\second}$. The natural time scale
+for diffusion across a length $L$ is $\tau = L^{2}/\alpha$. For
+$L = 1\,\si{\meter}$, $\tau \approx 1/(1.1 \times 10^{-4}) \approx
+9{,}000\,\si{\second}$, about two and a half hours. The midpoint
+sees a fraction-of-the-way response on the order of one decay
+time of the dominant Fourier mode, which has time constant
+$\tau_{1} = L^{2}/(\pi^{2}\alpha) \approx \tau/\pi^{2} \approx
+920\,\si{\second}$, about fifteen minutes. The midpoint reaches
+roughly halfway to its steady-state asymptote in about $\ln 2
+\cdot \tau_{1} \approx 640\,\si{\second}$, about ten to eleven
+minutes. The estimate sets expectations: a copper rod responds on
+a time scale of minutes, not seconds and not hours, for a length
+of one metre. The formal Fourier-series solution in §12.5
+produces $\tau_{1} = L^{2}/(\pi^{2}\alpha)$ exactly and refines the
+midpoint trajectory. The estimation is what an engineer does
+before sketching the experimental schedule; the calculation is
+what follows.
+\end{estimation}
+
+\subsection{Where the chapter sits in the volume}
+
+Chapter 5 introduced the derivative as a rate, Chapter 6 introduced
+the integral as accumulation, Chapter 7 wrote down ordinary
+differential equations as the language of dynamics in time, Chapter
+8 introduced vector calculus and the divergence theorem, and
+Chapter 11 worked multivariable calculus in standard coordinates.
+The PDE chapter uses every piece. The derivation of the heat
+equation in §12.2 comes from a balance applied to a thin slab and
+takes the limit to a partial derivative; the derivation of the
+wave equation in §12.3 comes from Newton's second law applied to a
+thin string segment with tension as the restoring force. The
+solution methods in §12.5 use integration and Fourier series; the
+boundary conditions in §12.6 use the gradient and outward normal
+introduced in Chapter 11; the numerical schemes in §12.7 use the
+finite-difference approximations introduced in Chapter 5 and the
+linear-system framing of Chapter 9. A reader who arrived at this
+chapter without fluency in those pieces will find the apparatus
+opaque; a reader who carries the habits will read the chapter as a
+synthesis.
+
+\section{The heat equation}\pathtag{core}
+
+The heat equation is the simplest PDE of practical engineering
+importance and the prototype of all parabolic equations. We derive
+it from a balance, identify its working parameters, name its
+canonical boundary-value problems, and write down the
+fundamental solution.
+
+\subsection{Derivation from energy balance}
+
+Consider a thin rod of cross section $A$ and uniform material with
+mass density $\rho$, specific heat capacity $c_{p}$, and thermal
+conductivity $k$. The rod is insulated on its lateral surface so
+that heat flows only along the axis, taken as the $x$-axis. Let
+$u(x, t)$ be the temperature at position $x$ and time $t$.
+
+Pick a thin slab of the rod between $x$ and $x + \Delta x$. The
+total thermal energy in the slab, measured above some reference
+temperature, is
+\[
+E(t) = \rho\, c_{p}\, A \int_{x}^{x + \Delta x} u(s, t)\, \dd s.
+\]
+By conservation of energy, the rate of change of $E$ equals the
+net rate at which heat flows into the slab through its faces:
+\[
+\dv{E}{t} = q(x, t)\, A - q(x + \Delta x, t)\, A,
+\]
+where $q(x, t)$ is the heat flux through the cross section at
+position $x$, positive when heat flows in the $+x$ direction.
+\engterm{Fourier's law of heat conduction}, an empirical
+constitutive relation, says that heat flows from high to low
+temperature with rate proportional to the temperature gradient:
+\[
+q(x, t) = -k\, \pdv{u}{x}.
+\]
+The minus sign encodes the second-law fact that heat flows
+\textit{down} a temperature gradient. Substituting and dividing
+by $A \Delta x$:
+\[
+\rho\, c_{p}\, \frac{1}{\Delta x}\int_{x}^{x + \Delta x} \pdv{u}{t}\, \dd s = \frac{q(x, t) - q(x + \Delta x, t)}{\Delta x} = -\frac{q(x + \Delta x, t) - q(x, t)}{\Delta x}.
+\]
+Take the limit $\Delta x \to 0$. The left-hand side becomes
+$\rho c_{p}\, u_{t}$; the right-hand side becomes $-\partial q /
+\partial x = +k\, u_{xx}$. Dividing through by $\rho c_{p}$,
+\[
+\boxed{u_{t} = \alpha\, u_{xx}, \qquad \alpha \equiv \frac{k}{\rho\, c_{p}}.}
+\]
+The constant $\alpha$, with units $\si{\meter\squared\per\second}$,
+is the \engterm{thermal diffusivity}. It bundles three material
+properties (conductivity, density, specific heat) into the single
+parameter that controls how fast heat spreads. The reader should
+hold a few values in working memory:
+
+\begin{itemize}[leftmargin=*]
+  \item Copper: $\alpha \approx 1.1 \times 10^{-4}\,\si{\meter\squared\per\second}$.
+  \item Aluminium: $\alpha \approx 9.7 \times 10^{-5}\,\si{\meter\squared\per\second}$.
+  \item Stainless steel: $\alpha \approx 4 \times 10^{-6}\,\si{\meter\squared\per\second}$.
+  \item Glass: $\alpha \approx 3 \times 10^{-7}\,\si{\meter\squared\per\second}$.
+  \item Water (still): $\alpha \approx 1.4 \times 10^{-7}\,\si{\meter\squared\per\second}$.
+  \item Air (still): $\alpha \approx 2 \times 10^{-5}\,\si{\meter\squared\per\second}$.
+  \item Wood (across grain): $\alpha \approx 1 \times 10^{-7}\,\si{\meter\squared\per\second}$.
+\end{itemize}
+
+The two-orders-of-magnitude span between copper and glass is the
+working reason a copper saucepan handles thermal load differently
+from a glass one. The reader who recognises this span has a
+working calibration of "fast" and "slow" in heat-transfer
+contexts.
+
+\subsection{Higher-dimensional form}
+
+The same balance applied in three dimensions, with Fourier's law
+$\mathbf{q} = -k \grad u$ and the divergence theorem (Chapter 8)
+relating the flux through a closed surface to the divergence of
+the flux inside, gives
+\[
+\rho\, c_{p}\, u_{t} = -\divg \mathbf{q} = k \, \laplacian u,
+\]
+or, dividing through,
+\[
+u_{t} = \alpha\, \laplacian u.
+\]
+The Laplacian replaces the second derivative; the equation is
+otherwise the same. Inhomogeneous materials with
+spatially-varying $k$ produce $u_{t} = \divg(\alpha \grad u) +
+S/\rho c_{p}$, where $S$ is a volumetric heat source (in $\si
+{\watt\per\meter\cubed}$). The chapter treats the homogeneous
+constant-coefficient case in detail and indicates the
+generalisations as needed.
+
+\subsection{The fundamental solution: a heat pulse on the line}
+
+The infinite line $x \in (-\infty, \infty)$ with initial condition
+$u(x, 0) = \delta(x)$ (a unit pulse of heat concentrated at the
+origin) admits the closed-form solution
+\[
+u(x, t) = \frac{1}{\sqrt{4\pi \alpha t}}\, \exp\!\left(-\frac{x^{2}}{4 \alpha t}\right),
+\]
+the \engterm{heat kernel} or \engterm{fundamental solution}. The
+solution is a Gaussian whose width $\sigma(t) = \sqrt{2 \alpha t}$
+grows like the square root of time, and whose peak height falls
+like $1/\sqrt{t}$. The integral of the kernel over $x$ is one for
+all $t > 0$: the total heat is conserved (the equation is
+homogeneous, with no source). The reader who has seen the
+diffusion-of-particles model in statistical physics will
+recognise the same Gaussian as the probability density for
+Brownian motion, and the same $\sqrt{t}$ width law. The
+mathematical content is identical.
+
+The kernel solves the general initial-value problem on the line
+by convolution: for arbitrary integrable initial data $u_{0}(x)$,
+\[
+u(x, t) = \int_{-\infty}^{\infty} \frac{1}{\sqrt{4\pi \alpha t}}\, \exp\!\left(-\frac{(x - y)^{2}}{4 \alpha t}\right) u_{0}(y)\, \dd y.
+\]
+This is the engineer's first encounter with Green's-function
+methods for PDEs; the apparatus generalises to other equations and
+other domains, with the appropriate kernel substituted for the
+heat kernel. The full Green's-function machinery is in Volume III
+(electrostatics) and Volume VII (electromagnetics).
+
+\subsection{Diffusive smoothing: information loss in finite time}
+
+A discontinuous initial condition $u(x, 0)$ becomes, at any $t >
+0$, infinitely smooth as a function of $x$. Initial sharp features
+of width $w$ are smoothed away after a time $t \sim w^{2}/\alpha$.
+A photograph blurred by Gaussian convolution loses fine detail in
+proportion to the kernel width; a hot spot diffuses into a
+near-uniform temperature profile in proportion to the rod's
+characteristic time. The smoothing is irreversible in a working
+sense: the heat equation does not run backward. A profile $u(x,
+T)$ at a finite time $T > 0$ does not, in general, determine an
+initial condition $u_{0}(x)$ to numerical precision; the
+backward problem is ill-posed in the Hadamard sense (§12.8). This
+arrow-of-time character is the working signature of parabolic
+equations and is what distinguishes them from the time-reversible
+hyperbolic case taken up in §12.3.
+
+\subsection{Worked example: cooling of a slab}
+
+Take a stainless-steel slab $L = 0.1\,\si{\meter}$ thick,
+initially at uniform $200\,\degC$, with both faces suddenly held
+at $0\,\degC$ at $t = 0$. With $\alpha = 4 \times 10^{-6}\,\si
+{\meter\squared\per\second}$, the natural time scale is $\tau =
+L^{2}/(\pi^{2}\alpha) = (0.01)/(9.87 \times 4 \times 10^{-6})
+\approx 253\,\si{\second}$, about four minutes. The midplane
+temperature decays as approximately $T_{\max}(t) \approx (4 \cdot
+200/\pi) \exp(-t/\tau) = 255 \exp(-t/253)\,\degC$, dropping to
+half its initial value in about $\ln 2 \cdot \tau \approx
+175\,\si{\second}$.
+
+A laboratory thermocouple buried at the midplane confirms the
+exponential decay over the first time constant; longer times need
+the next mode in the Fourier series, which decays at $9 \times$
+the rate of the first and is below percent-level after one full
+$\tau$. The detailed Fourier-series solution is constructed in
+§12.5.
+
+\section{The wave equation}\pathtag{core}
+
+The wave equation is the prototype of propagation. It is
+hyperbolic, time-reversible, and supports finite-speed transport
+of localised disturbances. We derive it from Newton's second law
+applied to a thin string, write the d'Alembert solution, and read
+off the working consequences.
+
+\subsection{Derivation from Newton's second law on a string}
+
+Consider a uniform string of mass per unit length $\mu$ and
+constant tension $T$, stretched along the $x$-axis. Let $u(x, t)$
+denote the transverse displacement of the string at position $x$
+and time $t$. We assume small displacements, so the angle the
+string makes with the horizontal is small and $\sin\theta \approx
+\tan\theta \approx \pdv{u}{x}$.
+
+Pick a thin segment between $x$ and $x + \Delta x$. The mass of
+the segment is $\mu \Delta x$. The transverse force on the segment
+is the difference in the vertical components of the tension at
+the two endpoints. At $x$, the tension pulls in the negative-$x$
+direction along the string; the vertical component is $-T \sin
+\theta(x, t) \approx -T \, u_{x}(x, t)$. At $x + \Delta x$, the
+tension pulls in the positive-$x$ direction; the vertical
+component is $+T \, u_{x}(x + \Delta x, t)$. The net vertical
+force is
+\[
+F_{\text{net}} = T\bigl(u_{x}(x + \Delta x, t) - u_{x}(x, t)\bigr).
+\]
+Newton's second law $F = m a$, with acceleration $u_{tt}$ for the
+transverse motion:
+\[
+\mu \Delta x \cdot u_{tt} = T\bigl(u_{x}(x + \Delta x, t) - u_{x}(x, t)\bigr).
+\]
+Divide by $\Delta x$ and take the limit:
+\[
+\mu \, u_{tt} = T\, u_{xx},
+\]
+or, with $c^{2} \equiv T/\mu$,
+\[
+\boxed{u_{tt} = c^{2}\, u_{xx}.}
+\]
+The constant $c$, with units $\si{\meter\per\second}$, is the
+\engterm{wave speed}. The squared form $c^{2} = T/\mu$ is the
+working fact: a tighter string supports faster waves; a heavier
+string supports slower waves; the wave speed is the square root.
+A guitar's E string ($\mu \sim 4 \times 10^{-4}\,\si{\kilogram\per
+\meter}$, $T \sim 80\,\si{\newton}$) gives $c \approx 450\,\si
+{\meter\per\second}$; the fundamental at $f = c/(2L) \approx
+330\,\si{\hertz}$ for $L = 0.65\,\si{\meter}$. The reader can
+check both numbers against any tuning reference.
+
+\subsection{The d'Alembert solution}
+
+The general solution of $u_{tt} = c^{2} u_{xx}$ on the infinite
+line is
+\[
+u(x, t) = F(x - c t) + G(x + c t),
+\]
+where $F$ and $G$ are arbitrary twice-differentiable functions.
+The verification is direct: $u_{tt} = c^{2} F'' + c^{2} G'' = c^{2}
+u_{xx}$. The functions $F$ and $G$ are the right-moving and
+left-moving wave profiles. The shape of $F$ at $t = 0$ is what
+$F$ remains for all $t > 0$, simply translated to the right at
+speed $c$. Symmetrically for $G$ to the left.
+
+For an initial-value problem with $u(x, 0) = \phi(x)$ and
+$u_{t}(x, 0) = \psi(x)$, the d'Alembert formula identifies the
+two profiles:
+\[
+u(x, t) = \frac{1}{2}\bigl(\phi(x - c t) + \phi(x + c t)\bigr) + \frac{1}{2 c} \int_{x - c t}^{x + c t} \psi(s)\, \dd s.
+\]
+The first term is the average of the initial displacement at the
+two points reached by characteristics arriving at $(x, t)$. The
+second term is the running average of the initial velocity over
+the past light-cone. The formula is closed-form and exact, and it
+is the cleanest demonstration in classical PDE theory of
+\engterm{finite propagation speed}: the value of $u(x, t)$
+depends only on initial data in the interval $[x - c t, x + c t]$.
+Disturbances outside that interval cannot influence $(x, t)$. The
+hyperbolic case has a finite domain of dependence; the parabolic
+case has an infinite one (the heat-kernel Gaussian has support
+everywhere immediately).
+
+\subsection{Reflections at boundaries}
+
+A finite string fixed at both ends, $u(0, t) = u(L, t) = 0$, is
+the canonical wave-equation boundary-value problem. The
+d'Alembert profiles reflect at the ends. A right-moving pulse $F(x
+- c t)$ approaching $x = L$ produces, at the boundary, a
+left-moving pulse $-F(2 L - (x + c t))$ (sign-flipped, mirror
+image) so that the sum vanishes at $x = L$. The reflected pulse
+travels back to the left; on reaching $x = 0$ it reflects again.
+The pattern of forward and reflected pulses, summed, produces the
+standing-wave modes that the reader will derive by separation of
+variables in §12.5. Standing waves are the working description of
+a vibrating string; travelling waves are the working description
+of a pulse reflecting in a long pipe or a transmission line.
+
+\subsection{Higher dimensions and the wave-equation prototypes}
+
+In two and three dimensions the wave equation $u_{tt} = c^{2}
+\laplacian u$ governs membranes, drumheads, and acoustic waves in
+free space. In three dimensions, the analogue of the d'Alembert
+formula is Kirchhoff's formula, which expresses $u(\mathbf{x}, t)$
+as an integral over the sphere of radius $c t$ centred on
+$\mathbf{x}$ at time $t$. Localised three-dimensional pulses
+expand as spherical shells whose thickness is set by the source
+duration; the shell sweeps past any observer in a time equal to
+the shell thickness divided by $c$. This is Huygens's principle in
+sharp form, and it is what allows speech to be intelligible: a
+brief sound pulse reaches the listener as a brief sound pulse, not
+as a smear that retains energy from earlier moments. The
+two-dimensional case is intermediate (and lacks a sharp Huygens
+principle), which is why a stone dropped in water produces ripples
+that ring rather than a single passing front.
+
+\subsection{Worked example: a plucked string}
+
+A guitar string of length $L = 0.65\,\si{\meter}$ is displaced
+into a triangular shape with peak $a = 5\,\si{\milli\meter}$ at
+the midpoint and released from rest. The wave speed for a steel
+E string at standard tension is $c \approx 450\,\si{\meter\per
+\second}$. The fundamental period is $T_{1} = 2 L / c \approx
+2.9\,\si{\milli\second}$, and the fundamental frequency is $f_{1}
+= 1/T_{1} \approx 346\,\si{\hertz}$. After release, the
+triangular shape decomposes into a Fourier series of standing
+modes (computed explicitly in §12.5), each oscillating at $f_{n} =
+n f_{1}$. The triangle's spectrum has all odd harmonics with
+amplitudes falling as $1/n^{2}$; the absence of even harmonics is
+the signature of a midpoint-plucked string.
+
+What fails: the linear wave equation assumes small amplitude. At
+larger amplitudes, the string's tension is no longer constant
+during the cycle; the equation acquires a nonlinear correction
+that shifts the natural frequencies upward with amplitude. A
+guitarist tuning a string at low amplitude and then playing it
+loudly hears a slight pitch sharpening that is the audible
+signature of the nonlinearity. The working linear model is right
+for the dynamics; the second-order correction is right when the
+engineer cares about pitch stability across dynamic range.
+
+\section{Laplace's equation}\pathtag{core}
+
+Set $u_{t} = 0$ in the heat equation and divide through by
+$\alpha$: the result is $\laplacian u = 0$, \engterm{Laplace's
+equation}. Laplace's equation is the steady-state limit of the
+heat equation, the limit in which transients have decayed and the
+field has reached equilibrium under whatever boundary data is
+imposed. It is also the equation for the electrostatic potential
+in a charge-free region, the irrotational incompressible
+fluid-flow potential, the Newtonian gravitational potential
+outside masses, and the displacement of a stretched membrane.
+
+\subsection{Harmonic functions}
+
+A function $u$ on a domain $\Omega \subset \R^{n}$ is
+\engterm{harmonic} if $\laplacian u = 0$ on $\Omega$. The
+prototype examples in two dimensions:
+\[
+u(x, y) = ax + by + c, \qquad u(x, y) = x^{2} - y^{2}, \qquad u(x, y) = e^{x}\sin y, \qquad u(x, y) = \ln\sqrt{x^{2} + y^{2}}.
+\]
+A check: each satisfies $u_{xx} + u_{yy} = 0$ where it is defined.
+The last example, the logarithm of the radial distance, is the
+fundamental solution of Laplace's equation in two dimensions; it
+plays the same role in two-dimensional electrostatics that the
+$1/r$ potential plays in three.
+
+The real and imaginary parts of any holomorphic function of a
+complex variable are harmonic in two dimensions. This identity
+(Chapter 3 introduced complex numbers; the working development of
+holomorphic-function theory belongs to a course on complex
+analysis) is why Laplace's equation in two dimensions is solvable
+by conformal-mapping techniques: a harmonic function on a
+complicated domain can be obtained by mapping the domain to a
+simpler one (a half-plane, a disk) where the answer is known, and
+mapping the answer back. The conformal-mapping toolkit is in
+Volume IV (fluid dynamics, where it solves potential flow around
+aerofoils) and Volume VII (electromagnetics, where it solves
+problems on awkward conductor geometries).
+
+\subsection{The mean-value property}
+
+A harmonic function on a domain $\Omega$ has the
+\engterm{mean-value property}: for any ball $B_{r}(\mathbf{x}_{0})
+\subset \Omega$ of radius $r$ centred at $\mathbf{x}_{0}$, the
+value at the centre equals the average of the function over the
+boundary sphere:
+\[
+u(\mathbf{x}_{0}) = \frac{1}{|\partial B_{r}|}\int_{\partial B_{r}(\mathbf{x}_{0})} u(\mathbf{y})\, \dd S(\mathbf{y}).
+\]
+The same identity holds with the average taken over the ball
+rather than its boundary. The proof, by reducing the integral to
+the divergence theorem and using $\laplacian u = 0$, lives in any
+introductory PDE text \cite{text:strang2016}. The engineer's
+takeaway is the working mental picture: a harmonic function has
+no local maxima or minima in the interior of its domain. Every
+interior value is the average of nearby values, so any interior
+peak would have to exceed the surrounding average, a contradiction.
+
+\subsection{The maximum principle}
+
+The mean-value property has a sharp consequence:
+
+\begin{principle}[Maximum principle for harmonic functions]
+A non-constant harmonic function on a bounded domain $\Omega$
+attains its maximum and its minimum on the boundary $\partial
+\Omega$, never in the interior.
+\end{principle}
+
+The principle is the single most useful working fact about
+Laplace's equation. It says that the steady-state temperature
+inside a domain cannot exceed the maximum boundary temperature
+nor fall below the minimum, no matter how complicated the
+geometry. It says that the electrostatic potential inside a
+charge-free region is bounded by its values on the bounding
+conductors. It says that the displacement of a stretched membrane
+is bounded by its boundary values. The maximum principle gives
+the engineer a fast a priori bound on the solution before any
+computation, and the bound is tight: it is achieved on the
+boundary.
+
+The maximum principle also has a uniqueness corollary: two
+solutions of Laplace's equation with the same boundary values
+must agree everywhere, since their difference is harmonic with
+zero boundary values, so is bounded above and below by zero on the
+boundary, so is identically zero in the interior. The
+boundary-value problem for Laplace's equation has at most one
+solution, which is the working content of well-posedness in the
+elliptic case.
+
+\subsection{Worked example: steady temperature in a square plate}
+
+Take a square plate $\Omega = [0, 1] \times [0, 1]$ with
+boundary conditions $u(x, 0) = 0$ on the bottom edge, $u(x, 1) =
+\sin(\pi x)$ on the top edge, and $u(0, y) = u(1, y) = 0$ on the
+sides. The steady-state temperature satisfies $\laplacian u = 0$
+on the interior. Separation of variables (developed formally in
+§12.5) gives the candidate
+\[
+u(x, y) = \sin(\pi x) \cdot \frac{\sinh(\pi y)}{\sinh(\pi)}.
+\]
+A check: $u_{xx} = -\pi^{2} \sin(\pi x) \sinh(\pi y)/\sinh(\pi)$;
+$u_{yy} = +\pi^{2} \sin(\pi x) \sinh(\pi y)/\sinh(\pi)$. The sum is
+zero. The boundary conditions: $u(x, 0) = 0$ since $\sinh(0) =
+0$; $u(x, 1) = \sin(\pi x)$ since $\sinh(\pi)/\sinh(\pi) = 1$;
+$u(0, y) = u(1, y) = 0$ since $\sin(0) = \sin(\pi) = 0$. All four
+conditions check.
+
+The maximum principle gives a sanity check: the solution is bounded
+above by the boundary maximum ($1$, at $x = 1/2$ on the top edge)
+and below by the boundary minimum ($0$, on the other three
+edges). The interior values lie strictly between, and the
+explicit formula confirms it.
+
+\section{Separation of variables, Fourier series introduction}\pathtag{core}
+
+Separation of variables is the workhorse method for solving the
+canonical boundary-value problems for the heat, wave, and Laplace
+equations on rectangular domains. The method assumes the solution
+factors as a product of single-variable functions, derives an
+ordinary differential equation for each factor, and assembles the
+general solution as an infinite series of separable building
+blocks. The series-summation step uses Fourier series, the working
+expansion of a periodic or boundary-fitted function in
+trigonometric harmonics.
+
+\subsection{Heat equation on a finite rod: the canonical example}
+
+Consider $u_{t} = \alpha u_{xx}$ on $0 \leq x \leq L$, $t \geq 0$,
+with boundary conditions $u(0, t) = u(L, t) = 0$ and initial
+condition $u(x, 0) = f(x)$. Try the separated form $u(x, t) =
+X(x) T(t)$. Substituting:
+\[
+X(x) T'(t) = \alpha\, X''(x)\, T(t),
+\]
+and rearranging,
+\[
+\frac{T'(t)}{\alpha\, T(t)} = \frac{X''(x)}{X(x)}.
+\]
+The left-hand side depends only on $t$, the right-hand side only
+on $x$. The equation can hold for all $t$ and $x$ only if both
+sides equal a common constant; call it $-\lambda$ (the minus sign
+chosen with foresight; $\lambda > 0$ will give decaying solutions).
+We get two ordinary differential equations:
+\[
+T'(t) = -\alpha \lambda\, T(t), \qquad X''(x) = -\lambda\, X(x).
+\]
+The first integrates immediately to $T(t) = T(0) e^{-\alpha \lambda
+t}$. The second is the eigenvalue problem
+\[
+X''(x) + \lambda X(x) = 0, \qquad X(0) = X(L) = 0,
+\]
+where the boundary conditions on $X$ come from $u(0, t) = u(L, t)
+= 0$ (which must hold for all $t$, hence for $X$ alone). The
+nontrivial solutions are
+\[
+X_{n}(x) = \sin\!\left(\frac{n \pi x}{L}\right), \qquad \lambda_{n} = \left(\frac{n \pi}{L}\right)^{2}, \qquad n = 1, 2, 3, \ldots.
+\]
+Each pair $(X_{n}, \lambda_{n})$ gives a separable solution
+\[
+u_{n}(x, t) = \sin\!\left(\frac{n \pi x}{L}\right) \exp\!\left(-\alpha \left(\frac{n \pi}{L}\right)^{2} t\right).
+\]
+The general solution is a superposition:
+\[
+u(x, t) = \sum_{n = 1}^{\infty} b_{n}\, \sin\!\left(\frac{n \pi x}{L}\right) \exp\!\left(-\alpha \left(\frac{n \pi}{L}\right)^{2} t\right),
+\]
+with the coefficients $b_{n}$ determined by matching the initial
+condition $u(x, 0) = f(x)$:
+\[
+f(x) = \sum_{n = 1}^{\infty} b_{n} \sin\!\left(\frac{n \pi x}{L}\right).
+\]
+This is the Fourier sine series of $f$ on $[0, L]$. The
+coefficients are
+\[
+b_{n} = \frac{2}{L} \int_{0}^{L} f(x) \sin\!\left(\frac{n \pi x}{L}\right) \dd x.
+\]
+The factor $2/L$ comes from the orthogonality relation
+$\int_{0}^{L} \sin(n\pi x/L) \sin(m\pi x/L)\, \dd x = (L/2)
+\delta_{nm}$, derived in standard texts \cite{text:strang2016}.
+
+The construction is general: every boundary condition admits a
+family of eigenfunctions $X_{n}$, and the coefficients are the
+inner products of the data against the eigenfunctions.
+
+\subsection{Why the time constants stack as $1/n^{2}$}
+
+The mode $u_{n}$ decays with time constant $\tau_{n} = 1/(\alpha
+\lambda_{n}) = L^{2}/(\alpha (n \pi)^{2})$. The fundamental mode
+($n = 1$) has the longest time constant, $\tau_{1} = L^{2}/(\pi^{2}
+\alpha)$. The next mode decays $4\times$ faster, the next $9\times$,
+and so on. After one $\tau_{1}$, the fundamental has dropped to
+$1/e$ of its initial amplitude; the higher modes are vanishingly
+small. The heat equation is, in a working sense, low-pass: high
+spatial frequencies decay much faster than low ones, and the
+late-time profile is dominated by the slowest mode. This
+$1/n^{2}$ stacking is why the simple-engineer estimate "one time
+constant" is reliable for the late-time behaviour of a parabolic
+system, and why a rough Fourier series truncated to a few modes
+is adequate at intermediate times.
+
+\subsection{Wave equation on a finite string}
+
+The wave equation $u_{tt} = c^{2} u_{xx}$ on $0 \leq x \leq L$
+with $u(0, t) = u(L, t) = 0$, $u(x, 0) = \phi(x)$, $u_{t}(x, 0) =
+\psi(x)$ separates the same way. The eigenvalue problem for $X$
+is identical, giving $X_{n} = \sin(n \pi x/L)$ and $\lambda_{n} =
+(n \pi/L)^{2}$. The time-equation $T''(t) = -c^{2} \lambda_{n}\,
+T(t)$ has solutions $T_{n}(t) = a_{n} \cos(\omega_{n} t) + b_{n}
+\sin(\omega_{n} t)$ with $\omega_{n} = c\, n \pi/L = c \sqrt
+{\lambda_{n}}$. The general solution:
+\[
+u(x, t) = \sum_{n = 1}^{\infty} \sin\!\left(\frac{n \pi x}{L}\right) \bigl(a_{n} \cos(\omega_{n} t) + b_{n} \sin(\omega_{n} t)\bigr),
+\]
+with $a_{n}$ from the Fourier sine series of $\phi$ and
+$\omega_{n} b_{n}$ from the Fourier sine series of $\psi$. The
+modes are sinusoidal in time at frequencies $\omega_{n}$ that are
+integer multiples of the fundamental $\omega_{1}$. The string
+sustains a harmonic series; that is what makes it musical. The
+$1/n^{2}$ amplitude pattern of the midpoint-plucked triangle, with
+no even modes, is the signature audible in plucked-string acoustics.
+
+\subsection{Laplace's equation in a rectangle}
+
+Laplace's equation $u_{xx} + u_{yy} = 0$ on the rectangle $[0, L]
+\times [0, M]$ separates as $u(x, y) = X(x) Y(y)$. Substituting:
+\[
+\frac{X''(x)}{X(x)} = -\frac{Y''(y)}{Y(y)} = -\lambda.
+\]
+The choice of sign on $\lambda$ depends on which pair of edges
+carries the inhomogeneous data. With $u = 0$ on the left, right,
+and bottom edges and $u(x, M) = g(x)$ on the top edge, the
+$X$-eigenvalue problem inherits the boundary conditions $X(0) =
+X(L) = 0$, giving $X_{n} = \sin(n\pi x/L)$ and $\lambda_{n} =
+(n\pi/L)^{2}$. The $Y$-equation is then $Y_{n}'' = \lambda_{n}
+Y_{n}$, with solutions $\sinh(n\pi y/L)$ and $\cosh(n\pi y/L)$.
+The boundary $Y(0) = 0$ pins to $\sinh(n\pi y/L)$. The general
+solution is
+\[
+u(x, y) = \sum_{n = 1}^{\infty} c_{n} \sin\!\left(\frac{n \pi x}{L}\right) \frac{\sinh(n \pi y/L)}{\sinh(n \pi M/L)},
+\]
+with $c_{n}$ the Fourier sine coefficients of $g(x)$. The sinh
+ratio is the working analogue of the exponential decay in the
+heat case: in the Laplace case the field "decays" away from the
+inhomogeneous boundary into the rectangle, with the decay length
+set by the wavelength of the boundary mode. High-frequency
+boundary detail decays into the rectangle faster than low-frequency
+detail, the same low-pass character that the heat equation
+exhibits in time.
+
+\subsection{Fourier series: working definition and convergence}
+
+A function $f$ on $[-L, L]$ that is integrable and reasonably
+well-behaved has a \engterm{Fourier series}
+\[
+f(x) = \frac{a_{0}}{2} + \sum_{n = 1}^{\infty} \left(a_{n} \cos\!\left(\frac{n \pi x}{L}\right) + b_{n} \sin\!\left(\frac{n \pi x}{L}\right)\right),
+\]
+with coefficients
+\[
+a_{n} = \frac{1}{L}\int_{-L}^{L} f(x) \cos\!\left(\frac{n \pi x}{L}\right) \dd x, \qquad b_{n} = \frac{1}{L}\int_{-L}^{L} f(x) \sin\!\left(\frac{n \pi x}{L}\right) \dd x.
+\]
+For functions with continuous derivative, the series converges
+pointwise to $f$. For functions with jump discontinuities, the
+series converges to the average of the left and right limits at
+each jump and overshoots near the jumps by approximately $9\,\%$
+of the jump height (Gibbs phenomenon). The Gibbs overshoot does
+not vanish as more terms are added; it concentrates into narrower
+bands. The engineer who has fit Fourier series to noisy or
+discontinuous data should expect ringing near sharp features and
+should know whether the application tolerates the ringing or
+calls for a different basis.
+
+The full theory of Fourier series, including completeness in
+$L^{2}$, the Riemann-Lebesgue lemma, and the convergence
+classification by smoothness, is the subject of a course in
+analysis. We use the engineering content: Fourier series are the
+right basis for separable boundary-value problems on rectangles
+with periodic, Dirichlet, or Neumann boundaries. Other bases
+(Bessel for cylindrical, Legendre for spherical, Chebyshev for
+spectral methods) appear when the geometry calls for them.
+
+\subsection{Worked example: cooling of a uniformly heated rod}
+
+The rod $0 \leq x \leq L$ initially at uniform temperature
+$u(x, 0) = u_{0}$, with both ends suddenly held at zero, has
+Fourier coefficients
+\[
+b_{n} = \frac{2}{L}\int_{0}^{L} u_{0} \sin\!\left(\frac{n \pi x}{L}\right) \dd x = \frac{2 u_{0}}{n \pi}\bigl(1 - \cos(n \pi)\bigr) = \begin{cases} 4 u_{0}/(n \pi), & n \text{ odd} \\ 0, & n \text{ even}. \end{cases}
+\]
+The solution is
+\[
+u(x, t) = \sum_{n \text{ odd}} \frac{4 u_{0}}{n \pi} \sin\!\left(\frac{n \pi x}{L}\right) \exp\!\left(-\alpha \left(\frac{n \pi}{L}\right)^{2} t\right).
+\]
+At late times, the leading term ($n = 1$) dominates. The midpoint
+$x = L/2$ has $\sin(\pi/2) = 1$, $\sin(3 \pi/2) = -1$, and so on,
+giving
+\[
+u(L/2, t) \approx \frac{4 u_{0}}{\pi} \exp\!\left(-\frac{\alpha \pi^{2} t}{L^{2}}\right) = \frac{4 u_{0}}{\pi}\, e^{-t/\tau_{1}},
+\]
+with $\tau_{1} = L^{2}/(\alpha \pi^{2})$. For $L = 0.1\,\si
+{\meter}$ and $\alpha = 4 \times 10^{-6}\,\si{\meter\squared\per
+\second}$ (stainless steel), $\tau_{1} \approx 253\,\si{\second}$,
+matching the §12.2 estimate. The factor $4/\pi \approx 1.27$
+sets the leading-mode amplitude at $1.27 u_{0}$, larger than
+$u_{0}$ because the Fourier sine series approximates a constant
+$u_{0}$ on $(0, L)$ by a sum of sines that overshoot at the
+boundaries (Gibbs). The overshoot is gone after one $\tau_{1}/9$
+because the higher modes have decayed.
+
+\section{Boundary and initial conditions: the engineer's craft}\pathtag{core}
+
+A PDE without boundary and initial conditions has too many
+solutions to be useful. A PDE with the wrong boundary conditions
+has no solution, or has solutions that do not represent the
+physics. The choice of boundary conditions is an engineering act:
+it encodes what the analyst knows about the physical system at
+its edges, and it determines whether the mathematical problem is
+well-posed.
+
+\subsection{The three classical boundary conditions}
+
+For a second-order PDE on a domain $\Omega$ with boundary
+$\partial \Omega$, three classical conditions arise.
+
+\textbf{Dirichlet} boundary condition: $u = g$ on $\partial
+\Omega$ for a specified function $g$. The value of the field is
+prescribed at the boundary. Physical examples: a rod end held at
+fixed temperature by contact with a thermal reservoir; an
+electrostatic potential held at fixed voltage on a grounded
+conductor; a string fixed at a wall.
+
+\textbf{Neumann} boundary condition: $\pdv{u}{n} = h$ on $\partial
+\Omega$, where $\partial/\partial n$ is the directional derivative
+along the outward unit normal $\unitvec{n}$ and $h$ is a specified
+function. The flux through the boundary is prescribed. Physical
+examples: a rod end perfectly insulated ($h = 0$, no heat flux); a
+specified heat flux applied to a face by a heater of known power;
+a free-end string at a frictionless slider.
+
+\textbf{Robin} boundary condition (also called \engterm{mixed} or
+\engterm{third-kind}): $\alpha u + \beta \pdv{u}{n} = \gamma$ on
+$\partial \Omega$ for specified $\alpha, \beta, \gamma$. The
+condition is a linear combination of the field and its normal
+derivative. Physical example: convective heat transfer at a
+surface, where the flux $-k u_{n}$ equals the convective transfer
+coefficient $h$ times the temperature difference between the
+surface and the ambient: $-k u_{n} = h (u - u_{\infty})$, which
+rearranges to a Robin condition on $u$.
+
+The conditions need not be the same on all parts of the boundary.
+A common engineering pattern is Dirichlet on one face (a heated
+plate at fixed temperature), Neumann on another (an insulated
+face), and Robin on the rest (a face exposed to ambient air). The
+mathematical apparatus handles mixed conditions naturally; the
+working principle is that each portion of the boundary receives
+exactly one condition, and the conditions match the physics there.
+
+\subsection{Initial conditions for time-dependent problems}
+
+The heat equation, being first-order in time, requires one initial
+condition: $u(\mathbf{x}, 0) = u_{0}(\mathbf{x})$. The wave
+equation, being second-order in time, requires two: $u(\mathbf{x},
+0) = \phi(\mathbf{x})$ and $u_{t}(\mathbf{x}, 0) =
+\psi(\mathbf{x})$. The number of initial conditions equals the
+order of the time derivative, the same rule as for ODEs in
+Chapter 7. Laplace's equation has no time dependence and no
+initial condition; its working data are entirely on the spatial
+boundary.
+
+\subsection{Well-posedness in the Hadamard sense}
+
+A boundary-value problem is \engterm{well-posed} (in the sense of
+Hadamard) if it satisfies three conditions: a solution
+\textit{exists}; the solution is \textit{unique}; the solution
+\textit{depends continuously} on the data. The third condition is
+the most important and the most often violated.
+
+For the heat equation with Dirichlet conditions on a bounded
+domain, the forward problem (given initial condition and boundary
+data, find $u$ for $t > 0$) is well-posed: the heat kernel is the
+solution, uniqueness follows from the maximum principle for
+parabolic equations, and small changes in the data produce small
+changes in the solution. The backward problem (given $u$ at some
+$T > 0$, find the initial condition $u_{0}$) is ill-posed: the
+heat kernel smooths data, so reversing the smoothing requires
+amplifying high-frequency components, and any noise at high
+frequencies blows up.
+
+For the wave equation, the forward initial-value problem with
+Dirichlet conditions on a bounded domain is well-posed. The
+backward problem is also well-posed (the wave equation is
+time-reversible: replacing $t$ by $-t$ leaves the equation
+invariant). This is the working signature of the hyperbolic case
+and the formal expression of energy conservation in lossless wave
+propagation.
+
+For Laplace's equation with Dirichlet conditions on a bounded
+domain, the boundary-value problem is well-posed. The maximum
+principle gives uniqueness, the explicit Green's-function
+construction gives existence, and continuous dependence follows
+from the same machinery. With Neumann conditions, existence
+requires a compatibility condition (the integral of the Neumann
+data over the boundary must equal the integral of the source over
+the domain, by the divergence theorem); without that, no solution
+exists, and the problem is ill-posed in the existence sense.
+
+\subsection{Choosing the right boundary condition for the physics}
+
+Choosing the boundary condition is the engineer's act of
+representation. A wall that is held at fixed temperature by a
+thermostat is Dirichlet. A wall that is insulated is Neumann with
+zero flux. A wall that loses heat to ambient by convection is
+Robin. A wall whose state is unknown but whose temperature
+cannot exceed a value is a free-boundary problem (Stefan
+problem), beyond the scope of the present chapter. The engineer
+who chooses the wrong condition gets a mathematically valid but
+physically wrong answer; the boundary-condition choice is where
+the model meets reality and is the most consequential modelling
+decision in the working PDE problem.
+
+\subsection{Worked example: a rod with one insulated end and one heated end}
+
+Take a rod $0 \leq x \leq L$ with the heat equation $u_{t} =
+\alpha u_{xx}$, the boundary condition $u(0, t) = T_{1}$
+(Dirichlet, fixed temperature at the left end), and the boundary
+condition $u_{x}(L, t) = 0$ (Neumann, insulated right end). The
+steady-state ($u_{t} = 0$) satisfies $u_{ss}'' = 0$, integrating
+to $u_{ss}(x) = a x + b$, with the constants pinned by the boundary
+conditions: $b = T_{1}$ from the Dirichlet, and $a = 0$ from the
+Neumann. The steady state is uniformly $T_{1}$. The physical
+picture: an insulated rod cannot lose heat through its right end,
+so any heat injected at the left end accumulates until the rod
+reaches the source temperature. The rod equilibrates to $T_{1}$
+everywhere.
+
+The transient relaxation toward the steady state involves the
+eigenvalues of the operator $-\alpha \partial_{xx}$ with the
+mixed boundary conditions $X(0) = 0$, $X'(L) = 0$. The
+eigenfunctions are $X_{n}(x) = \sin((n - 1/2)\pi x/L)$ for $n =
+1, 2, \ldots$, with eigenvalues $\lambda_{n} = ((n - 1/2)\pi/L)^{2}$.
+The fundamental time constant is $\tau_{1} = (2 L/\pi)^{2}/\alpha
+= 4 L^{2}/(\pi^{2} \alpha)$, four times longer than for the
+both-ends-Dirichlet case. The reader who has not seen mixed
+boundary conditions before should hold the lengthening as a
+general feature: insulating one end slows the approach to
+equilibrium, because the only way heat can leave (or enter) the
+rod is through the one Dirichlet face.
+
+\section{Numerical PDEs: finite difference, finite element preview}\pathtag{core}
+
+Most PDEs the engineer meets in practice cannot be solved in
+closed form. The geometry is irregular, the coefficients are
+spatially varying, the boundary conditions are mixed, the source
+terms are tabulated rather than analytic. Numerical methods take
+the PDE to a finite-dimensional approximation that a computer can
+solve. The two dominant families are finite differences and finite
+elements; the chapter presents the finite-difference method in
+working detail and previews the finite-element method at a
+recognition level.
+
+\subsection{Finite differences: discretising the operators}
+
+The finite-difference method replaces partial derivatives by
+difference quotients on a grid. For a function $u(x, t)$ sampled
+at grid points $x_{j} = j \Delta x$, $t_{n} = n \Delta t$ with
+values $U_{j}^{n} = u(x_{j}, t_{n})$, standard approximations are
+\[
+u_{x}(x_{j}, t_{n}) \approx \frac{U_{j+1}^{n} - U_{j-1}^{n}}{2 \Delta x}, \quad u_{xx}(x_{j}, t_{n}) \approx \frac{U_{j+1}^{n} - 2 U_{j}^{n} + U_{j-1}^{n}}{\Delta x^{2}},
+\]
+\[
+u_{t}(x_{j}, t_{n}) \approx \frac{U_{j}^{n+1} - U_{j}^{n}}{\Delta t}.
+\]
+The first is second-order accurate in $\Delta x$; the second is
+also second-order accurate; the third is first-order forward in
+$\Delta t$. The local truncation errors come from Taylor
+expansion (Chapter 4); the leading error in the second
+derivative, for instance, is $-(\Delta x^{2}/12) u_{xxxx}$.
+
+\subsection{The FTCS scheme for the heat equation}
+
+The Forward-Time-Centred-Space (FTCS) scheme for $u_{t} = \alpha
+u_{xx}$ replaces the time derivative by a forward difference and
+the space derivative by the centred second difference:
+\[
+\frac{U_{j}^{n+1} - U_{j}^{n}}{\Delta t} = \alpha\, \frac{U_{j+1}^{n} - 2 U_{j}^{n} + U_{j-1}^{n}}{\Delta x^{2}}.
+\]
+Solving for $U_{j}^{n+1}$:
+\[
+U_{j}^{n+1} = U_{j}^{n} + r\bigl(U_{j+1}^{n} - 2 U_{j}^{n} + U_{j-1}^{n}\bigr),
+\]
+where the dimensionless number
+\[
+r \equiv \frac{\alpha \Delta t}{\Delta x^{2}}
+\]
+controls the scheme's behaviour. The update is explicit: each
+new value $U_{j}^{n+1}$ depends only on values at the previous
+time step. The scheme is straightforward to code and runs fast.
+
+\subsection{The CFL condition: why $r$ matters}
+
+A von Neumann stability analysis (substitute a discrete Fourier
+mode $U_{j}^{n} = \xi^{n} e^{i k j \Delta x}$ and demand $|\xi|
+\leq 1$ for all $k$) gives the stability condition for FTCS:
+\[
+r = \frac{\alpha \Delta t}{\Delta x^{2}} \leq \frac{1}{2}.
+\]
+This is the \engterm{Courant-Friedrichs-Lewy condition} for the
+heat equation. The interpretation: the time step $\Delta t$ must
+be at most $\Delta x^{2}/(2 \alpha)$; the explicit scheme cannot
+march faster than the diffusion time over one grid cell, with a
+safety factor of two. Halving $\Delta x$ requires quartering
+$\Delta t$, a steep cost: doubling spatial resolution requires
+quadrupling work per unit time.
+
+The mechanism: a Fourier mode of wavenumber $k$ has, in the
+continuous problem, decay rate $\alpha k^{2}$, which is bounded
+above by the Nyquist mode's decay rate $\alpha (\pi/\Delta x)^{2}$
+on the grid. The FTCS update for that mode is multiplication by
+$1 - 4 r \sin^{2}(k \Delta x/2)$, which exceeds one in magnitude
+when $r > 1/2$ and $k$ near Nyquist. The mode then grows
+exponentially, contradicting the physics. The reader can run the
+ten-line FTCS code with $r = 0.4$ and watch the diffusion
+evolve smoothly; with $r = 0.6$ and watch the highest grid mode
+develop a checkerboard pattern of growing amplitude that
+dominates the solution within a few time steps.
+
+\subsection{The implicit scheme and unconditional stability}
+
+The Backward-Time-Centred-Space (BTCS) scheme replaces the time
+derivative by a backward difference, evaluating the spatial
+operator at the new time:
+\[
+\frac{U_{j}^{n+1} - U_{j}^{n}}{\Delta t} = \alpha\, \frac{U_{j+1}^{n+1} - 2 U_{j}^{n+1} + U_{j-1}^{n+1}}{\Delta x^{2}}.
+\]
+Rearranged into the linear system
+\[
+-r U_{j-1}^{n+1} + (1 + 2 r) U_{j}^{n+1} - r U_{j+1}^{n+1} = U_{j}^{n},
+\]
+this requires solving a tridiagonal system at each time step. The
+cost per step is higher than for FTCS (a Thomas-algorithm sweep,
+$\mathcal{O}(N)$ work for $N$ grid points), and the work per
+step is roughly twice the explicit cost. The payoff is
+unconditional stability: the scheme is stable for all $r > 0$.
+The engineer can take $\Delta t$ as large as accuracy permits,
+without the CFL constraint. For long-time relaxation problems on
+fine grids, the implicit scheme is faster overall, often by
+orders of magnitude.
+
+The Crank-Nicolson scheme averages the FTCS and BTCS spatial
+operators (centring the time derivative), giving second-order
+accuracy in time as well as in space and unconditional stability
+when applied to the heat equation. Crank-Nicolson is the standard
+production scheme for one-dimensional parabolic problems where
+accuracy and stability both matter.
+
+\subsection{Stability of explicit schemes for the wave equation}
+
+The analogous explicit scheme for the wave equation $u_{tt} =
+c^{2} u_{xx}$ uses centred differences in both time and space:
+\[
+\frac{U_{j}^{n+1} - 2 U_{j}^{n} + U_{j}^{n-1}}{\Delta t^{2}} = c^{2}\, \frac{U_{j+1}^{n} - 2 U_{j}^{n} + U_{j-1}^{n}}{\Delta x^{2}}.
+\]
+Stability analysis gives the wave-equation CFL condition
+\[
+\frac{c \Delta t}{\Delta x} \leq 1.
+\]
+The interpretation has a sharp physical reading: the numerical
+domain of dependence (the grid points whose values influence
+$U_{j}^{n+1}$) must contain the analytical domain of dependence
+(the characteristic cone $|x - x_{j}| \leq c |t - t_{n}|$). If the
+time step is too large, signals travel faster on the grid than in
+the physics, and the discrete scheme cannot represent the
+solution. The CFL condition for hyperbolic equations is linear in
+$\Delta t/\Delta x$, in contrast to the parabolic condition's
+quadratic dependence; the cost of refining a hyperbolic grid is
+much milder than for a parabolic grid of the same resolution.
+
+\subsection{The finite-element method, at a recognition level}
+
+The finite-element method (FEM) is the workhorse for PDEs on
+irregular geometries with mixed boundary conditions. Where finite
+differences sample the field on a regular grid, FEM partitions
+the domain into elements (triangles in 2D, tetrahedra in 3D),
+expands the solution as a sum of basis functions supported on the
+elements, and demands that the residual of the PDE be orthogonal
+to the basis (the Galerkin condition). The result is a sparse
+linear system that the engineer solves with the linear-algebra
+machinery of Chapter 9, typically by sparse Cholesky or iterative
+methods (conjugate gradient, GMRES).
+
+The reader should know FEM at the recognition level: that it
+exists, that it is the standard tool for structural analysis,
+heat transfer in irregular geometries, fluid dynamics, and
+electromagnetic field problems; that it produces a sparse linear
+system whose solution is the assembled field; that its accuracy
+depends on the element type (linear, quadratic, higher-order),
+the mesh quality (avoid degenerate triangles), and the post-
+processing (gradient recovery, error estimation, adaptive
+refinement). The full FEM apparatus is the subject of Volume XII
+(working numerical methods for engineering practice) and a good
+graduate course; we leave it there. The engineer who uses
+commercial FEM software (Abaqus, ANSYS, COMSOL, FEniCS, deal.II)
+should at minimum know the convergence-with-refinement diagnostic:
+solve the same problem on a coarse and a fine mesh, and verify
+that the difference is small enough relative to the engineering
+tolerance.
+
+\section{Failure: ill-posed problems and the cost of bad boundary conditions}\pathtag{core}
+
+A PDE solver succeeds when the problem is well-posed and the
+solver is appropriate. It fails when the problem is ill-posed
+(no solution, multiple solutions, or no continuous dependence on
+data), when the boundary conditions misrepresent the physics, or
+when the numerical scheme violates a stability condition the
+problem demands. Each failure has a working diagnosis. We treat
+the three patterns generically.
+
+\subsection{The ill-posed inverse heat problem}
+
+The forward heat problem is well-posed: given an initial condition
+$u(x, 0) = u_{0}(x)$, the solution $u(x, T)$ at any later time
+$T > 0$ is uniquely determined and depends continuously on
+$u_{0}$. The inverse heat problem is ill-posed: given $u(x, T)$,
+recover $u_{0}$. The heat kernel attenuates the Fourier mode of
+wavenumber $k$ by the factor $\exp(-\alpha k^{2} T)$, which is
+exponentially small for large $k$. Inverting requires multiplying
+the noisy late-time data by $\exp(+\alpha k^{2} T)$, which
+exponentially amplifies any high-wavenumber noise. A part-per-million
+measurement noise at wavenumber $k = 100/L$ becomes, after
+inversion at a time when $\alpha k^{2} T = 100$, a factor $e^{100}
+\approx 10^{43}$ larger than the signal, dominating the recovered
+initial condition.
+
+The working response is regularisation: add a small term to the
+problem that penalises high-wavenumber content, accept a smoothed
+solution that approximates the true initial condition where
+permitted by the data, and report the regularisation parameter
+along with the result. Tikhonov regularisation, truncated SVD,
+and Bayesian priors are the standard tools, taken up in Volume
+XII. The engineer's working takeaway: inverse problems for
+parabolic equations are hard, the difficulty is structural rather
+than computational, and any reported "deconvolution" of a heat-
+diffusion measurement carries an implicit smoothing parameter
+that must be quoted.
+
+\subsection{Bad boundary conditions: the silent wrong answer}
+
+A solver applied to a PDE with the wrong boundary conditions
+produces a mathematically valid solution to a problem that is not
+the physical problem. The mistake does not crash the solver; it
+returns an answer.
+
+A common pattern: an engineer models a heated plate exposed to
+room air with a Dirichlet condition at the surrounding ambient
+temperature, on the reasoning that the air temperature is
+"the boundary." The condition implies that the plate's surface is
+held at the ambient temperature, which is what would happen if
+the plate were submerged in stirred ambient water; in still air,
+the actual condition is convective, with a Robin boundary
+$-k u_{n} = h(u - u_{\infty})$ where $h \sim 5$ to $25\,\si{\watt
+\per\meter\squared\per\kelvin}$. The Dirichlet model overpredicts
+the cooling and produces a steady-state temperature that may be
+tens of degrees lower than the actual one. The reader who has
+fitted a model to laboratory data and extracted a thermal
+conductivity that is half the literature value should suspect a
+boundary-condition mistake before suspecting a measurement error.
+
+The diagnostic: compute the predicted heat flux at the boundary
+under the chosen condition, and compare to the flux that the
+physical mechanism (radiation, convection, contact conductance)
+can actually deliver. If the model demands ten times the flux the
+physics can provide, the boundary condition is wrong, and the
+remedy is to switch to the appropriate Robin or to incorporate
+the true ambient mechanism. The cost of the mistake is the cost
+of the wrong design decision the model recommended.
+
+\subsection{The CFL violation and the explicit-scheme blow-up}
+
+A solver applied with an explicit time-step that violates the
+CFL condition produces a divergent answer. The pattern is
+distinctive: the solution develops a checkerboard or short-
+wavelength pattern with growing amplitude, typically dominating
+the solution within a few time steps. The user, watching the
+output, often interprets the divergence as a bug in the
+right-hand side or a memory error rather than as a stability
+violation.
+
+The diagnostic: shrink the time step by a factor of two and rerun.
+If the divergence shrinks or disappears, the cause is CFL
+violation. The remedy is either to shrink the step further to
+satisfy the condition, or to switch to an implicit method that
+has no such constraint. For long-time relaxation on fine grids,
+the implicit method is the right choice; for short-time
+high-fidelity simulation on coarse grids, the explicit method may
+be cheaper if the CFL condition is satisfiable. The engineer
+should know which regime the problem sits in before starting the
+integration.
+
+\subsection{Hadamard's three conditions, restated}
+
+The general working discipline for a PDE problem:
+
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Existence}. Verify that the problem admits a
+    solution. For elliptic problems with Neumann conditions, check
+    the compatibility condition. For free-boundary problems,
+    check the existence theorems for the regime of interest.
+  \item \emph{Uniqueness}. Verify that the solution is unique.
+    For elliptic problems, the maximum principle suffices for
+    Dirichlet boundary conditions. For Neumann conditions,
+    uniqueness is up to an additive constant.
+  \item \emph{Continuous dependence}. Verify that small changes
+    in the data produce small changes in the solution. For inverse
+    problems, this is the condition that is most often violated;
+    its violation is the formal content of "ill-posed" in the
+    Hadamard sense, after Hadamard's 1902 paper introducing the
+    classification.
+\end{enumerate}
+
+The engineer who certifies all three before running the solver
+has internalised the Hadamard discipline. The engineer who skips
+it, runs the solver, and treats the output as truth has produced
+an artifact that may or may not be the physical answer.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[The 1D heat equation: explicit, implicit, and analytical]
+The reader simulates the one-dimensional heat equation $u_{t} =
+\alpha u_{xx}$ on a rod $0 \leq x \leq L$ with explicit Dirichlet
+initial and boundary conditions, computed two ways (explicit
+forward Euler / FTCS and implicit backward Euler / BTCS), compared
+against the separation-of-variables analytical solution at three
+times. Per Q55-vol02-ch12 the project track is simulation with
+analysis at hazard class none.
+
+\textbf{Hazard class}: none. The project is fully numerical. No
+physical apparatus, no biological subject, no mains power. The
+reader uses paper and pencil for the analytical work and a
+programming environment of choice (Python+NumPy, MATLAB, Julia,
+or any environment with array primitives) for the simulation.
+
+\textbf{Tools}. Paper, pencil, calculator. A programming
+environment with array primitives and a tridiagonal-solver
+routine (\path{scipy.linalg.solve_banded} in Python, or the
+backslash operator in MATLAB applied to a sparse banded matrix).
+A plotting tool. A reference for the thermal diffusivity of the
+chosen material (the values listed in §12.2 are sufficient).
+
+\textbf{Setup}. Choose a rod length $L$ (one metre is convenient),
+a thermal diffusivity $\alpha$ (use $\alpha = 1\,\si{\meter\squared
+\per\second}$ as a working dimensionless value, or pick a real
+material), and a final simulation time $T$ chosen so that the
+fundamental mode decays substantially (say $T = L^{2}/\alpha$,
+giving $\pi^{2}$ time constants of the fundamental mode). Use
+boundary conditions $u(0, t) = u(L, t) = 0$ and an initial
+condition with rich Fourier content: choose either the
+half-triangle $u_{0}(x) = \min(x, L - x)$ or the indicator-of-
+half $u_{0}(x) = 1$ for $0 < x < L/2$ and $0$ otherwise. The
+indicator has a Fourier discontinuity that exposes the Gibbs
+phenomenon; the triangle is smoother and easier to compare.
+
+\textbf{Procedure}.
+
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Analytical solution}. Compute the Fourier sine
+    coefficients $b_{n} = (2/L)\int_{0}^{L} u_{0}(x) \sin(n\pi
+    x/L)\,\dd x$ for $n = 1, \ldots, 50$. Implement the
+    truncated series solution $u(x, t) = \sum_{n = 1}^{50} b_{n}
+    \sin(n \pi x/L) \exp(-\alpha (n \pi/L)^{2} t)$. Plot the
+    initial condition and the analytical solution at $t = T/4$,
+    $T/2$, and $T$. Verify that the late-time profile is
+    dominated by the fundamental mode.
+
+  \item \emph{Explicit FTCS}. Implement the FTCS scheme on a grid
+    with $N$ interior points (suggested $N = 50$). Run with three
+    values of $r = \alpha \Delta t/\Delta x^{2}$: $r = 0.4$
+    (well below the CFL bound), $r = 0.5$ (at the CFL bound), and
+    $r = 0.51$ (just above the bound). Plot $u(x, t)$ at $t =
+    T/4$, $T/2$, and $T$ for each $r$. Confirm that $r \leq 0.5$
+    produces stable smooth evolution and $r > 0.5$ produces a
+    growing checkerboard pattern.
+
+  \item \emph{Implicit BTCS}. Implement the BTCS scheme on the
+    same grid. The per-step update solves a tridiagonal system;
+    use the standard solver of your environment. Run with $\Delta
+    t$ corresponding to $r = 0.4$, $r = 5$, and $r = 50$. Plot
+    $u(x, t)$ at $t = T/4$, $T/2$, and $T$. Confirm that the
+    scheme is stable at all values of $r$, and observe how
+    accuracy degrades (but does not diverge) at the largest
+    $\Delta t$.
+
+  \item \emph{Comparison}. At $t = T/2$, plot the analytical
+    solution and the FTCS ($r = 0.4$) and BTCS ($r = 0.4$) solutions
+    on the same axes. Compute the L2 norm of the error
+    $\|u_{\text{num}} - u_{\text{exact}}\|_{2}$ for each scheme.
+    Identify the dominant source of error in each.
+
+  \item \emph{Convergence study}. For BTCS, hold $\Delta t$ fixed
+    at $r = 1$ and vary $\Delta x$ as $N = 25, 50, 100, 200$.
+    Plot the L2 error against $\Delta x$ on log-log axes. Confirm
+    second-order spatial accuracy (slope $-2$). Then hold $\Delta
+    x$ fixed and vary $\Delta t$. Confirm first-order temporal
+    accuracy for BTCS (slope $-1$). If you also implement
+    Crank-Nicolson, observe second-order temporal accuracy.
+
+  \item \emph{Boundary-condition sensitivity}. Replace the right
+    Dirichlet condition $u(L, t) = 0$ with a Neumann insulating
+    condition $u_{x}(L, t) = 0$. Re-derive the analytical solution
+    (the eigenfunctions are now $\sin((n - 1/2)\pi x/L)$). Run
+    the BTCS solver with the modified boundary condition (a small
+    change at the right-edge update line). Compare the new
+    steady-state and transient behaviour with the original. Note
+    that the rod no longer cools to zero; the steady-state is
+    not the trivial solution.
+\end{enumerate}
+
+\textbf{Record}. The deliverable is a notebook (Jupyter, MATLAB
+live script, Pluto, or equivalent) or a script-plus-report
+containing: the Fourier-coefficient computation; the analytical-
+solution implementation; the FTCS and BTCS solvers; the
+comparison plots; the L2-error tables; the convergence-study
+plots; the boundary-condition sensitivity demonstration; and a
+1500-word reflection addressing the questions below.
+
+\textbf{Reflection (1500 words)}. The reader writes a
+1500-word narrative addressing:
+
+\begin{itemize}[leftmargin=*]
+  \item How does the CFL condition $r \leq 1/2$ manifest in the
+    FTCS plots, and what does the failure mode look like? How
+    does the failure differ from a software bug? Identify the
+    diagnostic test that distinguishes CFL violation from a sign
+    error in the right-hand side.
+  \item Why does BTCS solve a linear system at every step where
+    FTCS does not? What computational cost does that add per
+    step, and at what value of $r$ does the implicit scheme become
+    cheaper overall (despite the per-step cost) than the explicit
+    scheme? Connect the answer to the spectral analysis: the
+    largest decay rate on the grid is $\sim \alpha/\Delta x^{2}$,
+    and explicit stability bounds the time step to the
+    reciprocal.
+  \item How well does the truncated Fourier series approximate
+    the initial condition? Where do you see Gibbs ringing? How
+    quickly does it disappear, and what does the disappearance
+    rate tell you about the high-mode decay?
+  \item How does the change from Dirichlet to mixed Dirichlet-
+    Neumann boundary conditions change the steady state, the
+    eigenvalues, and the time constants? Why is the resulting
+    fundamental time constant four times longer than for the both-
+    ends-Dirichlet case?
+  \item What does the choice of explicit versus implicit time-
+    stepping tell you about the engineer's working trade-off
+    between simplicity and stability? Identify a class of
+    problems (long-time relaxation, fine grids, stiff parabolic
+    systems) where the implicit choice is obligatory, and a
+    class (short-time wave-like simulation, coarse grids) where
+    the explicit choice is competitive or preferred.
+\end{itemize}
+
+\textbf{Time}. Setup and analytical-solution derivation: one to
+two hours. FTCS implementation and CFL demonstration: one to two
+hours. BTCS implementation: one to two hours. Comparison and
+convergence study: one to two hours. Boundary-condition
+modification: one hour. Reflection: two to three hours. Total
+reader time approximately seven to eleven hours.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises run from direct verification of canonical solutions
+through derivation of separation-of-variables and finite-
+difference machinery, simulation of the project's solvers,
+design of working PDE problems, diagnosis of failure modes, and
+judgement-style reflections.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Verify by direct substitution that $u(x, t) = e^{-\alpha t}
+\sin(x)$ solves the one-dimensional heat equation $u_{t} = \alpha
+u_{xx}$. Identify the boundary conditions on the interval $[0,
+\pi]$ for which this is the unique solution at $t = 0$ matching
+the initial condition $u(x, 0) = \sin(x)$.
+\end{exercise}
+
+\begin{exercise}
+Compute the Fourier sine coefficients $b_{n}$ for the function
+$f(x) = x$ on $[0, L]$. Write the truncated Fourier series with
+$N = 5$ terms and evaluate at $x = L/2$. Compare to the exact
+value $L/2$ and identify the truncation error.
+\end{exercise}
+
+\begin{exercise}
+For a copper rod ($\alpha = 1.1 \times 10^{-4}\,\si{\meter
+\squared\per\second}$) of length $L = 0.5\,\si{\meter}$ with both
+ends held at $0\,\degC$ and initial uniform temperature
+$100\,\degC$, compute the fundamental time constant $\tau_{1} =
+L^{2}/(\pi^{2}\alpha)$ and the temperature at the midpoint after
+$t = \tau_{1}$, $2\tau_{1}$, $5\tau_{1}$. Use the leading-mode
+approximation and report the percent error against retaining the
+$n = 3$ correction at $t = \tau_{1}$.
+\end{exercise}
+
+\begin{exercise}
+For a steel guitar string of length $L = 0.65\,\si{\meter}$, mass
+per unit length $\mu = 4 \times 10^{-4}\,\si{\kilogram\per\meter}$,
+and tension $T = 80\,\si{\newton}$, compute the wave speed, the
+fundamental frequency, and the wavelengths of the first three
+harmonics. State the period of the round-trip propagation.
+\end{exercise}
+
+\begin{exercise}
+For the steady-state Laplace problem on a unit square with
+$u(x, 0) = 0$, $u(x, 1) = \sin(\pi x)$, $u(0, y) = u(1, y) = 0$,
+write the explicit separation-of-variables solution. Evaluate
+$u(0.5, 0.5)$ and $u(0.5, 0.25)$. Verify that the maximum
+principle holds.
+\end{exercise}
+
+\begin{exercise}
+For the wave equation with $c = 343\,\si{\meter\per\second}$
+(speed of sound in air at $20\,\degC$) and $\Delta x = 0.01\,\si
+{\meter}$, compute the CFL bound $\Delta t_{\max} = \Delta x/c$.
+Compare to the parabolic CFL bound for an analogous heat-equation
+simulation with thermal diffusivity equal to $c \cdot \Delta x$.
+\end{exercise}
+
+\begin{exercise}
+For the heat equation on a rod with one end Dirichlet at $T_{1}$
+and the other end Neumann (insulated), the steady state is
+uniform at $T_{1}$. Write the eigenvalues and eigenfunctions of
+the spatial operator with these boundary conditions. State the
+fundamental time constant in terms of $L$ and $\alpha$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the heat equation $u_{t} = \alpha u_{xx}$ from energy
+balance on a thin slab, Fourier's law $q = -k u_{x}$, and the
+limit $\Delta x \to 0$. Identify the physical meaning of $\alpha
+= k/(\rho c_{p})$ and verify the dimensions of each quantity.
+\end{exercise}
+
+\begin{exercise}
+Derive the wave equation $u_{tt} = c^{2} u_{xx}$ from Newton's
+second law applied to a thin string segment under tension $T$ and
+mass per unit length $\mu$. Identify the wave speed $c =
+\sqrt{T/\mu}$ and verify the dimensions. State the small-amplitude
+assumption that linearises the equation.
+\end{exercise}
+
+\begin{exercise}
+Derive the d'Alembert formula
+\[
+u(x, t) = \frac{1}{2}\bigl(\phi(x - c t) + \phi(x + c t)\bigr) + \frac{1}{2 c} \int_{x - c t}^{x + c t} \psi(s)\, \dd s
+\]
+for the solution of the wave equation $u_{tt} = c^{2} u_{xx}$
+with initial conditions $u(x, 0) = \phi(x)$ and $u_{t}(x, 0) =
+\psi(x)$. Hint: use the change of variables $\xi = x - c t$,
+$\eta = x + c t$ to bring the equation to $u_{\xi \eta} = 0$.
+\end{exercise}
+
+\begin{exercise}
+Derive the separation-of-variables solution to $u_{t} = \alpha
+u_{xx}$ on $0 \leq x \leq L$ with $u(0, t) = u(L, t) = 0$.
+Identify the eigenvalue problem $X'' + \lambda X = 0$ with
+$X(0) = X(L) = 0$, derive the eigenvalues $\lambda_{n} = (n
+\pi/L)^{2}$ and eigenfunctions $X_{n}(x) = \sin(n \pi x/L)$, and
+write the general solution as a Fourier sine series.
+\end{exercise}
+
+\begin{exercise}
+Derive the maximum principle for harmonic functions: if $u$ is
+harmonic on a bounded domain $\Omega$ and continuous on
+$\overline{\Omega}$, then $\max_{\overline{\Omega}} u =
+\max_{\partial \Omega} u$. Hint: use the mean-value property and
+argue by contradiction that an interior maximum forces the
+function to be constant in a neighbourhood of the maximum, and
+extend.
+\end{exercise}
+
+\begin{exercise}
+Derive the CFL condition $r = \alpha \Delta t/\Delta x^{2} \leq
+1/2$ for the FTCS scheme applied to the heat equation by von
+Neumann analysis. Hint: substitute the discrete Fourier mode
+$U_{j}^{n} = \xi^{n} e^{i k j \Delta x}$ into the update equation
+and demand $|\xi| \leq 1$ for all real $k$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the time for the centre of a $5\,\si{\centi\meter}$
+diameter aluminium sphere to reach $80\,\%$ of its surface
+temperature when the surface is suddenly raised from $20\,\degC$
+to $200\,\degC$. Use the thermal diffusivity of aluminium
+($\alpha \approx 9.7 \times 10^{-5}\,\si{\meter\squared\per
+\second}$) and the fact that the dominant time constant scales as
+$L^{2}/\alpha$ for a length $L$ equal to the radius. Compare to
+the formal first-mode time constant from a separation-of-variables
+solution.
+\end{exercise}
+
+\begin{exercise}
+Estimate the natural frequencies of the lowest three modes of a
+rectangular drumhead of dimensions $0.4\,\si{\meter}$ by $0.3\,
+\si{\meter}$ with surface mass density $\sigma = 0.3\,\si
+{\kilogram\per\meter\squared}$ and tension $T = 4\,\si{\newton
+\per\meter}$. Use the two-dimensional wave equation $u_{tt} =
+c^{2}\laplacian u$ with $c^{2} = T/\sigma$. State the sequence of
+mode frequencies $f_{m,n} = (c/2)\sqrt{(m/L_{x})^{2} +
+(n/L_{y})^{2}}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time scale on which the temperature inside a $30\,
+\si{\centi\meter}$ thick concrete wall ($\alpha \approx 5 \times
+10^{-7}\,\si{\meter\squared\per\second}$) responds to a daily
+cycle of outside temperature variation. Use the thermal-diffusion
+length $\delta = \sqrt{\alpha \tau}$ for $\tau = 1\,\si{\day}$.
+Compare to the wall thickness and conclude whether a daily cycle
+is felt at the inside surface.
+\end{exercise}
+
+\begin{exercise}
+Estimate the wavelength of the lowest-frequency air-column resonance
+in a $30\,\si{\centi\meter}$ pipe open at one end and closed at
+the other. The lowest mode has $\lambda/4 = L$ and frequency $f =
+c/\lambda = c/(4L)$. Use $c = 343\,\si{\meter\per\second}$ for
+air at $20\,\degC$. Compare to the lowest mode of a pipe of the
+same length open at both ends.
+\end{exercise}
+
+\begin{exercise}
+Estimate, before computing, the steady-state temperature at the
+centre of a square plate of side $L$ when three sides are held at
+$0\,\degC$ and the fourth side is held at $100\,\degC$. Use the
+maximum principle to bound the answer. Then use the separation-
+of-variables formula at $(L/2, L/2)$ and compare. The leading
+Fourier mode gives an answer near $25\,\degC$; identify the
+fraction.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement the FTCS scheme for the one-dimensional heat equation
+$u_{t} = u_{xx}$ ($\alpha = 1$) on $0 \leq x \leq 1$ with
+$u(0, t) = u(1, t) = 0$ and initial condition $u(x, 0) = \sin(\pi
+x)$. Run with $r = 0.4$ and $r = 0.6$ on a grid with $N = 50$
+interior points. Plot $u(x, t)$ at $t = 0, 0.1, 0.5$ for each
+$r$. Confirm stable evolution at $r = 0.4$ and unstable evolution
+at $r = 0.6$.
+\end{exercise}
+
+\begin{exercise}
+Implement the BTCS scheme for the same problem as the previous
+exercise. Use the tridiagonal solver of your environment. Run
+with $r = 1, 5, 50$. Plot the solutions and compare to the
+analytical $u(x, t) = e^{-\pi^{2} t}\sin(\pi x)$. Compute the L2
+error at $t = 0.5$ for each $r$ and identify the dominant error
+source at large $r$.
+\end{exercise}
+
+\begin{exercise}
+Implement the explicit centred-difference scheme for the wave
+equation $u_{tt} = u_{xx}$ ($c = 1$) on $0 \leq x \leq 1$ with
+$u(0, t) = u(1, t) = 0$, $u(x, 0) = \sin(\pi x)$, $u_{t}(x, 0) =
+0$. Run with $c \Delta t/\Delta x = 0.9$ and $c \Delta t/\Delta x
+= 1.1$. Plot the solutions and confirm stable behaviour below
+the CFL bound and unstable behaviour above. Verify that the
+stable solution is approximately $\cos(\pi t)\sin(\pi x)$.
+\end{exercise}
+
+\begin{exercise}
+Implement Jacobi iteration for Laplace's equation on the unit
+square with $u = 0$ on three sides and $u = 1$ on the fourth.
+Run until the maximum change between iterations falls below
+$10^{-6}$. Plot the converged solution and the level curves.
+Compare to the analytical separation-of-variables solution at the
+plate centre.
+\end{exercise}
+
+\begin{exercise}
+Implement the Crank-Nicolson scheme for the heat equation
+$u_{t} = u_{xx}$ on $0 \leq x \leq 1$ with the same boundary and
+initial conditions as the FTCS exercise. Run a convergence
+study: hold the time step fixed and refine $\Delta x$ across
+four levels in geometric progression. Plot the L2 error against
+$\Delta x$ on log-log axes and confirm second-order spatial
+convergence.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a finite-difference simulator for steady-state heat
+conduction in an L-shaped domain (two rectangles joined at a
+corner) with Dirichlet boundary conditions on the outer
+boundary. State the discretisation, the boundary-condition
+implementation, the linear-system solver, the convergence
+diagnostic, and the resolution criterion. Identify which
+boundary corner produces the highest gradient and require an
+adaptive refinement there.
+\end{exercise}
+
+\begin{exercise}
+Design a numerical solver for the time-dependent heat equation
+on a one-dimensional rod with a heat source $S(x, t)$ active for
+$0 < t < t_{\text{on}}$ and zero thereafter. State the time-
+stepping scheme (FTCS, BTCS, Crank-Nicolson), the time-step
+constraint, the spatial grid, and the diagnostic that checks
+whether the simulation has resolved the rise time and the
+relaxation time.
+\end{exercise}
+
+\begin{exercise}
+Design a wave-equation simulation for an acoustic pulse
+propagating through a non-uniform medium with $c(x)$ varying by
+a factor of two across the domain. State the discretisation, the
+time-step constraint (which now varies with the local $c$), the
+absorbing-boundary treatment that prevents reflections at the
+domain edges, and the diagnostic that confirms the numerical
+domain of dependence covers the analytical one everywhere.
+\end{exercise}
+
+\begin{exercise}
+Design a thermal management plan for an electronic component
+dissipating $5\,\si{\watt}$ in a $1\,\si{\centi\meter}$ cubic
+package, mounted to a copper heat sink with ambient-air
+convection on the sink fins. State the boundary conditions
+(Dirichlet on the package face, Robin on the fin surfaces, with
+estimated convective coefficient $h \sim 10\,\si{\watt\per\meter
+\squared\per\kelvin}$), the steady-state temperature target ($85
+\,\degC$ junction temperature), and the design parameter (sink
+fin area) that meets the target. State which assumption dominates
+the design uncertainty.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A finite-difference simulation of the heat equation produces a
+checkerboard pattern of growing amplitude after a few hundred
+time steps. State the most likely cause and the diagnostic that
+distinguishes it from a sign error in the right-hand side or a
+boundary-condition mistake. State the corrective action.
+\end{exercise}
+
+\begin{exercise}
+A laboratory measurement of thermal conductivity by transient
+hot-wire produces a value $30\,\%$ below the literature value
+for the material. The simulation uses Dirichlet boundary
+conditions at the wire-sample interface assuming perfect contact.
+State the most likely modelling cause (contact resistance), the
+mathematical reformulation that fixes it (a Robin condition with
+contact-conductance coefficient), and the experimental
+diagnostic that distinguishes the modelling cause from a
+calibration error in the thermocouple.
+\end{exercise}
+
+\begin{exercise}
+A finite-element simulation of an electrostatic potential
+between two charged plates produces values that depend on the
+mesh resolution: refining the mesh by a factor of two changes
+the answer by $5\,\%$. State the most likely cause (insufficient
+mesh resolution near the plate edges where the field gradient
+is high), the diagnostic (run a convergence study with three
+mesh levels), and the remedy (adaptive refinement, or analytical
+treatment of the edge singularity).
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+A heat-conduction simulation for a chemical reactor wall uses a
+Dirichlet boundary condition at the outer surface, set to the
+ambient air temperature on the reasoning that "the air is
+cooler." The simulation predicts a steady-state inner-wall
+temperature thirty kelvin below what the deployed reactor
+exhibits. Argue, in 200 to 300 words, the failure mechanism in
+boundary-condition terms: the Dirichlet condition implies
+infinite heat-transfer coefficient at the surface; the actual
+condition is convective with finite $h$; the model overpredicts
+heat loss by the ratio of the effective $h$ to the imposed
+Dirichlet flux. Identify the working diagnostic (predicted
+surface flux compared to the achievable convective flux) and the
+remedy (replace Dirichlet by Robin with the calibrated convective
+coefficient).
+\end{exercise}
+
+\begin{exercise}
+An inverse heat-conduction problem (recover the initial
+temperature profile of a slab from a measurement at $t = 1\,\si
+{\hour}$) produces an answer dominated by short-wavelength
+oscillations that exceed any plausible physical input. Argue,
+in 200 to 300 words, the failure mechanism in Hadamard terms:
+the forward heat operator attenuates high-wavenumber components
+exponentially; inverting requires exponential amplification of
+those components; measurement noise at high wavenumbers is
+amplified into the recovered initial condition. Identify the
+discipline (Tikhonov regularisation, truncated SVD, or Bayesian
+prior) that bounds the failure and report the regularisation
+parameter as part of the result.
+\end{exercise}
+
+\begin{exercise}
+A wave-equation simulation of an acoustic pulse uses an explicit
+scheme with a Courant number $C = c \Delta t/\Delta x = 1.05$.
+The simulation produces a fast-growing high-frequency oscillation
+that overwhelms the pulse within ten time steps. Argue, in
+200 to 300 words, the failure mechanism in CFL terms: the
+numerical domain of dependence is smaller than the analytical
+one; the discrete scheme cannot represent the propagation
+correctly; the highest-wavenumber Fourier mode amplifies. Identify
+the corrective action (reduce the time step) and state the
+working principle (Courant number must be at most one for
+explicit hyperbolic schemes; for parabolic schemes the relevant
+constraint is quadratic).
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A junior engineer proposes to model a heated copper plate cooling
+to ambient air by setting the plate's surface to a Dirichlet
+condition at the ambient temperature. Write a one-paragraph
+response that takes the proposal seriously, identifies the regime
+in which the Dirichlet condition is a good approximation (very
+large convective coefficient, plate submerged in stirred liquid),
+and identifies the regime in which it gives a wrong answer
+(natural convection in still air, where the Robin condition with
+convective $h$ is the correct model).
+\end{exercise}
+
+\begin{exercise}
+Argue, in 200 to 300 words, when a closed-form Fourier-series
+solution of a PDE is preferable to a numerical solution, and when
+the inverse holds. Take a position on a class of problems
+(rectangular geometry with constant coefficients and standard
+boundary conditions, irregular geometry with mixed conditions,
+nonlinear coefficients, transient with a source term) and identify
+which approach the working engineer reaches for first. Identify
+the situation in which the Fourier solution remains valuable
+even when the numerical method is the production tool (sanity
+check, asymptotic limit, mode-by-mode physical interpretation).
+\end{exercise}

@@ -1,40 +1,1436 @@
 \chapter{Numerical methods}
 \label{vol02:ch16}
 
-\epigraph{}{}
+\epigraph{The purpose of computing is insight, not numbers.}{Richard
+W.\ Hamming, \emph{Numerical Methods for Scientists and Engineers},
+2nd ed., 1973, preface; the orientation paraphrased throughout this
+chapter follows Higham
+\cite[ch.~1]{text:higham-numerical}.}
 
-\chapmeta{Half-life: medium-life. Archetypes: failure (numerical), uncertainty. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational. Archetypes: failure (numerical),
+uncertainty (conditioning and round-off as the formal handling of
+input-error and finite-precision amplification). Exercise target: 35.
+Project track: simulation with analysis (reproduce one published
+numerical result, account for any drift, plus a 1500-word
+reflection). Hazard class: none. Reader path default: standard, with
+sections explicitly tagged. Named cases: Patriot missile system at
+Dhahran (1991); Ariane 5 Flight 501 (1996).}
 
 \noindent
-\TODO{Volume 2, Chapter 16. Approx 110 pp.}
+A computation that returns a number is not the same thing as a
+computation that returns the right number. Volume II Chapters 5
+through 15 set up the analytic apparatus on which engineers fit
+models, integrate dynamics, solve linear systems, and find optima;
+each of those chapters worked in exact arithmetic on the page. A
+working engineer does not have exact arithmetic. The arithmetic the
+engineer has is finite-precision, often IEEE 754 double, and the
+gap between the page and the silicon is the subject of this chapter.
 
-\section{Floating-point arithmetic}
-\TODO{Section prose.}
+The discipline is to make the gap visible. Three quantities sit
+behind every numerical answer the engineer reports: the truncation
+error of the algorithm, the round-off error of the arithmetic, and
+the conditioning of the problem. When the engineer can name all
+three, the answer travels. When even one is hidden, the answer is
+liable to be replaced silently by a different one. The chapter
+develops the apparatus that names them, the algorithms whose
+behaviour the engineer should know without lookup, and the named
+cases in which an undocumented numerical decision destroyed an
+engineering system.
 
-\section{Error: truncation, round-off, conditioning}
-\TODO{Section prose.}
+\section{Floating-point arithmetic}\pathtag{core}
 
-\section{Root-finding: bisection, Newton, secant}
-\TODO{Section prose.}
+The arithmetic that runs in modern engineering software is, in the
+overwhelming majority of cases, the IEEE 754 binary floating-point
+arithmetic ratified in 1985 and revised in 2008
+\cite[ch.~2]{text:higham-numerical}. The standard fixes the
+representation, the rounding rules, the special values, and the
+required operations. Engineers who do not know what the standard
+guarantees, and what it explicitly does not, will sooner or later
+report a number whose provenance they cannot defend.
 
-\section{Numerical linear algebra revisited}
-\TODO{Section prose.}
+\subsection{The representation}
 
-\section{Numerical integration revisited}
-\TODO{Section prose.}
+A binary floating-point number $x$ is represented as
 
-\section{Numerical ODE/PDE solvers}
-\TODO{Section prose.}
+\[
+x = (-1)^{s} \cdot (1.f) \cdot 2^{e},
+\]
 
-\section{Reproducibility: deterministic floating-point, exact-arithmetic alternatives}
-\TODO{Section prose.}
+where $s \in \{0, 1\}$ is the sign bit, $f$ is a fraction in $[0, 1)$
+stored as the bits of the \engterm{mantissa} (or significand), and
+$e$ is a binary exponent stored with a bias. The leading $1.$ is
+implicit for normal numbers; the bits actually stored are $s$, the
+biased $e$, and the bits of $f$. The standard formats relevant to
+engineering are summarised in Table~\ref{tab:ieee754}.
 
-\section{Failure: famous numerical failures}
-\TODO{Section prose.}
+\begin{center}
+\begin{tabular}{lcccc}
+\hline
+Format & Bits & Mantissa bits & Exponent bits & Approx.~range \\
+\hline
+binary16 (half) & 16 & 10 + 1 implicit & 5 & $6\times 10^{-5}$ to $6.5\times 10^{4}$ \\
+binary32 (single) & 32 & 23 + 1 implicit & 8 & $1.2\times 10^{-38}$ to $3.4\times 10^{38}$ \\
+binary64 (double) & 64 & 52 + 1 implicit & 11 & $2.2\times 10^{-308}$ to $1.8\times 10^{308}$ \\
+binary128 (quad) & 128 & 112 + 1 implicit & 15 & $3.4\times 10^{-4932}$ to $1.2\times 10^{4932}$ \\
+\hline
+\end{tabular}
+\end{center}
+\label{tab:ieee754}
 
+The mantissa-bit count fixes the precision; the exponent-bit count
+fixes the range. Double precision is the working default in
+scientific computing because its precision (about 15 to 17 decimal
+digits) and its range cover most engineering quantities without
+intermediate scaling. Single precision (about 7 decimal digits) is
+the default in graphics and in some machine-learning workloads
+because its memory and bandwidth costs are half of double's. Half
+precision (about 3 to 4 decimal digits) appears in deep-learning
+training and in some embedded systems, and is too narrow for most
+classical numerical work.
 
-\section{Project}
-\TODO{reproduce a published numerical result from a paper; account for any drift}
+\begin{estimation}
+\textbf{Question.} A measurement chain produces a sequence of
+$N = 10^{6}$ readings, each rounded to double precision and
+summed in the order produced. Estimate the round-off error in the
+final sum, before computing it.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+Each addition is rounded with relative error at most the unit
+round-off $u \approx 1.1 \times 10^{-16}$ for double precision. The
+naive sequential sum accumulates error in roughly the worst-case
+form $N u \cdot \abs*{S}$, where $S$ is the sum's magnitude, giving
+a relative error bound near $10^{-10}$. The bound is loose; in
+practice, with random-sign rounding errors, the typical accumulated
+error grows as $\sqrt{N} u$ and the relative error is closer to
+$10^{-13}$. Either bound is far below the measurement noise of any
+realistic engineering chain. The lesson is the order of magnitude:
+naive summation of a million double-precision numbers is safe; a
+billion is borderline; a trillion calls for compensated summation
+(Kahan, pairwise) or for an extended precision.
+\end{estimation}
+
+\subsection{Rounding}
+
+The result of a real-arithmetic operation between two
+floating-point numbers is, in general, not representable. The
+standard requires the operation to round to the nearest
+representable number, with ties broken toward the value whose last
+mantissa bit is zero (\engterm{round-to-nearest, ties to even}).
+This is the default rounding mode and the only mode the engineer
+should normally rely on. Three further modes (round toward zero,
+toward $+\infty$, toward $-\infty$) exist for interval arithmetic
+and for specific algorithms; their use is documented per call site.
+
+The bound on the rounding error of a single basic operation $\circ
+\in \{+, -, \times, /\}$ is
+
+\[
+\operatorname{fl}(a \circ b) = (a \circ b)(1 + \delta), \qquad \abs{\delta} \leq u,
+\]
+
+where $\operatorname{fl}(\cdot)$ denotes the floating-point result and $u$ is the
+\engterm{unit round-off} of the format \cite[\S2.2]{text:higham-numerical}.
+For binary64, $u = 2^{-53} \approx 1.11 \times 10^{-16}$; for
+binary32, $u = 2^{-24} \approx 5.96 \times 10^{-8}$. The square root
+operation is also correctly rounded under IEEE 754; transcendental
+functions (sin, cos, exp, log) are not, in general, required to be
+correctly rounded, and an engineer who depends on the last bit of a
+transcendental's value is depending on the specific math library
+shipped with the platform.
+
+\subsection{Machine epsilon}
+
+The \engterm{machine epsilon} $\epsilon_{m}$ is the gap between
+$1$ and the next representable floating-point number. For binary64,
+$\epsilon_{m} = 2^{-52} \approx 2.22 \times 10^{-16}$; for binary32,
+$\epsilon_{m} = 2^{-23} \approx 1.19 \times 10^{-7}$. The machine
+epsilon is twice the unit round-off in the round-to-nearest scheme,
+$\epsilon_{m} = 2 u$, because $u$ is the worst-case relative
+rounding error and $\epsilon_{m}$ is the spacing between adjacent
+representables near $1$. Both quantities appear in algorithm
+analysis; the engineer should know both, and should know which one
+a given source uses without ambiguity.
+
+\subsection{Special values}
+
+IEEE 754 reserves several bit patterns for non-finite results.
+
+\begin{itemize}[leftmargin=*]
+  \item Signed zero: $+0$ and $-0$ are distinct representations and
+    compare equal under $==$, but distinguish themselves under
+    $1/x$, which yields $+\infty$ for $+0$ and $-\infty$ for $-0$.
+  \item Signed infinity: $\pm\infty$ arise from overflow and from
+    division of a finite nonzero by zero. Subsequent arithmetic
+    propagates infinity deterministically: $\infty + 1 = \infty$,
+    $\infty / \infty = \mathrm{NaN}$, $\infty \times 0 = \mathrm{NaN}$.
+  \item Not-a-Number (NaN): the result of $0/0$, $\infty - \infty$,
+    $\sqrt{-1}$, and any operation with at least one NaN operand.
+    NaN compares unequal to every value including itself; the
+    \texttt{NaN != NaN} test is the canonical NaN check.
+  \item Subnormal (denormal) numbers: representations with the
+    minimum biased exponent and a zero leading bit, used to fill the
+    gap between zero and the smallest normal number. Subnormals
+    extend the underflow region with gradual loss of precision; on
+    some hardware they are slow, and a flush-to-zero mode replaces
+    them with zero.
+\end{itemize}
+
+The engineer's discipline is to know that these values are
+contagious, that they are sometimes legitimate (an unattainable
+optimum returns $+\infty$ as a flag), and that they are sometimes
+the silent shadow of an unhandled corner. A computation that
+returns NaN is not a failed computation in the sense of a crash; it
+is a successful computation of a non-result, and the engineer who
+treats it as a number is in trouble. Section 16.8 makes this point
+concrete.
+
+\subsection{What the standard does not guarantee}
+
+IEEE 754 fixes the basic operations and the formats. It does not
+fix the order in which a compiler evaluates a sum, the precision
+of intermediate values held in extended-precision registers, the
+semantics of fused multiply-add (FMA) versus separate multiply and
+add, or the bit-for-bit reproducibility of a parallel reduction
+across thread counts. Section 16.7 returns to these. A program
+that produces the same floating-point output on the same input on
+the same hardware on the same day is a program. A program that
+produces the same output on the same input on different hardware,
+different optimisation levels, or different thread counts is a
+program plus a discipline.
+
+\section{Error: truncation, round-off, conditioning}\pathtag{core}
+
+Three error sources sit behind every numerical answer. The
+discipline is to name each one, to bound it, and to choose the
+algorithm whose dominant error matches the engineer's tolerance.
+
+\subsection{Truncation error}
+
+\engterm{Truncation error} (also called \engterm{discretisation
+error}, or \engterm{algorithm error}) is the error introduced by
+replacing the exact mathematical operation with a finite
+approximation. The forward-difference approximation to the
+derivative,
+
+\[
+f'(x) \approx \frac{f(x+h) - f(x)}{h},
+\]
+
+has truncation error $\frac{h}{2} f''(\xi)$ for some $\xi$ near
+$x$, by Taylor's theorem. The error vanishes as $h \to 0$. A
+five-term truncation of a Taylor series has truncation error of
+order $h^{5}$ in the discarded terms. A trapezoidal-rule
+quadrature on $n$ intervals has truncation error of order $h^{2}$.
+
+Truncation error is independent of the arithmetic. It is a
+property of the algorithm relative to the underlying mathematical
+operation. It scales predictably with the discretisation parameter
+($h$, $\Delta t$, the number of terms retained), and the engineer
+controls it by choosing the parameter.
+
+\subsection{Round-off error}
+
+\engterm{Round-off error} is the error introduced by the
+finite-precision arithmetic of the previous section. Each basic
+operation contributes a relative error of size at most $u$, and
+the accumulated round-off depends on the algorithm and on the data.
+For a sum of $n$ floating-point numbers, the worst-case
+accumulated round-off is bounded by $n u$, while the typical
+behaviour for random-sign errors is closer to $\sqrt{n} u$
+\cite[\S4.2]{text:higham-numerical}. For matrix-vector multiplication
+in $\R^{n}$, the worst-case relative round-off is bounded by $n u$
+times a small constant.
+
+Round-off error is independent of the algorithm's truncation. It
+is a property of the arithmetic relative to the algorithm as
+written. It scales predictably with the format (single, double,
+quad), and the engineer controls it by choosing the format and by
+preferring numerically stable variants of the algorithm (Kahan
+summation, Householder QR over Gram-Schmidt, partial pivoting in
+LU).
+
+\subsection{Conditioning}
+
+\engterm{Conditioning} is a property of the problem, not of any
+algorithm. The condition number measures how much a small relative
+perturbation of the input amplifies into a relative perturbation of
+the output. For a differentiable scalar function $f: \R \to \R$, the
+relative condition number is
+
+\[
+\kappa_{f}(x) = \abs*{\frac{x f'(x)}{f(x)}},
+\]
+
+defined where $f(x) \neq 0$. For a linear system $\mat{A}\vect{x} =
+\vect{b}$, the condition number is the matrix-norm quantity
+$\kappa(\mat{A}) = \norm{\mat{A}} \norm{\mat{A}^{-1}}$ introduced
+in section 9.7. For a root-finding problem $f(x) = 0$ at a simple
+root $x^{*}$, the condition number with respect to perturbations of
+$f$ is $1/\abs*{f'(x^{*})}$ in absolute terms.
+
+The dimensional reading is essential. A condition number of
+$10^{6}$ does not mean the algorithm is bad; it means the problem
+amplifies input perturbations by a factor of $10^{6}$. Even an
+algorithm that introduces no round-off cannot recover digits the
+problem has lost. The engineer who reports a result on an
+ill-conditioned problem reports the conditioning, the precision,
+and the rule-of-thumb digit count, and refuses to over-claim.
+
+\subsection{Forward and backward error}
+
+Two error notions are formal in numerical analysis. The
+\engterm{forward error} is the difference between the computed
+output $\hat{y}$ and the exact output $y$ for the given input.
+The \engterm{backward error} is the smallest perturbation
+$\Delta x$ of the input such that the computed output equals the
+exact output for the perturbed input,
+
+\[
+\hat{y} = f(x + \Delta x).
+\]
+
+An algorithm is \engterm{backward stable} if its backward error
+is small relative to $u$ for every input. Backward stability is
+the strongest stability property an engineer can usually expect
+from a general-purpose numerical algorithm; LU with partial
+pivoting, QR by Householder, the symmetric-tridiagonal eigenvalue
+QR algorithm, and the SVD by the Golub-Reinsch routine are all
+backward stable
+\cite[ch.~7]{text:trefethen-bau1997}.
+
+The relationship between forward and backward error is
+
+\[
+\text{forward error} \lesssim \kappa(\text{problem}) \cdot
+\text{backward error}.
+\]
+
+A backward-stable algorithm on an ill-conditioned problem still
+loses digits; the digits the engineer loses are bought by the
+problem, not by the algorithm. The discipline is to identify
+which buyer is responsible.
+
+\section{Root-finding: bisection, Newton, secant}\pathtag{core}
+
+The root-finding problem is: given $f: \R \to \R$ continuous,
+find $x^{*}$ with $f(x^{*}) = 0$. The problem appears in every
+volume that follows: equilibrium states in thermodynamics, fixed
+points in control, equation-of-state inversions in fluid mechanics,
+optimality conditions in optimisation. The three algorithms
+covered here span the working tradeoff between robustness and
+speed.
+
+\subsection{Bisection}
+
+If $f$ is continuous on $[a, b]$ and $f(a) f(b) < 0$, the
+intermediate-value theorem guarantees a root in $[a, b]$.
+\engterm{Bisection} repeatedly halves the bracket: compute
+$c = (a + b)/2$, evaluate $f(c)$, replace whichever endpoint
+shares its sign. The interval length halves at each step, so
+after $k$ iterations the bracket has length $(b - a)/2^{k}$, and
+the error of the midpoint approximation is at most half that.
+To reach a tolerance $\tau$, the iteration needs
+
+\[
+k \geq \log_{2}\!\left(\frac{b - a}{2 \tau}\right)
+\]
+
+steps. Bisection has \engterm{linear convergence} with
+contraction factor $1/2$.
+
+The strength of bisection is its robustness. It requires only
+continuity and a sign-change bracket; it does not require
+differentiability, smoothness, or a good initial guess; the
+interval length is a guaranteed forward error. Its weakness is
+its speed. Twenty bisection steps shrink the bracket by a factor
+of $10^{6}$; reaching machine precision from a unit bracket
+requires about 53 steps in double precision.
+
+\subsection{Newton's method}
+
+If $f$ is differentiable and $x_{0}$ is close enough to a simple
+root $x^{*}$, the iteration
+
+\[
+x_{k+1} = x_{k} - \frac{f(x_{k})}{f'(x_{k})}
+\]
+
+converges to $x^{*}$ at \engterm{quadratic} rate: the error
+$e_{k} = x_{k} - x^{*}$ satisfies, for $k$ large enough,
+
+\[
+\abs{e_{k+1}} \leq C \abs{e_{k}}^{2},
+\]
+
+where $C = \abs*{f''(x^{*})}/(2\abs*{f'(x^{*})})$
+\cite[ch.~4]{text:moler-numerical}. The number of correct digits
+roughly doubles per step. Five or six steps from a reasonable
+initial guess is typical to reach double precision.
+
+The strength of Newton is its speed. The weakness is its
+fragility. The method requires $f'$ (analytic or numerical), can
+diverge or cycle from a poor initial guess, slows to linear
+convergence at multiple roots, and amplifies catastrophically when
+$\abs{f'(x^{*})}$ is small. Engineers use Newton inside a
+safeguarded outer routine: Newton step proposed; if the proposal
+falls outside a bracket maintained by bisection or by trust-region
+logic, fall back to bisection. The hybrid routine \texttt{brentq}
+in scientific Python and the \texttt{fzero} routine in MATLAB
+implement variants of this discipline.
+
+\subsection{Secant method}
+
+The \engterm{secant method} replaces the analytic derivative
+with a finite-difference approximation across two iterates,
+
+\[
+x_{k+1} = x_{k} - f(x_{k}) \frac{x_{k} - x_{k-1}}
+{f(x_{k}) - f(x_{k-1})}.
+\]
+
+The method has \engterm{superlinear convergence} of order
+$\varphi = (1 + \sqrt{5})/2 \approx 1.618$, the golden ratio. It
+needs no derivative and one function evaluation per step instead
+of two. The method's robustness sits between bisection and
+Newton; like Newton, it can diverge from a poor initial pair.
+
+\subsection{Choosing among the three}
+
+The working choice depends on three properties of the problem.
+Is $f$ smooth, with a known derivative, near a simple root, with
+a good initial guess available: use Newton, with a safeguarded
+fallback. Is $f$ continuous, with a sign-change bracket
+identifiable, with no derivative information: use bisection
+followed by Newton (or by a hybrid like Brent's method). Is the
+derivative expensive but the function smooth: use the secant
+method, with the same safeguarding pattern.
+
+The engineer should not write a custom Newton or secant routine
+for production work; \texttt{scipy.optimize.brentq},
+\texttt{scipy.optimize.newton}, MATLAB \texttt{fzero}, and the
+GNU Scientific Library equivalents are tested, safeguarded, and
+documented. The discipline this section teaches is the choice
+among them, not the implementation.
+
+\begin{archetype}[Failure (numerical)]
+A numerical method has a precondition, a convergence rate, and a
+failure mode. The convergence rate is the quantity by which the
+method earns its place; the failure mode is the quantity that
+costs the engineer the answer when the precondition is violated.
+Newton at a simple root with a good initial guess earns quadratic
+convergence; Newton at a multiple root degrades to linear; Newton
+at a stationary point of $f$ diverges. The discipline is to know
+the precondition before deploying the method, and to safeguard
+the deployment for the cases where the precondition is silently
+violated. The same archetype recurs across this chapter:
+trapezoidal quadrature on a discontinuous integrand, RK4 on a
+stiff system, Gaussian elimination without pivoting on a matrix
+with a small pivot, and naive summation on a vector with
+catastrophic cancellation. Each algorithm earns its rate from a
+property the input may or may not satisfy; the engineer's job is
+to verify, not to assume.
+\end{archetype}
+
+\section{Numerical linear algebra revisited}\pathtag{standard}
+
+Volume II Chapter 9 introduced linear systems, LU factorisation,
+QR factorisation, condition numbers, and the SVD at the level of
+recognition. This section completes the apparatus at the level a
+working engineer should be able to defend.
+
+\subsection{LU with partial pivoting}
+
+Gaussian elimination as written in Chapter 9 produces $\mat{A} =
+\mat{L}\mat{U}$ when no zero pivot appears. In floating-point, a
+\emph{small} pivot is almost as dangerous as a zero pivot: the
+elimination scales subsequent rows by the inverse of the pivot,
+and a small pivot amplifies the round-off error of those rows.
+\engterm{Partial pivoting} fixes this by permuting rows at each
+elimination step so that the pivot is the largest-magnitude
+candidate in its column. The factorisation becomes
+
+\[
+\mat{P}\mat{A} = \mat{L}\mat{U},
+\]
+
+where $\mat{P}$ is a permutation matrix that records the row
+swaps. The algorithm is backward stable in practice for almost all
+matrices, with backward error of order $u$ times a quantity called
+the \engterm{growth factor}, which is bounded by $2^{n-1}$ in
+theory and is observed to be $O(n)$ in practice
+\cite[ch.~22]{text:higham-numerical}.
+
+Partial pivoting is not optional in production code. Every
+library LU routine pivots; an engineer who writes Gaussian
+elimination from scratch and omits pivoting has written an
+algorithm whose stability the engineer cannot defend. The
+discipline of section 9.8's refusal list applies: a reported
+linear-system solve without partial pivoting (or full pivoting,
+or a stability argument) is incomplete.
+
+\subsection{QR by Householder reflections}
+
+The Gram-Schmidt procedure of Chapter 9 produces $\mat{A} =
+\mat{Q}\mat{R}$ in exact arithmetic, but in floating-point it
+loses orthogonality: the computed $\mat{Q}$ has $\mat{Q}^{\transpose}
+\mat{Q} - \mat{I}$ of size $\norm{\cdot}_{2} \approx \kappa(\mat{A})
+u$, which can be much larger than $u$. \engterm{Modified
+Gram-Schmidt} improves the situation but still loses orthogonality
+on ill-conditioned matrices.
+
+The \engterm{Householder QR} algorithm produces a $\mat{Q}$ that
+is orthogonal to working precision regardless of the conditioning
+of $\mat{A}$. The algorithm constructs a sequence of orthogonal
+\engterm{Householder reflectors} $\mat{H}_{k}$, each of the form
+
+\[
+\mat{H} = \mat{I} - 2 \frac{\vect{v}\vect{v}^{\transpose}}
+{\vect{v}^{\transpose}\vect{v}},
+\]
+
+chosen so that $\mat{H}_{k}$ zeros the subdiagonal of column $k$
+of the partially triangularised matrix. The product $\mat{H}_{n}
+\cdots \mat{H}_{1} \mat{A} = \mat{R}$ is upper triangular, and
+$\mat{Q} = \mat{H}_{1}^{\transpose}\cdots\mat{H}_{n}^{\transpose}$
+is orthogonal by construction. The factorisation is backward
+stable: the computed $\hat{\mat{Q}}$ and $\hat{\mat{R}}$ satisfy
+$\hat{\mat{Q}}\hat{\mat{R}} = \mat{A} + \mat{E}$ with
+$\norm{\mat{E}}/\norm{\mat{A}} \leq c_{n} u$ for a small constant
+$c_{n}$ \cite[ch.~10]{text:trefethen-bau1997}.
+
+The Householder $\mat{Q}$ is rarely formed explicitly; the
+algorithm stores the reflectors and applies them on demand to
+$\vect{b}$ when solving $\mat{A}\vect{x} = \vect{b}$ via
+$\mat{R}\vect{x} = \mat{Q}^{\transpose}\vect{b}$. The storage is
+the same as the input matrix's, and the operation count is
+$2 m n^{2} - \frac{2}{3} n^{3}$ flops for an $m \times n$ matrix
+with $m \geq n$, twice that of LU but with the orthogonality
+bonus.
+
+\subsection{Singular value decomposition}
+
+The SVD of Chapter 9 takes the form $\mat{A} = \mat{U}\mat{\Sigma}
+\mat{V}^{\transpose}$. The standard algorithm for computing it is
+the \engterm{Golub-Reinsch} two-phase routine: first reduce
+$\mat{A}$ to bidiagonal form by left and right Householder
+reflectors, then iterate an implicit QR algorithm on the
+bidiagonal until the off-diagonal entries are below a tolerance.
+The cost is $O(m n^{2})$ for an $m \times n$ matrix with $m \geq
+n$, and the algorithm is backward stable
+\cite[ch.~31]{text:trefethen-bau1997}.
+
+The SVD's working role for the engineer is the rank-revealing
+diagnosis. Three quantities follow from the singular values that
+no other factorisation gives directly:
+
+\begin{itemize}[leftmargin=*]
+  \item The \engterm{numerical rank} of $\mat{A}$, defined as the
+    number of singular values above a tolerance (typically
+    $\sigma_{1} \cdot u \cdot \max(m, n)$).
+  \item The \engterm{2-norm condition number} $\kappa_{2}(\mat{A})
+    = \sigma_{1}/\sigma_{r}$, where $r$ is the numerical rank.
+  \item The \engterm{best low-rank approximation} of $\mat{A}$ in
+    the $\norm{\cdot}_{2}$ and $\norm{\cdot}_{F}$ norms, which is
+    obtained by truncating the SVD to its $k$ leading singular
+    values (the Eckart-Young theorem).
+\end{itemize}
+
+The truncated SVD is the engineer's tool for regularising
+ill-conditioned least-squares problems and for compressing
+high-rank approximate matrices. Section 16.7 returns to its role
+in reproducibility.
+
+\subsection{Iterative methods (recognition level)}
+
+Direct factorisations cost $O(n^{3})$ flops and $O(n^{2})$
+storage, prohibitive when $n$ exceeds about $10^{4}$ on a single
+node, or when $\mat{A}$ is sparse and the engineer wants to
+preserve the sparsity. \engterm{Iterative methods} produce a
+sequence of approximate solutions $\vect{x}_{k}$ that converges to
+$\vect{x}^{*}$, using $\mat{A}$ only through matrix-vector
+products. Three families recur in engineering practice:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Stationary methods} (Jacobi, Gauss-Seidel, SOR)
+    iterate $\vect{x}_{k+1} = \vect{x}_{k} + \mat{M}^{-1}(\vect{b}
+    - \mat{A}\vect{x}_{k})$ for an easily invertible
+    \emph{preconditioner} $\mat{M}$. They converge linearly and
+    are simple to implement; they are increasingly displaced by
+    Krylov methods.
+  \item \engterm{Krylov methods} (conjugate gradients for
+    symmetric positive definite systems, GMRES for general
+    systems, BiCGSTAB and MINRES for special cases) build the
+    iterate in the Krylov subspace $\spn\{\vect{r}_{0},
+    \mat{A}\vect{r}_{0}, \mat{A}^{2}\vect{r}_{0}, \ldots\}$ and
+    converge in at most $n$ steps in exact arithmetic. With a
+    good preconditioner they converge in far fewer.
+  \item \engterm{Multigrid} methods are tailored to systems
+    arising from the discretisation of PDEs, exploiting the
+    multi-scale structure of the residual. They achieve $O(n)$
+    work per solution for problems where direct methods cost
+    $O(n^{3})$.
+\end{itemize}
+
+The engineer's working role is recognition: when $n$ is large and
+$\mat{A}$ is sparse, the choice between direct and iterative is a
+project decision, with trade-offs in time, memory, robustness,
+and the engineer's familiarity with the convergence theory.
+Volume IV Chapter 8 (computational continuum mechanics) and
+Volume IX develop the iterative apparatus at the level needed for
+PDE discretisations.
+
+\section{Numerical integration revisited}\pathtag{standard}
+
+Volume II Chapter 6 introduced the trapezoidal rule and Simpson's
+rule. This section completes the apparatus.
+
+\subsection{Trapezoidal and Simpson on a uniform grid}
+
+For a smooth function $f$ on $[a, b]$, divided into $n$ equal
+subintervals of width $h = (b - a)/n$, the \engterm{composite
+trapezoidal rule} approximates
+
+\[
+\int_{a}^{b} f(x)\, \dd x \approx \frac{h}{2}\!\left[f(x_{0}) +
+2 \sum_{k=1}^{n-1} f(x_{k}) + f(x_{n})\right],
+\]
+
+with truncation error $-\frac{(b-a)h^{2}}{12} f''(\xi)$ for some
+$\xi \in (a, b)$. The error is $O(h^{2})$. The \engterm{composite
+Simpson's rule} (requiring $n$ even) approximates
+
+\[
+\int_{a}^{b} f(x)\, \dd x \approx \frac{h}{3}\!\left[f(x_{0}) +
+4 \sum_{k\, \mathrm{odd}} f(x_{k}) + 2 \sum_{k\, \mathrm{even}}
+f(x_{k}) + f(x_{n})\right],
+\]
+
+with truncation error $-\frac{(b-a)h^{4}}{180} f^{(4)}(\xi)$, of
+order $O(h^{4})$. Each doubling of $n$ reduces the error by 4 for
+trapezoidal and by 16 for Simpson, when the integrand has the
+required smoothness.
+
+\subsection{Gaussian quadrature}
+
+\engterm{Gaussian quadrature} chooses both the nodes $x_{i}$ and
+the weights $w_{i}$ so that the rule
+
+\[
+\int_{-1}^{1} f(x)\, \dd x \approx \sum_{i=1}^{n} w_{i} f(x_{i})
+\]
+
+is exact for polynomials of degree up to $2n - 1$. The optimal
+nodes are the roots of the degree-$n$ Legendre polynomial; the
+weights are determined by the integration of the Lagrange
+interpolating polynomials at those nodes. The truncation error
+for an integrand $f$ with $2n$ continuous derivatives is bounded
+by a quantity proportional to $\max\abs*{f^{(2n)}}$ over $[-1,
+1]$, with a small constant
+\cite[ch.~10]{text:moler-numerical}.
+
+The intervals $[a, b]$ other than $[-1, 1]$ are handled by the
+linear change of variables $x = \frac{a+b}{2} + \frac{b-a}{2} t$,
+which scales the weights by $(b-a)/2$. Variants exist for
+weighted integrals over $[0, \infty)$ (Gauss-Laguerre), over
+$(-\infty, \infty)$ (Gauss-Hermite), and over $[-1, 1]$ with
+endpoint singularities (Gauss-Chebyshev). The engineer chooses
+the variant whose weight matches the integrand's singular
+structure.
+
+For smooth integrands, Gauss with $n$ nodes is dramatically more
+accurate than trapezoidal or Simpson with comparable cost. For
+integrands with discontinuities, weak singularities, or rapid
+oscillation, fixed-order Gaussian quadrature is no better than
+the lower-order rules and is often worse.
+
+\subsection{Adaptive quadrature}
+
+Real engineering integrands are not uniformly smooth. An
+\engterm{adaptive quadrature} routine subdivides the interval
+where the local error estimate is large and accepts the
+approximation where the local error estimate is small. The
+typical pattern: estimate the integral on $[a, b]$ by two methods
+of different order (e.g.\ Simpson and Simpson-on-halves);
+estimate the error from the difference; if the error exceeds
+tolerance, recurse on the two halves; otherwise return the
+higher-order estimate.
+
+The \texttt{scipy.integrate.quad}, MATLAB \texttt{integral}, and
+GSL \texttt{gsl\_integration\_qag} routines are adaptive and
+backed by Gauss-Kronrod pairs (a Gauss rule and a Kronrod
+extension that share nodes, allowing efficient error estimation).
+The engineer's working role is to feed a sensible interval, a
+sensible tolerance, and to read the returned error estimate
+seriously when the integrand has structure (a peak, a corner, a
+log-singular endpoint).
+
+\section{Numerical ODE/PDE solvers}\pathtag{standard}
+
+Volume II Chapter 7 introduced forward Euler and recognised RK4.
+This section develops the apparatus that distinguishes solvers
+worth running from solvers that will silently lie.
+
+\subsection{Forward and backward Euler}
+
+The initial-value problem $\dot{y} = f(t, y)$, $y(t_{0}) = y_{0}$
+on a time grid $t_{n} = t_{0} + n h$ produces, by \engterm{forward
+Euler},
+
+\[
+y_{n+1} = y_{n} + h f(t_{n}, y_{n}),
+\]
+
+a one-step \engterm{explicit} method with local truncation error
+$O(h^{2})$ and global error $O(h)$. \engterm{Backward Euler}
+solves
+
+\[
+y_{n+1} = y_{n} + h f(t_{n+1}, y_{n+1})
+\]
+
+for $y_{n+1}$ at each step, an \engterm{implicit} method, also
+first-order. The implicit equation is solved by Newton's method
+or by a fixed-point iteration; for linear $f$, by a single linear
+solve.
+
+The two methods differ sharply in their stability. Applied to the
+test equation $\dot{y} = \lambda y$ with $\lambda < 0$, forward
+Euler is stable only when $\abs{1 + h\lambda} < 1$, that is when
+$h < 2/\abs{\lambda}$; backward Euler is stable for all $h > 0$.
+A method whose stability region includes the entire left half of
+the complex plane is \engterm{A-stable}; backward Euler is
+A-stable, forward Euler is not.
+
+\subsection{Runge-Kutta methods}
+
+A \engterm{Runge-Kutta} method takes one step by combining
+several stage evaluations of $f$. The classical fourth-order
+\engterm{RK4} is
+
+\begin{align*}
+k_{1} &= f(t_{n}, y_{n}), \\
+k_{2} &= f(t_{n} + h/2, y_{n} + (h/2) k_{1}), \\
+k_{3} &= f(t_{n} + h/2, y_{n} + (h/2) k_{2}), \\
+k_{4} &= f(t_{n} + h, y_{n} + h k_{3}), \\
+y_{n+1} &= y_{n} + \frac{h}{6}(k_{1} + 2 k_{2} + 2 k_{3} + k_{4}).
+\end{align*}
+
+The local truncation error is $O(h^{5})$, the global error
+$O(h^{4})$. RK4 is the working baseline for nonstiff problems.
+The cost per step is four function evaluations.
+
+Adaptive Runge-Kutta methods (Cash-Karp, Dormand-Prince) embed two
+RK methods of different order in shared stage evaluations, use the
+difference as a local error estimate, and adjust $h$ to keep the
+local error within tolerance. The Dormand-Prince DOPRI5(4) is the
+default in MATLAB \texttt{ode45} and in \texttt{scipy.integrate.RK45}.
+
+\subsection{Stiffness}
+
+A system is \engterm{stiff} when the eigenvalues of its Jacobian
+have widely separated magnitudes, with at least one eigenvalue of
+large negative real part. The fast mode forces an explicit
+solver to take steps far smaller than the timescale of interest,
+not for accuracy but for stability; the engineer pays in compute
+time for transient modes that have already decayed.
+
+The diagnosis is empirical: an explicit solver that demands very
+small steps despite the solution being smooth is the canonical
+signal. The remedy is an implicit solver. Backward Euler, the
+trapezoidal rule, the implicit Runge-Kutta family, and the
+backward differentiation formulas (BDF1 through BDF6) are the
+working choices. \texttt{scipy.integrate.BDF} and MATLAB
+\texttt{ode15s} are the standard production routines for stiff
+systems. The cost of an implicit step is a Newton-style linear
+solve per step; the savings are the lifted step-size restriction.
+
+\subsection{Finite differences and finite elements (preview)}
+
+Partial differential equations on a spatial domain require a
+\engterm{discretisation} of the domain. \engterm{Finite difference}
+methods replace partial derivatives by difference quotients on a
+grid, producing a coupled system of ODEs in time (the
+\engterm{method of lines}) or a coupled algebraic system at each
+time step. \engterm{Finite element} methods discretise the domain
+into elements (triangles, tetrahedra, quadrilaterals), express the
+unknown as a linear combination of basis functions over the
+elements, and reduce the PDE to a sparse linear system by Galerkin
+projection. \engterm{Finite volume} methods integrate the
+governing PDE over control volumes, expressing conservation
+locally; they are the working choice for fluid mechanics.
+
+The numerical analysis of PDEs is the subject of Volume IV
+Chapter 8 (computational continuum mechanics) and Volume IX. The
+preview here names three numerical issues whose presence the
+reader of this chapter should recognise:
+
+\begin{itemize}[leftmargin=*]
+  \item The \engterm{Courant-Friedrichs-Lewy} (CFL) condition,
+    which bounds the time step in explicit hyperbolic-PDE solvers
+    by the spatial grid divided by the wave speed. Violating the
+    CFL produces an instability that grows exponentially in the
+    grid spacing.
+  \item \engterm{Numerical diffusion}, the spurious smoothing
+    introduced by low-order upwind schemes, which can dominate
+    the physical diffusion in advection-dominated problems.
+  \item The \engterm{inf-sup} (Ladyzhenskaya-Babuska-Brezzi)
+    condition for mixed finite-element formulations, whose
+    violation produces spurious modes in incompressible-flow and
+    elasticity solvers.
+\end{itemize}
+
+These are not ornaments. Each is a condition under which the
+discretisation is well-posed; each has been the subject of
+documented engineering failures in flow-solver and
+structural-solver deployments.
+
+\section{Reproducibility: deterministic floating-point, exact-arithmetic alternatives}\pathtag{standard}
+
+A computational result an engineer reports should be reproducible.
+The simplest definition: the same code, on the same input, on the
+same machine, produces the same output. The strictest definition:
+the same code, on the same input, on any conformant hardware,
+produces the same output to the last bit. The engineering
+practice usually sits between these, and the engineer should know
+where their report sits.
+
+\subsection{Sources of non-determinism in floating-point computation}
+
+The same source code can produce different floating-point output
+across runs for several distinct reasons.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Compiler reordering}. The compiler may evaluate
+    $a + b + c$ as $(a + b) + c$ or as $a + (b + c)$. Floating-point
+    addition is not associative; the two orders can differ by a
+    rounding error per operation. The \texttt{-ffast-math} flag in
+    GCC and Clang permits algebraic reordering aggressively, with
+    speed gains and bit-reproducibility loss.
+  \item \engterm{Fused multiply-add (FMA)}. Hardware FMA computes
+    $a \cdot b + c$ with one rounding; a separate multiply-then-add
+    rounds twice. The two differ at the last bit. Whether the
+    compiler emits an FMA is a target-architecture and
+    optimisation-level decision.
+  \item \engterm{Parallel reduction}. A sum across threads may
+    combine partial sums in a thread-count-dependent order. The
+    rounding error of the final sum depends on the order. A
+    parallel reduction is bit-reproducible only when the reduction
+    is implemented to fix the order, at a cost in performance.
+  \item \engterm{Math-library variation}. The transcendental
+    functions $\sin$, $\cos$, $\exp$, $\log$ are not, in general,
+    correctly rounded under IEEE 754. The implementation in
+    glibc, in the Intel math library, in Apple's Accelerate, and
+    in CUDA's libm are all conformant within the standard's
+    tolerances, but differ at the last bit. An engineer who
+    depends on the last bit of $\sin(0.123)$ depends on the
+    library shipped with the platform.
+  \item \engterm{Subnormal handling}. The flush-to-zero mode
+    converts subnormals to zero on input or output of arithmetic
+    operations, controlled by per-thread CPU flags that some
+    libraries set without notification.
+  \item \engterm{Random-seed and concurrency-order} effects in
+    Monte Carlo and stochastic-optimisation code, which compound
+    with the floating-point sources above.
+\end{itemize}
+
+\subsection{Practical reproducibility disciplines}
+
+The engineer's defences are concrete.
+
+\begin{itemize}[leftmargin=*]
+  \item Pin the compiler version, optimisation level, and
+    floating-point flags in a build manifest committed alongside
+    the source. \texttt{-O2 -fno-fast-math} is the working
+    default for reproducibility.
+  \item Pin the random seed in any code that draws random numbers,
+    and document the random-number generator (its name and its
+    state size).
+  \item Pin the library versions: NumPy, SciPy, BLAS (OpenBLAS
+    versus MKL versus Apple Accelerate), LAPACK, and the math
+    library. A \texttt{requirements.txt} or a Conda environment
+    file or a Nix derivation is the artefact.
+  \item For parallel code, set the thread count explicitly
+    (\texttt{OMP\_NUM\_THREADS}, \texttt{MKL\_NUM\_THREADS}) and
+    use deterministic-reduction routines where available (the
+    Intel MKL Conditional Numerical Reproducibility mode, the
+    \texttt{torch.use\_deterministic\_algorithms(True)} flag in
+    PyTorch).
+  \item Report the platform: operating system, CPU model, and
+    library versions, in the project artefact.
+\end{itemize}
+
+The cost of bit-reproducibility is real. Production scientific code
+that has been tuned for parallel performance often gives up
+bit-reproducibility for speed. The discipline is then to report a
+\emph{statistically} reproducible result: the answer to within a
+stated tolerance under repeated runs, with the variance of the
+output documented.
+
+\subsection{Exact-arithmetic alternatives}
+
+For some computations, floating-point is the wrong arithmetic.
+\engterm{Exact rational arithmetic} represents numbers as ratios
+of arbitrary-precision integers, with no rounding error. The Python
+\texttt{fractions} module, the \texttt{Rational} type in many
+computer-algebra systems, and SageMath provide working
+implementations. The cost is performance: the integers grow as the
+computation proceeds, and a long sequence of operations on
+rationals can produce numerators and denominators of ruinous size.
+
+\engterm{Arbitrary-precision floating-point} (Python's
+\texttt{decimal} and \texttt{mpmath} modules, MPFR, the GMP MPF
+type) lets the engineer set the precision per computation. A
+condition number of $10^{30}$ is intractable in double precision
+and routine in 100-digit MPFR.
+
+\engterm{Symbolic computation} (SymPy, Mathematica, Maple)
+operates on expressions rather than on numerical approximations,
+yielding closed-form answers when they exist and exact rational
+or algebraic outputs when they do not. The cost is the engineer's
+time: setting up a symbolic computation is slower than a
+floating-point one, and the symbolic tool's behaviour at the
+edges of its capability is sometimes less predictable than the
+floating-point library's.
+
+\engterm{Interval arithmetic} represents each quantity as an
+interval $[a, b]$ guaranteed to contain the true value, and
+propagates intervals through the computation. The output is an
+interval that bounds the true result, regardless of the
+floating-point error of any operation. The intervals tend to grow
+faster than the engineer would like (the \engterm{wrapping
+effect}), but for verification of critical quantities, interval
+arithmetic is the formal answer to the question \emph{can we
+prove the result lies inside this band}. Sun, Boost, and INTLAB
+provide working implementations.
+
+The engineering choice among these alternatives is a working
+decision. Most computations the engineer reports will be done in
+double-precision floating-point with a documented build
+environment. The alternatives are tools the engineer reaches for
+when the problem demands them, and the report names the
+arithmetic used.
+
+\section{Failure: famous numerical failures}\pathtag{core}
+
+Two named cases ground the chapter's machinery in deployed
+engineering systems whose numerical decisions destroyed the
+mission.
+
+\subsection{Patriot Dhahran (1991)}
+
+A US Army Patriot missile battery at Dhahran, Saudi Arabia, failed
+to intercept an incoming Iraqi Scud missile on 25 February 1991.
+Twenty-eight US service members died and approximately one
+hundred were wounded. The General Accounting Office investigation
+identified the cause as a software-clock arithmetic error in the
+Patriot's range-gate prediction \cite{acc:gao-patriot-1992}.
+
+The Patriot's tracking software represented elapsed time as the
+number of tenths of a second since the system was started, stored
+as an integer counter and converted to seconds as a real number
+when needed. The conversion used a 24-bit fixed-point
+representation of the constant $1/10$. The exact decimal $0.1$ has
+no exact binary representation; in 24-bit fixed point it appears as
+
+\[
+0.1_{10} = 0.0001100110011001100110011_{2} + \delta,
+\qquad \delta \approx 9.5 \times 10^{-8}.
+\]
+
+The truncation error per conversion was about $9.5 \times 10^{-8}$
+seconds, accumulating linearly with the integer counter. After
+approximately 100 hours of continuous operation, the counter had
+reached about $3.6 \times 10^{6}$, and the cumulative conversion
+error had reached about $0.34$ seconds. The Patriot's range-gate
+prediction used the converted time to forecast the Scud's position
+at the next radar look. At the Scud's speed of about $1{,}676
+\, \text{m}/\text{s}$, a time offset of $0.34$ seconds
+corresponded to a predicted-position error of about $570$ metres,
+larger than the range gate. The system reported "no track" and did
+not engage \cite{acc:gao-patriot-1992}.
+
+A software patch correcting the conversion was developed and
+distributed before the Dhahran incident. The patch arrived at the
+Dhahran battery on 26 February 1991, the day after the strike.
+Patriot batteries had been operated continuously contrary to the
+design's restart assumption, and the patch and the
+operational-restart guidance had moved through different
+distribution channels.
+
+The case is canonical for this chapter because it illustrates a
+single principle of section 16.2 in deployed code at fatal scale.
+The exact decimal $0.1$ is not representable in binary
+floating-point at any finite precision; every conversion incurs a
+small representation error; the error accumulates with the
+counter. A 24-bit truncation of $0.1$ is mathematically the same
+operation as a 53-bit truncation in IEEE 754 binary64; the binary
+representation of $0.1$ is non-terminating in any binary base. The
+Patriot deployed software whose precondition (operate for short
+intervals between restarts) was no longer met by the operational
+context (continuous Gulf War standby), and whose accumulated
+arithmetic error reached lethal scale before the patch did.
+
+\subsection{Ariane 5 Flight 501 (1996)}
+
+Ariane 5 Flight 501, the maiden flight of the European Space
+Agency's new launcher, broke up about 39 seconds after main
+engine ignition on 4 June 1996. The Lions Inquiry Board
+identified the cause as an unhandled software exception in the
+inertial reference system, triggered when a 64-bit floating-point
+representation of an internal horizontal-bias variable was
+converted to a 16-bit signed integer and the result exceeded the
+integer's range $[-32768, 32767]$ \cite{acc:ariane501-ifr}. The
+conversion ran inside an alignment function reused unchanged from
+Ariane 4. For Ariane 4, the trajectory kept the variable within
+range; for Ariane 5, the trajectory developed horizontal velocity
+faster, the variable did not stay within range, and the conversion
+overflowed.
+
+The exception was unhandled. The primary inertial reference
+system shut down. The backup, running the same software on the
+same input, shut down for the same reason. The on-board computer
+interpreted diagnostic output from the inertial reference systems
+as flight data, commanded extreme nozzle deflections, and the
+launcher broke up under aerodynamic loads.
+
+Volume II Chapter 9 already used this case as the canonical
+refusal-of-an-unsafe-numerical-operation example. The reading is
+the same here. The conversion is the simplest possible numerical
+procedure, and the precondition is the simplest possible
+precondition (the input lies in $[-32768, 32767]$). The procedure
+ran in a context whose envelope had not been verified against the
+precondition. The discipline that should have refused the
+operation, and that section 16.2's forward-error apparatus
+formalises, is the same discipline section 9.8 articulated:
+\emph{name the precondition, verify the input meets it, refuse
+the operation when verification fails}.
+
+\subsection{The principle}
+
+\begin{principle}[Numerical refusal]
+A numerical operation has three sources of error: the truncation
+of the algorithm, the round-off of the arithmetic, and the
+conditioning of the problem. The engineer who deploys the
+operation states a precondition (a representation envelope, a
+conditioning bound, a smoothness requirement, an operational
+duration) that bounds each source of error within the engineering
+tolerance. The deployment includes a mechanism to verify the
+precondition at run time when the operating envelope can change,
+and to refuse the operation, fail safely, or escalate when
+verification fails. A reported numerical result without a stated
+precondition and a verified bound on each error source is, for
+engineering purposes, not a result. The discipline is independent
+of the algorithm, of the format, of the language, and of the
+domain; the conversion that destroyed Ariane 5 Flight 501 and
+the accumulated arithmetic error that the Patriot at Dhahran did
+not survive are the same failure mode at different scales.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Reproduce a published numerical result]
+The reader chooses one published numerical result from a journal
+paper, a canonical numerical-textbook exercise, or a documented
+case study, reproduces it on a modern floating-point system,
+accounts for any drift between the published value and the
+reader's, and identifies the dominant numerical error source.
+The deliverable is the reproduction artefact plus a 1500-word
+reflection.
+
+\textbf{Track}. Simulation with analysis. \textbf{Hazard class}:
+none. \textbf{Tools}. Paper, pencil, and a programming
+environment with linear-algebra and quadrature primitives:
+Python with NumPy and SciPy, MATLAB, Julia, Octave, R, or
+equivalent. \textbf{Time}. Approximately one to two hours to
+choose and read the source, three to five hours to implement and
+run the reproduction, two to three hours to analyse drift, three
+to four hours to write the reflection. Total approximately nine
+to fourteen hours.
+
+\textbf{Source choice}. The reader chooses one of the following
+categories of source.
+
+\begin{itemize}[leftmargin=*]
+  \item A chapter exercise from Trefethen and Bau,
+    \emph{Numerical Linear Algebra}
+    \cite{text:trefethen-bau1997}: the conditioning of a Hilbert
+    matrix as a function of order, the orthogonality loss of
+    classical versus modified Gram-Schmidt on the same matrix,
+    the convergence rate of the QR algorithm on a chosen $4
+    \times 4$ matrix.
+  \item A chapter exercise from Higham, \emph{Accuracy and
+    Stability of Numerical Algorithms}
+    \cite{text:higham-numerical}: backward error of LU on a
+    pathological matrix, accuracy loss in catastrophic
+    cancellation, the variance computation comparison
+    (textbook two-pass vs naive one-pass).
+  \item A chapter exercise from Moler, \emph{Numerical Computing
+    with MATLAB} \cite{text:moler-numerical}: the simulation of a
+    chosen ODE with stiffness, a numerical-integration example
+    with an integrand singularity, a documented root-finding
+    example with a known failure mode.
+  \item A specific numerical figure from a published engineering
+    paper of the reader's choice. The reader records the citation,
+    the relevant equations, and the numerical method described.
+\end{itemize}
+
+\textbf{Reproduction protocol}. The reader produces:
+
+\begin{enumerate}[leftmargin=*]
+  \item A written statement of the original problem, its
+    governing equations, the numerical method described, and the
+    published result (a number, a table, a curve).
+  \item An implementation of the method in the reader's
+    programming environment. The implementation may use library
+    primitives (LU, QR, SVD, ODE solvers, quadrature) but the
+    reader documents which primitives and which library versions.
+  \item The reader's reproduction of the result, presented in
+    the same form as the original (table, curve, or scalar).
+  \item A drift table: original value, reader's value, absolute
+    difference, relative difference. The drift is reported to at
+    least three significant figures.
+\end{enumerate}
+
+\textbf{Drift accounting}. For each row of the drift table where
+the relative drift exceeds $10^{-10}$, the reader identifies the
+dominant error source from among:
+
+\begin{itemize}[leftmargin=*]
+  \item Different floating-point format (e.g.\ original in single
+    precision, reader's in double).
+  \item Different algorithm (e.g.\ original used Gauss-Seidel,
+    reader's library uses GMRES).
+  \item Different ordering or parallelisation of operations.
+  \item Different math library (transcendental-function
+    differences).
+  \item Different convergence tolerance for an iterative method.
+  \item Reader's input data differs from the published data
+    (e.g.\ a constant rounded differently).
+\end{itemize}
+
+\textbf{Reflection (1500 words)}. The reader writes a 1500-word
+narrative addressing:
+
+\begin{itemize}[leftmargin=*]
+  \item Which numerical decisions in the original work were the
+    most consequential for reproducibility, and which were
+    incidental.
+  \item Whether the published value was reported with sufficient
+    precision and provenance to make the reproduction possible
+    without ambiguity.
+  \item What the reproduction cost in terms of the reader's
+    time, software-environment setup, and code-debugging effort.
+  \item What an honest reproducibility statement for the original
+    paper would have included that was missing.
+  \item Whether the reader's reproduction would itself be
+    reproducible by a third party from the artefact alone.
+\end{itemize}
+
+\textbf{Deliverable}. The source statement, the implementation
+code, the reproduced result, the drift table, the
+floating-point-environment description (compiler, BLAS, math
+library, OS, hardware), and the 1500-word reflection. The
+artefact lives in the reader's repository at \repopath{vol02-ch16/project/}.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises test calculation, derivation, estimation,
+simulation, design, diagnosis, and judgment. The editor should
+attach the solution and rubric file before release.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the unit round-off $u$ and the machine epsilon
+$\epsilon_{m}$ for IEEE 754 binary64 and binary32. State the
+spacing between $1.0$ and the next representable double-precision
+number, and the spacing between $2^{20}$ and the next
+representable double-precision number above it.
+\end{exercise}
+
+\begin{exercise}
+The number $0.1$ is stored as a binary64 floating-point value.
+Compute the absolute representation error $\operatorname{fl}(0.1) - 0.1$ to
+three significant figures, and verify that it has the magnitude
+predicted by the unit round-off.
+\end{exercise}
+
+\begin{exercise}
+For the function $f(x) = e^{x} - 1$, evaluate $f$ at $x = 10^{-8}$
+in double precision (a) by the direct formula and (b) by the
+Taylor approximation $x + x^{2}/2$. Report both values and the
+relative error of (a). Identify the source of the error.
+\end{exercise}
+
+\begin{exercise}
+Apply five iterations of bisection to find the root of $f(x) =
+x^{3} - x - 2$ in the bracket $[1, 2]$. Tabulate $a_{k}$, $b_{k}$,
+$c_{k} = (a_{k} + b_{k})/2$, and $f(c_{k})$ at each step. State
+the bracket length after the fifth iteration.
+\end{exercise}
+
+\begin{exercise}
+Apply five iterations of Newton's method to the same problem, $f
+(x) = x^{3} - x - 2$, starting from $x_{0} = 1.5$. Tabulate
+$x_{k}$ and $f(x_{k})$, and verify the quadratic convergence by
+comparing $\abs{e_{k+1}}$ and $\abs{e_{k}}^{2}$ at each step.
+\end{exercise}
+
+\begin{exercise}
+Compute the LU factorisation with partial pivoting of $\mat{A} =
+\begin{psmallmatrix} 0.001 & 1 \\ 1 & 1 \end{psmallmatrix}$, both
+with and without pivoting, and solve $\mat{A}\vect{x} = (1, 2)
+^{\transpose}$ in three-decimal-digit floating-point. Compare the
+two solutions to the exact solution.
+\end{exercise}
+
+\begin{exercise}
+Apply the composite trapezoidal rule with $n = 4, 8, 16, 32$ to
+$\int_{0}^{1} e^{x}\, \dd x$. Tabulate the approximation and the
+error against the exact value $e - 1$, and verify that the error
+behaves as $O(h^{2})$.
+\end{exercise}
+
+\begin{exercise}
+Apply Simpson's rule with $n = 4$ to the same integral
+$\int_{0}^{1} e^{x}\, \dd x$ and compare the error to the
+trapezoidal-rule error from the previous exercise. State the
+ratio of the two errors.
+\end{exercise}
+
+\begin{exercise}
+Take one step of forward Euler and one step of RK4 for $\dot{y} =
+-y$, $y(0) = 1$, with $h = 0.1$. Compute both numerical values of
+$y(0.1)$ and compare to the exact value $e^{-0.1}$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the rounding-error bound $\operatorname{fl}(a + b) = (a + b)(1 + \delta)$
+with $\abs{\delta} \leq u$ from the IEEE 754 round-to-nearest
+specification, assuming $a + b$ is in the normal range. State
+where the assumption fails (overflow, underflow, subnormals).
+\end{exercise}
+
+\begin{exercise}
+Derive the truncation error $-\frac{(b-a)h^{2}}{12} f''(\xi)$ of
+the composite trapezoidal rule by Taylor expansion of the
+integrand around the midpoint of each subinterval. State the
+smoothness assumption on $f$.
+\end{exercise}
+
+\begin{exercise}
+Derive the quadratic-convergence rate of Newton's method at a
+simple root $x^{*}$ from the Taylor expansion $f(x_{k}) = f'(x^{*})
+e_{k} + \frac{1}{2} f''(x^{*}) e_{k}^{2} + O(e_{k}^{3})$ and the
+update rule. State the constant $C$ in the bound $\abs{e_{k+1}}
+\leq C \abs{e_{k}}^{2}$.
+\end{exercise}
+
+\begin{exercise}
+Show that the Householder reflector $\mat{H} = \mat{I} - 2
+\vect{v}\vect{v}^{\transpose}/(\vect{v}^{\transpose}\vect{v})$ is
+orthogonal and is its own inverse. Verify that for any nonzero
+vector $\vect{x}$, the choice $\vect{v} = \vect{x} + \sgn(x_{1})
+\norm{\vect{x}}_{2} \vect{e}_{1}$ produces an $\mat{H}\vect{x}$
+that is a multiple of $\vect{e}_{1}$.
+\end{exercise}
+
+\begin{exercise}
+Derive the stability region of forward Euler applied to the
+scalar test equation $\dot{y} = \lambda y$ with $\lambda \in \C$.
+State the region in the complex plane and verify that the method
+is not A-stable. Repeat for backward Euler and verify that it is.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the maximum number of double-precision floating-point
+additions an engineer can perform in a sequential sum before the
+worst-case relative round-off error exceeds $10^{-10}$. Compare
+to the typical (statistical) bound $\sqrt{n} u$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the wall-clock time to compute the LU factorisation of a
+dense $n \times n$ matrix on a laptop running at $10$ Gflops, for
+$n = 10^{3}, 10^{4}, 10^{5}$. State at which $n$ the operation
+becomes a project rather than a routine call.
+\end{exercise}
+
+\begin{exercise}
+Estimate the loss of precision (in decimal digits) in solving a
+linear system whose condition number is $10^{12}$ in double
+precision. Compare to the loss in $80$-bit extended precision and
+in $128$-bit quad precision, using the appropriate unit round-offs.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time step a forward-Euler integrator must take to be
+stable for a stiff ODE $\dot{y} = -100\,y$, and compare to the
+time step required for $\dot{y} = -y$. State the ratio. Estimate
+how much wall-clock time is wasted on the fast mode if the slow
+mode dominates the solution of interest.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of correctly rounded decimal digits in the
+result of a transcendental computation $\sin(x) - x + x^{3}/6$ at
+$x = 0.001$ in double precision, accounting for catastrophic
+cancellation. State a numerically stable alternative.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement bisection, Newton, and the secant method for $f(x) =
+\cos(x) - x$ starting from a sensible initial guess. Plot the
+error $\abs{x_{k} - x^{*}}$ on a log scale against the iteration
+number. Verify the linear, quadratic, and superlinear rates from
+the slopes.
+\end{exercise}
+
+\begin{exercise}
+Implement the composite trapezoidal rule, the composite Simpson's
+rule, and a Gauss-Legendre rule (using the library nodes and
+weights) for $\int_{0}^{\pi/2} \sin(x)\, \dd x$. Plot the error
+on a log scale against the number of nodes for each method, on
+the same axes.
+\end{exercise}
+
+\begin{exercise}
+Solve the system $\mat{A}\vect{x} = \vect{b}$ for the Hilbert
+matrix $\mat{A}_{ij} = 1/(i + j - 1)$ of orders $n = 5, 8, 10,
+12, 14$, with $\vect{b}$ chosen so that the exact solution is
+$\vect{x} = (1, 1, \ldots, 1)^{\transpose}$. Solve by LU with
+partial pivoting and by SVD with a tolerance cutoff. Tabulate the
+relative error against the exact solution for both methods.
+\end{exercise}
+
+\begin{exercise}
+Implement forward Euler, backward Euler, and RK4 for the
+nonstiff problem $\dot{y} = -y \sin(t)$, $y(0) = 1$ on $t \in
+[0, 10]$. For each method, plot the global error against the
+step size on a log-log scale and verify the predicted order of
+each method.
+\end{exercise}
+
+\begin{exercise}
+Take a stiff problem $\dot{y}_{1} = -1000(y_{1} - \cos t)$,
+$\dot{y}_{2} = -y_{2} + y_{1}$, with $y_{1}(0) = y_{2}(0) = 0$,
+and integrate it with both an explicit RK4 (taking the largest
+$h$ that remains stable) and an implicit BDF or backward-Euler
+solver. Compare the wall-clock time, the number of steps, and the
+final-value accuracy.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a numerical pipeline for the following problem: given $m$
+noisy data points $(x_{i}, y_{i})$ with $m = 10^{4}$, fit a
+polynomial of degree $p = 5$ to the data and produce the fitted
+coefficient vector with a stated precision. Specify the
+floating-point format, the algorithm (normal equations, QR, SVD),
+the conditioning check, and the precision the deliverable will
+report.
+\end{exercise}
+
+\begin{exercise}
+Design a reproducibility manifest for a numerical paper of the
+reader's choice (or a hypothetical paper described in three
+sentences). The manifest specifies compiler version, optimisation
+flags, BLAS variant, math-library version, thread count, random
+seed, hardware, and operating system. State which of these the
+reader's chosen target paper would have left undocumented.
+\end{exercise}
+
+\begin{exercise}
+Design a safeguarded root-finder that combines bisection and
+Newton's method. Specify the initial bracket, the Newton-step
+proposal, the acceptance test (the Newton step lies in the
+current bracket), the fallback (bisect when the Newton step is
+rejected), and the convergence tolerance. State the worst-case
+and the best-case iteration counts.
+\end{exercise}
+
+\subsection*{Diagnosis}\pathtag{standard}
+
+\begin{exercise}
+A colleague reports that solving $\mat{A}\vect{x} = \vect{b}$ for
+their $1000 \times 1000$ matrix produces results that differ
+between MATLAB and NumPy at the fifth decimal digit. List the
+candidate explanations and the diagnostic procedure the reader
+would run to identify the dominant cause.
+\end{exercise}
+
+\begin{exercise}
+A simulation of a chemical reaction network using
+\texttt{scipy.integrate.RK45} reports that the integrator
+demands time steps of $10^{-9}$ seconds despite the reaction
+proceeding on a $1$-second time scale. Diagnose the issue and
+propose a remedy.
+\end{exercise}
+
+\begin{exercise}
+A least-squares fit of a degree-10 polynomial to evenly spaced
+data on $[0, 100]$ produces coefficients that vary by a factor of
+$10^{8}$ between two runs of nominally the same code. Diagnose
+the conditioning issue and prescribe two changes to the
+formulation that bring the conditioning under control.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+Reread the Patriot Dhahran case study in section 16.8.1. State
+which of the three error sources of section 16.2 (truncation,
+round-off, conditioning) is the dominant source of the failure,
+and which two are not the primary mechanism. State the
+verification discipline that, if deployed, would have caught the
+error before the deployment.
+\end{exercise}
+
+\begin{exercise}
+Reread the Ariane 5 Flight 501 case study in section 16.8.2. The
+case is sometimes described as a "floating-point error." Defend
+or refute that description in three sentences, citing the
+specific numerical operation that failed and the precondition
+that was violated. Compare to the Patriot case in one further
+sentence.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A working paper claims a least-squares fit to a $10^{6}$-point
+dataset using the normal equations on a Vandermonde matrix of
+degree 12, and reports residuals of $10^{-7}$ and coefficients to
+six significant figures. State, in three sentences, the question
+the reader would put to the paper's authors before accepting the
+result. Reference at least one quantity from this chapter.
+\end{exercise}
+
+\begin{exercise}
+An embedded-systems engineer proposes to replace IEEE 754 binary64
+arithmetic with binary16 throughout a flight-control inner loop,
+citing memory and bandwidth savings. State, in three to five
+sentences, what the engineer would have to verify before the
+substitution is defensible, and what the engineer would have to
+add to the deployment to make the substitution safe in the field.
+\end{exercise}
+
+\begin{exercise}
+A client requests a "reproducible" Monte Carlo simulation of a
+financial portfolio. State, in three sentences, the three
+distinct senses of reproducibility that the request might mean,
+and the operational discipline corresponding to each. State which
+of the three is the working default in the engineer's
+deliverable.
+\end{exercise}

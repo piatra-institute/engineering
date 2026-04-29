@@ -238,20 +238,20 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 - **Phase 0.5** (structural hardening) **Complete** 2026-04-28.
 - **Phase 0.6** (curriculum expansion: 11 new chapters, 4 renames) **Complete** 2026-04-28.
 - **Phase 0.7** (registry foundation and pilot prose) **Complete** 2026-04-29.
-- **Phase 1** (production prose at scale) **In progress**. Forward-motion lane: Volume II Chapters 1-9 drafted on 2026-04-29 by parallel agents (~238 pages of first-draft prose at TOC pp. 229-466, awaiting Codex review). Volume I production-density pass remains open and gated on Q57. Volume II Chapters 10-18 still to draft.
+- **Phase 1** (production prose at scale) **In progress**. Volume II prose drafted in full on 2026-04-29 by two parallel-agent passes (Ch 1-9, then Ch 10-18). Volume I production-density pass and Volume III prose lane both open; Q57 (page density vs target) gates the production-density choice.
 
 Verified at last edit (2026-04-29):
 
 - 12 volumes / 174 chapters / 174 dossiers.
-- ~928-page PDF.
+- ~1161-page PDF.
 - 9 chapters at Stage 5 (all of Volume I, drafted 2026-04-28 to 2026-04-29 and carried through Codex review individually). Vol I prose ~220pp at first-draft density against a ~720pp target.
-- 9 chapters at Stage 4 (Vol II Ch 1-9, drafted 2026-04-29). ~238pp at first-draft density against an ~880pp target for the arc.
-- 156 chapters at Stage 1 (Vol II Ch 10-18 plus all of Volumes III-XII).
-- 90 bibliography entries.
+- 18 chapters at Stage 4 (all of Volume II, drafted 2026-04-29 by parallel agents). Vol II prose ~482pp at first-draft density against an ~1800pp target.
+- 147 chapters at Stage 1 (all of Volumes III-XII).
+- 94 bibliography entries.
 - 15 named-case registry entries (`make accidents` PASS).
 - Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
-- Linear-algebra operators (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`) live in `eng-macros.sty` as of Vol II Ch 9.
-- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make strict` produces a clean 928-page PDF with no undefined references.
+- Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`) added during Vol II Ch 9 integration; trace and diagonal (`\tr`, `\diag`) added during Vol II Ch 10-18 pre-flight; optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`) added at the same time.
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make strict` produces a clean 1161-page PDF with no undefined references.
 
 ## What not to do
 

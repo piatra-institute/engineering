@@ -1,40 +1,1612 @@
 \chapter{Optimisation}
 \label{vol02:ch15}
 
-\epigraph{}{}
+\epigraph{To choose well among feasible alternatives is the
+engineer's working motion. The mathematics of optimisation is the
+discipline of doing it under stated objective and stated
+constraint, and of admitting when both have been mis-stated.}{A
+working paraphrase of the engineer's register, in the vocabulary
+of this volume.}
 
-\chapmeta{Half-life: foundational. Archetypes: optimisation (formalised), scaling. Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational. Archetypes: optimisation
+(formal home; the multivariable apparatus of Volume II Chapter 11
+and the one-variable apparatus of Volume II Chapter 5 are the
+local cases of what this chapter formalises), scaling.
+Exercise target: 40. Project track: simulation with analysis. Hazard
+class: none. Reader path default: standard, with sections
+explicitly tagged. Named cases: none.}
 
 \noindent
-\TODO{Volume 2, Chapter 15. Approx 110 pp.}
+Volume II Chapter 5 introduced optimisation in one variable as
+the search for $f'(x) = 0$ on a closed interval. Volume II
+Chapter 11 extended it to many variables: $\grad f = \vect{0}$
+plus the second-order Hessian test, with equality constraints
+handled through Lagrange multipliers and inequality constraints
+through Karush-Kuhn-Tucker conditions. This chapter is the
+formal home of the optimisation archetype. We define the general
+problem, identify the structural class (convex versus nonconvex,
+linear versus quadratic versus general nonlinear, continuous
+versus integer) that determines what an engineer can hope to
+solve, treat duality as the second viewpoint that the apparatus
+demands, and develop the working algorithms (gradient descent,
+Newton, stochastic gradient) that turn the formal apparatus into
+something a finite-precision machine can run on a real dataset.
+The chapter closes with the failure modes that even a
+well-formulated optimisation can produce: local minima that
+look global, objectives that have been gamed by the optimiser,
+and the entire genre of optimisation theatre, in which the
+appearance of optimisation has been substituted for the
+engineering it should have replaced. The canonical reference is
+\textcite{text:boyd-vandenberghe2004}; the linear-algebra
+machinery beneath every algorithm is in
+\textcite{text:strang2016}.
 
-\section{What an optimisation problem is}
-\TODO{Section prose.}
+\section{What an optimisation problem is}\pathtag{core}
 
-\section{Convex optimisation}
-\TODO{Section prose.}
+An optimisation problem has three parts: an objective, a feasible
+set, and a decision variable that ranges over the feasible set.
+The engineer's job is to find the value of the decision variable
+that gives the best objective value, where "best" means smallest
+or largest depending on whether the objective is a cost or a
+gain.
 
-\section{Linear and quadratic programming}
-\TODO{Section prose.}
+\subsection{The standard form}
 
-\section{Lagrangian duality}
-\TODO{Section prose.}
+\begin{definition}[Optimisation problem in standard form]
+Let $\vect{x} \in \R^{n}$ denote the decision variable. An
+\engterm{optimisation problem} in standard form is the search
+\[
+\min_{\vect{x} \in \R^{n}} \; f_{0}(\vect{x})
+\quad \text{subject to} \quad
+\begin{cases}
+f_{i}(\vect{x}) \leq 0, & i = 1, \ldots, m, \\
+h_{j}(\vect{x}) = 0,    & j = 1, \ldots, p.
+\end{cases}
+\]
+The function $f_{0} : \R^{n} \to \R$ is the \engterm{objective}.
+The functions $f_{i} : \R^{n} \to \R$ are the \engterm{inequality
+constraints}; the functions $h_{j} : \R^{n} \to \R$ are the
+\engterm{equality constraints}. The set
+\[
+\mathcal{F} = \set{\vect{x} \in \R^{n} :
+f_{i}(\vect{x}) \leq 0 \;\forall i, \;
+h_{j}(\vect{x}) = 0 \;\forall j}
+\]
+is the \engterm{feasible set}. A point $\vect{x}^{*} \in
+\mathcal{F}$ is a \engterm{global optimum} if $f_{0}(\vect{x}^{*})
+\leq f_{0}(\vect{x})$ for every $\vect{x} \in \mathcal{F}$, and a
+\engterm{local optimum} if the same holds for every $\vect{x} \in
+\mathcal{F}$ within some neighbourhood of $\vect{x}^{*}$.
+\end{definition}
 
-\section{Gradient methods, Newton's method}
-\TODO{Section prose.}
+The standard form fixes a sign convention: minimisation, with
+inequalities expressed as "less than or equal to zero." Every
+maximisation can be turned into a minimisation by replacing
+$f_{0}$ with $-f_{0}$. Every "greater than or equal to" inequality
+$g(\vect{x}) \geq 0$ can be rewritten as $-g(\vect{x}) \leq 0$.
+The convention has no mathematical content; it lets the rest of
+the chapter speak in one voice.
 
-\section{Stochastic optimisation, SGD}
-\TODO{Section prose.}
+The variable $\vect{x}$ may carry units that do not all cancel:
+the design vector for a heat exchanger may contain a tube
+diameter in metres and a flow rate in kilograms per second, and
+the cost objective may report dollars. The optimiser does not
+mind, but the engineer should mind. Mixing units silently is
+how a numerical optimiser produces a tube one micrometre wide
+and an absurd answer that satisfies every constraint the
+formulation actually wrote down.
 
-\section{Integer and combinatorial optimisation preview}
-\TODO{Section prose.}
+\subsection{Worked example: the cost-of-pipe problem}
 
-\section{Failure: local minima, ill-posed objectives, optimisation theatre}
-\TODO{Section prose.}
+A pipeline of length $L = 100\,\si{\meter}$ must carry a fluid
+flow of $Q = 0.05\,\si{\cubic\meter\per\second}$. The pipe
+diameter is the design variable $d \in [0.05, 0.30]\,\si{\meter}$.
+The material cost per unit length scales as $d^{2}$ (mass of pipe
+wall per unit length), and the pumping cost per unit length scales
+as $1/d^{5}$ (Darcy-Weisbach pressure loss for fixed $Q$). The
+objective is the present-value lifetime cost
+\[
+f_{0}(d) = c_{1} L d^{2} + c_{2} L Q^{3} d^{-5},
+\]
+with $c_{1}, c_{2} > 0$ collecting material and pumping
+constants. The feasible set is the closed interval $[0.05, 0.30]$.
+Volume II Chapter 5's apparatus locates the interior critical
+point at $d^{*}$ satisfying $\dv{f_{0}}{d} = 0$, gives the
+explicit formula $d^{*} = (5 c_{2} Q^{3} / (2 c_{1}))^{1/7}$, and
+verifies $\dv[2]{f_{0}}{d^{2}}(d^{*}) > 0$. If $d^{*}$ falls
+inside $[0.05, 0.30]$ the optimum is interior; otherwise the
+optimum sits at whichever endpoint gives the smaller cost. The
+example is a one-variable, two-bound, smooth-objective problem.
+The rest of this chapter generalises it: many variables, many
+constraints, possibly nondifferentiable objective, possibly
+discrete decision space.
 
+\subsection{Existence of a minimum}
 
-\section{Project}
-\TODO{implement gradient descent from scratch; compare to a library}
+A minimum may fail to exist. The function $f_{0}(x) = e^{-x}$ on
+$\R$ has infimum $0$ but reaches no value: every $x \in \R$ has
+$f_{0}(x) > 0$. The function $f_{0}(x) = x$ on $(0, 1)$ has
+infimum $0$ but reaches no value because the open interval
+excludes its boundary. Two structural conditions guarantee
+existence.
+
+\begin{theorem}[Weierstrass]
+If the feasible set $\mathcal{F}$ is nonempty, closed, and
+bounded, and the objective $f_{0}$ is continuous on $\mathcal{F}$,
+then $f_{0}$ attains its minimum and maximum on $\mathcal{F}$.
+\end{theorem}
+
+The conditions are tight. A noncompact feasible set, an
+unbounded objective, or a discontinuous objective each can
+destroy existence. In engineering practice the feasible set is
+nearly always closed and bounded by box constraints (every
+quantity is bounded by physics, by economics, or by a regulator),
+and the objective is nearly always continuous. The Weierstrass
+guarantee is the working assumption underneath every numerical
+optimiser; it is one of the rare theorems whose hypothesis is
+checked by reading the engineering brief.
+
+\subsection{Vocabulary}
+
+\engterm{Active constraint}: a constraint $f_{i}(\vect{x}^{*}) =
+0$ at a candidate point. \engterm{Inactive}: $f_{i}(\vect{x}^{*})
+< 0$. The active set determines which constraints bind at the
+optimum and which are slack. \engterm{Strict feasibility}: a
+point $\vect{x}$ satisfying all inequality constraints with
+strict inequality, used as the regularity condition for duality.
+\engterm{Optimal value}: $p^{*} = f_{0}(\vect{x}^{*})$. The same
+problem can have many optima but only one optimal value, by
+construction.
+
+\section{Convex optimisation}\pathtag{core}
+
+The single most important structural distinction in optimisation
+is convex versus nonconvex. Convex problems have a working
+theory: every local minimum is a global minimum, the optimality
+conditions are computable, and a wide family of algorithms
+converge under stated step rules. Nonconvex problems have no
+such guarantee. Most engineering optimisation problems either
+are convex or can be approximated by a convex problem at the
+working point.
+
+\subsection{Convex sets}
+
+\begin{definition}[Convex set]
+A set $C \subseteq \R^{n}$ is \engterm{convex} if for every pair
+$\vect{x}, \vect{y} \in C$ and every $\theta \in [0, 1]$, the
+point $\theta \vect{x} + (1 - \theta) \vect{y}$ also lies in $C$.
+\end{definition}
+
+Geometrically: every line segment between two points of $C$ stays
+inside $C$. The half-space $\set{\vect{x} : \vect{a}^{\transpose}
+\vect{x} \leq b}$ is convex; the ball $\set{\vect{x} :
+\norm{\vect{x} - \vect{c}} \leq r}$ is convex; the intersection of
+convex sets is convex; an affine map of a convex set is convex. A
+\engterm{polyhedron} is the intersection of finitely many
+half-spaces, hence convex. The feasible set defined by linear
+inequalities and equalities is always polyhedral, hence convex.
+
+The standard non-examples: the union of two disjoint balls (the
+segment between centres leaves the union); the set $\set{(x, y) :
+xy = 1, x > 0}$ (the segment between $(1, 1)$ and $(2, 1/2)$ does
+not stay on the curve); the integer lattice (the segment between
+two integer points contains non-integer points). The third
+non-example is the entire reason Section 15.7 exists.
+
+\subsection{Convex functions}
+
+\begin{definition}[Convex function]
+A function $f : \R^{n} \to \R$, defined on a convex domain $C$, is
+\engterm{convex} if for every $\vect{x}, \vect{y} \in C$ and every
+$\theta \in [0, 1]$,
+\[
+f(\theta \vect{x} + (1 - \theta) \vect{y}) \leq
+\theta f(\vect{x}) + (1 - \theta) f(\vect{y}).
+\]
+The function is \engterm{strictly convex} if the inequality is
+strict for $\vect{x} \neq \vect{y}$ and $\theta \in (0, 1)$. The
+function is \engterm{concave} if $-f$ is convex.
+\end{definition}
+
+The graph of a convex function lies below every chord; the chord
+is the right-hand side of the inequality, and the curve is the
+left. The graph of a concave function lies above every chord.
+Linear functions are both convex and concave, the boundary
+between the two classes.
+
+For a once-differentiable function, convexity has a tangent
+characterisation: $f(\vect{y}) \geq f(\vect{x}) + \grad
+f(\vect{x})^{\transpose} (\vect{y} - \vect{x})$ for all
+$\vect{x}, \vect{y}$ in the domain. The tangent plane at any
+point lies entirely below the graph. For a twice-differentiable
+function, convexity has a Hessian characterisation: the Hessian
+$\nabla^{2} f$ is positive semidefinite at every point of the
+domain. We met the Hessian as the matrix of second partials in
+Volume II Chapter 11; we met positive semidefiniteness as a
+property of the Gram matrix in Volume II Chapter 9. A
+twice-differentiable $f$ is strictly convex when the Hessian is
+positive definite (every eigenvalue strictly positive).
+
+The library of convex functions an engineer should recognise on
+sight:
+
+\begin{itemize}[leftmargin=*]
+  \item Affine functions $f(\vect{x}) = \vect{a}^{\transpose}
+    \vect{x} + b$. Both convex and concave.
+  \item Quadratic forms $f(\vect{x}) = \vect{x}^{\transpose} P
+    \vect{x} + \vect{q}^{\transpose} \vect{x} + r$ with $P$
+    positive semidefinite. Convex (strictly so when $P$ is
+    positive definite).
+  \item Norms $\norm{\vect{x}}$, in any norm. Convex by the
+    triangle inequality.
+  \item The exponential $e^{a x}$ on $\R$, for any $a$. Convex.
+  \item The negative logarithm $-\log x$ on $(0, \infty)$.
+    Strictly convex.
+  \item The negative entropy $\sum_{i} x_{i} \log x_{i}$ on the
+    probability simplex. Strictly convex.
+  \item The maximum of a finite collection of convex functions,
+    $\max_{i} f_{i}(\vect{x})$. Convex (the pointwise maximum
+    of convex functions is convex).
+  \item The composition $g(A \vect{x} + \vect{b})$ of a convex
+    $g$ with an affine map. Convex.
+\end{itemize}
+
+The library is closed under several operations the engineer
+relies on: nonnegative weighted sums, pointwise maxima,
+compositions with affine maps, perspective. Boyd and
+Vandenberghe's Chapter 3 treats this calculus; the working point
+is that an engineer who has learned the library can recognise a
+convex objective from inspection without computing the Hessian.
+
+\subsection{Convex optimisation problems}
+
+\begin{definition}[Convex optimisation problem]
+The problem
+\[
+\min_{\vect{x}} f_{0}(\vect{x}) \quad \text{subject to} \quad
+f_{i}(\vect{x}) \leq 0, \;\; h_{j}(\vect{x}) = 0
+\]
+is \engterm{convex} when $f_{0}$ and every $f_{i}$ are convex
+functions and every $h_{j}$ is affine.
+\end{definition}
+
+The asymmetry between inequality and equality constraints is not
+arbitrary. A convex set defined by $f_{i}(\vect{x}) \leq 0$ for
+convex $f_{i}$ stays convex (the sublevel set of a convex function
+is convex). A set defined by $h(\vect{x}) = 0$ for nonlinear $h$
+is generally not convex (a curved equality surface fails the
+segment test). Equality constraints in a convex problem must
+therefore be affine: $A \vect{x} = \vect{b}$.
+
+\begin{archetype}[Optimisation, formal home]
+The optimisation archetype was introduced in Volume II Chapter 5
+as the one-variable case ($f'(x) = 0$ at an interior optimum,
+plus endpoint check), developed in Volume II Chapter 11 as the
+multivariable case (gradient zero, Hessian definiteness, Lagrange
+multipliers for equality constraints, Karush-Kuhn-Tucker
+conditions for inequality constraints), and now finds its formal
+home. We have a class of problems (convex programs) for which
+"optimum" is a single global object accessible by computable
+methods, a duality theory that supplies a second viewpoint and a
+certificate of suboptimality, and a working algorithm catalogue
+(gradient methods, Newton's method, interior-point methods)
+whose convergence is theorem-grade for convex problems and
+heuristic for nonconvex problems. The engineer's first
+diagnostic question on receiving an optimisation problem is:
+\engterm{is it convex}? If yes, the apparatus of this chapter
+applies in full. If no, the apparatus applies locally, and the
+engineer must additionally consider initialisation, multiple
+restarts, and the failure mode of Section 15.8.
+\end{archetype}
+
+\subsection{Why convexity matters: the local-implies-global property}
+
+\begin{theorem}[Local optima of convex problems are global]
+Let $f_{0}$ be a convex function on a convex feasible set
+$\mathcal{F}$. If $\vect{x}^{*}$ is a local optimum of $f_{0}$ on
+$\mathcal{F}$, then $\vect{x}^{*}$ is a global optimum.
+\end{theorem}
+
+\begin{proof}[Sketch]
+Suppose $\vect{x}^{*}$ is a local optimum and $\vect{y} \in
+\mathcal{F}$ has $f_{0}(\vect{y}) < f_{0}(\vect{x}^{*})$. Consider
+the segment $\vect{x}_{\theta} = \theta \vect{y} + (1 - \theta)
+\vect{x}^{*}$ for $\theta \in (0, 1)$, which stays in
+$\mathcal{F}$ by convexity of the feasible set. Convexity of
+$f_{0}$ gives $f_{0}(\vect{x}_{\theta}) \leq \theta f_{0}(\vect{y})
++ (1 - \theta) f_{0}(\vect{x}^{*}) < f_{0}(\vect{x}^{*})$ for
+$\theta > 0$. For $\theta$ small enough $\vect{x}_{\theta}$ lies
+inside the local-optimum neighbourhood of $\vect{x}^{*}$, which
+contradicts $\vect{x}^{*}$ being a local optimum. Hence no such
+$\vect{y}$ exists; $\vect{x}^{*}$ is global.
+\end{proof}
+
+The theorem is the load-bearing fact of the chapter. Every
+algorithm we treat for convex problems converges to a local
+optimum; the theorem upgrades that local guarantee to a global
+guarantee. For nonconvex problems the same algorithm finds only
+a local optimum, with no statement about the global landscape.
+
+\subsection{Recognising convexity in engineering problems}
+
+A least-squares problem $\min_{\vect{x}} \norm{A \vect{x} -
+\vect{b}}_{2}^{2}$ is convex (the squared norm of an affine
+function is a convex quadratic). A linear program is convex (the
+objective is linear, hence convex; the constraints are linear,
+hence affine equalities and convex sublevel sets). The problem of
+fitting a logistic regression on linearly separable data is
+convex. The problem of training a neural network is generally
+not convex.
+
+A practical heuristic: if the problem can be written using only
+the convex-function library above and the convexity-preserving
+operations, the problem is convex; otherwise the engineer
+should suspect nonconvexity and apply Section 15.8's diagnostics.
+
+\section{Linear and quadratic programming}\pathtag{standard}
+
+Two structural classes deserve named treatment. They cover most
+of what an engineer encounters in resource allocation, design,
+and convex modelling.
+
+\subsection{Linear programming}
+
+\begin{definition}[Linear program in standard form]
+A \engterm{linear program} (LP) in standard form is
+\[
+\min_{\vect{x}} \; \vect{c}^{\transpose} \vect{x}
+\quad \text{subject to} \quad
+A \vect{x} = \vect{b}, \quad \vect{x} \geq \vect{0},
+\]
+with $\vect{c} \in \R^{n}$, $A \in \R^{m \times n}$, $\vect{b}
+\in \R^{m}$, and $\vect{x} \geq \vect{0}$ understood
+componentwise.
+\end{definition}
+
+An LP has a linear objective and linear (equality plus
+nonnegativity) constraints. The feasible set is a polyhedron;
+the objective is constant on hyperplanes. The geometry forces
+the optimum to occur at a vertex of the polyhedron whenever an
+optimum exists and the polyhedron has vertices. There are
+finitely many vertices, so the search is, in principle, finite.
+The simplex method of Dantzig (1947) walks the vertex graph
+along edges that decrease the objective; the interior-point
+methods of Karmarkar (1984) and successors approach the optimum
+through the polyhedron's interior in polynomial time. An
+engineer in 2026 does not implement either method by hand; the
+working tools are commercial solvers (Gurobi, CPLEX, Mosek) and
+open-source solvers (HiGHS, GLPK, CBC, Clp), called from a
+modelling layer (CVXPY, JuMP, PuLP, AMPL) that translates the
+problem statement into the solver's input format.
+
+The LP formulation covers a wide range of engineering
+problems: scheduling, transportation, blending, network flow,
+production planning, diet design. Its limitation is the
+linearity assumption. Real cost curves are seldom exactly linear;
+linear programs are nonetheless the working approximation when
+costs are roughly linear in the relevant range, and they are the
+relaxation that integer programs use to bound their search
+(Section 15.7).
+
+\subsection{Worked LP: the diet problem}
+
+The diet problem (Stigler, 1945, posed before LP existed): choose
+quantities $x_{i} \geq 0$ of $n$ foods to minimise total cost
+$\vect{c}^{\transpose} \vect{x}$ subject to nutritional
+requirements $A \vect{x} \geq \vect{b}$, where $A_{ij}$ is the
+amount of nutrient $i$ in food $j$ and $b_{i}$ is the daily
+requirement for nutrient $i$. The standard-form rewrite
+introduces slack variables $\vect{s} \geq \vect{0}$ via $A
+\vect{x} - \vect{s} = \vect{b}$. The optimum, computed by Dantzig
+in 1947 on Stigler's data, gives an annual food cost of $\$39.69$
+for adequate nutrition (1939 dollars) on a diet of wheat flour,
+cabbage, beef liver, evaporated milk, and dried navy beans, in
+specific quantities. The LP solution is mathematically optimal
+and gastronomically intolerable; the example is the standard
+illustration of the gap between a well-stated objective and the
+right objective.
+
+\subsection{Quadratic programming}
+
+\begin{definition}[Quadratic program]
+A \engterm{quadratic program} (QP) is
+\[
+\min_{\vect{x}} \; \tfrac{1}{2} \vect{x}^{\transpose} P \vect{x}
++ \vect{q}^{\transpose} \vect{x} + r
+\quad \text{subject to} \quad
+G \vect{x} \leq \vect{h}, \quad A \vect{x} = \vect{b},
+\]
+with $P \in \R^{n \times n}$ symmetric. The QP is \engterm{convex}
+if $P$ is positive semidefinite.
+\end{definition}
+
+QPs have a quadratic objective and linear constraints. Convex QPs
+inherit the global-optimality guarantee of convex programs.
+Engineering instances of QPs:
+
+\begin{itemize}[leftmargin=*]
+  \item Least-squares with linear constraints. The objective
+    $\tfrac{1}{2} \norm{A \vect{x} - \vect{b}}_{2}^{2}$ expands
+    to $\tfrac{1}{2} \vect{x}^{\transpose} (A^{\transpose} A)
+    \vect{x} - \vect{b}^{\transpose} A \vect{x} +
+    \tfrac{1}{2}\norm{\vect{b}}^{2}$, a convex QP whenever
+    $A^{\transpose} A$ is positive semidefinite (always; positive
+    definite when $A$ has full column rank).
+  \item Portfolio optimisation in the Markowitz form. Maximise
+    expected return minus a risk-aversion-weighted variance:
+    $\max_{\vect{w}} \boldsymbol{\mu}^{\transpose} \vect{w} -
+    \gamma \vect{w}^{\transpose} \Sigma \vect{w}$ subject to
+    $\vect{1}^{\transpose} \vect{w} = 1$ and $\vect{w} \geq
+    \vect{0}$. The covariance matrix $\Sigma$ is positive
+    semidefinite by construction; the QP is convex.
+  \item Support vector machine training. The dual SVM problem
+    is a QP with a linear equality constraint and box
+    constraints on the dual variables.
+  \item Model predictive control. At each time step the
+    controller solves a QP whose decision variable is the
+    sequence of future control inputs over a planning horizon;
+    the constraints encode actuator limits and state safety
+    bounds.
+\end{itemize}
+
+The QP class extends to second-order cone programs (SOCPs) and
+semidefinite programs (SDPs); see Boyd and Vandenberghe Chapters
+4 and 5.
+
+\subsection{Primal and dual: the LP case}
+
+Every LP has a paired LP, called its dual. The original is the
+\engterm{primal}; the paired is the \engterm{dual}. We state the
+pairing for the standard form above and develop the general
+duality theory in Section 15.4.
+
+\begin{definition}[LP dual, standard form]
+The LP $\min_{\vect{x}} \vect{c}^{\transpose} \vect{x}$ subject to
+$A \vect{x} = \vect{b}$, $\vect{x} \geq \vect{0}$ has dual
+\[
+\max_{\boldsymbol{\nu}} \; \vect{b}^{\transpose}
+\boldsymbol{\nu} \quad \text{subject to} \quad
+A^{\transpose} \boldsymbol{\nu} \leq \vect{c}.
+\]
+The dual variable $\boldsymbol{\nu} \in \R^{m}$ has one component
+per primal equality constraint.
+\end{definition}
+
+The dual variable carries a price interpretation. Each $\nu_{i}$
+is the marginal value, in objective units, of relaxing the
+$i$-th primal constraint by one unit. For the diet problem, the
+dual variable $\nu_{i}$ is the implicit price of nutrient $i$ in
+the optimal diet: the rate at which the cost would fall if the
+$i$-th nutritional requirement were lowered. The dual problem is
+the same problem viewed from the constraint side instead of the
+decision-variable side.
+
+The dual objective $\vect{b}^{\transpose} \boldsymbol{\nu}$ is a
+lower bound on the primal optimal value $\vect{c}^{\transpose}
+\vect{x}^{*}$ for any dual-feasible $\boldsymbol{\nu}$. At the
+optimum the bound is tight: $\vect{b}^{\transpose}
+\boldsymbol{\nu}^{*} = \vect{c}^{\transpose} \vect{x}^{*}$. The
+tightness, called \engterm{strong duality}, is the LP version of
+the more general theorem in Section 15.4.
+
+\section{Lagrangian duality}\pathtag{standard}
+
+Duality is the discipline of associating to every constrained
+problem a paired problem whose optimal value bounds the original.
+For a convex problem the bound is tight. For a nonconvex problem
+the bound is a valid weak lower bound that an optimiser can use
+as a stopping certificate. Duality is also the apparatus that
+generates the Karush-Kuhn-Tucker conditions and gives the
+Lagrange multipliers their interpretation as constraint shadow
+prices.
+
+\subsection{The Lagrangian}
+
+\begin{definition}[Lagrangian]
+For the standard-form problem
+\[
+\min_{\vect{x}} f_{0}(\vect{x}) \;\;\text{s.t.}\;\; f_{i}(\vect{x})
+\leq 0, \;\; h_{j}(\vect{x}) = 0,
+\]
+the \engterm{Lagrangian} is the function
+\[
+\mathcal{L}(\vect{x}, \boldsymbol{\lambda}, \boldsymbol{\nu}) =
+f_{0}(\vect{x})
++ \sum_{i=1}^{m} \lambda_{i} f_{i}(\vect{x})
++ \sum_{j=1}^{p} \nu_{j} h_{j}(\vect{x}),
+\]
+with $\boldsymbol{\lambda} \in \R^{m}_{\geq 0}$ and
+$\boldsymbol{\nu} \in \R^{p}$. The variables $\boldsymbol{\lambda}$
+and $\boldsymbol{\nu}$ are the \engterm{dual variables} or
+\engterm{Lagrange multipliers}.
+\end{definition}
+
+The Lagrangian is the objective plus a weighted sum of the
+constraints, with weights chosen freely (subject to nonnegativity
+for inequality multipliers). Volume II Chapter 11's Lagrangian was
+the equality-only version of this object; the present definition
+extends it to inequalities by using nonnegative multipliers,
+because relaxing $f_{i}(\vect{x}) \leq 0$ to $f_{i}(\vect{x}) \leq
+\epsilon$ for $\epsilon > 0$ enlarges the feasible set, so the
+optimum can only decrease, so the multiplier $\lambda_{i} \geq 0$
+is the rate of that decrease.
+
+\subsection{The dual function and the dual problem}
+
+\begin{definition}[Dual function, dual problem]
+The \engterm{Lagrange dual function} is
+\[
+g(\boldsymbol{\lambda}, \boldsymbol{\nu}) =
+\inf_{\vect{x}} \mathcal{L}(\vect{x}, \boldsymbol{\lambda},
+\boldsymbol{\nu}).
+\]
+The infimum is over all $\vect{x} \in \R^{n}$, with no
+constraints. The \engterm{dual problem} is
+\[
+\max_{\boldsymbol{\lambda} \geq \vect{0}, \boldsymbol{\nu}}
+g(\boldsymbol{\lambda}, \boldsymbol{\nu}).
+\]
+\end{definition}
+
+The dual function is a pointwise infimum of affine functions of
+$(\boldsymbol{\lambda}, \boldsymbol{\nu})$ (when the Lagrangian is
+viewed for fixed $\vect{x}$ as an affine function of the dual
+variables). A pointwise infimum of affine functions is concave.
+The dual problem is therefore the maximisation of a concave
+function over a convex set, which is itself a convex problem.
+This is true regardless of whether the primal is convex.
+
+\subsection{Weak and strong duality}
+
+\begin{theorem}[Weak duality]
+For any primal-feasible $\vect{x}$ and any dual-feasible
+$(\boldsymbol{\lambda}, \boldsymbol{\nu})$ with
+$\boldsymbol{\lambda} \geq \vect{0}$,
+\[
+g(\boldsymbol{\lambda}, \boldsymbol{\nu}) \leq f_{0}(\vect{x}).
+\]
+In particular, $d^{*} \leq p^{*}$, where $p^{*}$ is the primal
+optimal value and $d^{*}$ is the dual optimal value.
+\end{theorem}
+
+The proof is one inequality. For primal-feasible $\vect{x}$ we
+have $f_{i}(\vect{x}) \leq 0$ and $h_{j}(\vect{x}) = 0$, so
+$\sum_{i} \lambda_{i} f_{i}(\vect{x}) \leq 0$ and $\sum_{j} \nu_{j}
+h_{j}(\vect{x}) = 0$, hence $\mathcal{L}(\vect{x},
+\boldsymbol{\lambda}, \boldsymbol{\nu}) \leq f_{0}(\vect{x})$.
+Taking the infimum over $\vect{x}$ on the left preserves the
+inequality.
+
+The difference $p^{*} - d^{*} \geq 0$ is the \engterm{duality gap}.
+A zero duality gap means the primal and dual share their optimal
+value.
+
+\begin{theorem}[Strong duality, Slater's condition]
+If the primal problem is convex and there exists a strictly
+feasible point (a point $\vect{x}_{0}$ with $f_{i}(\vect{x}_{0}) <
+0$ for all $i$ and $h_{j}(\vect{x}_{0}) = 0$ for all $j$, with the
+strict inequality replaced by linearity-and-feasibility for any
+affine $f_{i}$), then strong duality holds: $p^{*} = d^{*}$.
+\end{theorem}
+
+Slater's condition is the standard regularity condition. For a
+convex problem with at least one interior point of the feasible
+set, the duality gap closes. For the LP and convex QP cases of
+Section 15.3, Slater's condition is automatic if the feasible
+set has positive Lebesgue measure, and strong duality is the
+working assumption.
+
+For nonconvex problems strong duality typically fails. The
+duality gap can be very large, and the dual lower bound can be
+loose. The dual is still useful, both as a relaxation that
+provides a weak lower bound and as an interpretive object that
+gives multipliers their shadow-price reading.
+
+\subsection{KKT conditions, formal version}
+
+Volume II Chapter 11 stated the KKT conditions for a convex
+problem with equality and inequality constraints. We restate
+them in the duality framework.
+
+\begin{theorem}[Karush-Kuhn-Tucker]
+Suppose $f_{0}, f_{i}$ are differentiable and $h_{j}$ is
+differentiable. If $\vect{x}^{*}$ and $(\boldsymbol{\lambda}^{*},
+\boldsymbol{\nu}^{*})$ are primal- and dual-optimal with zero
+duality gap, then they satisfy
+\begin{align*}
+f_{i}(\vect{x}^{*}) &\leq 0, & i &= 1, \ldots, m
+&& \text{(primal feasibility)} \\
+h_{j}(\vect{x}^{*}) &= 0, & j &= 1, \ldots, p \\
+\lambda_{i}^{*} &\geq 0, & i &= 1, \ldots, m
+&& \text{(dual feasibility)} \\
+\lambda_{i}^{*} f_{i}(\vect{x}^{*}) &= 0, & i &= 1, \ldots, m
+&& \text{(complementary slackness)} \\
+\grad f_{0}(\vect{x}^{*}) + \sum_{i} \lambda_{i}^{*} \grad
+f_{i}(\vect{x}^{*}) &+ \sum_{j} \nu_{j}^{*} \grad
+h_{j}(\vect{x}^{*}) = \vect{0}
+&& \text{(stationarity)}
+\end{align*}
+For a convex problem with Slater's condition, the KKT conditions
+are also sufficient: any $(\vect{x}^{*}, \boldsymbol{\lambda}^{*},
+\boldsymbol{\nu}^{*})$ satisfying them is primal- and dual-optimal.
+\end{theorem}
+
+Complementary slackness is the most useful KKT condition for
+hand work. It says that at the optimum, for each inequality
+constraint, either the constraint is active ($f_{i}(\vect{x}^{*})
+= 0$) or its multiplier vanishes ($\lambda_{i}^{*} = 0$). One of
+the two is zero, possibly both, never neither nonzero. The
+condition partitions the inequality constraints into the active
+set (with positive multipliers) and the inactive set (with zero
+multipliers), and the engineer's analysis runs case by case on
+this partition.
+
+\subsection{Worked KKT example: a linearly constrained QP}
+
+Minimise $f_{0}(\vect{x}) = \tfrac{1}{2} \norm{\vect{x}}_{2}^{2}$
+subject to $\vect{a}^{\transpose} \vect{x} \geq b$, with
+$\vect{a} \in \R^{n}$ and $b > 0$. Rewrite the inequality as
+$f_{1}(\vect{x}) = b - \vect{a}^{\transpose} \vect{x} \leq 0$. The
+Lagrangian is
+\[
+\mathcal{L} = \tfrac{1}{2} \vect{x}^{\transpose} \vect{x} +
+\lambda (b - \vect{a}^{\transpose} \vect{x}).
+\]
+Stationarity: $\vect{x}^{*} = \lambda^{*} \vect{a}$.
+Complementary slackness: $\lambda^{*} (b - \vect{a}^{\transpose}
+\vect{x}^{*}) = 0$. Two cases. Case A: $\lambda^{*} = 0$, hence
+$\vect{x}^{*} = \vect{0}$. Primal feasibility requires $b - 0
+\leq 0$, i.e.\ $b \leq 0$, contrary to assumption. Case B: $b -
+\vect{a}^{\transpose} \vect{x}^{*} = 0$. Substituting
+$\vect{x}^{*} = \lambda^{*} \vect{a}$ gives $\lambda^{*} = b /
+\norm{\vect{a}}_{2}^{2} > 0$. The optimum is $\vect{x}^{*} = b
+\vect{a} / \norm{\vect{a}}_{2}^{2}$, the orthogonal projection of
+the origin onto the half-space's boundary hyperplane, with
+optimal value $p^{*} = b^{2} / (2 \norm{\vect{a}}_{2}^{2})$ and
+multiplier $\lambda^{*} = b / \norm{\vect{a}}_{2}^{2}$. The
+multiplier reports the rate at which $p^{*}$ decreases per unit
+relaxation of $b$: $\dv{p^{*}}{b} = b / \norm{\vect{a}}_{2}^{2} =
+\lambda^{*}$, in agreement with the shadow-price reading.
+
+\section{Gradient methods, Newton's method}\pathtag{core}
+
+Outside the closed-form cases (a few small LPs and QPs solvable
+by hand) the engineer reaches an optimum by iteration. We treat
+the two foundational iterative families: gradient-based methods
+that use first derivatives, and Newton's method which uses second
+derivatives. Both apply to unconstrained problems on the working
+domain. Constrained problems are reduced to unconstrained
+problems by penalty methods, barrier methods, or the
+projected-gradient construction.
+
+\subsection{Gradient descent}
+
+Volume II Chapter 11 introduced the gradient as the direction of
+steepest ascent. Gradient descent moves against it.
+
+\begin{definition}[Gradient descent]
+The \engterm{gradient descent} iteration on a differentiable
+$f : \R^{n} \to \R$, with initial point $\vect{x}_{0}$ and step
+sizes $\eta_{k} > 0$, is
+\[
+\vect{x}_{k+1} = \vect{x}_{k} - \eta_{k} \grad f(\vect{x}_{k}),
+\quad k = 0, 1, 2, \ldots
+\]
+The step size $\eta_{k}$ is the \engterm{learning rate} when used
+in machine learning practice; the step size $\eta_{k}$ is
+selected by a fixed schedule, by line search, or by adaptive
+rules.
+\end{definition}
+
+The iteration's geometry: at $\vect{x}_{k}$, the gradient
+$\grad f(\vect{x}_{k})$ points uphill; the negative gradient
+points downhill; we step in the downhill direction by an amount
+proportional to the gradient's magnitude. As $\vect{x}_{k}$
+approaches a critical point the gradient shrinks to zero, the
+step shrinks to zero, and the iteration freezes at the critical
+point.
+
+\begin{theorem}[Convergence of gradient descent on a smooth
+strongly convex objective]
+Suppose $f$ is differentiable, $\mu$-strongly convex (the Hessian
+is at least $\mu \cdot I$ in semidefinite order), and $L$-smooth
+(the gradient is $L$-Lipschitz: $\norm{\grad f(\vect{x}) - \grad
+f(\vect{y})} \leq L \norm{\vect{x} - \vect{y}}$). With constant
+step size $\eta = 1/L$, gradient descent satisfies
+\[
+\norm{\vect{x}_{k} - \vect{x}^{*}}_{2}^{2} \leq
+(1 - \mu/L)^{k} \norm{\vect{x}_{0} - \vect{x}^{*}}_{2}^{2}.
+\]
+\end{theorem}
+
+The convergence is geometric, with rate $1 - \mu/L \in [0, 1)$.
+The ratio $\kappa = L/\mu$ is the \engterm{condition number} of
+the optimisation problem; the iteration count to reach error
+$\epsilon$ scales as $\kappa \log(1/\epsilon)$. A
+well-conditioned problem (small $\kappa$) converges fast; an
+ill-conditioned problem (large $\kappa$) converges slowly. The
+canonical bad case is the elongated quadratic
+$f(x_{1}, x_{2}) = \tfrac{1}{2}(x_{1}^{2} + 100 x_{2}^{2})$, with
+condition number $\kappa = 100$; gradient descent zigzags down
+the long axis and converges only after many iterations.
+
+\subsection{Step-size selection}
+
+A constant step size requires knowledge of $L$, which the
+engineer typically does not have in closed form. Three working
+strategies cover most cases.
+
+\engterm{Backtracking line search}: at each step, start with a
+generous step $\eta_{0}$ and shrink $\eta \leftarrow \beta \eta$
+(with $\beta \in (0, 1)$) until the Armijo condition $f(\vect{x}_{k}
+- \eta \grad f(\vect{x}_{k})) \leq f(\vect{x}_{k}) - \alpha \eta
+\norm{\grad f(\vect{x}_{k})}_{2}^{2}$ holds for a fixed $\alpha
+\in (0, 1/2)$.
+
+\engterm{Decreasing schedule}: choose $\eta_{k} = \eta_{0} /
+(1 + k/\tau)$ for some time scale $\tau$. The schedule is
+heuristic but widely used in stochastic settings.
+
+\engterm{Adaptive rules}: AdaGrad, RMSProp, Adam, and their
+relatives adjust the per-coordinate step size from running
+gradient statistics. The full treatment is in Volume VII
+(machine learning); the recognition that they exist and that
+they replace a hand-tuned constant step is the engineering
+working knowledge for this chapter.
+
+\subsection{Newton's method}
+
+Newton's method uses the second derivative. The motivating
+identity: at $\vect{x}_{k}$, the second-order Taylor expansion of
+$f$ is
+\[
+f(\vect{x}_{k} + \vect{p}) \approx f(\vect{x}_{k}) +
+\grad f(\vect{x}_{k})^{\transpose} \vect{p} +
+\tfrac{1}{2} \vect{p}^{\transpose} H_{k} \vect{p},
+\]
+where $H_{k} = \nabla^{2} f(\vect{x}_{k})$ is the Hessian.
+Minimising the quadratic in $\vect{p}$ gives the Newton step
+$\vect{p} = -H_{k}^{-1} \grad f(\vect{x}_{k})$.
+
+\begin{definition}[Newton's method]
+The \engterm{Newton iteration} on a twice-differentiable $f$ with
+positive-definite Hessian is
+\[
+\vect{x}_{k+1} = \vect{x}_{k} - H_{k}^{-1} \grad f(\vect{x}_{k}).
+\]
+\end{definition}
+
+For a strictly convex quadratic $f(\vect{x}) = \tfrac{1}{2}
+\vect{x}^{\transpose} P \vect{x} + \vect{q}^{\transpose}
+\vect{x}$, Newton's method finds the optimum in one step from
+any starting point: the Newton step at $\vect{x}_{0}$ is $-P^{-1}
+(P \vect{x}_{0} + \vect{q}) = -\vect{x}_{0} - P^{-1} \vect{q}$,
+giving $\vect{x}_{1} = -P^{-1} \vect{q}$, the analytical optimum.
+For a non-quadratic objective near a strict local minimum,
+Newton's method converges quadratically: the error squares at
+each step. The price is a Hessian solve at every iteration,
+costing $O(n^{3})$ in dense form, which is prohibitive for
+large $n$.
+
+\subsection{Quasi-Newton, recognition level}
+
+The Broyden-Fletcher-Goldfarb-Shanno method (BFGS) and its
+limited-memory variant (L-BFGS) maintain a low-rank approximation
+to the inverse Hessian, updated from gradient differences across
+iterations. The per-iteration cost is $O(n)$ in L-BFGS, against
+$O(n^{3})$ for full Newton. The convergence is superlinear,
+between gradient descent's geometric rate and Newton's quadratic
+rate. L-BFGS is the working off-the-shelf method for medium-scale
+unconstrained smooth optimisation; the engineer uses it through
+\repopath{scipy.optimize.minimize} with \verb|method='L-BFGS-B'|
+or equivalent in another environment, knowing the cost model and
+the convergence regime without rederiving the update formula.
+
+\begin{principle}[Method selection for smooth unconstrained
+optimisation]
+For a smooth convex objective in $n$ variables, choose by scale:
+$n$ small ($\lesssim 10^{2}$), use Newton's method or interior
+point. $n$ medium ($10^{2}$ to $10^{5}$), use L-BFGS or
+nonlinear conjugate gradient. $n$ large ($> 10^{5}$, or stochastic
+objective), use gradient descent with momentum or Adam. For
+nonsmooth objectives, use proximal methods or subgradient
+descent. For constrained problems, use projected gradient,
+augmented Lagrangian, or interior point.
+\end{principle}
+
+\section{Stochastic optimisation, SGD}\pathtag{standard}
+
+The objective in many engineering settings is a sum or expectation
+over data:
+\[
+f(\boldsymbol{\theta}) = \frac{1}{N} \sum_{i=1}^{N}
+\ell(\boldsymbol{\theta}, \vect{z}_{i}),
+\]
+with $N$ data points $\vect{z}_{i}$, parameter
+$\boldsymbol{\theta} \in \R^{p}$, and per-sample loss $\ell$. A
+linear regression's least-squares objective, a logistic regression's
+log-loss, and a neural network's training loss all fit this form.
+For $N$ large (a million data points, or a hundred million), each
+gradient evaluation $\grad f$ costs $N$ per-sample gradient
+computations, which is prohibitive for an iterative method that
+needs many gradient evaluations.
+
+\subsection{Stochastic gradient descent}
+
+\begin{definition}[Stochastic gradient descent]
+\engterm{Stochastic gradient descent} (SGD) replaces the full
+gradient $\grad f(\boldsymbol{\theta}_{k}) = (1/N) \sum_{i} \grad
+\ell(\boldsymbol{\theta}_{k}, \vect{z}_{i})$ with an unbiased
+estimate built from a randomly sampled subset (a \engterm{minibatch}
+$B_{k} \subseteq \set{1, \ldots, N}$ of size $|B_{k}| = b$):
+\[
+\boldsymbol{\theta}_{k+1} = \boldsymbol{\theta}_{k} - \eta_{k}
+\cdot \frac{1}{b} \sum_{i \in B_{k}} \grad
+\ell(\boldsymbol{\theta}_{k}, \vect{z}_{i}).
+\]
+The minibatch is resampled at every iteration.
+\end{definition}
+
+The per-iteration cost falls from $N$ gradient evaluations to $b$,
+a factor-$N/b$ saving. The price is gradient noise: the
+minibatch gradient is $\E[\grad f]$ in expectation but has variance
+$\sigma^{2}/b$ where $\sigma^{2}$ is the per-sample gradient
+variance. The variance shrinks as the minibatch grows, but the
+per-iteration cost grows in proportion; the engineer's choice of
+$b$ balances per-iteration cost against per-iteration progress.
+
+\subsection{Convergence}
+
+\begin{theorem}[SGD convergence on a smooth convex objective]
+Suppose $f$ is convex and $L$-smooth, and the per-sample gradient
+has variance bounded by $\sigma^{2}$. With step sizes $\eta_{k} =
+\eta_{0} / \sqrt{k+1}$, SGD achieves
+\[
+\E[f(\bar{\boldsymbol{\theta}}_{K})] - f(\boldsymbol{\theta}^{*})
+\leq O(1/\sqrt{K}),
+\]
+where $\bar{\boldsymbol{\theta}}_{K}$ is the running average of
+the iterates. For $\mu$-strongly convex $f$, the rate improves to
+$O(1/K)$.
+\end{theorem}
+
+The rate $O(1/\sqrt{K})$ is slower than gradient descent's
+geometric rate; SGD trades per-iteration progress for
+per-iteration cost. For modern problem sizes (millions of data
+points, billions of parameters) the trade is overwhelmingly in
+SGD's favour: a single full-gradient evaluation costs more than
+thousands of SGD iterations, and the SGD iterations make
+non-trivial progress at every step.
+
+\subsection{Variance reduction, recognition level}
+
+The $1/\sqrt{K}$ rate of SGD has been improved to $1/K$ (matching
+full gradient descent on strongly convex problems) by methods
+that reduce the gradient variance: SAG (stochastic average
+gradient), SAGA, SVRG (stochastic variance-reduced gradient), and
+control-variate constructions. These methods maintain auxiliary
+state (cached per-sample gradients or full-gradient checkpoints)
+to subtract a learned mean from the minibatch gradient. The cost
+of the state is $O(N)$ memory. The recognition for an engineer:
+when SGD has converged but the engineer wants the geometric rate
+of full gradient descent without the full-gradient cost, the
+variance-reduction family is the working tool. The full
+treatment is in modern optimisation references (Bubeck 2015,
+Bottou-Curtis-Nocedal 2018); we leave this at recognition level.
+
+\subsection{Momentum and Adam, recognition level}
+
+Three modifications to SGD recur in practice:
+
+\engterm{Momentum} (Polyak): maintain a velocity $\vect{v}_{k}$
+that accumulates past gradients with a decay $\beta \in (0, 1)$.
+The update becomes $\vect{v}_{k+1} = \beta \vect{v}_{k} +
+\hat{\grad} f$, $\boldsymbol{\theta}_{k+1} =
+\boldsymbol{\theta}_{k} - \eta \vect{v}_{k+1}$. Momentum smooths
+gradient noise and accelerates convergence in elongated valleys
+where vanilla SGD zigzags.
+
+\engterm{Nesterov accelerated gradient}: a refinement of momentum
+that evaluates the gradient at the look-ahead point
+$\boldsymbol{\theta}_{k} + \beta \vect{v}_{k}$ rather than at
+$\boldsymbol{\theta}_{k}$. Nesterov's method achieves the optimal
+$O(1/K^{2})$ rate for smooth convex problems, an improvement over
+gradient descent's $O(1/K)$ rate.
+
+\engterm{Adam} (Kingma-Ba): combines momentum with per-coordinate
+adaptive step sizes built from running second-moment estimates of
+the gradient. Adam is the default first attempt for training a
+modern neural network. Its convergence theory is weaker than
+SGD's (some convex problems on which Adam fails to converge are
+known); its practical performance on deep nonconvex objectives
+is the empirical reason for its dominance, current as of 2026.
+
+The engineer's working catalogue: vanilla SGD is the baseline;
+SGD with momentum is the next step up; Adam is the modern
+default for deep nonconvex problems; L-BFGS is the smooth
+medium-scale workhorse. The reader implements the first three in
+the chapter project (Section 15.9).
+
+\section{Integer and combinatorial optimisation preview}\pathtag{standard}
+
+Some decision variables take values only in a discrete set:
+binary on-off switches, integer counts, categorical assignments,
+graph structures. Optimisation over such variables is integer
+programming or combinatorial optimisation, the family of problems
+in which convexity has, structurally, no direct analogue.
+
+\subsection{Integer linear programming}
+
+\begin{definition}[Integer linear program]
+An \engterm{integer linear program} (ILP) is an LP with the
+additional constraint that each component of $\vect{x}$ is
+integer-valued: $\vect{x} \in \Z^{n}$. A \engterm{mixed-integer
+linear program} (MILP) requires only a subset of components to be
+integer.
+\end{definition}
+
+ILP captures a wide range of engineering problems: facility
+location (build the warehouse or do not), scheduling (assign each
+job to a machine), routing (a vehicle either traverses an edge or
+does not), production planning with set-up costs (produce a
+positive batch with a fixed cost or produce zero), graph
+colouring, the travelling salesman problem.
+
+\subsection{Why integer programming is hard}
+
+The integer constraint destroys convexity: the integer lattice is
+not convex, so the LP relaxation's vertex enumeration argument
+does not apply. The decision space grows exponentially in the
+number of integer variables: a problem with $n$ binary variables
+has $2^{n}$ feasible candidates in the worst case.
+
+\begin{theorem}[Cook 1971; Karp 1972]
+The integer linear programming feasibility problem is NP-complete.
+Many of its specialisations (the travelling salesman problem,
+graph colouring, set cover, knapsack with general profits) are
+NP-hard.
+\end{theorem}
+
+NP-hardness, treated formally in Volume II Chapter 17, is the
+working signal that the engineer cannot expect a polynomial-time
+algorithm for the worst case of an integer problem. The engineer
+nonetheless solves integer problems daily; the working strategies
+are branch-and-bound, cutting planes, and approximation algorithms
+that trade an optimality gap for tractable runtime.
+
+\subsection{Branch-and-bound, recognition level}
+
+\engterm{Branch-and-bound} explores the integer feasible set as a
+tree. At the root, solve the LP relaxation (relax integer
+variables to continuous). If the LP optimum is integer-feasible,
+done. Otherwise pick a fractional variable $x_{i}$ with relaxed
+value $x_{i}^{*} \notin \Z$ and branch: the left subtree adds the
+constraint $x_{i} \leq \lfloor x_{i}^{*} \rfloor$, the right
+subtree adds $x_{i} \geq \lceil x_{i}^{*} \rceil$. Solve the LP
+relaxation in each subtree, recurse. Any integer-feasible
+solution found anywhere in the tree provides an upper bound on
+the optimum (for a minimisation); any LP relaxation provides a
+lower bound on the subtree's optimum. A subtree whose LP
+relaxation has objective value worse than the best known integer
+solution can be \engterm{pruned}: the subtree cannot improve on
+the incumbent, so the search skips it.
+
+The art of branch-and-bound is in the bounds. A tight LP
+relaxation prunes aggressively and the search runs in seconds; a
+loose LP relaxation prunes weakly and the search runs for days
+without progress. \engterm{Cutting planes} (Gomory cuts, lift-
+and-project, Chvátal-Gomory) tighten the LP relaxation by adding
+linear inequalities valid for the integer feasible set but
+violated by the LP optimum. The combination of branch-and-bound
+with cutting planes and primal heuristics is the working
+\engterm{branch-and-cut} engine inside every modern MIP solver.
+
+\subsection{Relaxations}
+
+The general working strategy: replace the hard problem with an
+easier problem whose optimum bounds the hard problem's optimum.
+LP relaxation drops integrality; Lagrangian relaxation moves
+hard constraints into the objective with multipliers; semidefinite
+relaxation lifts a quadratic problem to a matrix problem (Goemans
+and Williamson 1995, MAX-CUT). Each relaxation gives a bound; the
+engineer chooses the relaxation whose bound is tight enough for
+the application.
+
+\subsection{Approximation algorithms, recognition level}
+
+For NP-hard problems, an algorithm that returns a solution
+within a known factor of optimal in polynomial time is called an
+\engterm{approximation algorithm}. The greedy algorithm for set
+cover achieves a $\ln n$ approximation factor (Chvátal 1979); the
+Christofides algorithm for the metric travelling salesman
+achieves a $3/2$ factor (Christofides 1976). The engineer who
+needs guaranteed performance on a NP-hard problem at scale uses
+an approximation algorithm and reports the approximation factor
+along with the solution. The full treatment is in
+\textcite{text:cormen-clrs} and \textcite{text:kleinberg-tardos};
+this chapter establishes the recognition.
+
+\section{Failure: local minima, ill-posed objectives, optimisation
+theatre}\pathtag{core}
+
+A solved optimisation problem is not a solved engineering problem.
+The optimiser solves the problem the engineer wrote down. The
+engineer's job is to write down the right problem, recognise when
+the optimum found is local and not global, and notice when the
+objective has been gamed by the optimiser to produce a number
+that is mathematically optimal and practically harmful. The
+failure modes:
+
+\subsection{Local minima look like global minima}
+
+A nonconvex objective can have many local minima, with the
+gradient zero and the Hessian positive definite at each, and no
+local diagnostic distinguishes the local minimum the iteration
+found from the global minimum it missed. Gradient descent and
+Newton's method converge to a local minimum from any starting
+point; the result depends on the initialisation. Multiple random
+restarts (run the optimiser from many different initial points
+and take the best result) is the working hedge against this
+failure, accepting that even the best of $K$ random restarts can
+miss a deep narrow basin.
+
+The diagnostic: inspect the loss values at the converged
+iterates from many restarts. If the spread of converged losses is
+narrow, the objective is plausibly close to convex, or the
+restarts cluster on a flat valley. If the spread is wide, the
+objective is genuinely multimodal and the engineer must report
+the result with appropriate caveats. The diagnostic does not
+prove the global optimum has been found; it only reports what
+multiple restarts found.
+
+\subsection{Ill-posed objectives: the wrong objective is optimised
+exactly}
+
+Diet-problem solutions optimise stated cost subject to stated
+nutritional constraints, and produce diets no one would eat.
+Curve fits optimise stated residuals on stated training data, and
+produce models that overfit. Trading strategies optimise stated
+backtest returns on stated historical data, and produce models
+that will lose money in deployment. Each of these is the
+optimiser doing its job correctly on a specification that did not
+quite say what the engineer meant.
+
+The working diagnostic: state the objective in plain English
+before writing it as a function. Identify what the objective does
+not capture. Ask what optimum the formulation rewards if the
+engineer's intent is taken literally. If the literal optimum is
+not the engineering intent, rewrite the objective. Common
+reformulations: add a regularisation term that penalises model
+complexity; replace training-set residual with cross-validated
+residual; add a constraint that bounds the worst-case loss
+instead of the average loss; multi-objective formulations that
+report a Pareto frontier instead of a scalar optimum.
+
+\begin{principle}[Goodhart's law]
+When a measure becomes a target, it ceases to be a good measure.
+An objective installed for optimisation is, by construction, a
+target; the optimisation will move the system to maximise the
+target, including by exploiting any gap between the target and
+the engineer's intent. The engineer's defence is to anticipate
+the gap before the optimiser exploits it.
+\end{principle}
+
+The principle, originally articulated by the British economist
+Charles Goodhart in 1975 in the context of monetary policy, is
+the most important single warning in optimisation practice. A
+factory measured on units produced will produce defective units;
+a hospital measured on average wait time will discharge patients
+on the wait-time clock; a model measured on training accuracy
+will memorise the training set; a recommendation system measured
+on click-through rate will surface clickbait. None of these are
+optimiser failures; each is a specification failure caught by
+the optimiser doing its job.
+
+\subsection{Worked example: a regression that overfits the
+training set}
+
+A polynomial regression of degree $d$ on $N = 12$ data points
+$(x_{i}, y_{i})$, with $y_{i} = \sin(\pi x_{i}) + \epsilon_{i}$,
+$\epsilon_{i} \sim \mathcal{N}(0, 0.1^{2})$, $x_{i} \in [0, 1]$.
+The objective is the training mean-squared error:
+\[
+\mathcal{L}_{\text{train}}(\boldsymbol{\theta}) = \frac{1}{N}
+\sum_{i=1}^{N} (y_{i} - p_{d}(x_{i}; \boldsymbol{\theta}))^{2},
+\]
+with $p_{d}$ a polynomial of degree $d$. The
+$\boldsymbol{\theta}^{*}$ that minimises $\mathcal{L}_{\text{train}}$
+is a least-squares fit, computable in closed form by the normal
+equations of Volume II Chapter 9.
+
+For $d = 11$ the polynomial passes through every data point:
+$\mathcal{L}_{\text{train}} = 0$. The optimiser has done its job
+exactly. The fitted polynomial oscillates wildly between the
+data points. The mean-squared error on a held-out test set,
+evaluated at intermediate $x$ values not seen during fitting, is
+two orders of magnitude larger than for $d = 3$. The training-set
+optimum is the wrong objective for the engineering goal of
+predicting $\sin(\pi x)$ on unseen data.
+
+The corrected formulation adds an $\ell_{2}$ regulariser:
+\[
+\mathcal{L}_{\text{ridge}}(\boldsymbol{\theta}) =
+\mathcal{L}_{\text{train}}(\boldsymbol{\theta}) + \lambda
+\norm{\boldsymbol{\theta}}_{2}^{2},
+\]
+with $\lambda > 0$ the regularisation strength. The same
+optimiser applied to $\mathcal{L}_{\text{ridge}}$ produces a fit
+whose test error is comparable to $d = 3$ even at $d = 11$, with
+$\lambda$ chosen by cross-validation (Volume II Chapter 14). The
+optimiser is the same. The objective is different. The objective
+makes the difference.
+
+\subsection{Optimisation theatre}
+
+\engterm{Optimisation theatre} is the practice of running an
+optimiser on a problem that was not the right problem in order
+to produce a number that looks defensible. The factory floor
+where every shift's output is reported to the third decimal but
+the rejection rate is not; the school district where standardised
+test scores improve without learning; the climate model whose
+parameters are tuned to match historical records and then
+extrapolated as if the parameters were physical; the pricing
+optimiser that maximises short-term revenue while destroying
+customer relationships measured nowhere in the loss. The pattern
+is consistent: a real engineering or organisational question is
+replaced by a measurable proxy, the proxy is optimised
+aggressively, the underlying question is no better answered, and
+the optimisation provides cover that the question has been taken
+seriously.
+
+The engineer's defence is to ask, before running the optimiser,
+three questions. What does the optimum of this objective look
+like in plain English? Is that what we want? What would a
+malicious optimiser exploit in the gap between the formulation
+and the intent? The questions do not eliminate Goodhart effects;
+they make the engineer responsible for them.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Gradient descent from scratch with at least one
+acceleration scheme]
+
+\textbf{Track.} Simulation with analysis. \textbf{Hazard class.}
+None. \textbf{Tools.} Paper, pencil, programming environment of
+the reader's choice (Python, MATLAB, Julia, or equivalent).
+
+\textbf{The problem.} Implement gradient descent from scratch on
+a chosen objective, plus at least one of momentum, Nesterov
+accelerated gradient, RMSProp, or Adam. Compare the
+implementations against each other and against a library
+optimiser, and report on convergence rate, learning-rate
+sensitivity, and qualitative behaviour on the chosen objective.
+
+\textbf{Suggested objectives.}
+\begin{enumerate}[leftmargin=*]
+  \item The polynomial-fit problem from the Volume II Chapter 9
+    project: minimise $\norm{A \vect{x} - \vect{b}}_{2}^{2}$ for
+    a polynomial design matrix $A$ on a noisy dataset of the
+    reader's choice, possibly with an $\ell_{2}$ regularisation
+    term. Closed-form least-squares is available as the
+    reference; the reader's iterative methods should converge to
+    the same answer.
+  \item The Rosenbrock function $f(x, y) = (1 - x)^{2} + 100
+    (y - x^{2})^{2}$. Nonconvex, with a famously elongated
+    valley. The classical hard test for first-order methods.
+  \item A small neural-network loss: a two-layer fully connected
+    network on MNIST, fashion-MNIST, or any small classification
+    dataset. Nonconvex, large $n$, the regime that justifies
+    Adam.
+  \item A logistic regression on a real binary classification
+    dataset of the reader's choice. Convex, a fair comparison
+    target where the global optimum is known.
+\end{enumerate}
+
+\textbf{The deliverable.} A 6-to-10-page report and a 1500-word
+reflection. The report must contain
+\begin{enumerate}[leftmargin=*]
+  \item A statement of the chosen objective $f$, including the
+    parameter dimension $n$, the data, and the closed-form (or
+    library-computed) optimum where available.
+  \item A from-scratch implementation of vanilla gradient
+    descent. From-scratch means the reader writes the iteration
+    explicitly; library calls for matrix operations are allowed,
+    but \verb|library.gradient_descent(...)| is not. The gradient
+    is computed analytically from the objective formula or by
+    automatic differentiation, with the choice documented.
+  \item A from-scratch implementation of at least one
+    acceleration: momentum, Nesterov, RMSProp, or Adam. The
+    update rule, the state maintained, and the hyperparameter
+    defaults must be stated explicitly.
+  \item A learning-rate sensitivity sweep: at least three step
+    sizes spanning two orders of magnitude (e.g.\ $\eta \in
+    \set{10^{-1}, 10^{-2}, 10^{-3}}$). The reader plots the loss
+    versus iteration count for each, and reports which step size
+    gave the fastest convergence and which step size diverged.
+  \item A comparison against a library optimiser (e.g.\
+    \repopath{scipy.optimize.minimize}, PyTorch's optimisers,
+    Julia's Optim.jl). The reader reports the iteration count,
+    wall-clock time, and final loss for each method.
+  \item Plotted convergence trajectories. For 2D objectives
+    (Rosenbrock), plot the trajectory on a contour plot of $f$.
+    For higher-dimensional objectives, plot the loss versus
+    iteration on log scale.
+\end{enumerate}
+
+\textbf{The reflection.} The 1500-word reflection addresses
+\begin{itemize}[leftmargin=*]
+  \item Local minima encountered (or absent). Did the reader's
+    method converge to the same point from different
+    initialisations? Did multiple restarts help? On a convex
+    objective, the answer is yes by Section 15.2's theorem; on
+    a nonconvex objective, the answer is informative.
+  \item Learning-rate sensitivity. How wide was the working
+    range of step sizes? At what step size did the iteration
+    diverge? Cite the smoothness constant $L$ if computable, or
+    estimate it.
+  \item When stochastic methods help. If the reader chose a
+    large-data objective, compare full-batch gradient descent
+    against minibatch SGD on iteration count and on wall-clock
+    time. Identify the regime in which SGD is faster and the
+    regime in which it is not.
+  \item How the engineer should choose between methods given a
+    real-world objective. State a working decision rule
+    referencing the principle in Section 15.5.
+  \item One source of error the reader noticed in their own
+    working, and one heuristic the reader has acquired by
+    completing the project.
+\end{itemize}
+
+\textbf{Time.} Eight to twelve hours of implementation, two to
+three hours of experiments, three to four hours of writing.
+Total approximately fifteen to twenty hours, distributed across
+three or four sessions.
+
+\textbf{Solutions.} A reference Python implementation of vanilla
+gradient descent and Adam on the polynomial-fit and Rosenbrock
+objectives, available from the general editor.
+
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises train calculation, derivation, estimation,
+simulation, design, diagnosis, failure analysis, and judgment.
+Calculation and derivation problems have full solutions;
+open-ended problems have rubrics. Exercises are tagged with their
+reader-path tier.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Solve the LP $\min_{\vect{x}} \vect{c}^{\transpose} \vect{x}$
+subject to $\vect{x} \geq \vect{0}$ and $\vect{1}^{\transpose}
+\vect{x} = 1$, with $\vect{c} = (3, 1, 4, 1, 5)$. Identify the
+optimum and the active constraints, and write down the dual
+variable.
+\end{exercise}
+
+\begin{exercise}
+Compute the optimum of the QP $\min_{\vect{x}} \tfrac{1}{2}
+\norm{\vect{x}}_{2}^{2}$ subject to $\vect{1}^{\transpose}
+\vect{x} = 1$ in $\R^{n}$ for general $n$. Report
+$\vect{x}^{*}$, $p^{*}$, and the multiplier $\nu^{*}$.
+\end{exercise}
+
+\begin{exercise}
+For $f(x, y) = x^{2} + 4 y^{2} - 2 x + 8 y + 5$, compute the
+gradient and the Hessian, identify the unique critical point, and
+verify that it is a global minimum by the Hessian test. Report
+$f(\vect{x}^{*})$.
+\end{exercise}
+
+\begin{exercise}
+Run two iterations of gradient descent by hand on $f(x) = x^{2}$
+from $x_{0} = 4$ with constant step size $\eta = 0.1$. Report
+$x_{1}, x_{2}, x_{3}$ and verify the geometric convergence rate.
+\end{exercise}
+
+\begin{exercise}
+Run one Newton step by hand on $f(x, y) = x^{2} + 2 x y + 3 y^{2}
+- 2 x - 4 y$ from $(x_{0}, y_{0}) = (0, 0)$. Verify that the
+result is the global minimum.
+\end{exercise}
+
+\begin{exercise}
+Solve the KKT conditions for $\min_{\vect{x}} \tfrac{1}{2}
+\norm{\vect{x}}_{2}^{2}$ subject to $\vect{a}^{\transpose}
+\vect{x} \geq b$ with $\vect{a} = (1, 2, 2)$ and $b = 6$. Report
+$\vect{x}^{*}$, $p^{*}$, and $\lambda^{*}$, and verify
+complementary slackness.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the dual of the LP $\min_{\vect{x}} \vect{c}^{\transpose}
+\vect{x}$ subject to $A \vect{x} \leq \vect{b}$, $\vect{x} \geq
+\vect{0}$ from the Lagrangian. Identify the dual variables and
+their sign constraints.
+\end{exercise}
+
+\begin{exercise}
+Derive the dual of a general convex QP $\min_{\vect{x}}
+\tfrac{1}{2} \vect{x}^{\transpose} P \vect{x} +
+\vect{q}^{\transpose} \vect{x}$ subject to $A \vect{x} =
+\vect{b}$. Solve the inner minimisation analytically using the
+positive definiteness of $P$.
+\end{exercise}
+
+\begin{exercise}
+Derive the gradient-descent convergence rate for a quadratic
+objective $f(\vect{x}) = \tfrac{1}{2} \vect{x}^{\transpose} P
+\vect{x}$ with $P$ positive definite. Identify the optimal
+constant step size in terms of the eigenvalues of $P$.
+\end{exercise}
+
+\begin{exercise}
+Derive the Newton step for $f(\vect{x}) = \tfrac{1}{2}
+\vect{x}^{\transpose} P \vect{x} + \vect{q}^{\transpose}
+\vect{x} + r$ and verify that one Newton step from any
+$\vect{x}_{0}$ reaches the optimum.
+\end{exercise}
+
+\begin{exercise}
+Show that the pointwise maximum of a finite collection of convex
+functions is convex. Use the definition of convexity directly.
+\end{exercise}
+
+\begin{exercise}
+Show that the composition $g(A \vect{x} + \vect{b})$ of a convex
+$g : \R^{m} \to \R$ with an affine map $\vect{x} \mapsto A \vect{x}
++ \vect{b}$, $A \in \R^{m \times n}$, is convex on $\R^{n}$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the optimal pipe diameter $d^{*}$ for the cost-of-pipe
+problem in Section 15.1.2 with $c_{1} = 1000\,\text{USD}/\si{\meter\cubed}$
+(material), $c_{2} = 5 \times 10^{8}\,\text{USD}\cdot\si{\second\cubed\per\meter\tothe{8}}$
+(pumping). Use $L = 100\,\si{\meter}$, $Q = 0.05\,\si{\cubic\meter\per\second}$.
+Verify $d^{*} \in [0.05, 0.30]\,\si{\meter}$ and report the
+total optimal cost.
+\end{exercise}
+
+\begin{exercise}
+Estimate the condition number $\kappa = L/\mu$ of the
+least-squares objective $f(\vect{x}) = \tfrac{1}{2} \norm{A
+\vect{x} - \vect{b}}_{2}^{2}$ when $A \in \R^{1000 \times 100}$
+has singular values logarithmically distributed between $\sigma_{1}
+= 100$ and $\sigma_{100} = 0.01$. Estimate the iteration count
+gradient descent needs to reach error $\epsilon = 10^{-6}$ from a
+unit-norm initial error.
+\end{exercise}
+
+\begin{exercise}
+Estimate the iteration count for SGD with step schedule $\eta_{k}
+= \eta_{0} / \sqrt{k+1}$ to reach expected suboptimality
+$10^{-3}$ on a smooth convex objective with per-sample gradient
+variance $\sigma^{2} = 1$ and Lipschitz constant $L = 10$.
+Compare to the iteration count of full gradient descent under
+the same accuracy target.
+\end{exercise}
+
+\begin{exercise}
+Estimate the wall-clock cost of one full-gradient evaluation on
+a dataset of $N = 10^{6}$ samples, assuming each per-sample
+gradient takes $10\,\si{\micro\second}$. Compare to the cost of a
+minibatch gradient with $b = 256$. Report the ratio.
+\end{exercise}
+
+\begin{exercise}
+Estimate the size of the branch-and-bound tree in the worst case
+for an integer program with $n = 30$ binary variables, assuming
+no pruning. Compare to the realistic case in which an LP-relaxation
+gap of $5\%$ allows pruning $99\%$ of the tree.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+Implement gradient descent on $f(\vect{x}) = \tfrac{1}{2}
+\vect{x}^{\transpose} P \vect{x}$ in $\R^{2}$ with $P =
+\diag(1, 100)$ from $\vect{x}_{0} = (1, 1)$. Plot the trajectory
+on a contour plot for step sizes $\eta \in \set{10^{-3}, 10^{-2},
+0.02}$. Identify the step size at which the iteration diverges.
+\end{exercise}
+
+\begin{exercise}
+Implement Newton's method on $f(x, y) = (x - 1)^{2} + 100
+(y - x^{2})^{2}$ (Rosenbrock with $a = 1, b = 100$) from
+$(x_{0}, y_{0}) = (-1, 1)$. Compare the iteration count against
+gradient descent with the best step size you find in $\set{10^{-2},
+10^{-3}, 10^{-4}}$.
+\end{exercise}
+
+\begin{exercise}
+Implement vanilla SGD and SGD with momentum (decay $\beta = 0.9$)
+on a logistic regression objective for a binary classification
+dataset of your choice (synthesised or real). Run for 20 epochs
+with minibatch size $b = 32$ and report training-loss curves for
+both methods.
+\end{exercise}
+
+\begin{exercise}
+Solve the LP $\min_{\vect{x}} -\vect{c}^{\transpose} \vect{x}$
+subject to $A \vect{x} \leq \vect{b}, \vect{x} \geq \vect{0}$ for
+a randomly generated $A \in \R^{50 \times 100}$, $\vect{b} \in
+\R^{50}_{+}$, $\vect{c} \in \R^{100}$. Use a library LP solver
+(scipy.optimize.linprog, CVXPY+HiGHS, or equivalent). Report the
+optimal value, the active constraints, and the dual variables.
+\end{exercise}
+
+\begin{exercise}
+Compare gradient descent, momentum, and Adam on the Rosenbrock
+function from $(x_{0}, y_{0}) = (-1, 1)$. For each method, sweep
+the step size over five values and report the iteration count to
+reach $f < 10^{-4}$. Identify the most robust method on this
+nonconvex problem.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a portfolio optimisation problem (Markowitz) for $n = 10$
+hypothetical assets with given expected returns $\boldsymbol{\mu}$
+and a given positive-definite covariance matrix $\Sigma$ (you
+choose the values). Solve as a QP for three risk-aversion values
+$\gamma \in \set{0.1, 1, 10}$ and plot the resulting portfolios on
+a return-vs-risk diagram (the efficient frontier).
+\end{exercise}
+
+\begin{exercise}
+Design a production-planning LP for a hypothetical factory
+producing $n = 5$ products from $m = 3$ raw materials, with
+specified per-unit profits and per-unit resource consumption.
+Solve and identify the binding resource constraints. Compute the
+shadow prices and interpret them as the maximum the engineer
+should pay for one additional unit of each binding resource.
+\end{exercise}
+
+\begin{exercise}
+Design a regularised regression problem on a dataset of your
+choice (Volume I project data, a Volume II Chapter 9 dataset, or
+a public dataset). Sweep the regularisation strength $\lambda$
+over five values and plot the training and cross-validated
+test error against $\lambda$. Identify the $\lambda$ that
+minimises the test error.
+\end{exercise}
+
+\begin{exercise}
+Design a model-predictive-control QP for a one-dimensional
+double-integrator system $x_{k+1} = x_{k} + v_{k}$, $v_{k+1} =
+v_{k} + u_{k}$ with horizon $H = 10$, target state
+$(x^{*}, v^{*}) = (1, 0)$, and actuator limit $|u_{k}| \leq 0.1$.
+Solve once for the planning sequence $\set{u_{k}}_{k=0}^{H-1}$
+and apply only the first input. Iterate to convergence.
+\end{exercise}
+
+\begin{exercise}
+Design a knapsack instance with $n = 20$ items of randomly
+generated weights and values, and a capacity of $50\%$ of the
+total weight. Solve as an integer program (using a library
+solver) and as the LP relaxation. Report the optimality gap
+between the two solutions.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{standard}
+
+\begin{exercise}
+A colleague reports that an SGD run has converged to a training
+loss of $0.05$ but the test loss is $0.50$. Identify the most
+likely failure mode and propose three diagnostic measurements to
+distinguish overfitting, label noise, and a learning-rate
+problem.
+\end{exercise}
+
+\begin{exercise}
+A colleague reports that gradient descent on a smooth convex
+objective has not converged after $10^{5}$ iterations and
+proposes increasing the iteration budget. Identify three checks
+the engineer should run before paying for more iterations
+(condition number, step size, smoothness assumption).
+\end{exercise}
+
+\begin{exercise}
+A library LP solver returns "infeasible" on a problem the
+engineer believes is feasible. Identify three causes (numerical
+ill-conditioning, a typo in a constraint, an inconsistency
+between equality and inequality constraints) and propose a
+diagnostic protocol.
+\end{exercise}
+
+\begin{exercise}
+An MIP solver reports a $5\%$ optimality gap after the time
+budget expires. Identify what the gap means, what the engineer
+can report on the basis of the partial solve, and the three
+options (extend time, tighten formulation, accept the bound) for
+proceeding.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+A polynomial regression of degree $d = 11$ on $N = 12$ data points
+fits the training data exactly but extrapolates wildly between
+points. Argue, in 200 to 300 words, what the optimiser did
+correctly and what the formulation got wrong, and propose a
+specific remediation referencing Section 15.8.
+\end{exercise}
+
+\begin{exercise}
+A trading strategy is optimised on $10$ years of historical
+backtest data and shows a $40\%$ annualised return. In live
+deployment over 12 months, the strategy returns $-5\%$. Argue,
+in 200 to 300 words, the most likely failure mode, citing the
+relevant Section 15.8 principle.
+\end{exercise}
+
+\begin{exercise}
+A neural network is trained for 1000 epochs and the training
+loss is reported to seven decimal places, but the validation
+loss has plateaued and slightly increased over the last 200
+epochs. Argue, in 200 to 300 words, why early stopping is the
+working remedy, and identify what the optimiser optimised that
+the engineer did not want.
+\end{exercise}
+
+\begin{exercise}
+A factory's quality program targets a defect rate of $\leq 1\%$
+and ties bonuses to it. Defect rates fall to $0.3\%$ but customer
+complaints about product reliability rise. Argue, in 200 to 300
+words, how Goodhart's law applies and propose a corrected
+incentive structure that rewards what the engineer actually wants.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A colleague proposes solving a nonconvex problem by running Adam
+once from a single initial point and reporting the result.
+Argue, in 200 to 300 words, when this is defensible (large
+problem, weak local minima, no time for restarts) and when it is
+not (small enough for restarts, multimodal objective, downstream
+decisions sensitive to local minima).
+\end{exercise}
+
+\begin{exercise}
+A vendor sells a "global optimisation" package that claims to
+find the global optimum of any nonconvex problem in polynomial
+time. Argue, in one paragraph, why the claim is incompatible
+with NP-hardness for any plausible problem class, and propose
+the questions an engineer should ask before evaluating the
+package.
+\end{exercise}
+
+\begin{exercise}
+\textcite{text:boyd-vandenberghe2004} state that "almost any
+optimisation problem with linear constraints can be modelled as
+a convex program by an appropriate change of variables." Argue,
+in one paragraph, why this is a strong but not universal claim,
+and identify a class of linearly constrained problems (the
+integer ones) where the change of variables does not exist.
+\end{exercise}
+
+\begin{exercise}
+\textcite{text:strang2016}'s treatment of least squares
+emphasises the geometric content (orthogonal projection onto the
+column space) over the optimisation content (gradient zero of a
+quadratic). Argue, in one paragraph, why both viewpoints are
+essential and how each illuminates the other.
+\end{exercise}
+
+\begin{exercise}
+A practitioner uses Adam as the default optimiser for every
+problem they encounter. Argue, in 200 to 300 words, when this
+default is reasonable (large nonconvex deep-learning losses with
+unknown smoothness) and when it is irresponsible (small smooth
+convex problems where L-BFGS is faster, or constrained problems
+where a constrained solver is required).
+\end{exercise}
+

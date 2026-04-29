@@ -1,40 +1,1397 @@
 \chapter{Multivariable calculus}
 \label{vol02:ch11}
 
-\epigraph{}{}
+\epigraph{The calculus of one variable handles a road; the calculus
+of many handles the country the road runs through.}{A working
+paraphrase of the engineer's working register, in the vocabulary of
+this volume.}
 
-\chapmeta{Half-life: foundational. Archetypes: optimisation, scaling. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: foundational. Archetypes: optimisation
+(multivariable, building on Volume II Chapter 5's one-variable
+case), scaling (high-dimensional volume concentration as the
+canonical case). Exercise target: 35. Project track: analysis only.
+Hazard class: none. Reader path default: standard, with sections
+explicitly tagged. Named cases: none.}
 
 \noindent
-\TODO{Volume 2, Chapter 11. Approx 100 pp.}
+A function of one variable describes a quantity that depends on a
+single input. Most engineering quantities depend on several. The
+temperature in a room depends on three spatial coordinates and on
+time. The cost of a product depends on the cost of every input. The
+loss of a fitted model depends on every parameter. Volume II
+Chapter 5 introduced the derivative for one variable. Volume II
+Chapter 8 introduced the gradient as a vector field. This chapter
+joins the two: the gradient is the derivative when there are many
+variables, the Hessian is the second derivative, the critical-point
+condition becomes a vector equation, and the optimisation archetype
+acquires its working multivariable form. The reader leaves able to
+locate a critical point in two or more variables, classify it,
+constrain it by equalities and inequalities through Lagrange
+multipliers and the Karush-Kuhn-Tucker conditions, set up a multiple
+integral in whatever coordinate system the geometry asks for, and
+notice when high-dimensional intuition breaks.
 
-\section{Functions of many variables}
-\TODO{Section prose.}
+\section{Functions of many variables}\pathtag{core}
 
-\section{Partial derivatives, gradients}
-\TODO{Section prose.}
+A \engterm{function of many variables} is a rule that assigns to
+each point of a region in $\R^{n}$ a single real number. We write
+$f : \R^{n} \to \R$ and read it as $f$ takes $n$ inputs and returns
+one output. The inputs are written as a vector $\vect{x} = (x_{1},
+x_{2}, \ldots, x_{n})$, and the output is $f(\vect{x})$. The two
+extremes the reader has already met: $n = 1$ in Volume II
+Chapter 5, and $n = 3$ in the scalar fields of Volume II
+Chapter 8.
 
-\section{Critical points: maxima, minima, saddles}
-\TODO{Section prose.}
+\subsection{Examples the engineer keeps to hand}
 
-\section{Lagrange multipliers}
-\TODO{Section prose.}
+The temperature inside a heated wall is a function of position
+and time, $T(x, y, z, t) : \R^{4} \to \R$. The kinetic energy of a
+rigid body depends on three velocity components and three angular-
+velocity components, $K(\vect{v}, \boldsymbol{\omega}) : \R^{6} \to
+\R$. The training loss of a neural network with $p$ parameters is a
+function $L(\boldsymbol{\theta}) : \R^{p} \to \R$, where $p$ may be
+in the millions. The volume of a closed cylinder is a function of
+two design parameters, $V(r, h) = \pi r^{2} h$, $V : \R^{2} \to \R$.
+The chapter develops the apparatus on small examples (mostly
+$n = 2$ or $n = 3$) and the reader applies it at the scale the
+problem demands.
 
-\section{Constrained optimisation preview}
-\TODO{Section prose.}
+\subsection{Domain, range, level sets}
 
-\section{Multiple integrals}
-\TODO{Section prose.}
+The \engterm{domain} of $f$ is the set of $\vect{x}$ for which
+$f(\vect{x})$ is defined; the \engterm{range} is the set of values
+the function takes. The most useful geometric object attached to
+$f : \R^{n} \to \R$ is the family of \engterm{level sets} (or
+\engterm{contours} when $n = 2$): for each value $c$ in the range,
+the level set is
+\[
+S_{c} = \set{\vect{x} \in \R^{n} : f(\vect{x}) = c}.
+\]
+For $n = 2$, the level sets of a smooth $f$ are typically curves;
+the reader has seen them on a topographic map (constant elevation),
+on a weather map (constant pressure), and on a phase diagram
+(constant Gibbs free energy). For $n = 3$, level sets are typically
+surfaces. The contours of $f(x, y) = x^{2} + y^{2}$ are circles of
+radius $\sqrt{c}$; the level sets of $f(x, y, z) = x^{2} + y^{2} +
+z^{2}$ are spheres.
 
-\section{Change of variables, Jacobians}
-\TODO{Section prose.}
+The contour map is the engineer's primary visualisation in two
+dimensions. A function increases fastest in the direction
+perpendicular to its contours, decreases fastest in the opposite
+direction, and is locally constant along the contours. Section 11.2
+makes this precise as the gradient theorem.
 
-\section{Failure: the high-dimensional space and our intuition's collapse}
-\TODO{Section prose.}
+\subsection{Continuity, the multivariable form}
 
+A function $f : \R^{n} \to \R$ is \engterm{continuous} at a point
+$\vect{a}$ if $f(\vect{x}) \to f(\vect{a})$ as $\vect{x} \to
+\vect{a}$ along every path. The "every path" clause distinguishes
+the multivariable case from the one-variable case. In one variable,
+$x \to a$ has only two approach directions; in two or more, the
+approach can be along a line, along a curve, or along an oscillating
+spiral. A function may have a limit along every straight line and
+fail to be continuous because some non-straight path gives a
+different limit. The standard cautionary example is
+\[
+f(x, y) =
+\begin{cases}
+\dfrac{xy}{x^{2} + y^{2}} & (x, y) \neq (0, 0), \\
+0 & (x, y) = (0, 0).
+\end{cases}
+\]
+Along any line $y = mx$, the function takes the constant value
+$m / (1 + m^{2})$; along the line $x = 0$, it is identically zero.
+Different lines give different limits at the origin, so $f$ is not
+continuous there. The engineer keeps this in mind when fitting a
+surface to scattered data: a fit that looks reasonable along every
+sampled direction can still be discontinuous between directions.
 
-\section{Project}
-\TODO{solve a constrained optimisation problem with three constraints by hand}
+\section{Partial derivatives and gradients}\pathtag{core}
+
+Volume II Chapter 5 defined the derivative of $f : \R \to \R$ as
+the limit of the difference quotient. The same construction applied
+one variable at a time gives the partial derivative.
+
+\subsection{Partial derivatives}
+
+\begin{definition}[Partial derivative]
+Let $f : \R^{n} \to \R$ be defined on a region containing
+$\vect{x}$. The \engterm{partial derivative} of $f$ with respect to
+$x_{i}$ at $\vect{x}$ is
+\[
+\pdv{f}{x_{i}}(\vect{x}) = \lim_{h \to 0}
+\frac{f(\vect{x} + h \unitvec{e}_{i}) - f(\vect{x})}{h},
+\]
+where $\unitvec{e}_{i}$ is the unit vector in the $i$th coordinate
+direction, provided the limit exists.
+\end{definition}
+
+The partial derivative measures the rate of change of $f$ when only
+the $i$th input varies and all others are held fixed. The notation
+$\pdv{f}{x_{i}}$ is standard; the alternative $f_{x_{i}}$ is shorter
+and used when the subscripts are unambiguous. The reader computes a
+partial derivative by treating every other variable as a constant
+and applying the one-variable rules of Volume II Chapter 5.
+
+\paragraph{A worked example.} For $f(x, y) = x^{2} y + \sin(xy)$,
+\begin{align*}
+\pdv{f}{x} &= 2 x y + y \cos(xy), \\
+\pdv{f}{y} &= x^{2} + x \cos(xy).
+\end{align*}
+The product rule and the chain rule apply variable by variable.
+
+\subsection{Higher-order partials and Clairaut's theorem}
+
+A function of several variables has several second derivatives. For
+$f(x, y)$, the four second partials are $f_{xx}, f_{xy}, f_{yx},
+f_{yy}$. The mixed partials $f_{xy}$ and $f_{yx}$ measure the rate
+at which $f_{x}$ changes with $y$ and the rate at which $f_{y}$
+changes with $x$, and they are usually equal.
+
+\begin{theorem}[Clairaut, equality of mixed partials]
+If $f$ has continuous second partial derivatives on an open set,
+then on that set
+\[
+\pdv{}{y}\!\left(\pdv{f}{x}\right) =
+\pdv{}{x}\!\left(\pdv{f}{y}\right).
+\]
+\end{theorem}
+
+The hypothesis of continuity is non-trivial: there are pathological
+functions for which $f_{xy} \neq f_{yx}$ at the origin, but every
+function the engineer meets in practice satisfies the hypothesis.
+The working consequence is that the order of partial differentiation
+does not matter, and the second-derivative information of $f$ at a
+point lives in a symmetric matrix.
+
+\subsection{The gradient}
+
+\begin{definition}[Gradient]
+The \engterm{gradient} of $f : \R^{n} \to \R$ at $\vect{x}$ is the
+vector of partial derivatives,
+\[
+\grad f(\vect{x}) = \left(\pdv{f}{x_{1}}, \pdv{f}{x_{2}}, \ldots,
+\pdv{f}{x_{n}}\right)^{\mathsf{T}}.
+\]
+\end{definition}
+
+Volume II Chapter 8 introduced $\grad\Phi$ as a vector field on
+$\R^{3}$. The definition above generalises to $\R^{n}$: the gradient
+is the column vector of all $n$ partial derivatives. For
+$f(x, y, z) = x^{2} + 2 y^{2} + 3 z^{2}$, the gradient is $\grad f =
+(2x, 4y, 6z)^{\mathsf{T}}$.
+
+\subsection{The directional derivative and the steepest-ascent
+theorem}
+
+The partial derivatives report the rate of change along the
+coordinate axes. The reader more often wants the rate along an
+arbitrary direction. Let $\unitvec{u}$ be a unit vector in $\R^{n}$.
+The \engterm{directional derivative} of $f$ at $\vect{x}$ in the
+direction $\unitvec{u}$ is
+\[
+D_{\unitvec{u}} f(\vect{x}) = \lim_{h \to 0}
+\frac{f(\vect{x} + h\unitvec{u}) - f(\vect{x})}{h}.
+\]
+
+\begin{theorem}[Gradient and directional derivative]
+If $f$ is differentiable at $\vect{x}$, then for every unit vector
+$\unitvec{u}$,
+\[
+D_{\unitvec{u}} f(\vect{x}) = \grad f(\vect{x}) \cdot \unitvec{u}.
+\]
+\end{theorem}
+
+\begin{proof}[Sketch]
+Write $g(h) = f(\vect{x} + h \unitvec{u})$, a function of one
+variable, and apply the multivariable chain rule of section 11.2.5
+to $g'(0)$.
+\end{proof}
+
+The geometric consequence is the steepest-ascent theorem.
+
+\begin{principle}[Gradient is direction of steepest ascent]
+At a point where $\grad f(\vect{x}) \neq \vect{0}$, the directional
+derivative $D_{\unitvec{u}} f(\vect{x})$ is maximised by the choice
+$\unitvec{u} = \grad f / \norm{\grad f}$, with maximum value
+$\norm{\grad f(\vect{x})}$. In words: the gradient points in the
+direction of fastest increase, with magnitude equal to that fastest
+rate; the negative gradient points in the direction of fastest
+decrease.
+\end{principle}
+
+\begin{proof}
+$D_{\unitvec{u}} f = \grad f \cdot \unitvec{u} = \norm{\grad f}
+\cos\theta$ where $\theta$ is the angle between $\grad f$ and
+$\unitvec{u}$. The right-hand side is maximised at $\cos\theta = 1$,
+which means $\unitvec{u}$ aligned with $\grad f$. The maximum value
+is $\norm{\grad f}$.
+\end{proof}
+
+The steepest-ascent theorem is the foundation of every iterative
+optimisation method we meet in this volume and the next. Gradient
+descent, introduced briefly in section 11.5 and developed in
+Volume II Chapter 15, takes a step in the direction $-\grad f$ at
+each iterate. The same theorem motivates the gradient-flow
+trajectory of a marble released on a hilly surface and the heat-
+diffusion direction in a thermal gradient (Volume II Chapter 12).
+
+\subsection{The total differential and the chain rule}
+
+For $f : \R^{n} \to \R$, the local linear approximation around a
+point $\vect{a}$ is
+\[
+f(\vect{a} + \dd\vect{x}) \approx f(\vect{a}) + \grad f(\vect{a})
+\cdot \dd\vect{x}.
+\]
+The right-hand side is the \engterm{total differential} of $f$ at
+$\vect{a}$. It generalises the one-variable linearisation $f(a +
+\dd x) \approx f(a) + f'(a)\,\dd x$. The accuracy of the
+approximation is to first order in $\norm{\dd\vect{x}}$, with error
+of order $\norm{\dd\vect{x}}^{2}$ controlled by the Hessian of
+section 11.3.
+
+The multivariable chain rule generalises the one-variable rule. If
+$\vect{x}(t) : \R \to \R^{n}$ is a path and $f : \R^{n} \to \R$, then
+$g(t) = f(\vect{x}(t))$ satisfies
+\[
+\dv{g}{t} = \grad f(\vect{x}(t)) \cdot \dv{\vect{x}}{t}.
+\]
+For two variables: $\dv{g}{t} = f_{x}(x, y)\,\dv{x}{t} +
+f_{y}(x, y)\,\dv{y}{t}$. The reader has already used the chain rule
+implicitly in vector calculus (Volume II Chapter 8) when computing
+$\dv{}{t}\Phi(\vect{r}(t)) = \grad\Phi \cdot \vect{v}$.
+
+If instead $\vect{x}(\vect{u})$ is a function $\R^{m} \to \R^{n}$
+and $f : \R^{n} \to \R$, then the composition $h(\vect{u}) =
+f(\vect{x}(\vect{u}))$ has gradient
+\[
+\pdv{h}{u_{j}} = \sum_{i = 1}^{n} \pdv{f}{x_{i}}\,\pdv{x_{i}}{u_{j}},
+\]
+which can be written as a matrix-vector product $\grad_{\vect{u}} h
+= J^{\mathsf{T}} \grad_{\vect{x}} f$, where $J$ is the $n \times m$
+\engterm{Jacobian matrix} $J_{ij} = \pdv{x_{i}}{u_{j}}$. Section 11.7
+takes up the Jacobian as the change-of-variable factor for multiple
+integrals.
+
+\begin{archetype}[Optimisation, multivariable form]
+The single-variable optimisation archetype of Volume II Chapter 5
+asks for points where $f'(x) = 0$. The multivariable form asks for
+points where $\grad f(\vect{x}) = \vect{0}$, a system of $n$ scalar
+equations in $n$ unknowns. The condition is necessary for an
+unconstrained interior maximum or minimum (the analogue of Fermat's
+condition), and the second-derivative test of section 11.3 supplies
+sufficiency. The archetype recurs across Volume III (mechanical
+equilibria as critical points of potential energy), Volume IV
+(thermodynamic equilibria as critical points of free energy),
+Volume VII (loss-function minima in machine learning), and
+Volume IX (control objectives and minimum-cost design).
+\end{archetype}
+
+\begin{estimation}
+\textbf{Question.} A rectangular field is to be enclosed by a fence
+on three sides only (a river forms the fourth side). The total
+length of fence is $L = 200\,\si{\meter}$. Estimate the dimensions
+that maximise the area, then compute exactly.
+
+\textbf{Estimate.} The area $A = x y$ where $x$ is the side parallel
+to the river and $y$ is each of the two perpendicular sides; the
+fence constraint is $x + 2 y = L$. A square (i.e.\ $x = y$) gives
+$3 x = 200$, $x = y \approx 67\,\si{\meter}$, $A \approx
+4500\,\si{\meter\squared}$. The reader's intuition for closed
+rectangles is that the square is optimal; for the open-on-one-side
+case the optimum is biased toward a longer river-side. Best estimate
+before calculation: $x \approx 100\,\si{\meter}$, $y \approx
+50\,\si{\meter}$, $A \approx 5000\,\si{\meter\squared}$.
+
+\textbf{Calculate.} Eliminate the constraint: $x = L - 2 y$, so
+$A(y) = (L - 2 y) y = L y - 2 y^{2}$. The critical point satisfies
+$A'(y) = L - 4 y = 0$, giving $y^{*} = L/4 = 50\,\si{\meter}$,
+$x^{*} = L/2 = 100\,\si{\meter}$, $A^{*} = L^{2}/8 =
+5000\,\si{\meter\squared}$. The estimate landed on the answer. The
+multivariable form of this problem (without elimination) is the
+worked example of the next section.
+\end{estimation}
+
+\section{Critical points: maxima, minima, saddles}\pathtag{core}
+
+A point where $\grad f = \vect{0}$ is a \engterm{critical point} of
+$f$. As in one variable, the critical-point condition is necessary
+but not sufficient: a critical point may be a local maximum, a
+local minimum, a saddle, or a degenerate point at which the second-
+derivative test cannot decide.
+
+\subsection{The Hessian}
+
+\begin{definition}[Hessian]
+The \engterm{Hessian} of $f : \R^{n} \to \R$ at $\vect{x}$ is the
+$n \times n$ matrix of second partial derivatives,
+\[
+H(\vect{x}) = \begin{pmatrix}
+f_{x_{1} x_{1}} & f_{x_{1} x_{2}} & \cdots & f_{x_{1} x_{n}} \\
+f_{x_{2} x_{1}} & f_{x_{2} x_{2}} & \cdots & f_{x_{2} x_{n}} \\
+\vdots & \vdots & \ddots & \vdots \\
+f_{x_{n} x_{1}} & f_{x_{n} x_{2}} & \cdots & f_{x_{n} x_{n}}
+\end{pmatrix}.
+\]
+\end{definition}
+
+By Clairaut's theorem, $H$ is symmetric whenever $f$ has continuous
+second partials. The Hessian is the multivariable generalisation of
+the second derivative $f''$.
+
+\subsection{The second-order Taylor expansion}
+
+Around a critical point $\vect{x}^{*}$, the second-order Taylor
+expansion of $f$ is
+\[
+f(\vect{x}^{*} + \dd\vect{x}) = f(\vect{x}^{*}) +
+\tfrac{1}{2}\,\dd\vect{x}^{\mathsf{T}} H(\vect{x}^{*})\,\dd\vect{x}
++ \oom{\norm{\dd\vect{x}}^{3}},
+\]
+because the linear term $\grad f(\vect{x}^{*}) \cdot \dd\vect{x}$
+vanishes at a critical point. The behaviour of $f$ near $\vect{x}^{*}$
+is therefore controlled, to leading order, by the quadratic form
+$\dd\vect{x}^{\mathsf{T}} H(\vect{x}^{*})\,\dd\vect{x}$.
+
+A symmetric matrix $H$ has $n$ real eigenvalues $\lambda_{1}, \ldots,
+\lambda_{n}$ (Volume II Chapter 10). The signs of those eigenvalues
+classify the critical point.
+
+\begin{theorem}[Second-derivative test, multivariable]
+Let $f$ have continuous second partials and let $\vect{x}^{*}$ be a
+critical point of $f$. Let $H = H(\vect{x}^{*})$.
+\begin{itemize}[leftmargin=*]
+  \item If every eigenvalue of $H$ is positive, $\vect{x}^{*}$ is a
+    local minimum.
+  \item If every eigenvalue of $H$ is negative, $\vect{x}^{*}$ is a
+    local maximum.
+  \item If $H$ has at least one positive and at least one negative
+    eigenvalue, $\vect{x}^{*}$ is a saddle point.
+  \item If $H$ has any zero eigenvalue and the others are all of
+    one sign, the test is inconclusive: the next-higher-order Taylor
+    term must be inspected.
+\end{itemize}
+\end{theorem}
+
+For $n = 2$ the test takes a more memorable form. With $H =
+\begin{pmatrix} A & B \\ B & C \end{pmatrix}$, the determinant is
+$\det H = AC - B^{2}$. The eigenvalues are positive when $\det H > 0$
+and $A > 0$, negative when $\det H > 0$ and $A < 0$, and of mixed
+sign when $\det H < 0$.
+
+\begin{itemize}[leftmargin=*]
+  \item $\det H > 0$ and $A > 0$: local minimum.
+  \item $\det H > 0$ and $A < 0$: local maximum.
+  \item $\det H < 0$: saddle.
+  \item $\det H = 0$: inconclusive.
+\end{itemize}
+
+\subsection{Worked example: the saddle}
+
+Let $f(x, y) = x^{2} - y^{2}$. Then $\grad f = (2x, -2y)^{\mathsf{T}}$
+and the only critical point is the origin. The Hessian is $H =
+\diag(2, -2)$, with eigenvalues $2$ and $-2$. The origin is a
+saddle: $f$ increases along the $x$-direction and decreases along
+the $y$-direction. The reader has met this surface as a horse-saddle
+or a Pringles potato chip.
+
+\subsection{Worked example: the constrained-fence problem
+revisited}
+
+Let $f(x, y) = xy + \lambda(x + 2y - L)$ where $\lambda$ is a
+parameter to be set. Setting $\grad_{(x, y)} f = 0$ gives
+$y + \lambda = 0$ and $x + 2\lambda = 0$, so $x = -2\lambda$ and
+$y = -\lambda$. The constraint $x + 2 y = L$ then forces
+$-2\lambda - 2\lambda = L$, $\lambda = -L/4$, $x = L/2$, $y = L/4$,
+the same answer as the eliminated form of section 11.2.6. The
+extra structure of section 11.4 makes this trick general.
+
+\subsection{Why saddle points matter for engineering}
+
+A saddle point is the structural feature that defeats naive
+optimisation. A gradient-descent iterate at exactly a saddle is
+stationary; a gradient-descent iterate near a saddle is misdirected.
+In low dimensions ($n \leq 3$) saddles are rare in practice; in
+high dimensions they are not. In the loss landscapes of large
+machine-learning models, the critical points encountered by training
+are overwhelmingly saddle points rather than local minima. The
+working consequence: an optimiser that does not handle saddle points
+gracefully (by adding noise, by following negative-curvature
+directions, by using second-order information) gets stuck.
+Volume II Chapter 15 develops the algorithmic responses; this chapter
+supplies the geometry.
+
+\section{Lagrange multipliers}\pathtag{core}
+
+The unconstrained critical-point condition $\grad f = \vect{0}$
+solves the problem of finding extrema of $f$ on an open region. Most
+engineering problems sit on a constraint: maximise the volume
+subject to a fixed surface area, minimise the cost subject to a
+production target, design a profile subject to a shape requirement.
+The constraint reduces the dimension of the feasible set and changes
+the critical-point condition.
+
+\subsection{The geometric idea}
+
+We seek the extrema of $f(\vect{x})$ subject to one equality
+constraint $g(\vect{x}) = 0$. The constraint defines a surface (or
+curve, or hypersurface) in $\R^{n}$. At an extremum of $f$ on this
+surface, $f$ cannot increase or decrease in any direction tangent
+to the surface, otherwise we could move along the surface to a
+higher (or lower) value. The directions tangent to $g = 0$ at a
+point $\vect{x}^{*}$ are exactly the directions $\dd\vect{x}$ that
+satisfy $\grad g(\vect{x}^{*}) \cdot \dd\vect{x} = 0$, because
+$g(\vect{x}^{*} + \dd\vect{x}) \approx g(\vect{x}^{*}) +
+\grad g \cdot \dd\vect{x} = 0$ to first order.
+
+The directional derivative of $f$ in any tangent direction must
+vanish: $\grad f \cdot \dd\vect{x} = 0$ for every $\dd\vect{x}$ with
+$\grad g \cdot \dd\vect{x} = 0$. The two gradients $\grad f$ and
+$\grad g$ at the constrained extremum are therefore parallel: there
+is a scalar $\lambda$ such that
+\[
+\grad f(\vect{x}^{*}) = \lambda\,\grad g(\vect{x}^{*}).
+\]
+The scalar $\lambda$ is the \engterm{Lagrange multiplier}.
+
+\subsection{The Lagrangian}
+
+\begin{definition}[Lagrangian]
+For an optimisation problem
+\[
+\text{minimise (or maximise)}\quad f(\vect{x})\quad
+\text{subject to}\quad g(\vect{x}) = 0,
+\]
+the \engterm{Lagrangian} is
+\[
+\mathcal{L}(\vect{x}, \lambda) = f(\vect{x}) - \lambda\,g(\vect{x}).
+\]
+\end{definition}
+
+The first-order conditions for a constrained extremum are obtained
+by setting all partial derivatives of $\mathcal{L}$ to zero:
+\begin{align*}
+\grad_{\vect{x}} \mathcal{L} &= \grad f(\vect{x}) - \lambda\,
+\grad g(\vect{x}) = \vect{0}, \\
+\pdv{\mathcal{L}}{\lambda} &= -g(\vect{x}) = 0.
+\end{align*}
+The first equation is the parallel-gradient condition; the second is
+the constraint itself. The system is $n + 1$ equations in $n + 1$
+unknowns ($x_{1}, \ldots, x_{n}, \lambda$). The reader solves it by
+elimination, by substitution, or by the structure of the specific
+problem.
+
+\subsection{Multiple equality constraints}
+
+For $k$ equality constraints $g_{1}, \ldots, g_{k}$, the Lagrangian
+is
+\[
+\mathcal{L}(\vect{x}, \boldsymbol{\lambda}) = f(\vect{x}) -
+\sum_{j = 1}^{k} \lambda_{j}\,g_{j}(\vect{x}),
+\]
+and the first-order conditions are
+\[
+\grad f(\vect{x}) = \sum_{j = 1}^{k} \lambda_{j}\,\grad g_{j}(
+\vect{x}), \qquad g_{j}(\vect{x}) = 0 \text{ for } j = 1, \ldots, k.
+\]
+Each constraint contributes its own multiplier; the optimisation
+gradient is a linear combination of the constraint gradients. The
+geometric reading: at a constrained extremum, the cost gradient
+$\grad f$ lies in the linear span of the constraint gradients
+$\grad g_{j}$. The system is now $n + k$ equations in $n + k$
+unknowns.
+
+\subsection{Worked example: the optimal can}
+
+The classic worked example of Lagrange. A closed cylindrical can of
+radius $r$ and height $h$ has volume $V = \pi r^{2} h$ and surface
+area $S = 2\pi r^{2} + 2\pi r h$. Minimise the surface area at fixed
+volume $V_{0}$.
+
+The Lagrangian is $\mathcal{L} = 2\pi r^{2} + 2\pi r h -
+\lambda(\pi r^{2} h - V_{0})$. The first-order conditions:
+\begin{align*}
+\pdv{\mathcal{L}}{r} &= 4\pi r + 2\pi h - 2\pi\lambda r h = 0, \\
+\pdv{\mathcal{L}}{h} &= 2\pi r - \pi\lambda r^{2} = 0, \\
+\pdv{\mathcal{L}}{\lambda} &= -(\pi r^{2} h - V_{0}) = 0.
+\end{align*}
+From the second equation, $\lambda = 2/r$. Substituting into the
+first: $4\pi r + 2\pi h - 4\pi h = 0$, so $h = 2 r$. The optimal
+can is as tall as it is wide: a cube of revolution. The constraint
+then sets $r = (V_{0}/(2\pi))^{1/3}$, $h = 2 r$. The reader recognises
+this as the rule of thumb for a soup can. Real soup cans are not
+quite this proportion because the seamed metal cylinder has different
+material costs for the side and the lid, which is the worked example
+of an exercise.
+
+\subsection{Interpretation of the multiplier}
+
+The Lagrange multiplier $\lambda$ has a precise economic
+interpretation. Let $f^{*}(c)$ be the optimal value of $f$ when the
+constraint is $g(\vect{x}) = c$ rather than $g(\vect{x}) = 0$. Then
+\[
+\dv{f^{*}}{c} = \lambda^{*}.
+\]
+The multiplier reports the rate at which the optimal value changes
+when the constraint is relaxed. This is the \engterm{shadow price}
+of the constraint: the marginal benefit of one more unit of the
+resource the constraint represents. In the optimal-can example, the
+multiplier reports the rate at which the minimum surface area
+changes per unit increase in the required volume; in a production-
+optimisation problem, it reports the rate at which the maximum profit
+changes per unit increase in the budget. Volume II Chapter 15
+develops shadow prices as the dual-problem analysis of constrained
+optimisation.
+
+\section{Constrained optimisation preview: KKT conditions}
+\pathtag{standard}
+
+Equality constraints are the easy case. Most engineering optimisation
+also includes inequality constraints: a budget that must not be
+exceeded, a material strength that must not be reduced, a temperature
+that must not be exceeded, a probability that must not be lowered.
+The full apparatus belongs to Volume II Chapter 15. This section
+states the conditions and connects them to Lagrange multipliers, so
+the reader can solve simple instances by hand.
+
+\subsection{The general nonlinear program}
+
+Consider
+\begin{align*}
+\text{minimise}\quad & f(\vect{x}) \\
+\text{subject to}\quad & g_{j}(\vect{x}) = 0, \quad j = 1, \ldots, k, \\
+& h_{\ell}(\vect{x}) \leq 0, \quad \ell = 1, \ldots, m.
+\end{align*}
+The feasible set is the intersection of the $k$ equality surfaces
+and the $m$ inequality half-spaces. An inequality constraint $h_{\ell}
+\leq 0$ is \engterm{active} at a point if $h_{\ell}(\vect{x}) = 0$
+there, and \engterm{inactive} if $h_{\ell}(\vect{x}) < 0$.
+
+\subsection{The Karush-Kuhn-Tucker conditions}
+
+\begin{theorem}[KKT conditions, necessary]
+If $\vect{x}^{*}$ is a local minimum of the program above and a
+constraint-qualification holds at $\vect{x}^{*}$, then there exist
+multipliers $\lambda_{j}$ (one per equality constraint) and
+$\mu_{\ell} \geq 0$ (one per inequality constraint) such that
+\begin{enumerate}[leftmargin=*]
+  \item Stationarity: $\grad f(\vect{x}^{*}) = \sum_{j} \lambda_{j}\,
+    \grad g_{j}(\vect{x}^{*}) + \sum_{\ell} \mu_{\ell}\,
+    \grad h_{\ell}(\vect{x}^{*})$.
+  \item Primal feasibility: $g_{j}(\vect{x}^{*}) = 0$ and
+    $h_{\ell}(\vect{x}^{*}) \leq 0$ for all $j, \ell$.
+  \item Dual feasibility: $\mu_{\ell} \geq 0$ for all $\ell$.
+  \item Complementary slackness: $\mu_{\ell} h_{\ell}(\vect{x}^{*}) =
+    0$ for all $\ell$.
+\end{enumerate}
+\end{theorem}
+
+The first three conditions are the obvious generalisation of
+Lagrange multipliers: equality constraints carry signed
+multipliers; inequality constraints carry non-negative multipliers
+because relaxing an inequality (making the right-hand side larger)
+can only help, never hurt. The fourth condition, complementary
+slackness, says the multiplier is zero when the constraint is
+inactive: an inequality that is not binding contributes nothing to
+the optimisation.
+
+The constraint-qualification clause (linear independence of the
+active constraint gradients, or one of several equivalent
+conditions) rules out edge cases where the gradients line up so as
+to make the multiplier story degenerate. In well-posed engineering
+problems it is satisfied; the reader should know it exists and not
+spend time on it on first reading. \textcite{text:boyd-vandenberghe2004}
+treats the constraint qualification carefully.
+
+\subsection{Worked example: a quadratic program with one inequality}
+
+Minimise $f(x, y) = x^{2} + y^{2}$ subject to $h(x, y) = x + y - 1
+\leq 0$. Let $\mu \geq 0$ be the multiplier of the inequality.
+Stationarity: $(2x, 2y) = \mu (1, 1)$, so $x = y = \mu/2$. Primal
+feasibility: $x + y \leq 1$. Dual feasibility: $\mu \geq 0$.
+Complementary slackness: $\mu (x + y - 1) = 0$.
+
+There are two cases. If the inequality is inactive ($x + y < 1$),
+complementary slackness forces $\mu = 0$, stationarity forces
+$x = y = 0$, and the inequality is satisfied with strict slack. The
+optimum is the origin, $f^{*} = 0$. If the inequality is active
+($x + y = 1$), complementary slackness is automatic; stationarity
+plus the constraint gives $x = y = 1/2$, $\mu = 1$, and
+$f = 1/2 > 0$. The first case wins. The reader should expect the
+unconstrained optimum to dominate when the inequality is satisfied
+at it.
+
+The same problem with the constraint reversed, $h(x, y) = 1 - x - y
+\leq 0$ (i.e.\ $x + y \geq 1$), forces the inequality to be active
+at the optimum, gives $x = y = 1/2$, $\mu = 1$, $f^{*} = 1/2$. The
+multiplier $\mu = 1$ is the rate at which the optimum increases
+per unit increase in the right-hand side $1$ of the constraint.
+
+\subsection{When KKT solves the problem and when it does not}
+
+KKT conditions are necessary for an optimum in a smooth, well-
+behaved program. They are also sufficient when the program is
+\engterm{convex}: $f$ is convex, the equality constraints $g_{j}$ are
+linear (i.e.\ affine), and the inequality constraint functions
+$h_{\ell}$ are convex. Volume II Chapter 15 takes up convexity as
+the dividing line between problems where KKT is the working
+solution method and problems where it is one tool among several.
+For the reader of this chapter, the working knowledge is: write the
+Lagrangian, apply the four KKT conditions, examine the cases of
+which inequalities are active, and verify the primal feasibility of
+the candidate solution.
+
+\section{Multiple integrals}\pathtag{core}
+
+Volume II Chapter 6 introduced the integral as the limit of a
+Riemann sum, the inverse of the derivative under the fundamental
+theorem of calculus, and the formal home of accumulation. The
+multiple integral generalises accumulation to higher-dimensional
+domains. The double integral $\iint_{D} f \,\dd A$ is the
+accumulation of $f$ over a planar region $D$; the triple integral
+$\iiint_{V} f \,\dd V$ is accumulation over a spatial region $V$.
+
+\subsection{The double integral as iterated integration}
+
+For a region $D$ in $\R^{2}$ described by $a \leq x \leq b$ and
+$y_{\text{low}}(x) \leq y \leq y_{\text{high}}(x)$, and a continuous
+function $f(x, y)$,
+\[
+\iint_{D} f(x, y) \,\dd A = \int_{a}^{b}
+\!\int_{y_{\text{low}}(x)}^{y_{\text{high}}(x)} f(x, y) \,\dd y\,
+\dd x.
+\]
+The inner integral $\int f \,\dd y$ holds $x$ fixed and accumulates
+over the $y$-slice; the outer integral accumulates the slices over
+$x$.
+
+\begin{theorem}[Fubini, working version]
+If $f$ is continuous on a region $D$, the double integral can be
+evaluated as either iterated integral, with the integration order
+chosen by the reader,
+\[
+\int_{a}^{b}\!\int_{c}^{d} f \,\dd y\,\dd x =
+\int_{c}^{d}\!\int_{a}^{b} f \,\dd x\,\dd y,
+\]
+on a rectangular domain, with the analogous statement on a more
+general region.
+\end{theorem}
+
+The order of integration is a working choice. A function whose
+$y$-integration is hard but whose $x$-integration is easy should be
+evaluated $\int \dd x$ first; the reader of an integral whose inner
+limits depend on the outer variable cannot swap orders without first
+re-describing the region.
+
+\paragraph{A worked example.} Compute $\iint_{D} (x + y) \,\dd A$
+where $D = \set{(x, y) : 0 \leq x \leq 1,\ 0 \leq y \leq x}$. The
+region is the triangle below the line $y = x$ in the unit square.
+\[
+\iint_{D} (x + y)\,\dd A = \int_{0}^{1}\!\int_{0}^{x}(x + y)\,\dd y\,
+\dd x = \int_{0}^{1}\!\left(xy + \tfrac{y^{2}}{2}\right)\bigg|_{0}^{x}
+\!\dd x = \int_{0}^{1}\tfrac{3 x^{2}}{2}\,\dd x = \tfrac{1}{2}.
+\]
+
+The same answer in the other order:
+\[
+\int_{0}^{1}\!\int_{y}^{1}(x + y)\,\dd x\,\dd y =
+\int_{0}^{1}\!\left(\tfrac{x^{2}}{2} + xy\right)\bigg|_{y}^{1}\!\dd y
+= \int_{0}^{1}\!\left(\tfrac{1}{2} + y - \tfrac{3 y^{2}}{2}\right)\dd y
+= \tfrac{1}{2}.
+\]
+The orders agree; Fubini holds.
+
+\subsection{Triple integrals}
+
+For a solid region $V \subset \R^{3}$,
+\[
+\iiint_{V} f(x, y, z) \,\dd V = \int_{a}^{b}\!\int_{y_{\text{low}}(x)}
+^{y_{\text{high}}(x)}\!\int_{z_{\text{low}}(x, y)}^{z_{\text{high}}
+(x, y)} f \,\dd z\,\dd y\,\dd x,
+\]
+when the region admits a description with iterated bounds.
+The same Fubini permutation applies. Working integrals over
+spheres, cylinders, and cones are usually more comfortable in
+spherical or cylindrical coordinates, taken up in section 11.7.
+
+\subsection{Polar coordinates and the Gaussian}
+
+Polar coordinates in $\R^{2}$ replace $(x, y)$ with $(r, \theta)$ via
+$x = r\cos\theta$, $y = r\sin\theta$. The area element is
+\[
+\dd A = r \,\dd r\,\dd\theta.
+\]
+The factor of $r$ is the Jacobian of the transformation, derived
+formally in section 11.7. The reader should remember it: a small
+polar rectangle of dimensions $\dd r$ by $r\,\dd\theta$ has area
+$r\,\dd r\,\dd\theta$.
+
+\paragraph{The Gaussian integral.} Polar coordinates compute one of
+the most important integrals in engineering and statistics:
+\[
+I = \int_{-\infty}^{\infty} e^{-x^{2}} \dd x.
+\]
+The integrand has no antiderivative in closed form; the integral
+itself can nevertheless be computed by squaring it and turning the
+result into a polar integral.
+\[
+I^{2} = \!\int_{-\infty}^{\infty}\!\int_{-\infty}^{\infty}
+e^{-x^{2}} e^{-y^{2}} \dd x\,\dd y =
+\!\int_{-\infty}^{\infty}\!\int_{-\infty}^{\infty}
+e^{-(x^{2} + y^{2})} \dd x\,\dd y.
+\]
+Switch to polar coordinates,
+\[
+I^{2} = \int_{0}^{2\pi}\!\int_{0}^{\infty} e^{-r^{2}} r \,\dd r\,
+\dd\theta = 2\pi \cdot \tfrac{1}{2} = \pi,
+\]
+where the inner integral $\int_{0}^{\infty} r e^{-r^{2}} \dd r$ is
+evaluated by the substitution $u = r^{2}$. So $I = \sqrt{\pi}$. The
+square of an integral with no closed form has a closed form when
+viewed in polar coordinates. The result is the normalisation of the
+Gaussian probability density of Volume II Chapter 13.
+
+\subsection{Cylindrical and spherical integrals}
+
+For triple integrals, the working coordinate systems are cylindrical
+$(\rho, \phi, z)$ and spherical $(r, \theta, \phi)$. The volume
+elements (Volume II Chapter 8) are
+\begin{align*}
+\dd V_{\text{cyl}} &= \rho \,\dd\rho\,\dd\phi\,\dd z, \\
+\dd V_{\text{sph}} &= r^{2} \sin\theta\,\dd r\,\dd\theta\,\dd\phi.
+\end{align*}
+The reader keeps these to hand; they are the change-of-variable
+factors for the most-used transformations of section 11.7.
+
+\paragraph{Worked example: the volume of a sphere.} The sphere of
+radius $R$ in spherical coordinates is $0 \leq r \leq R$, $0 \leq
+\theta \leq \pi$, $0 \leq \phi \leq 2\pi$. Its volume is
+\[
+V = \int_{0}^{2\pi}\!\int_{0}^{\pi}\!\int_{0}^{R} r^{2} \sin\theta
+\,\dd r\,\dd\theta\,\dd\phi = 2\pi \cdot 2 \cdot \tfrac{R^{3}}{3} =
+\tfrac{4\pi R^{3}}{3}.
+\]
+The same integral in Cartesian coordinates would require the
+$z$-bounds $\pm\sqrt{R^{2} - x^{2} - y^{2}}$ and a polar substitution
+in the $(x, y)$-plane; the spherical setup makes the bounds constant
+and the integrand separable. The reader's choice of coordinate
+system is engineering, not mere notation.
+
+\section{Change of variables and Jacobians}\pathtag{standard}
+
+The Jacobian factors $r$, $\rho$, $r^{2}\sin\theta$ that appeared in
+the polar, cylindrical, and spherical area and volume elements have
+a general form. They are the absolute values of the determinant of
+the Jacobian matrix of the coordinate transformation.
+
+\subsection{The change-of-variables theorem}
+
+Let $\vect{T}: \R^{n} \to \R^{n}$ be a continuously differentiable
+map sending a region $D'$ to a region $D$, with $\vect{T}$
+one-to-one on the interior of $D'$. The \engterm{Jacobian matrix}
+is
+\[
+J = J_{\vect{T}}(\vect{u}) = \begin{pmatrix}
+\pdv{x_{1}}{u_{1}} & \cdots & \pdv{x_{1}}{u_{n}} \\
+\vdots & \ddots & \vdots \\
+\pdv{x_{n}}{u_{1}} & \cdots & \pdv{x_{n}}{u_{n}}
+\end{pmatrix}.
+\]
+The \engterm{Jacobian determinant} is $\det J$.
+
+\begin{theorem}[Change of variables]
+Under the hypotheses above, for a continuous integrand $f$,
+\[
+\int_{D} f(\vect{x}) \,\dd V_{\vect{x}} =
+\int_{D'} f(\vect{T}(\vect{u}))\,\abs{\det J(\vect{u})}\,
+\dd V_{\vect{u}}.
+\]
+\end{theorem}
+
+The absolute value of the Jacobian determinant is the local volume-
+distortion factor of the map $\vect{T}$. A map that locally stretches
+volume by a factor of two contributes a factor of two; a map that
+locally reflects (negative determinant) contributes the absolute
+value, because volume is unsigned.
+
+\subsection{Polar, cylindrical, spherical Jacobians}
+
+\paragraph{Polar.} $\vect{T}(r, \theta) = (r\cos\theta, r\sin\theta)$.
+\[
+J = \begin{pmatrix} \cos\theta & -r\sin\theta \\
+\sin\theta & r\cos\theta \end{pmatrix}, \quad
+\det J = r\cos^{2}\theta + r\sin^{2}\theta = r.
+\]
+The factor $r$ is what we used in section 11.6.
+
+\paragraph{Cylindrical.} $\vect{T}(\rho, \phi, z) =
+(\rho\cos\phi, \rho\sin\phi, z)$, $\det J = \rho$.
+
+\paragraph{Spherical.} $\vect{T}(r, \theta, \phi) =
+(r\sin\theta\cos\phi, r\sin\theta\sin\phi, r\cos\theta)$,
+$\det J = r^{2} \sin\theta$.
+
+The reader can derive each Jacobian by direct computation. The
+working result is that whenever the engineer changes coordinates in
+a multiple integral, the integrand picks up the absolute value of
+the Jacobian determinant of the transformation. Forgetting the
+factor is the most common error in change-of-variables and is the
+working content of the failure section of Volume II Chapter 8 on
+orientation: the same factor reports the local stretch of an oriented
+volume element.
+
+\subsection{Working example: an ellipse}
+
+The area enclosed by the ellipse $x^{2}/a^{2} + y^{2}/b^{2} = 1$ is
+\[
+A = \iint_{D} \dd x\,\dd y.
+\]
+Substitute $x = a u$, $y = b v$. The Jacobian is $J = \diag(a, b)$,
+$\det J = a b$. The image region is the unit disk $u^{2} + v^{2} \leq
+1$. So
+\[
+A = \iint_{u^{2} + v^{2} \leq 1} a b \,\dd u\,\dd v = a b \cdot \pi.
+\]
+The familiar $\pi a b$ formula is the unit-disk area times the
+linear-stretch determinant.
+
+\subsection{The Jacobian and the chain rule}
+
+The Jacobian matrix is also the differential of the map. For a
+function $f(\vect{x})$ composed with $\vect{x} = \vect{T}(\vect{u})$,
+the chain rule reads, in matrix form,
+\[
+\grad_{\vect{u}}(f \circ \vect{T}) = J^{\mathsf{T}}\,
+\grad_{\vect{x}} f.
+\]
+The two roles of the Jacobian, as the volume-distortion factor of
+section 11.7.1 and as the matrix of the linearised map of section
+11.2.5, are the same object viewed from two sides.
+
+\section{Failure: the high-dimensional space and our intuition's
+collapse}\pathtag{core}
+
+Two-variable and three-variable problems admit visualisation. The
+reader can sketch contours of $f(x, y)$, can imagine the gradient
+of a temperature field, can picture the volume of a sphere. As
+$n$ grows, this visual intuition stops being a guide. By $n = 10$
+the reader has already lost the picture; by $n = 100$ several
+intuitions are not merely weak but actively misleading. The
+following are the standard ways high-dimensional geometry breaks
+the intuitions of low-dimensional engineering. Treat them as
+generic results that recur whenever a problem has many parameters,
+many features, or many degrees of freedom.
+
+\subsection{Volume concentrates near the boundary}
+
+The volume of an $n$-dimensional ball of radius $R$ scales as
+$V_{n}(R) = c_{n} R^{n}$ where $c_{n}$ is a dimension-dependent
+constant. The volume of the spherical shell of inner radius
+$(1 - \varepsilon) R$ and outer radius $R$ is
+\[
+V_{\text{shell}} = c_{n} R^{n} - c_{n} (1 - \varepsilon)^{n} R^{n}
+= V_{n}(R)\left[1 - (1 - \varepsilon)^{n}\right].
+\]
+For fixed $\varepsilon = 0.01$ (the outer 1\% of the radius),
+\begin{itemize}[leftmargin=*]
+  \item $n = 3$: $1 - 0.99^{3} \approx 0.030$. About 3\% of the
+    volume sits in the outer shell.
+  \item $n = 100$: $1 - 0.99^{100} \approx 0.634$. About 63\% of
+    the volume sits in the outer shell.
+  \item $n = 1000$: $1 - 0.99^{1000} \approx 0.99996$. Almost all
+    the volume sits in the outer shell.
+\end{itemize}
+In high dimensions, almost every point of the ball is within
+$\varepsilon R$ of its surface. The reader's intuition that the
+"middle of the ball" contains most of the volume is a low-
+dimensional artefact. The engineering consequence: random sampling
+inside a high-dimensional region picks up samples that are
+overwhelmingly close to the boundary. A Monte Carlo simulation that
+relies on uniform sampling away from boundaries gives misleading
+results in high dimensions.
+
+\subsection{Volume concentrates near the equator}
+
+A second concentration applies to surface area. On the unit sphere
+$S^{n - 1}$ in $\R^{n}$, almost all the surface area sits within a
+narrow band around any equator (any $(n - 1)$-dimensional great
+hyperplane through the origin). For $n = 100$, more than 99\% of the
+surface area sits within a band of angular half-width about
+$0.2$ radians (about $12^{\circ}$) around the equator. The
+phenomenon is sometimes called \engterm{measure concentration} on
+the sphere; for the working engineer, the consequence is that random
+unit vectors in high dimensions are nearly orthogonal to any fixed
+reference vector with high probability.
+
+\subsection{The unit cube and its corners}
+
+The reader's picture of a cube has corners that contain a non-
+trivial fraction of the volume. In two dimensions, a unit square
+has four corners; the four quarter-disks of radius $0.5$ at the
+corners cover area $\pi (0.5)^{2} = \pi/4 \approx 0.785$, so the
+corners-without-the-inscribed-disk hold $0.215$, about 22\% of the
+square's area.
+
+In $n$ dimensions, the inscribed ball in the unit cube $[-1, 1]^{n}$
+has volume $V_{n}(1) = c_{n}$, while the cube itself has volume
+$2^{n}$. The ratio,
+\[
+\frac{V_{n}(1)}{2^{n}} = \frac{\pi^{n/2}}{2^{n}\,\Gamma(n/2 + 1)},
+\]
+shrinks rapidly. For $n = 2$, the ratio is $\pi / 4 \approx 0.785$.
+For $n = 10$, the ratio is approximately $0.0025$. For $n = 100$,
+the ratio is astronomically small, of order $10^{-70}$. The
+intuition that the inscribed ball captures most of the cube is
+a low-dimensional artefact. In high dimensions, the cube is almost
+all corners. A search routine that relies on the inscribed ball as
+a reasonable approximation to the cube is wrong by an exponential
+factor.
+
+\subsection{Distance and neighborhood concepts collapse}
+
+A consequence of the above is that the notion of \engterm{nearest
+neighbour} loses meaning. Take $N$ random points uniformly in the
+unit cube $[0, 1]^{n}$. As $n$ grows, the ratio
+\[
+\frac{\max_{i, j} \norm{\vect{x}_{i} - \vect{x}_{j}}}
+{\min_{i, j, i \neq j} \norm{\vect{x}_{i} - \vect{x}_{j}}}
+\to 1
+\]
+in distribution. The farthest pair of points is approximately the
+same distance apart as the closest pair. The notion of "nearby" is
+not well-defined: every point is approximately equidistant from
+every other point. Algorithms that rely on local neighborhoods (
+$k$-nearest-neighbour, kernel density estimation, local
+interpolation) lose their statistical power as the ambient
+dimension grows. This is the working content of the
+\engterm{curse of dimensionality} in machine learning.
+
+\subsection{What survives the collapse}
+
+The above failures are about uniform distributions and isotropic
+geometry. Real engineering data is rarely uniform; it sits on or
+near a low-dimensional subspace, manifold, or cluster. The
+\engterm{intrinsic dimensionality} of the data, the dimensionality
+of the manifold it actually occupies, is often much smaller than
+the ambient dimensionality of the parameter space. Volume II
+Chapters 9 and 10 introduced the singular-value decomposition and
+principal component analysis as tools that find this intrinsic
+structure; the geometric content is that an SVD gives the engineer
+a working set of effective dimensions that resist the failures
+above.
+
+The working principle: high-dimensional intuition fails in the
+ambient space, but engineering data usually sits on a much smaller
+intrinsic manifold. The job of the engineer is to find that
+manifold, work on it, and not pretend that an algorithm tuned in
+two dimensions extends to a thousand without rethinking. The
+\engterm{scaling} archetype meets multivariable calculus here: the
+geometry of the parameter space scales with $n$ in ways the working
+intuition does not anticipate.
+
+\begin{principle}[Cost of dimensionality]
+For an algorithm whose statistical or computational cost grows
+exponentially in the ambient dimension $n$, the working strategy is
+not to attack the cost in $n$ but to find the intrinsic dimension
+$d \ll n$ on which the problem actually lives. Volume II Chapter
+9-10 (SVD, PCA), Volume II Chapter 14 (regularisation), and
+Volume VII (representation learning) develop the working tools.
+This chapter supplies the geometric warning.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[A three-constraint optimisation by hand]
+
+\textbf{Track.} Analysis only. \textbf{Hazard class.} None.
+\textbf{Tools.} Paper, pencil, calculator.
+
+\textbf{The problem.} Write out, by hand, the full Lagrangian and
+KKT analysis of an optimisation problem with three constraints.
+The reader chooses the problem from the list below or proposes an
+equivalent of comparable structure.
+
+\textbf{Suggested problems.}
+\begin{enumerate}[leftmargin=*]
+  \item Minimise the surface area of a closed cylindrical can
+    subject to (i) a fixed volume $V_{0}$, (ii) a height-to-radius
+    ratio bounded above $h/r \leq 4$, (iii) a height-to-radius
+    ratio bounded below $h/r \geq 1$. Two of the three constraints
+    are inequalities; one is an equality.
+  \item Minimise the power consumption of a pump subject to (i) a
+    fixed throughput $Q_{0}$, (ii) a budget on the pump cost
+    $C \leq C_{0}$ (the cost is a known function of the pump's
+    operating point), (iii) a maximum operating temperature
+    $T \leq T_{0}$ (also a known function). One equality, two
+    inequalities.
+  \item Fit a quadratic $f(x) = a x^{2} + b x + c$ through three
+    given points $(x_{i}, y_{i})$, $i = 1, 2, 3$, while also
+    requiring $f'(x_{1}) = m_{1}$ for a given slope $m_{1}$. The
+    fit minimises the sum of squared residuals at the three points
+    subject to the four interpolation/derivative constraints; in
+    practice one of the residuals will be zero at the optimum and
+    the analysis identifies which.
+  \item Minimise a quadratic cost $f(\vect{x}) = \vect{x}^{\mathsf{T}}
+    Q\vect{x}$ for a given positive-definite $Q$ subject to (i) a
+    linear equality $A_{1}\vect{x} = b_{1}$, (ii) a linear equality
+    $A_{2}\vect{x} = b_{2}$, (iii) a linear inequality $\vect{c}^{
+    \mathsf{T}}\vect{x} \leq d$. The reader chooses dimensions $n$
+    in which the algebra is tractable (suggested $n = 3$ or $4$).
+\end{enumerate}
+
+\textbf{The deliverable.} A 5-to-8-page hand-derived solution and a
+1500-word reflection. The solution must contain
+\begin{enumerate}[leftmargin=*]
+  \item A clear statement of $f$, $g_{j}$, $h_{\ell}$, the feasible
+    set, and the unknowns.
+  \item The Lagrangian written out with one multiplier per
+    constraint, distinguishing $\lambda_{j}$ for equalities from
+    $\mu_{\ell} \geq 0$ for inequalities.
+  \item All four KKT conditions written explicitly: stationarity,
+    primal feasibility, dual feasibility, complementary slackness.
+  \item Case analysis on which inequality constraints are active.
+    For each case, the reader solves the resulting equality-only
+    system (Lagrange multipliers) and checks the inactive
+    inequalities for primal feasibility and the active multipliers
+    for dual feasibility. A complete analysis enumerates all
+    $2^{m}$ cases for $m$ inequalities; with two inequalities there
+    are four cases, which is tractable.
+  \item Verification of the second-order sufficient conditions where
+    they apply. The reader writes the Hessian of the Lagrangian
+    restricted to the tangent space of the active constraints and
+    checks its definiteness.
+  \item The numerical values of the optimal $\vect{x}^{*}$ and all
+    multipliers, with units carried through.
+\end{enumerate}
+
+\textbf{The reflection.} The 1500-word reflection addresses
+\begin{itemize}[leftmargin=*]
+  \item Which inequality constraints were active at the optimum,
+    and which were inactive. What does that say about the
+    engineering of the problem? An inactive constraint is, in
+    retrospect, a piece of slack in the design; an active constraint
+    is the binding limit.
+  \item What the multiplier values mean operationally. For each
+    active constraint, the multiplier reports the marginal
+    sensitivity of the optimum to a relaxation of that constraint.
+    Translate this back into the units of the design problem.
+  \item Which case in the case analysis would be hardest to find
+    by gradient descent without the KKT structure. The reader's
+    answer should connect the analytical apparatus of this chapter
+    to the algorithmic apparatus of Volume II Chapter 15.
+  \item One source of error the reader noticed in their own working,
+    and one heuristic the reader has acquired by completing the
+    project.
+\end{itemize}
+
+\textbf{Time.} Six to ten hours of derivation, plus three to four
+hours of writing. Total approximately ten to fourteen hours,
+distributed across two or three sessions.
+
+\textbf{Solutions.} A reference set of three-constraint
+optimisations from the general editor, one per suggested problem.
+
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises train calculation, derivation, estimation, simulation,
+design, diagnosis, failure analysis, and judgment. Calculation and
+derivation problems have full solutions; open-ended problems have
+rubrics. Exercises are tagged with their reader-path tier.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute $\grad f$ for $f(x, y) = x^{3} y - x y^{3}$. Identify all
+critical points, classify each by the second-derivative test, and
+report the Hessian eigenvalues at each.
+\end{exercise}
+
+\begin{exercise}
+Compute $\grad f$ for $f(x, y, z) = e^{x y z}$ and evaluate
+$\grad f$ at $(1, 2, 3)$. Compute the directional derivative at
+this point in the direction $\unitvec{u} = (1, 1, 1)/\sqrt{3}$.
+\end{exercise}
+
+\begin{exercise}
+Compute $\iint_{D} (x^{2} + y^{2}) \,\dd A$ where $D$ is the unit
+disk $x^{2} + y^{2} \leq 1$, by switching to polar coordinates.
+Verify the result by also evaluating the integral as an iterated
+Cartesian integral.
+\end{exercise}
+
+\begin{exercise}
+Compute $\iiint_{V} z \,\dd V$ where $V$ is the upper hemisphere
+$x^{2} + y^{2} + z^{2} \leq R^{2}$, $z \geq 0$. Use spherical
+coordinates and express the answer in terms of $R$.
+\end{exercise}
+
+\begin{exercise}
+Compute the Jacobian determinant of the map $\vect{T}(u, v) = (u +
+v, u - v)$ from $\R^{2} \to \R^{2}$. Use it to evaluate
+$\iint_{D'} (x + y)\,\dd x\,\dd y$ where $D'$ is the square with
+vertices $(0, 0), (1, 0), (1, 1), (0, 1)$, by transforming to a
+region in the $(u, v)$-plane.
+\end{exercise}
+
+\begin{exercise}
+Locate and classify the critical points of $f(x, y) = x^{4} + y^{4}
+- 4 x y$. Compute the Hessian at each and apply the second-
+derivative test.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the multivariable chain rule $\dv{}{t} f(\vect{x}(t)) =
+\grad f \cdot \dv{\vect{x}}{t}$ from the limit definition of the
+partial derivative, stating the smoothness assumptions on $f$ and
+$\vect{x}(t)$.
+\end{exercise}
+
+\begin{exercise}
+Derive the steepest-ascent theorem from the relation $D_{\unitvec{u}}
+f = \grad f \cdot \unitvec{u}$, identifying the direction
+$\unitvec{u}$ that maximises $D_{\unitvec{u}} f$ subject to
+$\norm{\unitvec{u}} = 1$. Use the Cauchy-Schwarz inequality.
+\end{exercise}
+
+\begin{exercise}
+Derive the Lagrange-multiplier condition $\grad f = \lambda \grad g$
+from the geometric requirement that, at a constrained extremum, the
+gradient of $f$ has no component tangent to the constraint surface
+$g(\vect{x}) = 0$. State the smoothness assumptions on $g$.
+\end{exercise}
+
+\begin{exercise}
+Derive the Jacobian determinant $r$ for the polar-coordinate
+transformation $\vect{T}(r, \theta) = (r\cos\theta, r\sin\theta)$
+from first principles, by computing the area of the image of an
+infinitesimal rectangle $[r, r + \dd r] \times [\theta, \theta +
+\dd\theta]$ in the $(r, \theta)$-plane.
+\end{exercise}
+
+\begin{exercise}
+Derive the second-order Taylor expansion of $f : \R^{n} \to \R$
+around a point $\vect{a}$, and express the second-order term as
+$\tfrac{1}{2}\,(\vect{x} - \vect{a})^{\mathsf{T}} H(\vect{a})\,
+(\vect{x} - \vect{a})$. State and justify the assumption that
+$f$ has continuous second partials.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the optimal aspect ratio $h/r$ of a closed cylindrical
+soda can of fixed volume $V_{0} = 0.355\,\si{\liter}$ minimising
+surface area, then compare to the actual aspect ratio of a real
+soda can. Identify a reason for the discrepancy. (Hint: the lid and
+side may have different material costs.)
+\end{exercise}
+
+\begin{exercise}
+Estimate the fraction of the volume of an $n$-dimensional ball that
+sits within $5\%$ of the surface, for $n = 3, 10, 100, 1000$.
+Report each fraction to two significant figures, and identify the
+dimension at which more than half the volume is in the outer shell.
+\end{exercise}
+
+\begin{exercise}
+Estimate the rate of heat loss per unit area through a wall whose
+temperature gradient is $20\,\si{\degreeCelsius}$ across
+$0.20\,\si{\meter}$ of wood with thermal conductivity $k \approx
+0.15\,\si{\watt\per\meter\per\kelvin}$. State the magnitude and
+direction of $\grad T$, and use $\vect{q} = -k \grad T$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the volume of a typical chicken egg by setting up a
+spherical-coordinate integral over an ellipsoidal approximation. Use
+$a = 30\,\si{\milli\meter}$, $b = 22\,\si{\milli\meter}$,
+$c = 22\,\si{\milli\meter}$ as the three semi-axes. Compare to a
+typical reported egg volume of about $50\,\si{\milli\liter}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the multiplier $\lambda$ in a budget-constrained
+production-optimisation problem in which the unconstrained optimum
+profit is $\$120{,}000$ at a cost of $\$80{,}000$, and the
+constrained optimum (with budget cap $\$70{,}000$) is $\$110{,}000$
+at a cost of exactly $\$70{,}000$. Interpret $\lambda$ in
+\$ per \$.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+In a language of the reader's choice, generate $N = 10000$ random
+points uniformly in the cube $[-1, 1]^{n}$ for $n = 2, 5, 10, 20,
+50, 100$. For each $n$, compute the fraction of points that fall
+inside the inscribed ball $\norm{\vect{x}} \leq 1$. Plot this
+fraction against $n$ and compare against the analytical formula
+$V_{n}(1) / 2^{n}$.
+\end{exercise}
+
+\begin{exercise}
+Implement gradient descent on the function $f(x, y) = (x - 1)^{2} +
+10 (y - x^{2})^{2}$ (the Rosenbrock function with $a = 1, b = 10$),
+starting from $(x_{0}, y_{0}) = (-1, 1)$, with a fixed step size
+$\eta = 0.001$. Run for $10000$ iterations, plot the trajectory
+on a contour plot of $f$, and report the final position. Identify
+qualitatively why the trajectory is slow.
+\end{exercise}
+
+\begin{exercise}
+Numerically locate and classify all critical points of $f(x, y) =
+\sin(x) \cos(y)$ on $[0, 2\pi]^{2}$ by solving $\grad f = \vect{0}$
+and computing the Hessian at each candidate. Report the eigenvalues
+at each critical point.
+\end{exercise}
+
+\begin{exercise}
+Numerically integrate $\iiint_{V} (x^{2} + y^{2} + z^{2})\,\dd V$
+over the unit ball $V = \set{\norm{\vect{x}} \leq 1}$ by Monte
+Carlo, using $N = 10^{4}, 10^{5}, 10^{6}$ samples. Report the
+estimate and a $95\%$ confidence interval at each sample size, and
+compare to the analytical answer $4\pi/5$ obtained by spherical
+coordinates.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the optimal proportions of an open-topped rectangular box
+of fixed volume $V_{0}$, minimising the total material area
+(bottom plus four sides). Set up as a multivariable Lagrange
+problem, solve, and report the ratios of length, width, and height.
+\end{exercise}
+
+\begin{exercise}
+Design a thermal-insulation layer thickness profile for a cylindrical
+pipe carrying fluid at $80\,\si{\degreeCelsius}$ in an environment
+at $10\,\si{\degreeCelsius}$. The pipe length is fixed; the
+insulation cost per unit volume is $c_{1}$; the heat-loss penalty
+per watt-year is $c_{2}$. Set up the optimisation, identify the
+constraint, and solve for the optimal thickness as a function of
+the cost ratio $c_{2}/c_{1}$.
+\end{exercise}
+
+\begin{exercise}
+Design a least-squares fit of a quadratic surface $z = a x^{2} +
+b x y + c y^{2} + d x + e y + f$ to a dataset of $N$ points
+$(x_{i}, y_{i}, z_{i})$. Set up the optimisation, derive the normal
+equations from the gradient condition, and identify the rank
+condition on the design matrix that guarantees a unique solution.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{standard}
+
+\begin{exercise}
+A colleague reports an iterative optimiser that has converged on a
+critical point with $\grad f \approx \vect{0}$ but for which the
+final loss is much higher than expected. Propose three diagnostic
+tests, in order of cost, to determine whether the iterate is at a
+local minimum, a saddle, or a local maximum.
+\end{exercise}
+
+\begin{exercise}
+A double integral $\iint_{D} f \,\dd A$ is computed by an iterated
+integral with the orders swapped, and the answer differs from a
+direct Cartesian computation by a sign. Identify the most likely
+cause of the discrepancy and state the rule the engineer applies
+to recover the correct sign.
+\end{exercise}
+
+\begin{exercise}
+A change-of-variables routine in a numerical-integration package
+returns the wrong answer when the user supplies a transformation
+whose Jacobian determinant changes sign across the integration
+region. Identify the failure mode and propose the correct treatment.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+A team trains a high-dimensional model with $p = 10^{6}$ parameters
+and reports a "local minimum" diagnosed by the small magnitude of
+the loss gradient. Argue, in 200 to 300 words, why this diagnosis
+is not by itself enough to conclude that the iterate is at a local
+minimum, and propose an additional check using the Hessian or its
+estimates.
+\end{exercise}
+
+\begin{exercise}
+A nearest-neighbour classifier achieves $99\%$ accuracy on a
+$5$-feature problem and $52\%$ accuracy on a $500$-feature
+problem with the same number of training points, despite the
+$500$-feature problem nominally containing more information.
+Argue, in 200 to 300 words, why the curse of dimensionality
+predicts this outcome and propose a working remedy.
+\end{exercise}
+
+\begin{exercise}
+A Monte Carlo simulation of a six-dimensional integral over the
+unit cube uses uniform sampling of $N = 10^{4}$ points and reports
+an answer that systematically underestimates the true value
+(known from an analytical reference). Argue, in 200 to 300 words,
+why uniform sampling in six dimensions is likely to undersample the
+boundary region and propose a sampling correction.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A regulatory agency requires that an engineered system optimise an
+objective subject to a single safety constraint. The contractor
+proposes converting the constraint into a penalty term added to
+the objective, then optimising unconstrained. Argue, in 200 to 300
+words, when this conversion is defensible (the penalty method) and
+when it is not (when the constraint must be exactly satisfied or
+when the penalty is too small to bind).
+\end{exercise}
+
+\begin{exercise}
+A textbook claims that "gradient descent always converges to a
+local minimum." Identify the assumption under which the claim is
+true (it is false in general). Cite a counter-example from the
+chapter and propose a corrected statement.
+\end{exercise}
+
+\begin{exercise}
+\textcite{text:strang2016} treats the Lagrangian as a "saddle-point
+problem" in $(\vect{x}, \boldsymbol{\lambda})$. Argue, in one
+paragraph, why the saddle-point interpretation is geometrically
+correct and why a naive simultaneous-minimisation of $\mathcal{L}$
+in both $\vect{x}$ and $\boldsymbol{\lambda}$ does not give the
+constrained optimum.
+\end{exercise}
+
+\begin{exercise}
+A practitioner argues that high-dimensional engineering problems
+should be re-cast in terms of the "intrinsic dimension" of the
+data manifold rather than the ambient parameter dimension. Argue,
+in 200 to 300 words, when this re-casting is justified and what
+diagnostic the engineer should apply to estimate the intrinsic
+dimension. (Hint: the singular-value decomposition of Volume II
+Chapter 10 is the working tool.)
+\end{exercise}
+
+\begin{exercise}
+A student writes the KKT conditions for a problem with one equality
+and one inequality, but treats the inequality multiplier $\mu$ as
+unconstrained in sign. Argue, in one paragraph, where the analysis
+will go wrong and which of the four KKT conditions the student has
+violated.
+\end{exercise}
+
+\begin{exercise}
+A vendor of an optimisation library reports that "the package solves
+arbitrary constrained-optimisation problems." Argue, in 200 to
+300 words, what classes of problem the vendor's claim is honest
+for, what classes it is misleading for, and what the engineer
+should ask before selecting the package. \textcite{text:boyd-vandenberghe2004}
+gives the working taxonomy of convex programs against which the
+claim should be tested.
+\end{exercise}
