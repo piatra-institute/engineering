@@ -1,4 +1,4 @@
-.PHONY: all clean distclean watch outline scaffolding strict check stats audit-docs accidents
+.PHONY: all clean distclean watch outline scaffolding strict check stats audit-docs accidents exercise-counts
 
 MAIN = main
 LATEXMK = latexmk
@@ -94,20 +94,23 @@ audit-docs:
 	if [ $$found -eq 0 ]; then echo "audit-docs: PASS (no stale references)"; \
 	else echo ""; echo "audit-docs: FAIL"; exit 1; fi
 
-# Named-cases registry audit (Q56). For every \cite{acc:*} key in chapter
-# prose, verify a registry entry exists at docs/research/accidents/ that
-# names the same key in its frontmatter or body. Lists registry entries
-# not yet cited as informational. Exits non-zero if any cited acc: key
-# lacks a registry entry.
+# Named-cases registry audit (Q56). Two checks:
+#   (a) For every \cite{acc:*} key in chapter prose, verify a registry entry
+#       exists at docs/research/accidents/ that names the same key.
+#   (b) For every canonical accident name in any registry entry's frontmatter,
+#       scan chapter prose (excluding the \chapmeta metadata block) for the
+#       name; if found, require that the entry's primary or closest-equivalent
+#       citation key appear at least once in the chapter via \cite{}.
+# (a) catches a citation to a missing registry entry; (b) catches a chapter
+# that names an accident in prose without citing the registry's entry.
 accidents:
 	@echo "auditing chapter prose for named accidents..."
-	@cited=$$(grep -rhoE 'acc:[A-Za-z0-9_:.-]+' volumes/ 2>/dev/null | sort -u); \
-	registry_dir=docs/research/accidents; \
+	@registry_dir=docs/research/accidents; \
 	if [ ! -d "$$registry_dir" ]; then \
 	    echo "registry directory $$registry_dir does not exist"; exit 1; \
 	fi; \
-	registered=$$(grep -rhE 'acc:[A-Za-z0-9_:.-]+' $$registry_dir 2>/dev/null \
-	    | grep -oE 'acc:[A-Za-z0-9_:.-]+' | sort -u); \
+	cited=$$(grep -rhoE 'acc:[A-Za-z0-9_:.-]+' volumes/ 2>/dev/null | sort -u); \
+	registered=$$(grep -rhoE 'acc:[A-Za-z0-9_:.-]+' $$registry_dir 2>/dev/null | sort -u); \
 	missing=""; \
 	for key in $$cited; do \
 	    if ! echo "$$registered" | grep -qx "$$key"; then \
@@ -116,7 +119,39 @@ accidents:
 	done; \
 	if [ -n "$$missing" ]; then \
 	    echo ""; \
-	    echo "MISSING from registry:$$missing"; \
+	    echo "MISSING from registry (cited acc: keys without entries):$$missing"; \
+	    echo ""; \
+	    echo "accidents: FAIL"; \
+	    exit 1; \
+	fi; \
+	prose_violations=""; \
+	for entry in $$registry_dir/*.md; do \
+	    base=$$(basename $$entry); \
+	    [ "$$base" = "README.md" ] && continue; \
+	    [ "$$base" = "SCHEMA.md" ] && continue; \
+	    name=$$(awk -F': *' '/^name:/{print $$2; exit}' $$entry); \
+	    [ -z "$$name" ] && continue; \
+	    entry_keys=$$(grep -oE '(acc|paper|text|web|hist):[A-Za-z0-9_:.-]+' $$entry | sort -u); \
+	    for chapter in volumes/*/*/chapter.tex; do \
+	        prose=$$(awk '/\\chapmeta\{/{in_meta=1; next} in_meta{ if (/\}/) in_meta=0; next} {print}' $$chapter); \
+	        if echo "$$prose" | grep -q -F "$$name"; then \
+	            chapter_cites=$$(grep -oE '\\cite\{[^}]*\}' $$chapter | grep -oE '(acc|paper|text|web|hist):[A-Za-z0-9_:.-]+' || true); \
+	            found=0; \
+	            for ek in $$entry_keys; do \
+	                if echo "$$chapter_cites" | grep -qx "$$ek"; then \
+	                    found=1; break; \
+	                fi; \
+	            done; \
+	            if [ $$found -eq 0 ]; then \
+	                prose_violations="$$prose_violations|$$chapter names \"$$name\" without a registry citation"; \
+	            fi; \
+	        fi; \
+	    done; \
+	done; \
+	if [ -n "$$prose_violations" ]; then \
+	    echo ""; \
+	    echo "PROSE-NAMED accidents without registry citation:"; \
+	    echo "$$prose_violations" | tr '|' '\n' | grep -v '^$$' | sed 's/^/  /'; \
 	    echo ""; \
 	    echo "accidents: FAIL"; \
 	    exit 1; \
@@ -125,8 +160,35 @@ accidents:
 	entry_count=$$(ls $$registry_dir/*.md 2>/dev/null \
 	    | grep -v -E '/(README|SCHEMA)\.md$$' | wc -l | xargs); \
 	echo "$$cited_count acc: keys cited in chapters; all resolve to a registry entry"; \
+	echo "registry prose-name scan: PASS (every named accident has at least one of its registry keys cited)"; \
 	echo "$$entry_count registry entries on disk (excluding README, SCHEMA)"; \
 	echo "accidents: PASS"
+
+# Exercise-count check. For each chapter with prose (i.e. at least one
+# \begin{exercise} block), verify that the count of \begin{exercise} blocks
+# matches the "Exercise target: N" line in the chapter's \chapmeta. Skips
+# chapters that are still scaffolding shells (no exercise blocks yet).
+exercise-counts:
+	@echo "checking per-chapter exercise counts against chapmeta targets..."
+	@fail=0; checked=0; \
+	for chapter in volumes/*/*/chapter.tex; do \
+	    target=$$(grep -oE 'Exercise target: *[0-9]+' $$chapter | head -1 | grep -oE '[0-9]+'); \
+	    [ -z "$$target" ] && continue; \
+	    actual=$$(grep -c '\\begin{exercise}' $$chapter); \
+	    [ "$$actual" -eq 0 ] && continue; \
+	    checked=$$((checked + 1)); \
+	    if [ "$$target" != "$$actual" ]; then \
+	        echo "  $$chapter: target $$target, actual $$actual"; \
+	        fail=1; \
+	    fi; \
+	done; \
+	if [ $$fail -eq 0 ]; then \
+	    echo "exercise-counts: PASS ($$checked chapters with prose match their chapmeta target)"; \
+	else \
+	    echo ""; \
+	    echo "exercise-counts: FAIL"; \
+	    exit 1; \
+	fi
 
 clean:
 	rm -f $(ARTIFACTS)

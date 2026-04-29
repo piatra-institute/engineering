@@ -538,7 +538,11 @@ Vol I Ch 2 project track: **analysis** (paper/pencil only, no instruments). Haza
 
 Vol I Ch 3 project track: **analysis** with an optional household component. Hazard class: **none**. Tools: paper, pencil, internet research access for standards documents and manufacturer calibration certificates, and one household measuring instrument of the reader's choice. Artifact: a traceability-chain document for one measurement in the reader's life (a bathroom scale, a kitchen thermometer, a smartphone clock, a GPS coordinate, a workplace instrument, or equivalent), tracing the chain from the reader's instrument through working standard, secondary standard, primary standard, to the SI defining constant. Each link in the chain is documented with sources (calibration certificate where available; standards-body publications; manufacturer documentation). The deliverable is a 1500-word document with the chain explicit, gaps in the chain named, and a reflection on what would change in the reader's confidence in the measurement if any link failed.
 
-The remaining 171 chapters' project-track resolution is deferred to Phase 0.7.
+### Settled 2026-04-29 (Q55-ch04)
+
+Vol I Ch 4 project track: **household + analysis (hybrid)**. Hazard class: **low** (outdoor street-level measurement; no climbing, no working at height, no instruments above battery voltage). Tools: smartphone (clinometer or theodolite app, compass, GPS, camera with EXIF or known focal length), tape measure (preferably $\geq 10 \,\si{\meter}$), a stopwatch, a meter rule, and a published reference for the chosen building (Wikipedia, OpenStreetMap, building permit records, or the building owner's documentation). Artifact: three independent estimates of one building's height, each with an explicit error bar derived from the underlying measurement uncertainties via the linear propagation formula introduced in this chapter, plus a 1500-word reflection comparing the three results, identifying the dominant uncertainty source in each method, and discussing where the methods agreed within their stated error bars and where they did not. Solutions take the form of a published reference set of three-method computations from the general editor, not a single answer key.
+
+The remaining 170 chapters' project-track resolution is deferred to Phase 0.7.
 
 # How to use this file
 

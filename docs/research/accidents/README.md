@@ -51,6 +51,12 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 |---|---|---|---|
 | V | 1985-1987 | [Therac-25](therac-25-1985-1987.md) | closest-equivalent: `paper:leveson-turner1993` |
 
+### Software
+
+| Status | Year | Name | Primary source |
+|---|---|---|---|
+| V | 2015 | [Volkswagen diesel emissions defeat device](volkswagen-diesel-defeat-2015.md) | `acc:epa-vw-nov-2015` |
+
 ## Counts
 
 - Aerospace: 6
@@ -58,7 +64,8 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 - Process: 1
 - Power: 2
 - Medical: 1
-- **Total: 12**
+- Software: 1
+- **Total: 13**
 
 ## Pending entries (~18-20)
 
@@ -68,6 +75,6 @@ Accumulate as chapters cite them. Listed here for forward planning, not as commi
 - Civil: Tay Bridge (1879), Citicorp Tower (1978-1979, averted), Genoa Morandi (2018), Aberfan (1966), Vajont Dam (1963).
 - Process: Texas City refinery (2005), Flixborough (1974), Buncefield (2005), Deepwater Horizon (2010).
 - Power: Fukushima (2011), Northeast blackout (2003), Texas grid failure (2021).
-- Software: Patriot timing bug at Dhahran (1991), Knight Capital (2012), Volkswagen diesel-defeat (2015).
+- Software: Patriot timing bug at Dhahran (1991), Knight Capital (2012).
 
 The schema and citation policy govern future additions. New entries are added in the appropriate domain section above when their primary or closest-equivalent source has been confirmed and the body sections are filled.
