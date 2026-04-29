@@ -18,12 +18,13 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 
 | Status | Year | Name | Primary source |
 |---|---|---|---|
+| V | 1983 | [Air Canada Flight 143](air-canada-143-1983.md) | `acc:lockwood-gimli1985` |
 | V | 1986 | [Space Shuttle Challenger](challenger-1986.md) | `acc:nasa-challenger` |
 | V | 1990 | [Hubble Space Telescope primary mirror](hubble-primary-mirror-1990.md) | `acc:nasa-hubble-optical-systems-1990` |
 | V | 1996 | [Ariane 5 Flight 501](ariane-501-1996.md) | `acc:ariane501-ifr` |
 | V | 1999 | [Mars Climate Orbiter](mars-climate-orbiter-1999.md) | `acc:nasa-mco-mib` |
 | V | 2003 | [Space Shuttle Columbia](columbia-2003.md) | `acc:caib-columbia` |
-| V | 1983 | [Air Canada Flight 143](air-canada-143-1983.md) | `acc:lockwood-gimli1985` |
+| V | 2009 | [Air France Flight 447](air-france-447-2009.md) | `acc:bea-af447` |
 
 ### Civil
 
@@ -59,19 +60,19 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 
 ## Counts
 
-- Aerospace: 6
+- Aerospace: 7
 - Civil: 2
 - Process: 1
 - Power: 2
 - Medical: 1
 - Software: 1
-- **Total: 13**
+- **Total: 14**
 
 ## Pending entries (~18-20)
 
 Accumulate as chapters cite them. Listed here for forward planning, not as commitment:
 
-- Aerospace: Aloha 243 (1988), Air France 447 (2009), Boeing 737 MAX (2018-2019).
+- Aerospace: Aloha 243 (1988), Boeing 737 MAX (2018-2019).
 - Civil: Tay Bridge (1879), Citicorp Tower (1978-1979, averted), Genoa Morandi (2018), Aberfan (1966), Vajont Dam (1963).
 - Process: Texas City refinery (2005), Flixborough (1974), Buncefield (2005), Deepwater Horizon (2010).
 - Power: Fukushima (2011), Northeast blackout (2003), Texas grid failure (2021).
