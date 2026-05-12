@@ -45,10 +45,14 @@ Pinned at the top of `docs/editorial-decisions.md`. Every chapter sits under thi
 │       ├── NN-<vol-slug>/
 │       │   ├── _volume.md         Per-volume dossier (scope, arc, bridges, reading list).
 │       │   └── chMM-<slug>.md     Per-chapter dossier (174 total, mirrors volumes/ tree).
-│       └── accidents/             Named-cases registry (Q56).
-│           ├── SCHEMA.md          Required structure for every entry.
-│           ├── README.md          Index by domain.
-│           └── <slug>-<year>.md   Twelve initial entries.
+│       ├── accidents/             Named-cases registry (Q56).
+│       │   ├── SCHEMA.md          Required structure for every entry.
+│       │   ├── README.md          Index by domain.
+│       │   └── <slug>-<year>.md   Twelve initial entries.
+│       └── seeds/                 Research seeds: captured ideas / framings from external reading.
+│           ├── SCHEMA.md          Required structure for every seed.
+│           ├── README.md          Index by scope (project / volume).
+│           └── <slug>.md          One per idea; declarative slug.
 └── scripts/
     └── generate_scaffolding.py    uv-runnable scaffolding generator (reads dossiers).
 ```
@@ -118,6 +122,10 @@ If a chapter mentions a named accident (Mars Climate Orbiter, Therac-25, Tacoma 
 5. `make accidents` must PASS.
 
 If the chapter wants to name an accident with no registry entry, write the entry first (~30 minutes using the schema). Do not narrate from memory or from a textbook.
+
+### Research seeds
+
+Seeds live at `docs/research/seeds/<slug>.md` and capture a single idea or framing from external reading, distilled into a self-contained file *after the source has been set aside*. Schema in `docs/research/seeds/SCHEMA.md`; index in `docs/research/seeds/README.md`. A seed is not canon and is not cited from chapter prose; when a seed makes it into the book, the chapter cites the underlying source and the seed stays in place as genealogy. Status ladder mirrors the accident registry: `placeholder` → `provisional` → `integrated`. Use seeds for framings, claims, and quotable sentences that bear on a volume or the project; use chapter dossiers for outline material; use the accident registry for named events. No `make` target enforces the seeds lane; the discipline is editorial.
 
 ### Citation discipline (read `docs/citation-policy.md`)
 
