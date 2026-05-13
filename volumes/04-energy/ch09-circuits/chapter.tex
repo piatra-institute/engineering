@@ -1,40 +1,910 @@
 \chapter{Circuits: KVL, KCL, impedance}
 \label{vol04:ch09}
 
-\epigraph{}{}
+\epigraph{The current in any conductor is the algebraic sum of the
+currents which the several electromotive forces would produce, each
+acting alone in the otherwise unaltered circuit.}{Gustav Kirchhoff,
+1845, paraphrased in the form in which his two laws have entered
+engineering practice; see Alexander and Sadiku, \emph{Fundamentals of
+Electric Circuits}, 6th ed.\ (McGraw-Hill, 2017), Section 2.4
+\cite[Section~2.4]{text:alexander-sadiku-circuits}.}
 
-\chapmeta{Half-life: medium-life. Archetypes: balance, transport, control. Exercise target: 45. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: balance, transport, control. Exercise target: 42. Project track: physical build plus measurement (hybrid). Hazard class: low (bench-scale signals, mains avoided). Reader path default: standard, with sections explicitly tagged. Named cases: none directly; grounding and EMI failure modes cross-referenced from Chapter 8.}
 
 \noindent
-\TODO{Volume 4, Chapter 9. Approx 110 pp.}
+The lumped-parameter circuit is an engineering approximation to
+Maxwell's equations valid when the device is small compared to a
+wavelength of any signal it carries. Within that approximation
+Kirchhoff's voltage law and Kirchhoff's current law become the
+operational identities of the discipline: every circuit obeys an
+energy balance around every loop and a charge balance at every node.
+This chapter develops the working machinery (KVL, KCL, Th\'evenin and
+Norton equivalents, superposition, transient response of first- and
+second-order networks, AC phasor analysis, power, and three-phase
+delivery) at the depth the practising engineer carries to a bench or
+a SPICE deck.
 
-\section{Lumped-parameter circuits}
-\TODO{Section prose.}
+\section{Lumped-parameter circuits}\pathtag{core}
 
-\section{KVL and KCL}
-\TODO{Section prose.}
+A circuit is a network of two-terminal devices connected by ideal
+conductors. The devices store, release, or dissipate energy; the
+conductors carry current without resistance. The terminals of each
+device sit at \engterm{nodes}; the conductors connecting them are
+\engterm{branches}. The number of nodes $n$ and branches $b$ obeys
+the topological identity $b - n + 1 = \ell$, where $\ell$ is the
+number of independent loops. In a circuit with $b$ branches we have
+$b$ unknown branch currents and $b$ unknown branch voltages; the
+constitutive equations of the $b$ devices provide $b$ relations, and
+the $n-1$ KCL equations plus $\ell$ KVL equations provide the
+remaining $b$ topological relations. The system closes.
 
-\section{Resistive networks: Th\'evenin, Norton, superposition}
-\TODO{Section prose.}
+The lumped-parameter approximation requires that the physical extent
+$L$ of every device and conductor is much smaller than the wavelength
+$\lambda = c/f$ at the highest frequency $f$ of interest. At $1\,\si{
+\mega\hertz}$, $\lambda = 300\,\si{\meter}$, and a $30\,\si{\centi
+\meter}$ printed circuit board is lumped to within $0.1\,\%$. At
+$1\,\si{\giga\hertz}$, $\lambda = 30\,\si{\centi\meter}$, and the same
+board is no longer lumped; it requires transmission-line analysis
+(Chapter 10). The lumped-circuit analysis of this chapter is the
+working tool from DC to the low VHF band; above that, transmission-
+line and distributed analysis takes over.
 
-\section{Capacitors and inductors}
-\TODO{Section prose.}
+The five canonical two-terminal devices are:
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Resistor}: $v = iR$, with $R$ in $\si{\ohm}$.
+  \item \engterm{Capacitor}: $i = C\,\dd v/\dd t$, with $C$ in $\si{
+    \farad}$.
+  \item \engterm{Inductor}: $v = L\,\dd i/\dd t$, with $L$ in $\si{
+    \henry}$.
+  \item \engterm{Independent voltage source}: $v = V_{s}$ (specified),
+    $i$ unconstrained.
+  \item \engterm{Independent current source}: $i = I_{s}$ (specified),
+    $v$ unconstrained.
+\end{itemize}
+Dependent (controlled) sources, in which the source value depends on
+a current or voltage elsewhere in the circuit, are the building
+blocks of small-signal models for transistors and operational
+amplifiers; they appear in Section 9.4.
 
-\section{Transient response: RC, RL, RLC}
-\TODO{Section prose.}
+The sign convention for two-terminal devices is the
+\engterm{passive sign convention}: the current $i$ enters the
+positive terminal of $v$. Under this convention, $P = vi$ is the
+instantaneous power absorbed by the device; positive $P$ means the
+device dissipates or stores energy, negative $P$ means it delivers
+energy back to the rest of the circuit. A source operating in its
+forward mode has negative absorbed power; a resistor always has
+non-negative absorbed power.
 
-\section{AC steady-state and impedance}
-\TODO{Section prose.}
+\section{Kirchhoff's voltage and current laws}\pathtag{core}
 
-\section{Power: real, reactive, apparent}
-\TODO{Section prose.}
+\begin{principle}[Kirchhoff's current law (KCL)]
+The algebraic sum of currents leaving any node is zero,
+\[
+\sum_{k} i_{k} = 0.
+\]
+KCL is the lumped-circuit statement of the continuity equation
+$\partial \rho/\partial t + \divg \vect{J} = 0$ in the limit that no
+charge accumulates at any node. The lumped approximation embeds the
+no-accumulation assumption.
+\end{principle}
 
-\section{Three-phase introduction}
-\TODO{Section prose.}
+\begin{principle}[Kirchhoff's voltage law (KVL)]
+The algebraic sum of voltages around any closed loop is zero,
+\[
+\sum_{k} v_{k} = 0.
+\]
+KVL is the lumped-circuit statement of Faraday's law $\oint \vect{E}
+\cdot \dd\vect{\ell} = -\dd \Phi_{B}/\dd t$ in the limit that no
+time-varying magnetic flux links the loop. The lumped approximation
+embeds the no-stray-flux assumption.
+\end{principle}
 
+KCL and KVL together provide enough equations to solve any
+lumped-parameter circuit once the device constitutive equations are
+written. Two systematic solution methods follow.
 
-\section{Project}
-\TODO{build and characterise a simple bandpass filter}
+The \engterm{nodal analysis} method uses KCL. Choose a reference node
+(usually called ground), label the other $n-1$ nodes with their
+unknown voltages $v_{1}, v_{2}, \ldots, v_{n-1}$, and write a KCL
+equation at each non-reference node expressing every branch current
+in terms of the node voltages and the device equations. The result is
+$n-1$ equations in $n-1$ unknowns. For a circuit of only resistors
+and current sources, the equations are linear and the solution is the
+inverse of an $(n-1)\times(n-1)$ matrix; SPICE and every other circuit
+simulator does this internally.
+
+The \engterm{mesh analysis} method uses KVL. Identify the $\ell$
+independent loops; assign a clockwise mesh current to each; write a
+KVL equation around each loop expressing every branch voltage in
+terms of the mesh currents and the device equations. The result is
+$\ell$ equations in $\ell$ unknowns.
+
+The two methods are duals. For a circuit dominated by current sources
+and parallel connections, nodal is faster; for a circuit dominated by
+voltage sources and series connections, mesh is faster. The working
+engineer learns both and chooses by inspection.
+
+\section{Resistive networks: Th\'evenin, Norton, superposition}\pathtag{core}
+
+For purely resistive linear circuits, three theorems compress the
+analysis. Their proofs follow directly from linearity and from the
+two Kirchhoff laws; the working consequences are powerful.
+
+\begin{theorem}[Superposition]
+In a linear circuit driven by multiple independent sources, the
+response (any branch voltage or current) is the algebraic sum of the
+responses to each source acting alone, with the other sources
+deactivated. Deactivating a voltage source means short-circuiting it;
+deactivating a current source means open-circuiting it.
+\end{theorem}
+
+Superposition reduces a multi-source circuit to a sum of single-source
+sub-circuits, each easier to analyse. The price is that the method
+fails on nonlinear elements (diodes, transistors above their small-
+signal regime); for nonlinear elements, either linearise about an
+operating point first (small-signal model) or use a numerical solver.
+
+\begin{theorem}[Th\'evenin]
+Any linear two-terminal network containing independent sources,
+dependent sources, and resistors can be replaced, at its accessible
+terminals, by an equivalent circuit consisting of a single voltage
+source $V_{\text{Th}}$ in series with a single resistance $R_{\text{Th}}$.
+\begin{itemize}[leftmargin=*]
+  \item $V_{\text{Th}}$ is the open-circuit voltage at the terminals.
+  \item $R_{\text{Th}}$ is the resistance seen looking back into the
+    terminals with all independent sources deactivated. For circuits
+    with dependent sources, $R_{\text{Th}}$ is found by applying a
+    test voltage and measuring the resulting current.
+\end{itemize}
+\end{theorem}
+
+\begin{theorem}[Norton]
+Any linear two-terminal network can be replaced, at its accessible
+terminals, by an equivalent current source $I_{\text{N}}$ in parallel
+with a resistance $R_{\text{N}} = R_{\text{Th}}$. The Norton current
+is the short-circuit current at the terminals: $I_{\text{N}} =
+V_{\text{Th}}/R_{\text{Th}}$.
+\end{theorem}
+
+Th\'evenin and Norton equivalents are interconvertible by source
+transformation. The pair is the working language of interface
+specifications: when a designer says ``the source impedance is
+$50\,\si{\ohm}$,'' the speaker means $R_{\text{Th}} = 50\,\si{\ohm}$
+at the relevant frequency. When the speaker says ``the load is a
+$1\,\si{\kilo\ohm}$ input,'' the listener treats it as the load
+resistance into which the Th\'evenin source delivers power.
+
+The \engterm{maximum power transfer theorem} follows from Th\'evenin:
+a source with open-circuit voltage $V_{\text{Th}}$ and source
+resistance $R_{\text{Th}}$ delivers maximum power to a load $R_{L}$
+when $R_{L} = R_{\text{Th}}$, with the maximum power equal to
+$V_{\text{Th}}^{2}/(4R_{\text{Th}})$. The matched-source efficiency is
+$50\,\%$, which is acceptable for signal transmission (RF, audio) but
+unacceptable for power delivery (where one designs for $R_{L} \gg
+R_{\text{Th}}$ to keep the efficiency close to $100\,\%$).
+
+\begin{archetype}[Balance and transport]
+A linear circuit is two patterns nested. The balance pattern enforces
+KCL at every node and KVL around every loop, giving the topological
+structure. The transport pattern is the constitutive equation of each
+two-terminal device: resistors transport instantly ($v = iR$),
+capacitors transport with a time derivative ($i = C\,\dd v/\dd t$),
+inductors transport with the other time derivative ($v = L\,\dd i/
+\dd t$). Every circuit problem decomposes into the two patterns; an
+engineer who keeps them separate in the bookkeeping makes fewer sign
+errors.
+\end{archetype}
+
+\section{Capacitors and inductors}\pathtag{core}
+
+A capacitor stores energy in its electric field. The constitutive
+equation $i = C\,\dd v/\dd t$ implies that the voltage across a
+capacitor cannot change instantaneously without infinite current; in
+practice, capacitor voltage is the slow state variable of a circuit
+containing a capacitor. The energy stored at voltage $v$ is
+$U_{C} = \tfrac{1}{2}Cv^{2}$, the integral of $vi$ from $v = 0$ to the
+present voltage. Real capacitors have parasitic resistance
+(\engterm{equivalent series resistance}, ESR) that dissipates power
+during charging and discharging, and parasitic inductance (ESL) that
+limits high-frequency performance.
+
+An inductor stores energy in its magnetic field. The constitutive
+equation $v = L\,\dd i/\dd t$ implies that the current through an
+inductor cannot change instantaneously without infinite voltage; the
+current is the slow state variable. The energy stored at current $i$
+is $U_{L} = \tfrac{1}{2}Li^{2}$. Real inductors have parasitic
+resistance (winding resistance) and parasitic capacitance (between
+turns of the winding) that limits their useful frequency range to
+below the self-resonant frequency.
+
+Two capacitors in parallel sum: $C_{\text{tot}} = C_{1}+C_{2}$. Two
+capacitors in series invert and add: $1/C_{\text{tot}} = 1/C_{1} +
+1/C_{2}$. Two inductors in series sum (assuming no mutual coupling):
+$L_{\text{tot}} = L_{1}+L_{2}$; two in parallel invert and add. The
+rules are the duals of the resistor rules: resistors in series sum,
+in parallel invert and add.
+
+\begin{principle}[Pick the state variable]
+A circuit's order is the number of independent capacitors and
+inductors. Capacitor voltage and inductor current are the state
+variables. A circuit with one capacitor or one inductor is first-order
+and has an exponential response with a single time constant. A circuit
+with one capacitor and one inductor (or two of either, configured to
+be independent) is second-order with one of three responses:
+overdamped, critically damped, underdamped. A circuit with $n$
+states has $n$th-order response described by an $n$th-order linear
+ODE. State-space methods of Volume IX systematise this; the procedure
+here is the entry point.
+\end{principle}
+
+The op-amp introduces \engterm{dependent sources} into the working
+vocabulary. An ideal op-amp has infinite input impedance, zero output
+impedance, and infinite open-loop gain; its working tools are the two
+``virtual short'' constraints in negative-feedback operation:
+$v_{+} = v_{-}$ (the two input terminals are at the same voltage) and
+$i_{+} = i_{-} = 0$ (no current flows into the input terminals).
+Under these constraints, the working op-amp circuits (inverting
+amplifier, non-inverting amplifier, summing amplifier, integrator,
+differentiator, instrumentation amplifier, active filter) follow from
+nodal analysis applied at the inverting input. The detailed small-
+signal model is in Sze \cite{text:sze-semiconductor} or Alexander-
+Sadiku \cite{text:alexander-sadiku-circuits}; for this chapter the
+virtual-short approximation is the working tool.
+
+\section{Transient response: RC, RL, RLC}\pathtag{core}
+
+A first-order RC circuit with a resistor $R$ in series with a
+capacitor $C$, driven by a voltage source $V_{s}$, obeys
+\[
+RC\dv{v_{C}}{t} + v_{C} = V_{s}.
+\]
+The solution with initial condition $v_{C}(0) = v_{0}$ is
+\[
+v_{C}(t) = V_{s} + (v_{0}-V_{s})e^{-t/\tau}, \quad \tau = RC.
+\]
+The time constant $\tau$ has units of seconds. After $\tau$ the
+voltage has moved $63\,\%$ of the way from $v_{0}$ to $V_{s}$; after
+$3\tau$, $95\,\%$; after $5\tau$, $99.3\,\%$. The practising-engineer
+rule of thumb is that the circuit has settled to the new steady state
+after $5\tau$.
+
+An RL circuit with $R$ in series with $L$ obeys
+\[
+\frac{L}{R}\dv{i_{L}}{t} + i_{L} = \frac{V_{s}}{R},
+\]
+with time constant $\tau = L/R$. The duality of capacitor voltage
+with inductor current is general: every result for the RC circuit
+maps to the RL circuit under the substitution $v \leftrightarrow i$,
+$C \leftrightarrow L$, $R \leftrightarrow 1/R$.
+
+A second-order RLC series circuit with source $V_{s}$ driving $R$,
+$L$, $C$ in series obeys
+\[
+LC\frac{\dd^{2} v_{C}}{\dd t^{2}} + RC\dv{v_{C}}{t} + v_{C} = V_{s},
+\]
+or in standard form
+\[
+\frac{\dd^{2} v_{C}}{\dd t^{2}} + 2\zeta\omega_{n}\dv{v_{C}}{t}
++ \omega_{n}^{2} v_{C} = \omega_{n}^{2}V_{s},
+\]
+with \engterm{natural frequency} $\omega_{n} = 1/\sqrt{LC}$ and
+\engterm{damping ratio} $\zeta = (R/2)\sqrt{C/L}$. Three regimes
+follow from the roots of the characteristic polynomial
+$s^{2}+2\zeta\omega_{n}s+\omega_{n}^{2}=0$:
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Overdamped} $\zeta>1$: two real negative roots; the
+    response is the sum of two decaying exponentials.
+  \item \engterm{Critically damped} $\zeta=1$: a repeated real root;
+    the response is the fastest decay without overshoot.
+  \item \engterm{Underdamped} $\zeta<1$: complex-conjugate roots; the
+    response oscillates at frequency $\omega_{d} = \omega_{n}\sqrt{
+    1-\zeta^{2}}$ and decays at envelope rate $\zeta\omega_{n}$.
+\end{itemize}
+The underdamped response with low damping (high $Q = 1/(2\zeta)$ in
+filter terminology) is the working ringing seen in oscilloscope traces
+of digital signals that overshoot their target voltage. Critical
+damping is the design target for control systems that need fast
+response without oscillation.
+
+The unit-step response of an underdamped second-order system with
+$\zeta=0.3$, $\omega_{n}=1$ overshoots by about $37\,\%$, settles to
+within $5\,\%$ of its final value in about $9$ time units, and
+oscillates at $\omega_{d}\approx 0.95$. The same dynamics appear in
+mechanical systems (Volume III, Chapter 12) and in control (Volume
+IX); the transfer-function language unifies them.
+
+For the input ramp, sinusoid, and impulse the response is found by
+the same characteristic-polynomial method or by Laplace transform;
+the Laplace approach is developed in Volume II, Chapter 18 and is the
+natural language of linear time-invariant analysis.
+
+\begin{estimation}
+\textbf{Question.} A camera flash uses a $1000\,\si{\micro\farad}$
+capacitor charged to $300\,\si{\volt}$ and discharged through a xenon
+flash tube of effective resistance $\sim 1\,\si{\ohm}$ during the
+discharge. Estimate the peak discharge current and the duration of
+the flash; estimate the energy delivered to the flash and the peak
+electrical power.
+
+\textbf{Estimate, before reading on.} State a factor-of-three-
+confidence answer for each quantity before reading the working.
+
+\textbf{Working.} The energy stored is $U = \tfrac{1}{2}CV^{2} =
+0.5\times 10^{-3}\times 9\times 10^{4} = 45\,\si{\joule}$. The
+discharge through a $1\,\si{\ohm}$ resistor has time constant
+$\tau = RC = 1\times 10^{-3} = 1\,\si{\milli\second}$; the flash
+duration is several time constants, of order $1$ to $3\,\si{\milli
+\second}$, consistent with published xenon-flash specifications. The
+peak current is $V_{0}/R = 300\,\si{\ampere}$ initially, falling
+exponentially. The peak electrical power is $V_{0}^{2}/R = 9\times
+10^{4}\,\si{\watt} = 90\,\si{\kilo\watt}$.
+
+\textbf{Postmortem.} The xenon arc's V-I characteristic is far from
+linear: it ignites at high voltage, drops to a low arc voltage during
+conduction, and extinguishes when the current falls below a critical
+value. The $1\,\si{\ohm}$ effective resistance is a rough average
+over the discharge; the actual peak current can exceed $1\,\si{\kilo
+\ampere}$ at the moment of ignition before settling to the arc
+regime. A reader who guessed within a factor of three on energy and
+flash duration has internalised the time scale; the peak current is
+harder to estimate without the tube's V-I curve.
+\end{estimation}
+
+\section{AC steady state and impedance}\pathtag{core}
+
+In sinusoidal steady state, every voltage and current in a linear
+circuit is a sinusoid of the same frequency $\omega$. The phasor
+notation represents a sinusoid $v(t) = V_{m}\cos(\omega t+\phi)$ by
+the complex amplitude
+\[
+\tilde V = V_{m}e^{j\phi}, \quad v(t) = \Re(\tilde V e^{j\omega t}).
+\]
+Differentiation in the time domain becomes multiplication by $j\omega$
+in the phasor domain; integration becomes division. The constitutive
+equations of the three energy-storage elements become algebraic:
+\begin{itemize}[leftmargin=*]
+  \item Resistor: $\tilde V = R\tilde I$, impedance $Z_{R} = R$.
+  \item Capacitor: $\tilde V = (1/j\omega C)\tilde I$, impedance
+    $Z_{C} = 1/(j\omega C)$.
+  \item Inductor: $\tilde V = j\omega L\,\tilde I$, impedance
+    $Z_{L} = j\omega L$.
+\end{itemize}
+\engterm{Impedance} $Z = R+jX$ generalises resistance to AC; its real
+part $R$ is the resistance, its imaginary part $X$ is the
+\engterm{reactance}. \engterm{Admittance} $Y = 1/Z = G+jB$ is its
+reciprocal; its real part $G$ is the conductance, its imaginary part
+$B$ is the susceptance. KVL and KCL apply to phasor voltages and
+currents unchanged; Th\'evenin, Norton, and superposition apply in
+phasor form. The DC machinery transports to AC at the price of
+working with complex numbers instead of real ones.
+
+Impedances in series add: $Z_{\text{tot}} = Z_{1}+Z_{2}$. Impedances in
+parallel invert and add: $1/Z_{\text{tot}} = 1/Z_{1}+1/Z_{2}$. The RLC
+series impedance is $Z(\omega) = R + j\omega L + 1/(j\omega C) = R +
+j(\omega L - 1/\omega C)$, which has zero reactance at the
+\engterm{resonant frequency} $\omega_{0} = 1/\sqrt{LC}$. At resonance
+the circuit is purely resistive; below resonance it is capacitive;
+above resonance it is inductive.
+
+The \engterm{transfer function} $H(\omega) = V_{\text{out}}/V_{\text{in}}$
+of a filter is the phasor ratio of output to input. A low-pass first-
+order filter (single RC stage) has $H(\omega) = 1/(1+j\omega RC)$; a
+high-pass single-stage filter has $H(\omega) = j\omega RC/(1+j\omega
+RC)$. A bandpass filter is the cascade of high-pass and low-pass with
+non-overlapping cutoffs, or an RLC tuned circuit. The
+\engterm{quality factor} $Q$ of a tuned circuit is $\omega_{0}L/R$
+for a series RLC, $R/(\omega_{0}L)$ for a parallel RLC; $Q$ governs
+the bandwidth ($\Delta\omega = \omega_{0}/Q$) and the peak amplitude
+(peak amplification of $Q$ at resonance for an underdamped system).
+
+A Bode plot is a plot of $20\log_{10}|H(\omega)|$ in decibels and
+$\angle H(\omega)$ in degrees against $\log\omega$. The Bode plot is
+the working representation of a filter's frequency response;
+asymptotic-construction rules give an approximate Bode plot from the
+filter's pole-zero locations, and the working engineer carries the
+$-20\,\si{\decibel}$-per-decade-per-pole and $+20\,\si{\decibel}$-per-
+decade-per-zero conventions to bench measurements.
+
+\section{Power: real, reactive, apparent}\pathtag{standard}
+
+In sinusoidal steady state the instantaneous power $p(t) = v(t)i(t)$
+oscillates at $2\omega$. Its time average over a cycle is the
+\engterm{real power} or \engterm{average power}:
+\[
+P = \frac{1}{T}\int_{0}^{T} v(t)i(t)\,\dd t = \frac{1}{2}V_{m}I_{m}
+\cos\phi = V_{\text{rms}}I_{\text{rms}}\cos\phi,
+\]
+where $\phi$ is the phase angle by which the voltage leads the
+current. The factor $\cos\phi$ is the \engterm{power factor}, the
+ratio of real power to the product of RMS voltage and RMS current
+(the \engterm{apparent power} $S = V_{\text{rms}}I_{\text{rms}}$ in
+volt-amperes). The \engterm{reactive power} is $Q = V_{\text{rms}}I_{
+\text{rms}}\sin\phi$ in volt-amperes-reactive (VAR); it represents
+energy oscillating between source and load without net transfer.
+
+The three powers form a right triangle: $S^{2} = P^{2}+Q^{2}$, or
+$S = P + jQ$ as a complex number (the \engterm{complex power}).
+Inductive loads (motors, transformers) absorb reactive power
+($Q>0$); capacitive loads supply reactive power ($Q<0$).
+\engterm{Power factor correction}, the standard utility-grid practice
+of installing capacitor banks at industrial loads, brings the overall
+power factor near unity by cancelling the inductive reactive power of
+the motors, reducing the apparent current the distribution network
+must carry.
+
+A motor rated $10\,\si{\kilo\watt}$ at power factor $0.8$ lagging
+draws $S = 12.5\,\si{\kilo\volt\ampere}$, $Q = 7.5\,\text{kvar}$.
+Adding a $7.5\,\text{kvar}$ capacitor bank in parallel cancels $Q$,
+reducing the apparent power
+to $10\,\si{\kilo\volt\ampere}$ and the line current by $20\,\%$. The
+capacitor pays for itself in reduced distribution losses and demand
+charges within a typical industrial-billing cycle.
+
+\section{Three-phase introduction}\pathtag{standard}
+
+A \engterm{three-phase} power system uses three sinusoidal voltages
+of equal amplitude offset by $120^{\circ}$ in phase,
+\[
+v_{a}(t) = V_{m}\cos(\omega t), \quad v_{b}(t) = V_{m}\cos(\omega t -
+120^{\circ}), \quad v_{c}(t) = V_{m}\cos(\omega t + 120^{\circ}).
+\]
+The three voltages sum to zero at every instant, $v_{a}+v_{b}+v_{c}=0$,
+a consequence of the trigonometric identity for three equally-spaced
+sinusoids. The three-phase system has three operational advantages
+over single-phase: constant instantaneous power delivery to a balanced
+three-phase load (rather than $2\omega$-oscillating power as in
+single-phase); use of three rather than six conductors for the same
+power; and the natural production of a rotating magnetic field in
+three-phase motors, which simplifies motor design.
+
+Two connection topologies are standard:
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Wye} (or star, $Y$): the three sources share a common
+    neutral. The \engterm{line voltage} (between two phases) is
+    $\sqrt{3}$ times the \engterm{phase voltage} (between one phase
+    and neutral). North American residential service is wye:
+    $120\,\si{\volt}$ phase-to-neutral, $208\,\si{\volt}$ phase-to-
+    phase in a three-phase building.
+  \item \engterm{Delta} ($\Delta$): the three sources form a closed
+    triangle; no neutral. Line and phase voltages are equal; line and
+    phase currents differ by $\sqrt{3}$. Industrial motor wiring is
+    often delta.
+\end{itemize}
+
+A balanced three-phase load consumes total real power $P =
+\sqrt{3}V_{L}I_{L}\cos\phi$ where $V_{L}$ and $I_{L}$ are line voltage
+and line current (RMS) and $\phi$ is the power factor angle. The
+formula is identical for wye and delta loads. The $\sqrt{3}$ factor is
+the working multiplier the practising engineer carries when estimating
+three-phase loads from nameplate data.
+
+\section{Failure: grounding, EMC, signal integrity}\pathtag{core}
+
+Three failure modes recur in lumped-circuit practice. They are the
+counterpart in this chapter to the EMI and ground-loop failures of
+Chapter 8; here we treat them at the circuit-design level rather than
+the field level.
+
+\engterm{Improper grounding} is the most common failure mode of
+electronics that fail in the field after passing bench tests. The
+common pattern is that the designer assumes a single ideal ground
+node in the schematic, but in the physical layout the ground is a
+finite-impedance return path with measurable inductance and
+resistance. A high-current pulse along the ground trace drops a
+voltage that appears as common-mode interference on every other
+signal that referenced the same ground point. The cure is a
+\engterm{ground plane}: a large uninterrupted copper area on the
+printed circuit board whose low impedance keeps the ground reference
+nearly uniform across the board. For mixed-signal designs (digital
+and sensitive analog on the same board), separate analog and digital
+grounds joined at a single point near the data-converter chip prevent
+digital switching noise from contaminating the analog reference.
+
+\engterm{Power-rail decoupling} is the second-most-common failure
+mode. Every active device on a board draws current pulses from its
+supply when it switches; the pulses traverse the impedance of the
+supply distribution and induce voltage transients on the rail. The
+cure is decoupling capacitors: small ceramic capacitors (typically
+$100\,\si{\nano\farad}$) placed directly at each chip's supply pin,
+providing the high-frequency charge that the slower bulk supply
+cannot. The bulk supply has larger electrolytic capacitors
+($10$ to $100\,\si{\micro\farad}$) for the lower-frequency
+disturbances. The two-tier decoupling scheme covers from $1\,\si{
+\kilo\hertz}$ to $100\,\si{\mega\hertz}$ at the chip; above $100\,\si{
+\mega\hertz}$, ESL of the ceramic capacitors begins to dominate and
+the working approach shifts to embedded-capacitance layer stacks.
+
+\engterm{Signal integrity} failures arise when the lumped-circuit
+approximation breaks down. A digital signal with a $1\,\si{\nano
+\second}$ rise time has spectral content into $300\,\si{\mega\hertz}$
+and beyond; at that frequency, a $30\,\si{\centi\meter}$ trace is a
+significant fraction of a wavelength, and the trace must be treated
+as a transmission line. Reflections from impedance mismatches distort
+the signal; the receiver may interpret the distortion as spurious
+transitions. The cure is impedance-matched transmission lines,
+terminated at the receiver (or the source) with their characteristic
+impedance to absorb incident power without reflection. Chapter 10
+develops the transmission-line theory in detail; in this chapter the
+principle is that above a few tens of megahertz, every trace is a
+transmission line whether the designer planned for it or not.
+
+A representative engineering standard is IEC 61000-4-2 (electrostatic
+discharge immunity) and IEC 61000-4-4 (electrical fast-transient/
+burst immunity), which specify the test waveforms a piece of
+electrical equipment must withstand to be EMC-compliant on the
+European market. The standards are not academic abstractions; a
+device that fails the test cannot legally be sold, and the test
+itself is the working specification for the input-protection circuit
+on every commercial interface.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Bandpass filter design and characterisation]
+Design, build, and characterise a passive RLC bandpass filter with
+specified centre frequency and bandwidth, and compare measured
+performance to theory.
+
+\textbf{Specifications.} Centre frequency $f_{0} = 10\,\si{\kilo
+\hertz}$, quality factor $Q = 5$ (bandwidth $\Delta f = 2\,\si{\kilo
+\hertz}$), input and output impedance $\approx 1\,\si{\kilo\ohm}$.
+
+\textbf{Design.} A series RLC tuned to $f_{0} = 10\,\si{\kilo\hertz}$
+has $\omega_{0} = 2\pi\times 10^{4} = 6.28\times 10^{4}\,\si{\per
+\second}$. With $L = 10\,\si{\milli\henry}$ (standard preferred
+value), $C = 1/(\omega_{0}^{2}L) = 25\,\si{\nano\farad}$ (use $24$ or
+$27\,\si{\nano\farad}$ standard value, retune iteratively); for
+$Q = 5$, $R = \omega_{0}L/Q = 126\,\si{\ohm}$.
+
+\textbf{Build.} Solder the components on a piece of strip-board or
+ground-plane PCB. Mount BNC or pin-header connectors for input and
+output. Photograph the build.
+
+\textbf{Characterise.} Drive the input with a function generator at
+swept frequencies from $1$ to $100\,\si{\kilo\hertz}$ and measure the
+output amplitude and phase with an oscilloscope. Plot the magnitude
+response on log-log axes and the phase response on semi-log axes. Fit
+the data to the theoretical magnitude response and extract the
+measured centre frequency, bandwidth, and $Q$. Report the relative
+error of each parameter.
+
+\textbf{Report.} One-page report with the schematic, the build
+photograph, the measured frequency response plotted alongside theory,
+and a discussion of the dominant error sources. Expected: $f_{0}$
+within $5\,\%$ of design (limited by capacitor tolerance); $Q$ within
+$15\,\%$ of design (limited by inductor ESR being larger than the
+designed $R$ at audio frequencies).
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 45 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A series circuit has a $12\,\si{\volt}$ source, a $100\,\si{\ohm}$
+resistor, and a $50\,\si{\ohm}$ resistor. Compute the current, the
+voltage across each resistor, and the power dissipated by each.
+\end{exercise}
+
+\begin{exercise}
+Three resistors $R_{1} = 100\,\si{\ohm}$, $R_{2} = 200\,\si{\ohm}$,
+$R_{3} = 300\,\si{\ohm}$ are in parallel across a $24\,\si{\volt}$
+source. Compute the equivalent resistance, the total current, the
+current through each resistor, and the total power dissipated.
+\end{exercise}
+
+\begin{exercise}
+A circuit consists of a $20\,\si{\volt}$ source, a $5\,\si{\kilo\ohm}$
+resistor in series with the parallel combination of a $2\,\si{\kilo
+\ohm}$ resistor and a $3\,\si{\kilo\ohm}$ resistor. Compute the
+voltage across the parallel combination and the current through each
+resistor.
+\end{exercise}
+
+\begin{exercise}
+Find the Th\'evenin equivalent of the network seen looking into
+terminals $a$-$b$ for a $10\,\si{\volt}$ source in series with a
+$1\,\si{\kilo\ohm}$ resistor that feeds a parallel combination of a
+$2\,\si{\kilo\ohm}$ resistor and a $4\,\si{\kilo\ohm}$ resistor; the
+$4\,\si{\kilo\ohm}$ resistor's far end is terminal $a$ and the source
+ground is terminal $b$.
+\end{exercise}
+
+\begin{exercise}
+An RC circuit has $R = 1\,\si{\kilo\ohm}$, $C = 1\,\si{\micro\farad}$,
+driven by a $5\,\si{\volt}$ step from initial zero. Compute the
+capacitor voltage at $t = 0.5, 1, 2, 5\,\si{\milli\second}$. Compute
+the time at which $v_{C}$ first exceeds $4\,\si{\volt}$.
+\end{exercise}
+
+\begin{exercise}
+An RLC series circuit has $L = 1\,\si{\milli\henry}$, $C = 100\,\si{
+\nano\farad}$, $R = 10\,\si{\ohm}$. Compute the natural frequency, the
+damping ratio, the quality factor, and classify the response.
+\end{exercise}
+
+\begin{exercise}
+An RLC bandpass filter has $L = 10\,\si{\milli\henry}$, $C = 100\,\si{
+\nano\farad}$, $R = 100\,\si{\ohm}$. Compute the resonant frequency in
+hertz, the quality factor, and the $-3\,\si{\decibel}$ bandwidth.
+\end{exercise}
+
+\begin{exercise}
+A capacitor $C = 10\,\si{\micro\farad}$ has a voltage that varies as
+$v(t) = 5\sin(1000 t)\,\si{\volt}$. Compute the current waveform, the
+RMS current, and the impedance magnitude.
+\end{exercise}
+
+\begin{exercise}
+A motor draws $50\,\si{\ampere}$ at $230\,\si{\volt}$ RMS, $50\,\si{
+\hertz}$, with a power factor of $0.75$ lagging. Compute the real,
+reactive, and apparent power. Compute the capacitance needed in
+parallel with the motor to correct the power factor to $0.95$
+lagging.
+\end{exercise}
+
+\begin{exercise}
+A balanced three-phase load on a $400\,\si{\volt}$ line-to-line system
+consumes $50\,\si{\kilo\watt}$ at power factor $0.9$ lagging. Compute
+the line current.
+\end{exercise}
+
+\begin{exercise}
+Compute the transfer function of an RC low-pass filter with $R =
+1\,\si{\kilo\ohm}$, $C = 100\,\si{\nano\farad}$. Report the $-3\,\si{
+\decibel}$ frequency and the magnitude in decibels at $f = 10\,\si{
+\kilo\hertz}$ and $f = 100\,\si{\kilo\hertz}$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the impedance of an ideal capacitor in sinusoidal steady state
+starting from $i(t) = C\,\dd v/\dd t$ and applying the phasor
+representation $v(t) = \Re(\tilde V e^{j\omega t})$.
+\end{exercise}
+
+\begin{exercise}
+Derive Th\'evenin's theorem for a linear two-terminal network
+containing only independent sources and resistors. State precisely
+where linearity is used.
+\end{exercise}
+
+\begin{exercise}
+Derive the unit-step response of a second-order series RLC circuit in
+its three damping regimes by solving the characteristic equation
+$s^{2}+2\zeta\omega_{n}s+\omega_{n}^{2}=0$ and applying initial
+conditions $v_{C}(0) = 0$, $i_{L}(0) = 0$.
+\end{exercise}
+
+\begin{exercise}
+Derive the maximum power transfer theorem for a Th\'evenin source
+with open-circuit voltage $V_{\text{Th}}$ and source resistance
+$R_{\text{Th}}$ driving a real load $R_{L}$. State the efficiency at
+the matched condition and the conditions under which matched delivery
+is appropriate.
+\end{exercise}
+
+\begin{exercise}
+Derive the resonance and bandwidth of a parallel RLC tuned circuit
+driven by an ideal current source. Show that $Q_{\parallel} =
+R/(\omega_{0}L)$ and that the bandwidth is $\omega_{0}/Q$.
+\end{exercise}
+
+\begin{exercise}
+Show that an ideal lossless transformer with turns ratio $n$ reflects
+a secondary load impedance $Z_{L}$ to the primary as $Z_{\text{ref}}
+= Z_{L}/n^{2}$.
+\end{exercise}
+
+\begin{exercise}
+Derive the formula $P = \sqrt{3}V_{L}I_{L}\cos\phi$ for the total
+real power delivered to a balanced three-phase wye-connected load,
+starting from the single-phase formula and summing over the three
+phases.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the resistance of a typical household incandescent lamp from
+its nameplate power and voltage ratings. State whether the resistance
+is the cold resistance, the hot resistance, or an average; explain
+the difference.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time constant of a smartphone's battery-charging circuit
+during the constant-voltage phase of charging. State assumptions about
+the battery's internal resistance and the supply voltage.
+\end{exercise}
+
+\begin{exercise}
+Estimate the quality factor and bandwidth of a typical AM radio
+receiver's tuned circuit, given that adjacent AM stations are spaced
+$10\,\si{\kilo\hertz}$ in frequency and that strong adjacent-channel
+rejection is required.
+\end{exercise}
+
+\begin{exercise}
+Estimate the reactive power that a domestic refrigerator's motor
+demands during start-up, given that the motor draws roughly $7$ times
+its run current at start. State the duration of the start-up
+transient and its impact on the household's instantaneous demand.
+\end{exercise}
+
+\begin{exercise}
+Estimate the equivalent series resistance of a $1\,\si{\milli\farad}$
+aluminium electrolytic capacitor at $120\,\si{\hertz}$ and at
+$100\,\si{\kilo\hertz}$. State the dominant physical mechanism in
+each frequency range.
+\end{exercise}
+
+\begin{exercise}
+Estimate the total energy a $230\,\si{\volt}$, $50\,\si{\hertz}$
+household consumes during the first cycle after a power outage's
+restoration, given that the dominant inrush is the cold filaments of
+incandescent lamps and the capacitor charging in switched-mode power
+supplies. State the assumed installed wattage of each load type.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+Implement a SPICE-style nodal-analysis solver in a language of choice.
+The input is a netlist (resistors, voltage sources, current sources);
+the output is the steady-state node voltages. Test on a network of
+$10$ nodes with $20$ resistors and verify against hand calculation on
+a $3$-node sub-circuit.
+\end{exercise}
+
+\begin{exercise}
+Implement a transient simulator for first- and second-order linear
+circuits using trapezoidal-rule integration with step size $\Delta
+t$. Simulate the unit-step response of an RLC circuit at $\zeta = 0.1,
+0.5, 1, 2$ and compare to the analytical solution. Identify the step
+size at which the trapezoidal-rule truncation error becomes visible.
+\end{exercise}
+
+\begin{exercise}
+Implement the AC sweep of a passive bandpass filter and plot its Bode
+diagram. Compare to the analytical $H(\omega)$ and identify the
+component tolerances that would shift the centre frequency by
+$\pm 5\,\%$ and the $Q$ by $\pm 10\,\%$.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a first-order low-pass filter to attenuate the $50\,\si{\hertz}$
+mains-frequency component of a sensor signal by $40\,\si{\decibel}$
+while passing DC-to-$1\,\si{\hertz}$ within $1\,\si{\decibel}$.
+Specify $R$, $C$, the cutoff frequency, and the resulting in-band
+ripple. Identify the trade-off between attenuation at $50\,\si{\hertz}$
+and the settling time of the filter to a step input.
+\end{exercise}
+
+\begin{exercise}
+Design an inverting op-amp amplifier with voltage gain $-10$, input
+impedance $\ge 10\,\si{\kilo\ohm}$, and bandwidth $\ge 100\,\si{\kilo
+\hertz}$. Specify the feedback and input resistors, identify the
+required op-amp gain-bandwidth product, and select a candidate op-amp
+from a current commercial catalogue (as of 2025).
+\end{exercise}
+
+\begin{exercise}
+Design a power-factor-correction capacitor bank for an industrial
+load consuming $200\,\si{\kilo\watt}$ at $400\,\si{\volt}$ line-to-
+line, three-phase, $50\,\si{\hertz}$, with a measured power factor
+of $0.7$ lagging. Specify the capacitance per phase needed to bring
+the power factor to $0.95$ lagging, the kvar rating, and the
+operational considerations (over-voltage on light load, switching
+transients).
+\end{exercise}
+
+\begin{exercise}
+Design the decoupling-capacitor network for a digital circuit board
+carrying eight $3.3\,\si{\volt}$ logic chips, each drawing peak pulse
+currents of $200\,\si{\milli\ampere}$ with $1\,\si{\nano\second}$
+edges. Specify the bulk and bypass capacitor values, placement, and
+the target supply-rail impedance from DC to $100\,\si{\mega\hertz}$.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{standard}
+
+\begin{exercise}
+A bench LCR meter measures an unmarked component as $33\,\si{\nano
+\farad}$ at $1\,\si{\kilo\hertz}$, $32\,\si{\nano\farad}$ at $10\,\si{
+\kilo\hertz}$, and $25\,\si{\nano\farad}$ at $1\,\si{\mega\hertz}$.
+Identify the dielectric class (X7R, NPO, electrolytic) most consistent
+with this signature, and the secondary measurement that would
+distinguish among the candidates.
+\end{exercise}
+
+\begin{exercise}
+A transient on an oscilloscope shows a damped sinusoid following a
+$5\,\si{\volt}$ step input to a digital circuit's supply rail, with
+peak-to-peak amplitude $300\,\si{\milli\volt}$, period $25\,\si{
+\nano\second}$, and approximately three visible cycles before decay.
+Estimate the $L$ and $C$ of the supply-rail loop, identify the source
+of $L$ (PCB-trace inductance, bond-wire inductance, capacitor ESL),
+and propose a measurement that distinguishes among them.
+\end{exercise}
+
+\begin{exercise}
+A two-port network is characterised by measuring its input-impedance
+magnitude with the output open ($100\,\si{\ohm}$) and shorted ($25
+\,\si{\ohm}$). Identify whether the network is more consistent with
+a T-network of resistors, an L-network, or a transformer-coupled
+network, and propose the supplementary measurement that would close
+the identification.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+A circuit board with separate analog and digital sections shares a
+common ground at the power-supply input. The analog signal contains a
+$200\,\si{\milli\volt}$ peak-to-peak hash that correlates with
+digital-clock activity. Identify the failure mode and the layout
+change that would eliminate it.
+\end{exercise}
+
+\begin{exercise}
+An electrolytic capacitor in an industrial drive bulges and vents
+after $18$ months of service. The drive's nameplate rates the
+capacitor for $10\,000$ hours at $105\,\si{\celsius}$. Identify the
+failure mechanism, the likely thermal stress, and the design change
+that would extend the life.
+\end{exercise}
+
+\begin{exercise}
+A relay's contacts pit and fail after $50\,000$ operations against a
+nameplate rating of $10^{6}$ operations. The load is a small
+inductive solenoid. Identify the failure mode, the missing protective
+element, and the SPICE-level simulation that would have predicted
+it.
+\end{exercise}
+
+\begin{exercise}
+An audio amplifier reproduces a clean sinusoid at low amplitudes but
+clips its output at peak amplitudes corresponding to less than its
+rated output power. Identify three candidate causes (supply-rail
+sag, output-stage thermal limiting, feedback-loop slew limiting) and
+the oscilloscope measurements that would distinguish them.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A consulting client must choose between a $1\,\si{\milli\farad}$
+aluminium electrolytic capacitor and a $1\,\si{\milli\farad}$
+multi-layer-ceramic stack for a DC-bus decoupling application at
+$48\,\si{\volt}$. State the engineering trade-off in terms of ESR,
+ESL, life, cost, and failure mode. Identify the working application
+in which each is the preferred choice.
+\end{exercise}
+
+\begin{exercise}
+A regulator is considering raising the power-factor minimum for
+industrial consumers from $0.85$ to $0.95$, with a tariff penalty on
+consumers below the new minimum. Identify who benefits and who pays
+under the change, and the technical argument for and against the new
+minimum.
+\end{exercise}
+
+\begin{exercise}
+A team must choose between using passive RC filtering and an active
+op-amp-based filter for a $4$-Hz-cutoff anti-aliasing filter ahead of
+an analog-to-digital converter. Identify the design trade-off in
+terms of component count, noise, drift, power consumption, and
+output-impedance behaviour.
+\end{exercise}
+
+\begin{exercise}
+A design review questions whether a $230\,\si{\volt}$ AC line input
+to a small piece of laboratory equipment really needs a double-pole
+switch (interrupting both line and neutral) or whether a single-pole
+switch (interrupting only line) is sufficient. State the safety
+argument on each side and the regional regulation (IEC 60364) that
+governs the choice.
+\end{exercise}
