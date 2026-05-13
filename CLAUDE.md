@@ -178,8 +178,8 @@ Every chapter follows this skeleton (derived from the Ch 1 and Ch 2 pilots):
 
 `siunitx` does not define tokens for many imperial / non-SI units. Use plain text inside math mode rather than fighting the package:
 
-- `\si{\foot}`, `\si{\inch}`, `\si{\pound}`, `\si{\psi}`, `\si{\atmosphere}`, `\si{\bar}`, `\si{\degF}`, `\si{\horsepower}`, `\si{\hg}`, `\si{\torr}` all fail.
-- Replace with: `1\,\text{ft}`, `1\,\text{in}`, `40\,\text{ft}\cdot\text{lbf}`, `32\,\text{psi}`, `1\,\text{atm}`, `25\,\text{bar}`, `300\,{}^{\circ}\mathrm{F}`, `5.0\,\text{L}/100\,\text{km}`, `120/80\,\text{mmHg}`, etc.
+- `\si{\foot}`, `\si{\inch}`, `\si{\pound}`, `\si{\psi}`, `\si{\atmosphere}`, `\si{\bar}`, `\si{\degF}`, `\si{\horsepower}`, `\si{\hg}`, `\si{\torr}`, `\si{\rayl}` all fail.
+- Replace with: `1\,\text{ft}`, `1\,\text{in}`, `40\,\text{ft}\cdot\text{lbf}`, `32\,\text{psi}`, `1\,\text{atm}`, `25\,\text{bar}`, `300\,{}^{\circ}\mathrm{F}`, `5.0\,\text{L}/100\,\text{km}`, `120/80\,\text{mmHg}`, `415\,\text{rayl}`, etc.
 - Do **not** nest `\degC` inside `\si{}`. The `\degC` macro expands to `\si{\degreeCelsius}`. Use one or the other:
   - inside `\si{...}`: `\si{\degreeCelsius}`
   - bare in math mode: `\degC` (which expands to `\si{\degreeCelsius}`)

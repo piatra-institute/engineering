@@ -1,40 +1,1336 @@
 \chapter{Plates, shells, solid mechanics}
 \label{vol03:ch09}
 
-\epigraph{}{}
+\epigraph{The reader is reminded that the bending theory of plates is
+based on the same assumptions as the elementary bending theory of
+beams, with the additional assumption that the deflections are small
+in comparison with the thickness of the plate.}{Stephen Timoshenko
+and S.\ Woinowsky-Krieger, \emph{Theory of Plates and Shells}, 2nd
+ed.\ (1959), preface to chapter 1
+\cite[p.~v]{text:timoshenko-plates-shells}.}
 
-\chapmeta{Half-life: durable. Archetypes: stability, scaling, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable for plate and shell theory; medium for finite-element practice. Archetypes: stability, scaling, failure. Exercise target: 35. Project track: analytical plus simulation (hybrid). Hazard class: none. Reader path default: standard, with sections explicitly tagged. Named cases: Hubble Space Telescope primary mirror (1990, cross-referenced for thin-mirror figure error and the metrology-chain failure pattern).}
 
 \noindent
-\TODO{Volume 3, Chapter 9. Approx 120 pp.}
+A beam is a one-dimensional structural element; a plate is the
+two-dimensional generalisation, a shell is the curved two-dimensional
+generalisation, and three-dimensional elasticity is the parent theory
+beneath all three. The chapter develops Kirchhoff-Love plate theory
+in the small-deflection limit, the membrane and bending theory of
+thin shells, the equations of three-dimensional linear elasticity in
+the form the finite-element method (FEM) uses them, the working
+discipline of mesh generation and convergence checking, and the
+verification, validation, and uncertainty quantification that turn
+an FEM output into a load-bearing engineering claim. The failure
+section names the mechanisms by which simulation results mislead
+engineers who trust them without verifying them.
 
-\section{Plate theory}
-\TODO{Section prose.}
+\section{Plate theory}\pathtag{core}
 
-\section{Shell structures}
-\TODO{Section prose.}
+A \engterm{plate} is a structural element whose thickness is small
+compared to its in-plane dimensions and which carries transverse load
+primarily by bending. The plate analogue of the Euler-Bernoulli beam
+theory of chapter 8 is the Kirchhoff-Love plate theory, due to
+Gustav Kirchhoff (1850) and later refined by A.\ E.\ H.\ Love. The
+theory rests on three kinematic assumptions, parallel to those of
+slender-beam theory:
 
-\section{Three-dimensional stress states}
-\TODO{Section prose.}
+\begin{itemize}[leftmargin=*]
+  \item Straight lines normal to the midsurface before deformation
+    remain straight and normal after deformation.
+  \item These normals do not change length: the plate's thickness is
+    preserved.
+  \item The transverse normal stress $\sigma_{zz}$ through the
+    thickness is small compared to the in-plane stresses.
+\end{itemize}
 
-\section{Anisotropy preview}
-\TODO{Section prose.}
+The first two assumptions, the \engterm{Kirchhoff hypothesis},
+neglect transverse shear deformation and are accurate when the
+plate's thickness $h$ is small compared to its smallest in-plane
+dimension (the working rule is $h \le L/20$). For thicker plates
+the Mindlin-Reissner theory (section 9.3) keeps transverse shear and
+gives more accurate results.
 
-\section{Finite-element method introduced}
-\TODO{Section prose.}
+Under the Kirchhoff hypothesis, the displacement field of a plate
+with midsurface deflection $w(x, y)$ is
+\[
+u(x, y, z) = -z \frac{\partial w}{\partial x}, \quad
+v(x, y, z) = -z \frac{\partial w}{\partial y}, \quad
+w(x, y, z) = w(x, y),
+\]
+where $z$ is measured from the midsurface and $(u, v, w)$ are the
+displacement components in the $(x, y, z)$ directions. The strains
+follow:
+\[
+\epsilon_{xx} = -z \frac{\partial^2 w}{\partial x^2}, \quad
+\epsilon_{yy} = -z \frac{\partial^2 w}{\partial y^2}, \quad
+\gamma_{xy} = -2 z \frac{\partial^2 w}{\partial x \partial y},
+\]
+linear in $z$, as in beams. The in-plane stresses, by Hooke's law
+for an isotropic plate in plane stress (Young's modulus $E$,
+Poisson's ratio $\nu$), are
+\begin{align*}
+\sigma_{xx} &= \frac{E}{1 - \nu^2}\left(\epsilon_{xx} + \nu
+\epsilon_{yy}\right), \\
+\sigma_{yy} &= \frac{E}{1 - \nu^2}\left(\epsilon_{yy} + \nu
+\epsilon_{xx}\right), \\
+\tau_{xy} &= \frac{E}{2(1+\nu)} \gamma_{xy}.
+\end{align*}
 
-\section{Mesh quality and the engineer's responsibility}
-\TODO{Section prose.}
+The bending moments per unit length of the plate's midsurface are
+the first moments of the stresses through the thickness,
+\[
+M_{xx} = \int_{-h/2}^{h/2} z \sigma_{xx} \,dz, \quad
+M_{yy} = \int_{-h/2}^{h/2} z \sigma_{yy} \,dz, \quad
+M_{xy} = \int_{-h/2}^{h/2} z \tau_{xy} \,dz.
+\]
+Performing the integrals,
+\[
+M_{xx} = -D \left(\frac{\partial^2 w}{\partial x^2} + \nu
+\frac{\partial^2 w}{\partial y^2}\right), \quad
+M_{yy} = -D \left(\frac{\partial^2 w}{\partial y^2} + \nu
+\frac{\partial^2 w}{\partial x^2}\right),
+\]
+\[
+M_{xy} = -D(1-\nu) \frac{\partial^2 w}{\partial x \partial y},
+\]
+where the constant
+\[
+D = \frac{E h^3}{12(1 - \nu^2)}
+\]
+is the plate's \engterm{flexural rigidity}, the two-dimensional
+analogue of the beam's $EI$. The cube on thickness is structurally
+identical to the cube on depth in the beam: a plate twice as thick
+has eight times the flexural rigidity.
 
-\section{Verification, validation, and uncertainty quantification in FEM}
-\TODO{Section prose.}
+Transverse force equilibrium of an infinitesimal plate element,
+combined with the moment-curvature relations above, gives the
+\engterm{plate bending equation}, the two-dimensional analogue of
+the Euler-Bernoulli beam equation $EI \,y'''' = w(x)$:
+\[
+D \nabla^4 w = q(x, y),
+\]
+with $\nabla^4 = \nabla^2 \nabla^2$ the biharmonic operator and
+$q(x, y)$ the distributed transverse load per unit area. The
+equation is a fourth-order linear PDE in two spatial variables; the
+boundary conditions on the plate's edge (two conditions per edge)
+close the problem.
 
-\section{Failure: when FEM lies, and why beginners trust it anyway}
-\TODO{Section prose.}
+The standard plate boundary conditions, on an edge $x = a$:
 
+\begin{itemize}[leftmargin=*]
+  \item Simply supported (pin or roller along the edge):
+    $w = 0$, $M_{xx} = 0$. The plate's edge deflection vanishes;
+    the moment normal to the edge vanishes.
+  \item Clamped (built-in along the edge): $w = 0$, $\partial w/
+    \partial x = 0$. The deflection and the slope normal to the
+    edge both vanish.
+  \item Free: $M_{xx} = 0$ and the Kirchhoff effective shear $V_{xx}
+    = \partial M_{xx}/\partial x + 2 \partial M_{xy}/\partial y = 0$.
+    The effective shear combines the transverse shear with the
+    twisting moment's gradient because the Kirchhoff hypothesis does
+    not admit independent twist; see \cite[ch.~2]{
+    text:timoshenko-plates-shells} for the derivation.
+\end{itemize}
 
-\section{Project}
-\TODO{solve a 2D stress problem analytically; solve it again with FEM; reconcile}
+\engterm{Closed-form solutions} exist for a handful of canonical
+cases. A simply supported rectangular plate of dimensions $a \times
+b$ under uniform load $q_0$ has the Navier double-sine series
+solution
+\[
+w(x, y) = \frac{16 q_0}{\pi^6 D} \sum_{m, n \text{ odd}}
+\frac{\sin(m\pi x/a) \sin(n\pi y/b)}{m n \left[(m/a)^2 + (n/b)^2
+\right]^2}.
+\]
+The series converges rapidly; the first term ($m = n = 1$) typically
+gives the centre deflection to within a few percent. For a square
+plate of side $a$, $w_{\max} \approx 0.00406 q_0 a^4/D$, a useful
+working number.
+
+A clamped circular plate of radius $a$ under uniform load $q_0$ has
+the axisymmetric closed-form solution
+\[
+w(r) = \frac{q_0 (a^2 - r^2)^2}{64 D}, \quad
+w_{\max} = w(0) = \frac{q_0 a^4}{64 D},
+\]
+the standard reference case for circular-plate analysis (Timoshenko
+\cite[ch.~3, eqn.~62]{text:timoshenko-plates-shells}). The
+maximum bending moment occurs at the clamped edge, where
+$M_{rr} = -q_0 a^2/8$.
+
+For non-canonical geometries, the working tool is the finite-element
+method (section 9.5); the closed-form solutions remain the reference
+against which the FEM result is verified.
+
+\begin{principle}[Plates carry transverse load with thickness cubed]
+For a thin isotropic plate of thickness $h$ in pure bending, the
+flexural rigidity scales as $D = E h^3/[12(1-\nu^2)]$. The thickness
+appears cubed because the bending moment per unit length is the
+first moment of the linearly varying stress through the thickness,
+and the integral picks up an additional factor of $h$ from the
+moment arm. Doubling the plate's thickness multiplies its bending
+stiffness by eight; halving the thickness divides the stiffness by
+eight. The thickness is therefore the most powerful parameter in
+plate design, exactly as the depth is the most powerful parameter
+in beam design.
+\end{principle}
+
+\section{Shell structures}\pathtag{standard}
+
+A \engterm{shell} is a curved plate: a thin structural element whose
+midsurface is a curved surface and which carries load by both
+bending and membrane action. The fundamental difference between a
+plate and a shell is that a shell can carry transverse load by
+in-plane (membrane) stresses, with bending playing only a secondary
+role. An eggshell carries the weight of a hen by membrane
+compression; a folded paper carries far more transverse load than a
+flat paper because the folds give it shell-like geometry.
+
+For a thin shell of midsurface radius $R$ and thickness $h$, with
+$h/R \ll 1$, the stress state at any point is decomposed into
+membrane stresses (independent of $z$ through the thickness, in
+equilibrium with the applied load) and bending stresses (linear in
+$z$, vanishing on the midsurface). The decomposition is exact for
+the linear-elastic shell.
+
+\engterm{Membrane theory} treats the shell as a curved surface that
+carries only in-plane stress resultants, $N_{xx}, N_{yy}, N_{xy}$
+(forces per unit length of midsurface), with no bending. For a
+shell of revolution under axisymmetric load (a pressure vessel, a
+water tower, a dome), membrane theory gives the meridional and
+circumferential stress resultants directly from force equilibrium
+on a strip of the shell. The standard examples:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Thin spherical pressure vessel} of radius $R$,
+    thickness $h$, internal gauge pressure $p$:
+    \[
+    \sigma_{\text{meridional}} = \sigma_{\text{circumferential}} =
+    \frac{pR}{2h}.
+    \]
+    Both principal membrane stresses are equal; the sphere is the
+    most efficient pressure-containing geometry.
+  \item \engterm{Thin cylindrical pressure vessel} of radius $R$,
+    thickness $h$, length $L \gg R$, internal gauge pressure $p$:
+    \[
+    \sigma_{\text{circumferential (hoop)}} = \frac{pR}{h}, \quad
+    \sigma_{\text{axial}} = \frac{pR}{2h}.
+    \]
+    The hoop stress is twice the axial stress; the cylinder is
+    twice as efficient in axial as in hoop, and this is why
+    pressure-vessel design uses the hoop stress as the governing
+    quantity.
+  \item \engterm{Conical shell} of half-angle $\alpha$ under
+    internal pressure $p$, at distance $s$ along the slant from the
+    apex:
+    \[
+    \sigma_{\text{circumferential}} = \frac{p s \tan\alpha}{h},
+    \quad \sigma_{\text{meridional}} = \frac{p s \tan\alpha}{2 h}.
+    \]
+    The stresses grow linearly with distance from the apex; the
+    cone is therefore most heavily stressed at its base.
+\end{itemize}
+
+The membrane-theory result is exact within the membrane hypothesis
+(no bending, no transverse shear, no thickness through-stress) and
+is accurate for thin shells away from edge constraints, point loads,
+or geometric discontinuities. Near such locations, bending stresses
+that are not small compared to the membrane stresses arise as a
+\engterm{boundary layer} of bending in the shell; the working tool
+for the boundary-layer analysis is the Donnell-Mushtari-Vlasov
+equation set, beyond the scope of this chapter (see
+\cite[ch.~14]{text:timoshenko-plates-shells}).
+
+\engterm{Shell buckling}. A thin shell in compression buckles at a
+load far below the equivalent flat-plate buckling load and far below
+the prediction of linear shell-buckling theory. The classical Euler
+buckling result for a thin spherical shell of radius $R$ under
+external pressure is
+\[
+p_{\text{cr}} = \frac{2 E h^2}{R^2 \sqrt{3(1-\nu^2)}},
+\]
+but experiment shows that real spherical shells buckle at $20$ to
+$40\,\%$ of this value because of geometric imperfections. A small
+flat spot, a small dimple, or a small out-of-roundness reduces the
+buckling load substantially. The shell-buckling literature calls
+this the \engterm{imperfection sensitivity} of shells, and it is the
+single most important practical issue in shell design. Design
+codes for shells (ASME Boiler and Pressure Vessel Code, Section VIII)
+use reduced buckling capacities calibrated to extensive test data;
+no engineer designs a shell against its linear-theory buckling load.
+
+\engterm{The Brazier effect}. A thin-walled tube under bending
+ovalises: the originally circular cross-section flattens into an
+ellipse at the section of maximum bending moment, because the
+compression-side fibres push inward while the tension-side fibres
+pull outward. The ovalisation reduces the section's effective
+bending stiffness and triggers a nonlinear failure mode at a moment
+significantly below the linear prediction. Brazier (1927) gave the
+classical analysis; modern thin-tube design (bicycle frames, aircraft
+fuselages, oil pipelines) accounts for the Brazier effect in the
+design rules for tube wall thickness.
+
+\section{Three-dimensional elasticity and the FEM equations}\pathtag{standard}
+
+The Kirchhoff plate theory and the membrane shell theory are
+\engterm{reduced models}: they collapse one or more spatial
+dimensions by imposing kinematic assumptions on the displacement
+field. The full \engterm{three-dimensional linear elasticity}
+equations make no such assumption; they govern the displacement
+field $\vec{u}(x, y, z) = u\hat{\imath} + v\hat{\jmath} + w\hat{k}$
+of an arbitrary solid body under load.
+
+The three governing equation sets, in compact tensor notation:
+
+\engterm{Kinematics} (strain-displacement, infinitesimal-strain
+limit):
+\[
+\epsilon_{ij} = \tfrac{1}{2}\left(\frac{\partial u_i}{\partial x_j}
++ \frac{\partial u_j}{\partial x_i}\right).
+\]
+The strain tensor $\epsilon_{ij}$ is symmetric ($\epsilon_{ij} =
+\epsilon_{ji}$) and has six independent components in three
+dimensions; the relation to displacement is the same kinematic
+identity introduced in chapter 3 of this volume.
+
+\engterm{Constitutive law} (Hooke's law, isotropic linear-elastic
+material):
+\[
+\sigma_{ij} = \lambda \delta_{ij} \epsilon_{kk} + 2 \mu
+\epsilon_{ij},
+\]
+with $\lambda, \mu$ the Lam{\'e} parameters ($\mu$ also the shear
+modulus $G$, and $\lambda + 2\mu/3 = K$ the bulk modulus). The
+material constants are two: any pair of $(E, \nu)$, $(E, G)$,
+$(K, G)$, or $(\lambda, \mu)$ uniquely determines the others by
+algebraic identities.
+
+\engterm{Equilibrium} (Cauchy stress, no body force besides
+gravity):
+\[
+\frac{\partial \sigma_{ij}}{\partial x_j} + \rho g_i = 0,
+\]
+with $\rho$ the mass density and $g_i$ the gravitational
+acceleration. The equation is the three-dimensional analogue of
+$dM/dx = V$, $dV/dx = -w$ in beams: equilibrium of an
+infinitesimal element.
+
+The boundary conditions on a body of volume $\Omega$ with boundary
+$\partial\Omega$ are imposed in two parts:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Displacement (Dirichlet) boundary conditions} on
+    $\Gamma_u \subset \partial\Omega$: $\vec{u} = \vec{u}_0$ on
+    $\Gamma_u$. The body is held in place along that part of the
+    boundary.
+  \item \engterm{Traction (Neumann) boundary conditions} on
+    $\Gamma_t = \partial\Omega \setminus \Gamma_u$: $\sigma_{ij}
+    n_j = t_i$ on $\Gamma_t$, with $n_j$ the outward unit normal
+    and $t_i$ the applied surface traction.
+\end{itemize}
+
+The displacement and traction boundary conditions together
+constitute the \engterm{boundary-value problem} of elasticity. The
+problem is well-posed (existence and uniqueness of the solution)
+under mild regularity conditions on the geometry, loads, and
+material constants.
+
+\engterm{Plane stress and plane strain}. Two two-dimensional
+reductions of the three-dimensional elasticity problem are widely
+used.
+
+\emph{Plane stress} applies to thin in-plane-loaded plates, where
+the through-thickness stresses are negligible: $\sigma_{zz} =
+\sigma_{xz} = \sigma_{yz} = 0$. The displacement is in the $(x, y)$
+plane, with the through-thickness strain $\epsilon_{zz}$ determined
+by the constitutive equations.
+
+\emph{Plane strain} applies to long prismatic bodies loaded
+transversely, where the through-thickness displacement is
+constrained: $\epsilon_{zz} = \epsilon_{xz} = \epsilon_{yz} = 0$.
+A long pipe under internal pressure (away from the ends), a tunnel
+in soil, a long retaining wall: all are plane strain.
+
+The two reductions differ in their effective elastic constants. For
+plane stress, $E^* = E$, $\nu^* = \nu$. For plane strain, $E^* =
+E/(1 - \nu^2)$, $\nu^* = \nu/(1-\nu)$. The two-dimensional
+biharmonic equation $\nabla^4 \phi = 0$ for the Airy stress
+function $\phi$ (defined by $\sigma_{xx} = \partial^2\phi/\partial
+y^2$, $\sigma_{yy} = \partial^2\phi/\partial x^2$, $\sigma_{xy} =
+-\partial^2\phi/\partial x\partial y$) governs both cases; the
+difference is in the boundary conditions and in the recovery of
+the through-thickness stresses or strains.
+
+\engterm{The variational principle}. The boundary-value problem of
+linear elasticity is equivalent to the minimisation of the
+\engterm{total potential energy}
+\[
+\Pi[\vec{u}] = \int_\Omega \tfrac{1}{2} \sigma_{ij} \epsilon_{ij}
+\,dV - \int_\Omega \rho g_i u_i \,dV - \int_{\Gamma_t} t_i u_i \,dA
+\]
+over all kinematically admissible displacement fields (those that
+satisfy the displacement boundary conditions). The displacement
+field that minimises $\Pi$ is the unique solution to the
+boundary-value problem. The variational formulation is the
+foundation of the finite-element method, which discretises the
+admissible-displacement space and finds the minimum on the
+discretised space.
+
+\section{Anisotropy preview}\pathtag{mastery}
+
+The isotropic constitutive law $\sigma_{ij} = \lambda \delta_{ij}
+\epsilon_{kk} + 2\mu \epsilon_{ij}$ assumes that the material's
+elastic response is independent of orientation. The assumption
+fails for many engineering materials: wood (orthotropic), composite
+laminates (orthotropic at the lamina, more general at the
+laminate), single crystals (cubic, hexagonal, or lower symmetry),
+rolled steel (mild orthotropy from rolling texture), and biological
+tissues (anisotropy that varies with loading history).
+
+The general linear-elastic constitutive law for an anisotropic
+material has the form
+\[
+\sigma_{ij} = C_{ijkl} \epsilon_{kl},
+\]
+where $C_{ijkl}$ is the fourth-rank elasticity tensor with
+$3^4 = 81$ components. The symmetries $\sigma_{ij} = \sigma_{ji}$,
+$\epsilon_{kl} = \epsilon_{lk}$, and (from the existence of a
+strain-energy potential) $C_{ijkl} = C_{klij}$ reduce the number
+of independent components to $21$ in the most general triclinic
+case. Material symmetries further reduce the count: orthotropic
+materials have $9$ independent constants; tetragonal have $6$;
+hexagonal (or transversely isotropic) have $5$; cubic have $3$;
+isotropic have $2$.
+
+\engterm{Wood} is approximately orthotropic with three principal
+directions: longitudinal (along the grain), radial, and tangential
+to the growth rings. The longitudinal Young's modulus exceeds the
+radial and tangential moduli by factors of $20$ or more; the shear
+moduli are smaller again. The structural engineer who designs in
+wood designs in the orthotropic frame and respects the
+grain-direction-dependent allowable stresses (NDS for the United
+States, Eurocode 5 for the European Union).
+
+\engterm{Composite laminates} are constructed from layers of
+unidirectional fibre-reinforced material stacked at chosen
+orientations. A typical carbon-fibre-epoxy lamina has
+longitudinal (fibre-direction) Young's modulus of $130$ to $200\,
+\text{GPa}$, transverse Young's modulus of $7$ to $10\,\text{GPa}$,
+in-plane shear modulus of $4$ to $7\,\text{GPa}$, and major
+Poisson's ratio of $0.25$ to $0.35$. The laminate's effective
+elastic properties depend on the stacking sequence, layer
+thicknesses, and ply orientations; the working tool is classical
+laminate plate theory, which assembles the laminate stiffness
+matrix from the lamina stiffness matrices and the ply-orientation
+rotations.
+
+The design discipline for anisotropic materials starts with the
+correct material model. An isotropic FEM analysis of a composite
+laminate, or a wooden beam loaded across the grain analysed as
+isotropic, gives wrong stresses by factors that can exceed two and
+unsafe predictions of failure. Composite design is the subject of
+Volume V chapters 11 and 12; the present chapter notes only that
+the FEM machinery extends to anisotropic materials by replacing
+the isotropic elasticity tensor with the anisotropic tensor,
+nothing more.
+
+\section{Finite-element method: introduction}\pathtag{core}
+
+The \engterm{finite-element method} (FEM) is a numerical method
+for solving partial differential equations on arbitrary geometries.
+For linear elasticity, the FEM discretises the domain into
+elements, approximates the displacement field within each element
+as a low-order polynomial in the element's local coordinates,
+assembles the global stiffness matrix from the elements, and
+solves the resulting linear system for the nodal displacements.
+The method was developed in the 1950s and 1960s for aerospace
+structural analysis (Turner, Clough, Martin, Topp, 1956) and has
+become the dominant analytical tool for structural mechanics
+across every engineering discipline. The standard engineering
+reference is Zienkiewicz, Taylor, and Zhu
+\cite[chs.~1--3]{text:zienkiewicz-fem}.
+
+The method's working steps, in the order an engineer performs
+them:
+
+\begin{enumerate}
+  \item \engterm{Discretise the geometry.} Divide the body into
+    elements: triangles or quadrilaterals in two dimensions;
+    tetrahedra, hexahedra, prisms, or pyramids in three dimensions.
+    The collection of elements is the \engterm{mesh}; the points at
+    which elements connect are the \engterm{nodes}.
+  \item \engterm{Choose the element type.} The element type fixes
+    the polynomial order of the displacement field within the
+    element. Linear (first-order) elements have nodes only at
+    corners; quadratic (second-order) elements have additional
+    nodes at edge midpoints. Higher-order elements give more
+    accuracy per element but more computation per element.
+  \item \engterm{Assemble the global stiffness matrix.} Each
+    element contributes a small stiffness matrix $K_e$ (typically
+    $6 \times 6$ to $30 \times 30$ depending on element type and
+    dimension) that relates the element's nodal forces to its
+    nodal displacements. The global stiffness matrix $K$ is
+    assembled by summing the element contributions at the shared
+    nodes; the result is a large sparse symmetric positive
+    semidefinite matrix.
+  \item \engterm{Impose boundary conditions.} Displacement
+    boundary conditions are imposed by removing the corresponding
+    rows and columns of $K$ and the corresponding entries of the
+    force vector $\vec{F}$. Traction boundary conditions become
+    nodal forces by integrating the traction over the element
+    boundary.
+  \item \engterm{Solve the linear system} $K \vec{u} = \vec{F}$
+    for the nodal displacements $\vec{u}$. The solver is either
+    direct (sparse Cholesky factorisation) for problems up to
+    perhaps $10^7$ degrees of freedom, or iterative (conjugate
+    gradient with preconditioning) for larger problems.
+  \item \engterm{Recover element stresses and strains} from the
+    nodal displacements by differentiating the element's
+    interpolated displacement field. The stresses are typically
+    most accurate at the Gauss points (interior integration
+    points) of the element and less accurate at the nodes and
+    edges.
+\end{enumerate}
+
+The method is general: the same six steps work for plates, shells,
+three-dimensional solids, plane stress, plane strain, axisymmetric
+problems, linear and nonlinear materials, static and dynamic loads.
+Every commercial finite-element package (Abaqus, ANSYS, NASTRAN,
+LS-DYNA, COMSOL, the open-source Code\_Aster and CalculiX) implements
+the same machinery with different element libraries and different
+solvers.
+
+\engterm{Convergence}. The FEM solution depends on the mesh: refining
+the mesh changes the answer, and a well-posed problem produces a
+sequence of FEM solutions that converges to the exact solution as
+the mesh is refined. The standard refinement strategies:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{h-refinement}: keep the element order fixed, reduce
+    the element size. The error decreases as $h^p$, where $p$ is
+    the polynomial order of the element and $h$ is the
+    characteristic element size.
+  \item \engterm{p-refinement}: keep the mesh fixed, increase the
+    element order. The error decreases exponentially in $p$ for
+    smooth solutions.
+  \item \engterm{hp-refinement}: refine the mesh near features
+    (corners, point loads, material discontinuities) and increase
+    the element order in smooth regions. The combination gives the
+    best convergence rate but requires more sophisticated mesh
+    management.
+\end{itemize}
+
+\engterm{Mesh-convergence study}. A working FEM analysis is not a
+single run on a single mesh; it is a sequence of runs on progressively
+refined meshes, with the engineer verifying that the quantity of
+interest (peak stress, maximum deflection, natural frequency) is
+converging to a stable value as the mesh is refined. A typical study
+runs the analysis on three or four meshes with element-size ratios
+of $2:1$, plots the quantity of interest against the inverse element
+size, and extrapolates to zero element size by Richardson
+extrapolation. A result that has not been checked against mesh
+convergence is a result that depends on the mesh, and is therefore
+not a result.
+
+\begin{archetype}[Stability]
+The archetype of plate, shell, and three-dimensional elasticity is
+\emph{stability}: the load capacity of the structure is set not by
+material strength but by the geometric stability of the loaded
+configuration. A thin spherical shell buckles at $20\,\%$ of its
+linear-theory critical load because a small dimple destabilises
+the membrane equilibrium. A thin-walled tube under bending
+ovalises and triggers the Brazier failure at a moment below the
+linear prediction. A plate under in-plane compression buckles
+out-of-plane at a load far below the material's yield. The
+discipline of stability-dominated design is to compute not only
+the static stress state but also the bifurcation point of the
+loaded equilibrium, and to design with a stability margin large
+enough to absorb the imperfections that real structures carry.
+\end{archetype}
+
+\section{Mesh quality and the engineer's responsibility}\pathtag{core}
+
+A finite-element solution is only as good as the mesh on which it
+is computed. A poor mesh produces wrong answers, and the wrongness
+is not signalled by the solver: the analysis runs, the colours on
+the screen look reassuring, and the numbers are wrong. The
+engineer's responsibility is to verify the mesh before trusting
+the result.
+
+The diagnostics of mesh quality, in order of importance:
+
+\engterm{Element aspect ratio.} The ratio of the element's longest
+to its shortest edge. For linear tetrahedra and triangles, aspect
+ratios above $\sim 5$ produce unreliable stress recovery;
+ratios above $\sim 20$ produce wrong results. The mesh generator
+must control aspect ratio everywhere, including near boundaries
+and geometric features where automatic mesh refinement may
+inadvertently produce thin slivers.
+
+\engterm{Element skewness.} The deviation of the element's
+internal angles from their ideal values ($60^{\circ}$ for
+equilateral triangles, $90^{\circ}$ for quadrilaterals, the
+corresponding values for three-dimensional elements). Skewed
+elements have poorly conditioned stiffness matrices and produce
+inaccurate stresses. The working rule is to keep all interior
+angles within $\pm 30^{\circ}$ of the ideal.
+
+\engterm{Element warpage} (for quadrilateral and hexahedral
+elements). A quadrilateral element whose four corner nodes are
+not coplanar is warped; the warpage produces an additional
+mode in the element's stiffness matrix that distorts the
+displacement field. The working rule is to keep the warpage
+below $5\,\%$ of the element's characteristic size.
+
+\engterm{Mesh refinement near stress concentrations.} A hole, a
+sharp corner, a material discontinuity, a point load, or any
+location of high stress gradient requires fine mesh refinement
+locally. A coarse mesh at a stress concentration under-predicts
+the peak stress by factors that can exceed two; an FEM analysis
+that misses a stress concentration is an FEM analysis that
+predicts a non-failure for a member that will fail.
+
+\engterm{Convergence of the quantity of interest.} The peak stress
+at a stress concentration may converge slowly with mesh
+refinement, or it may not converge at all if the geometry has a
+re-entrant corner (a singular stress field). The engineer must
+verify convergence on the quantity of interest, not on any
+quantity. A converged maximum-deflection result is not a
+converged maximum-stress result; the two quantities have different
+convergence rates and may require different meshes.
+
+\engterm{Material-discontinuity meshing.} Elements should not span
+material discontinuities. A composite laminate is meshed with
+separate element layers for each ply; a steel-concrete composite
+beam is meshed with separate elements for the steel and the
+concrete, connected at the interface by either continuous
+displacement or a contact-mechanics interface.
+
+\engterm{Element selection.} For thin structures (plates, shells)
+the engineer uses shell elements rather than solid elements,
+because solid elements with high aspect ratio in the thickness
+direction are prone to \engterm{shear locking}, a numerical
+artifact in which the element's bending stiffness is overestimated
+by a factor that can exceed ten. The shell element formulation
+handles the thin-structure kinematics correctly. Similarly, for
+nearly incompressible materials ($\nu \to 0.5$, as in rubber or
+nearly-saturated soil), the engineer uses elements formulated with
+mixed displacement-pressure interpolation to avoid
+\engterm{volumetric locking}.
+
+\engterm{The mesh-generation workflow.} A working FEM analyst
+proceeds:
+
+\begin{enumerate}
+  \item Generate a first coarse mesh on the entire domain, with
+    element size comparable to the smallest geometric feature.
+  \item Refine locally near stress concentrations, geometric
+    discontinuities, and material interfaces.
+  \item Check element quality (aspect ratio, skewness, warpage)
+    against the analysis software's quality metrics. Repair
+    poor-quality elements either manually or by remeshing.
+  \item Run the analysis on the first mesh; record the quantity
+    of interest.
+  \item Refine the mesh by a factor of two; rerun; record the
+    quantity of interest.
+  \item Compare the two runs. If they agree to within the
+    required tolerance, the analysis is converged; if not,
+    refine again. Continue until convergence is confirmed.
+\end{enumerate}
+
+A finite-element analysis whose mesh-convergence study is not in
+the report is not a finite-element analysis whose results can be
+trusted.
+
+\section{Verification, validation, uncertainty quantification}\pathtag{standard}
+
+A finite-element analysis produces numerical answers. Whether
+those numerical answers correspond to the physical system the
+engineer wishes to predict is a separate question, addressed by
+the disciplines of \engterm{verification}, \engterm{validation},
+and \engterm{uncertainty quantification} (VVUQ).
+
+\engterm{Verification} asks: does the simulation solve the
+mathematical model correctly? It is the discipline of confirming
+that the software, the mesh, the solver, and the numerical
+parameters together produce the solution of the boundary-value
+problem the engineer intended to solve. Verification is internal
+to the simulation; it does not require any comparison with physical
+reality. The standard verification tools:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Code verification}. Run the software on test
+    problems with known analytical solutions and confirm that the
+    numerical solution converges to the analytical solution at
+    the expected rate. Commercial codes are verified by their
+    vendors against benchmark suites; the engineer should be
+    aware of the verified element types and physical models in
+    use.
+  \item \engterm{Calculation verification}. Run a mesh-convergence
+    study (section 9.6) on the actual problem. Confirm that the
+    quantity of interest converges to a stable value as the mesh
+    is refined.
+  \item \engterm{Order-of-accuracy verification}. Confirm that the
+    convergence rate matches the theoretical rate for the element
+    type. A linear element should give $O(h^2)$ convergence in
+    energy norm; a quadratic element should give $O(h^4)$. A
+    convergence rate below the theoretical rate signals a problem
+    (mesh quality, material model, boundary condition
+    implementation).
+\end{itemize}
+
+\engterm{Validation} asks: does the mathematical model describe
+the physical system? It is the discipline of comparing the
+simulation result to experimental measurement on the physical
+system. Validation is external to the simulation; it requires
+physical data. The standard validation methods:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Validation against a controlled test}. A simple
+    component is tested under controlled load; the test measures
+    deflection, strain at instrumented points, and failure load.
+    The simulation predicts the same quantities; the agreement
+    (or disagreement) is recorded.
+  \item \engterm{Validation hierarchy}. A complex system is
+    validated by validating subcomponents at increasing levels of
+    complexity: material coupons, structural elements, sub-
+    assemblies, and finally the full system. The hierarchy gives
+    confidence that the simulation captures the relevant physics
+    at every scale.
+  \item \engterm{Validation under representative loading}. The
+    validation test loads the component in conditions that
+    represent the intended service: temperature range, strain
+    rate, environment. A validation under static room-temperature
+    conditions does not validate the simulation for use at high
+    temperature or under impact loading.
+\end{itemize}
+
+\engterm{Uncertainty quantification} asks: how much do the inputs
+vary, and how much does the output vary in response? It is the
+discipline of propagating input uncertainties (material constants,
+geometric tolerances, load magnitudes) through the simulation to
+produce a distribution of outputs. The working tools:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Sensitivity analysis}. Compute the partial
+    derivatives of the quantity of interest with respect to each
+    input. The largest derivatives identify the inputs that most
+    affect the output.
+  \item \engterm{Monte Carlo sampling}. Sample the input
+    distributions, run the simulation for each sample, and
+    accumulate the output distribution. Monte Carlo gives the
+    output distribution exactly in the limit of many samples but
+    is expensive for slow simulations.
+  \item \engterm{Polynomial chaos expansion}. Represent the
+    output as a polynomial expansion in the input random variables
+    and compute the expansion coefficients from a small number of
+    simulations. The method is far more efficient than Monte Carlo
+    for smooth input-output relationships.
+\end{itemize}
+
+The VVUQ discipline is the discipline that turns a finite-element
+result into a quantitative engineering claim. A simulation without
+verification produces a number; a simulation with verification but
+without validation produces a number that solves the wrong problem;
+a simulation with verification and validation but without
+uncertainty quantification produces a number whose error bars are
+unknown. The full VVUQ pipeline produces a number with error bars,
+calibrated against physical reality. The full pipeline is what
+the regulatory authority will require for any safety-critical
+structural certification.
+
+\begin{estimation}
+\textbf{Estimate the central deflection of a $4 \,\text{m} \times 4
+\,\text{m}$ square aluminium plate, $5 \,\si{\milli\meter}$ thick,
+simply supported on all four edges, carrying a uniform pressure of
+$1\,\text{kPa}$.}
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+For a simply supported square plate of side $a$ under uniform
+pressure $q_0$, the centre deflection from the Navier series is
+$w_{\max} \approx 0.00406 q_0 a^4/D$, where $D = E h^3/[12(1-\nu^2)]$.
+
+For aluminium ($E \approx 70\,\text{GPa}$, $\nu \approx 0.33$),
+\[
+D = \frac{70 \times 10^9 \times (5 \times 10^{-3})^3}{12 \times
+(1 - 0.33^2)} \approx \frac{70 \times 10^9 \times 1.25 \times 10^{-7}}{
+10.7} \approx 818\,\text{N}\cdot\text{m}.
+\]
+With $q_0 = 10^3\,\text{Pa}$, $a = 4\,\text{m}$, $a^4 = 256\,
+\text{m}^4$,
+\[
+w_{\max} \approx 0.00406 \times \frac{10^3 \times 256}{818}
+\approx 1.27\,\text{m}.
+\]
+That answer is absurd: a deflection of more than a metre at the
+centre of a plate $5\,\text{mm}$ thick spanning $4\,\text{m}$ violates
+the small-deflection assumption of Kirchhoff theory by orders of
+magnitude. The estimate flags the design as a non-starter: the
+plate is far too thin for its span.
+
+The postmortem: the estimate has done its job by showing that
+linear plate theory does not apply. The plate is in the
+membrane-action regime, in which the deflected midsurface stretches
+and carries the load by tensile in-plane stresses rather than by
+bending. The membrane analysis of a thin square plate gives a
+deflection of order $w_{\max} \sim a (q_0 a/(Eh))^{1/3}$. With the
+above numbers, $w_{\max} \sim 4 \times (10^3 \times 4/(70 \times
+10^9 \times 5 \times 10^{-3}))^{1/3} \approx 4 \times (1.14 \times
+10^{-5})^{1/3} \approx 4 \times 0.022 \approx 0.09\,\text{m}$. The
+plate deflects $\sim 90\,\si{\milli\meter}$ at the centre,
+which is plausible for a $5\,\si{\milli\meter}$ membrane spanning
+$4\,\text{m}$ under $1\,\text{kPa}$, but is still likely beyond the
+serviceability limit for any building application. The honest
+design specifies a thicker plate, stiffeners, or both.
+
+The deeper lesson: a thin plate's linear bending analysis is valid
+only when the deflection is less than the plate's thickness. A
+deflection comparable to or larger than the thickness moves the
+plate into the membrane regime, and a different model is required.
+A finite-element analysis run in linear mode on this geometry would
+give the same absurd answer as the formula; an analyst who trusted
+the result without checking against the small-deflection criterion
+would specify a plate that fails in service. The deflection-to-
+thickness ratio is the load-bearing diagnostic.
+\end{estimation}
+
+\section{Failure: when finite-element analyses lie}\pathtag{core}
+
+A finite-element analysis is a numerical method; its output is a
+set of numbers. The numbers are correct only if the model
+(geometry, material properties, boundary conditions, load
+distribution), the discretisation (mesh, element type), the solver
+(numerical parameters, convergence tolerances), and the
+interpretation (which output quantity, at which point, in which
+unit) are all correct. The failure section of this chapter names
+the classes of error that produce wrong FEM results and the
+diagnostics that catch them.
+
+\subsection{Modelling errors}
+
+The simulation solves the wrong problem.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Wrong material model.} An anisotropic material is
+    analysed as isotropic; a nonlinear material is analysed as
+    linear; a temperature-dependent material is analysed at the
+    wrong temperature; the elastic constants are taken from a
+    handbook for the wrong alloy. The diagnostic is a coupon test
+    on the actual material under the actual conditions.
+  \item \engterm{Wrong boundary conditions.} A bolted joint is
+    modelled as a rigid weld; a contact surface is modelled as
+    bonded; a frictional interface is modelled as frictionless. A
+    structure that is hinged in reality but modelled as
+    moment-resisting will be predicted as stiffer and stronger
+    than the real structure.
+  \item \engterm{Wrong load distribution.} A pressure load is
+    applied uniformly when the real pressure has a gradient; a
+    point load is applied at a node when the real load is spread
+    over a contact area; a dynamic load is analysed statically
+    when inertia or rate effects matter. The diagnostic is a
+    careful free-body diagram (chapter 1) of the system, applied
+    before the finite-element analysis is built.
+  \item \engterm{Wrong geometry.} The CAD model differs from the
+    as-built geometry (chamfers omitted, fillets simplified,
+    tolerances not represented). The diagnostic is to compare the
+    CAD-to-mesh transcription against the manufacturing drawing
+    and against the as-built measurements.
+\end{itemize}
+
+\subsection{Discretisation errors}
+
+The simulation solves the right problem incorrectly.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Coarse mesh at a stress concentration.} The peak
+    stress is under-predicted; the predicted location of failure
+    moves away from the actual location. The diagnostic is mesh
+    refinement and a mesh-convergence study.
+  \item \engterm{Linear elements on a bending-dominated thin
+    structure.} Shear locking causes linear tetrahedra and
+    hexahedra to over-predict the stiffness of thin plates and
+    shells. The diagnostic is to use shell elements, reduced-
+    integration solid elements, or quadratic solid elements.
+  \item \engterm{Volumetric locking in nearly incompressible
+    material.} Standard displacement elements over-predict the
+    stiffness of nearly incompressible materials. The diagnostic
+    is to use mixed displacement-pressure elements.
+  \item \engterm{Poor element quality at automatic mesh
+    refinement.} The mesh generator produces thin sliver
+    elements at curved boundaries or near point loads. The
+    diagnostic is element-quality checks (aspect ratio,
+    skewness, warpage) on every mesh.
+\end{itemize}
+
+\subsection{Interpretation errors}
+
+The simulation produces correct numbers that the engineer reads
+incorrectly.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Reading a stress value at a node where it is
+    inaccurate.} Element stresses are typically most accurate at
+    the Gauss points, less accurate at the element edges, and
+    least accurate at the nodes (where they are computed by
+    averaging or extrapolation from adjacent elements). A node
+    stress at a stress concentration, in a coarse mesh, can be
+    badly inaccurate.
+  \item \engterm{Failing to recognise a singularity}. A
+    re-entrant corner produces an unbounded stress in the
+    elastic-theory limit; the finite-element peak stress at the
+    corner increases without bound as the mesh is refined.
+    Interpreting the corner stress as a failure criterion gives a
+    progressively more conservative design as the mesh is refined,
+    which is the opposite of convergence to a sensible answer. The
+    engineer must recognise the singularity (the corner is a
+    geometric feature with no physical analogue at sufficient
+    resolution) and apply a different failure criterion (J-integral,
+    notch-stress, structural-stress methods).
+  \item \engterm{Unit confusion}. Forces in newtons, stresses in
+    pascals, lengths in millimetres; or forces in pounds, stresses
+    in psi, lengths in inches. A unit confusion gives results
+    wrong by factors of $10^3$ or $10^6$. The diagnostic is to
+    check units on every input and every output, and to verify
+    that the units of the result are the units the engineer
+    expected.
+  \item \engterm{Wrong factor of safety}. The finite-element peak
+    stress is taken as the design stress, without considering the
+    stress concentration's locality, the material's fatigue
+    properties, or the load uncertainty. The diagnostic is the
+    full code-based design check (chapter 8) applied to the FEM
+    result.
+\end{itemize}
+
+\subsection{The thin-mirror analogue: Hubble's metrology chain}
+
+The Hubble Space Telescope primary mirror, fabricated by
+Perkin-Elmer between 1979 and 1981, is the canonical case study
+of a precision-fabrication failure in which the test instrument
+itself was wrong \cite{acc:nasa-hubble-optical-systems-1990}.
+The mirror was figured to the wrong shape because the reflective
+null corrector used to measure the figure during polishing was
+misassembled: a field lens was mispositioned by about $1.3\,
+\si{\milli\meter}$ along the optical axis, the result of a
+misinterpretation of a measurement target on a metering rod
+during assembly. The error in the test instrument propagated into
+the polished mirror's figure: the outer edge was about $2\,\si{
+\micro\meter}$ too flat, an error large enough to ruin
+diffraction-limited imaging.
+
+The Hubble case is not a finite-element failure; the mirror was
+fabricated mechanically and measured optically, with no
+finite-element analysis in the verification chain. Its relevance
+to the present chapter is the parallel discipline: a numerical
+result is only as good as the verification chain that established
+its trustworthiness. The reflective null corrector was treated as
+the authoritative figure measurement, with no independent
+verification of the test instrument itself; two auxiliary optical
+tests showed discrepancies and were set aside. The engineering
+discipline that should have caught the error was the
+\engterm{independent verification of the test instrument} (in FEM
+language: code verification of the simulation). The discipline
+that should have caught the residual error was the
+\engterm{anomaly resolution} that takes seriously every
+discrepancy between an authoritative result and an auxiliary
+check (in FEM language: validation against an independent
+analysis or test).
+
+The thin-mirror connection to plate and shell mechanics is also
+direct. The Hubble primary is a $2.4 \,\text{m}$ diameter ULE
+glass shell with a mass of about $830 \,\si{\kilogram}$ and an
+average thickness of about $300\,\si{\milli\meter}$; in
+ground-based optics the figure error from gravity sag and
+mounting forces is computed by FEM analysis of the shell as a
+thin curved plate. Modern lightweight space telescopes use even
+thinner mirrors (the Herschel primary was $3.5 \,\text{m}$
+diameter and only $\sim 20\,\si{\milli\meter}$ thick), and the
+mechanical analysis of figure error under thermal and gravity
+load is wholly an FEM exercise. The discipline that catches
+errors in those analyses is the same VVUQ discipline named in
+section 9.7.
+
+\begin{principle}[A FEM result is a hypothesis, not a fact]
+A finite-element output is a numerical prediction of how the
+modelled system would respond to the modelled load. The
+prediction is a fact about the model; it is a hypothesis about
+the physical system. The discipline that turns the hypothesis
+into a fact about the physical system is verification (the
+solver solves the model correctly), validation (the model
+captures the physics), and uncertainty quantification (the
+inputs propagate to bounded outputs). A FEM output without
+verification, validation, and uncertainty quantification is a
+colourful screenshot, not an engineering claim.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Analytical plus FEM, with reconciliation]
+The reader solves a two-dimensional elasticity problem by hand,
+solves the same problem with a finite-element package, compares
+the two results, identifies the source of any disagreement, and
+reports the reconciliation. The deliverable is a thirty- to
+fifty-page engineering report.
+
+\textbf{Track}. Analytical plus simulation. No physical build.
+\textbf{Hazard class}: none.
+
+\textbf{Problem}. A flat steel plate, $200\,\si{\milli\meter}
+\times 100 \,\si{\milli\meter}$, $5\,\si{\milli\meter}$ thick, with
+a central circular hole of $20\,\si{\milli\meter}$ diameter, is
+loaded uniaxially in the long direction with a uniform tension of
+$50\,\text{MPa}$ applied to its short edges. The long edges and
+the hole boundary are traction-free. Find the maximum stress at
+the hole.
+
+\textbf{Analytical solution}. The Kirsch (1898) solution for an
+infinite plate with a circular hole under remote uniaxial tension
+gives a stress concentration factor of $3.0$ at the hole. With the
+applied stress of $50\,\text{MPa}$, the peak hoop stress at the
+hole is $150\,\text{MPa}$. The reader writes out the Kirsch
+solution from first principles (chapter 3 of this volume, section
+on plane stress), verifies the stress concentration factor, and
+notes the role of the plate's finite width in modifying the
+analytical result (the finite-width correction for a $D/W = 0.2$
+ratio raises the stress concentration factor to approximately
+$3.13$).
+
+\textbf{FEM solution}. The reader meshes the plate (taking
+advantage of the two-fold symmetry to model only a quarter of the
+plate), runs the analysis on three progressively refined meshes,
+and records the peak stress at the hole on each mesh. The
+mesh-convergence study should show convergence to within a few
+percent of the analytical result on the finest mesh.
+
+\textbf{Reconciliation}. The reader writes a one-page section
+identifying:
+
+\begin{itemize}[leftmargin=*]
+  \item The peak stress from the analytical solution.
+  \item The peak stress from the converged FEM solution.
+  \item The percentage difference and its sources (finite-width
+    correction, mesh resolution at the hole, element type and
+    order).
+  \item The mesh-convergence study (a plot of peak stress versus
+    inverse element size at the hole) and the inferred converged
+    value.
+  \item The implication for engineering practice: at what mesh
+    resolution would the FEM peak stress have been wrong by more
+    than $10\,\%$?
+\end{itemize}
+
+\textbf{Deliverable}. The analytical derivation, the FEM model
+files (mesh, input deck, output), the mesh-convergence plot, the
+peak-stress comparison, and a short conclusion paragraph on the
+reconciliation. The reader is encouraged to use an open-source
+FEM package (CalculiX, Code\_Aster, FEniCS) so the workflow is
+reproducible.
+
+\textbf{Time}. Two to four hours for the analytical solution,
+four to eight hours for the FEM setup and mesh-convergence study,
+two to four hours of write-up. The project is suitable as a
+weekend exercise once the reader is comfortable with the FEM
+software.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises mix calculation, derivation, estimation, simulation,
+design, diagnosis, failure analysis, and judgment.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A simply supported square steel plate of side $1\,\si{\meter}$ and
+thickness $10\,\si{\milli\meter}$ ($E = 200\,\text{GPa}$, $\nu =
+0.3$) carries a uniform pressure of $5\,\text{kPa}$. Compute the
+flexural rigidity $D$ and the centre deflection.
+\end{exercise}
+
+\begin{exercise}
+A clamped circular aluminium plate of radius $0.5\,\si{\meter}$
+and thickness $4\,\si{\milli\meter}$ ($E = 70\,\text{GPa}$, $\nu =
+0.33$) carries a uniform pressure of $2\,\text{kPa}$. Compute the
+centre deflection and the maximum bending moment at the clamped
+edge.
+\end{exercise}
+
+\begin{exercise}
+A thin spherical pressure vessel of radius $0.6\,\si{\meter}$,
+wall thickness $4\,\si{\milli\meter}$, carries an internal gauge
+pressure of $2\,\text{MPa}$. Compute the membrane stress in the
+wall.
+\end{exercise}
+
+\begin{exercise}
+A thin cylindrical steel pressure vessel of inner radius $0.5\,
+\si{\meter}$ and wall thickness $6\,\si{\milli\meter}$ carries an
+internal gauge pressure of $1.5\,\text{MPa}$. Compute the hoop
+stress, the axial stress, and the ratio of the two.
+\end{exercise}
+
+\begin{exercise}
+A conical steel shell of half-angle $30^{\circ}$ and uniform wall
+thickness $5\,\si{\milli\meter}$ carries an internal gauge pressure
+of $0.5\,\text{MPa}$. Compute the circumferential and meridional
+membrane stresses at a slant distance of $1\,\si{\meter}$ from
+the apex.
+\end{exercise}
+
+\begin{exercise}
+A long aluminium beam ($E = 70\,\text{GPa}$, $\nu = 0.33$) of
+square cross-section $40 \times 40\,\si{\milli\meter}$ is loaded
+in plane strain with an in-plane uniaxial stress of $100\,\text{MPa}
+$. Compute the effective two-dimensional Young's modulus and
+Poisson's ratio.
+\end{exercise}
+
+\begin{exercise}
+A simply supported rectangular steel plate of dimensions $1.5\,
+\si{\meter} \times 1\,\si{\meter}$ and thickness $8\,\si{\milli
+\meter}$ carries a uniform pressure of $3\,\text{kPa}$. Use the
+Navier double-sine series, retaining the four smallest terms
+($m, n = 1, 3$), to compute the centre deflection. Compare to the
+single-term approximation.
+\end{exercise}
+
+\begin{exercise}
+A long thin-walled aluminium cylinder of radius $0.8\,\si{\meter}$
+and wall thickness $3\,\si{\milli\meter}$ is loaded by external
+hydrostatic pressure. Estimate the buckling pressure from the
+classical shell-buckling formula, then apply a knock-down factor
+of $0.3$ for imperfection sensitivity. Compare to the
+gauge-pressure equivalent of a $20\,\si{\meter}$ depth of water.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the plate flexural rigidity $D = E h^3/[12(1-\nu^2)]$ from
+the Kirchhoff kinematic assumptions and the plane-stress Hooke's
+law. State which integral is responsible for the $h^3$ dependence.
+\end{exercise}
+
+\begin{exercise}
+Derive the plate bending equation $D \nabla^4 w = q$ from
+transverse force equilibrium of an infinitesimal plate element
+and the moment-curvature relations.
+\end{exercise}
+
+\begin{exercise}
+Derive the membrane stresses in a thin spherical pressure vessel
+under internal pressure from force equilibrium on a hemisphere.
+State the assumption about wall thickness that the derivation
+uses.
+\end{exercise}
+
+\begin{exercise}
+Derive the hoop and axial stresses in a thin cylindrical pressure
+vessel from force equilibrium on a half-cylinder slice and on a
+circular end cap, respectively.
+\end{exercise}
+
+\begin{exercise}
+Show that, for an isotropic linear-elastic material, the
+constitutive law $\sigma_{ij} = C_{ijkl} \epsilon_{kl}$ has only
+two independent elastic constants, by enumerating the symmetries
+of $C_{ijkl}$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the central deflection of a $2 \,\text{m} \times 2\,\text{m}$
+glass window pane, $6\,\si{\milli\meter}$ thick, simply supported
+on all four edges, under a uniform wind pressure of $500\,\text{Pa}$.
+State assumptions about glass elastic properties and check that
+the deflection is within the linear-theory range.
+\end{exercise}
+
+\begin{exercise}
+Estimate the burst pressure of a thin-walled aluminium soda can
+($R \approx 33\,\si{\milli\meter}$, wall thickness $\approx 0.1\,
+\si{\milli\meter}$, ultimate tensile strength $\approx 250\,\text{
+MPa}$). Compare to a typical internal pressure ($\sim 300\,\text{
+kPa}$) for a carbonated drink.
+\end{exercise}
+
+\begin{exercise}
+Estimate the natural frequency of a clamped circular drumhead of
+radius $0.15\,\si{\meter}$, thickness $0.2\,\si{\milli\meter}$,
+material density $1400\,\si{\kilogram\per\meter\cubed}$,
+Young's modulus $\sim 3\,\text{GPa}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the buckling pressure of a thin steel hemisphere of
+radius $1\,\si{\meter}$ and wall thickness $5\,\si{\milli\meter}$
+under external pressure. State the linear-theory critical
+pressure and the realistic value after the imperfection knock-down.
+\end{exercise}
+
+\begin{exercise}
+Estimate the peak stress concentration factor at the corner of a
+square cutout in a flat plate under uniaxial tension. State why
+the geometric singularity produces an unbounded prediction in
+the elastic-theory limit and what design discipline replaces
+the peak-stress check.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+Using an open-source finite-element package, mesh a square plate
+with a central circular hole. Apply uniaxial tension to two
+opposite edges. Run the analysis on three meshes (coarse, medium,
+fine) and tabulate the peak stress at the hole on each mesh.
+Estimate the converged value by Richardson extrapolation.
+\end{exercise}
+
+\begin{exercise}
+Implement a hand-coded two-dimensional plane-stress finite-element
+solver using linear triangular elements. Verify on a uniaxial
+tension test against the analytical solution.
+\end{exercise}
+
+\begin{exercise}
+Using a finite-element package, model a cantilevered thin square
+plate of side $200\,\si{\milli\meter}$ and thickness $2\,\si{
+\milli\meter}$ as both (a) a shell element model and (b) a
+single-layer brick element model. Compare the tip deflection
+under a $10\,\text{N}$ tip load with the analytical Kirchhoff
+plate prediction. Identify the source of any discrepancy in the
+brick-element model.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a flat steel plate floor of a small workshop, $3\,\si{
+\meter} \times 4\,\si{\meter}$, simply supported on its four
+edges by perimeter beams, to carry a uniform live load of $5\,
+\text{kPa}$. Specify the plate thickness and verify the
+small-deflection assumption.
+\end{exercise}
+
+\begin{exercise}
+Design a thin-walled cylindrical steel pressure vessel of inner
+radius $0.4\,\si{\meter}$ to carry an internal pressure of $4\,
+\text{MPa}$ with a safety factor of $3$ on hoop stress. Specify
+the wall thickness and a code-style longitudinal weld detail.
+\end{exercise}
+
+\begin{exercise}
+Design a hemispherical pressure-vessel end cap to match a
+cylindrical body of inner radius $0.4\,\si{\meter}$, internal
+pressure $4\,\text{MPa}$, with the same safety factor. Specify
+the end-cap thickness and note the comparison to the cylindrical
+wall thickness.
+\end{exercise}
+
+\begin{exercise}
+Design a finite-element mesh strategy for analysing the stress
+concentration at a fillet between a shaft and its mounting
+flange, with the fillet radius equal to one-tenth the shaft
+radius. Specify the element type, the minimum element size at
+the fillet, and the criteria for accepting the converged peak
+stress.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A finite-element analysis of a bolted bracket predicts a peak
+stress of $400\,\text{MPa}$ at a node on a sharp re-entrant
+corner. The mesh refinement is doubled; the predicted peak rises
+to $580\,\text{MPa}$. Identify the underlying issue and the
+diagnostic that catches it. State the engineering criterion that
+should replace the peak-stress check.
+\end{exercise}
+
+\begin{exercise}
+A thin spherical pressure vessel is observed to buckle inward
+under external vacuum loading at a pressure differential
+significantly below the linear-theory critical pressure. Identify
+the dominant cause and state the design discipline that should
+have anticipated the failure.
+\end{exercise}
+
+\begin{exercise}
+A cantilevered FEM model of a thin metal panel returns a tip
+deflection that is approximately half of the closed-form
+prediction from Kirchhoff plate theory. The model uses linear
+brick elements with one element through the thickness. Identify
+the numerical artifact and the corrective action.
+\end{exercise}
+
+\begin{exercise}
+A wooden floor beam analysed as isotropic with the wood's
+longitudinal Young's modulus predicts deflections half those
+actually observed. Identify the modelling error and the
+corrective material model.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+Re-read the NASA Optical Systems Failure Report on the Hubble
+primary mirror \cite{acc:nasa-hubble-optical-systems-1990}.
+Identify the parallel between the metrology-chain failure in
+Hubble fabrication and the VVUQ failure modes of section 9.7.
+State the specific verification step that, if applied to the
+reflective null corrector, would have caught the error before
+the mirror was polished to its final figure.
+\end{exercise}
+
+\begin{exercise}
+A thin-walled aluminium aircraft fuselage panel, designed by
+finite-element analysis as a flat plate in plane stress, develops
+visible buckles under combined cabin pressurisation and bending
+during pre-service ground testing. Argue, in $200$ to $300$ words,
+which class of FEM error (modelling, discretisation, interpretation)
+is most likely responsible and what verification should have
+caught it.
+\end{exercise}
+
+\begin{exercise}
+A thin spherical storage tank for liquefied gas, designed against
+the linear-theory buckling pressure with a factor of safety of
+$1.5$, collapses inward when a vapour-return valve fails closed
+during pump-out. Argue, in $200$ to $300$ words, which factor of
+the design was responsible for the failure and what design
+discipline catches the imperfection-sensitivity issue.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A junior engineer presents a FEM analysis of a structural
+component to the design review meeting, with no mesh-convergence
+study and no validation against any analytical or experimental
+data. The peak stress is below the material's yield strength,
+and the engineer recommends the design be approved. Write a
+one-paragraph reply that identifies what is missing and what
+verification the design review should require before approval.
+\end{exercise}
+
+\begin{exercise}
+A senior colleague argues that commercial FEM software is
+sufficiently mature that engineers no longer need to understand
+the underlying mathematics. Write a one-paragraph reply that
+identifies the specific knowledge a working FEM analyst must
+retain and the failure modes that opaque software use admits.
+\end{exercise}
+
+\begin{exercise}
+Identify a thin-walled or plate-like structural component in
+your immediate environment whose loading you have never explicitly
+analysed (a metal cabinet panel, a glass tabletop, a sheet-metal
+appliance casing, a thin polystyrene shelf). State, in $200$ to
+$300$ words, the loads it carries, the dominant deformation mode,
+the relevant simplified theory (plate, shell, membrane, or
+three-dimensional elasticity), and the failure mode you would
+inspect for first.
+\end{exercise}

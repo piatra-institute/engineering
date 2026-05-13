@@ -32,6 +32,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 |---|---|---|---|
 | V | 1940 | [Tacoma Narrows Bridge](tacoma-narrows-1940.md) | `acc:tacoma-narrows-1941` |
 | V | 1981 | [Hyatt Regency walkway collapse](hyatt-regency-1981.md) | `acc:nbs-hyatt-1982` |
+| V | 2000 | [London Millennium Footbridge](millennium-bridge-2000.md) | `acc:dallard-millennium-2001` |
 
 ### Process
 
@@ -62,12 +63,12 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 ## Counts
 
 - Aerospace: 7
-- Civil: 2
+- Civil: 3
 - Process: 1
 - Power: 2
 - Medical: 1
 - Software: 2
-- **Total: 15**
+- **Total: 16**
 
 ## Pending entries (~18-20)
 

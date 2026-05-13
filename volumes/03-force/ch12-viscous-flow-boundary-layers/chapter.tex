@@ -1,40 +1,1285 @@
 \chapter{Viscous flow, boundary layers}
 \label{vol03:ch12}
 
-\epigraph{}{}
+\epigraph{In many cases it is sufficient to find the path of the
+fluid by assuming it inviscid; for here the influence of friction
+is appreciable only in a very thin layer at the wall of the body.}{
+Ludwig Prandtl, ``\"Uber Fl\"ussigkeitsbewegung bei sehr kleiner
+Reibung'' (On the motion of fluid with very small friction),
+Verhandlungen des III.\ Internationalen Mathematiker-Kongresses,
+Heidelberg 1904 \cite[pp.~484--485]{paper:prandtl1904}.}
 
-\chapmeta{Half-life: durable. Archetypes: transport, scaling, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: transport, scaling, failure. Exercise target: 38. Project track: physical build (pressure-drop measurement on a household pipe). Hazard class: low. Reader path default: standard, with sections explicitly tagged. Named cases: Air France 447 high-altitude stall (2009).}
 
 \noindent
-\TODO{Volume 3, Chapter 12. Approx 110 pp.}
+The previous chapter treated the flow as inviscid: zero viscous
+stress, no boundary layer, no separation, no turbulent dissipation.
+Real fluids are viscous, and viscosity acts in a thin region
+adjacent to solid surfaces and inside shear layers. This chapter
+develops the Navier-Stokes equation for incompressible viscous
+flow, derives the laminar exact solutions that close pipe flow
+and Couette flow, develops Prandtl's boundary-layer theory, and
+treats the transition to turbulence and its consequences for drag.
+The reader leaves able to compute the Reynolds number for any
+flow, identify whether the flow is laminar or turbulent, estimate
+the boundary-layer thickness and skin-friction coefficient on a
+surface, and recognise separation, stall, and the conditions under
+which a viscous flow's drag departs from the inviscid prediction.
 
-\section{Newton's law of viscosity}
-\TODO{Section prose.}
+\section{Newton's law of viscosity}\pathtag{core}
 
-\section{Navier-Stokes equations}
-\TODO{Section prose.}
+A fluid resists shear deformation. If two parallel plates separated
+by a thin layer of fluid are moved relative to one another at
+constant velocity $U$ across a gap $h$, the steady-state velocity
+profile in the gap is linear, and the shear stress required to
+maintain the motion is proportional to the velocity gradient:
+\[
+\tau = \mu \frac{du}{dy}.
+\]
+The relation defines the \engterm{dynamic viscosity} $\mu$, a
+material property of the fluid. A fluid obeying this linear
+relation is a \engterm{Newtonian fluid}; air, water, and most
+common liquids and gases at engineering conditions are Newtonian to
+a very good approximation.
 
-\section{Pipe flow: laminar and turbulent}
-\TODO{Section prose.}
+The dynamic viscosity has SI units of $\si{\pascal\second}$, or
+equivalently $\si{\kilogram\per\meter\per\second}$. Representative
+values at $20\,\degC$, current as of 2025 per
+\textcite{text:white-fluid-mechanics}:
 
-\section{Boundary layers}
-\TODO{Section prose.}
+\begin{itemize}[leftmargin=*]
+  \item Air: $\mu \approx 1.8\times 10^{-5}\,\si{\pascal\second}$.
+  \item Water: $\mu \approx 1.0\times 10^{-3}\,\si{\pascal\second}$.
+  \item Glycerin: $\mu \approx 1.5\,\si{\pascal\second}$.
+  \item Honey (room temperature): $\mu \approx 10\,\si{\pascal\second}$,
+    variable with sugar content and water content.
+  \item Glass at room temperature: $\mu \sim 10^{21}\,\si{\pascal
+    \second}$ (a solid, by the engineering definition of flow over
+    relevant time scales).
+\end{itemize}
 
-\section{Drag, lift, and the dimensionless numbers}
-\TODO{Section prose.}
+Viscosity is strongly temperature dependent. Gases become more
+viscous as they heat (faster molecular motion produces more
+momentum transfer between layers); liquids become less viscous as
+they heat (the molecular cohesion weakens). Engine oil drops by a
+factor of $100$ in viscosity between $0\,\degC$ and $100\,\degC$,
+which is why oil ratings carry temperature qualifiers (SAE 5W-30
+specifies viscosity at both cold-start and operating temperatures).
 
-\section{Turbulence: the unfinished problem}
-\TODO{Section prose.}
+The \engterm{kinematic viscosity} is
+\[
+\nu = \frac{\mu}{\rho},
+\]
+with SI units of $\si{\meter}^2/\si{\second}$. The kinematic
+viscosity is the diffusivity of momentum in the fluid: it has the
+same dimensions as a thermal diffusivity or a mass diffusivity, and
+it characterises how rapidly velocity disturbances spread by
+viscous action. For air at room conditions, $\nu \approx 1.5\times
+10^{-5}\,\si{\meter}^2/\si{\second}$; for water, $\nu \approx
+1.0\times 10^{-6}\,\si{\meter}^2/\si{\second}$. Water has lower
+kinematic viscosity than air, despite higher dynamic viscosity,
+because water is much denser.
 
-\section{Computational fluid dynamics introduced}
-\TODO{Section prose.}
+\engterm{Non-Newtonian fluids} are those for which the
+stress-strain-rate relation is nonlinear. Important classes
+include:
 
-\section{Failure: separation, stall, and unexpected drag}
-\TODO{Section prose.}
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Shear-thinning} (pseudoplastic): viscosity decreases
+    with shear rate. Paint, blood, and many polymer solutions.
+  \item \engterm{Shear-thickening} (dilatant): viscosity increases
+    with shear rate. Concentrated cornstarch in water; certain
+    body-armour fluids.
+  \item \engterm{Bingham plastic}: behaves as a rigid solid below a
+    yield stress, as a Newtonian fluid above. Toothpaste, drilling
+    mud, fresh concrete.
+  \item \engterm{Viscoelastic}: combines viscous and elastic
+    responses. Polymer melts, biological tissues, silly putty.
+\end{itemize}
 
+Non-Newtonian fluids are the subject of \engterm{rheology}; we
+treat them only in passing here. The Navier-Stokes equation of the
+next section assumes a Newtonian fluid; rheologically complex
+fluids require constitutive extensions.
 
-\section{Project}
-\TODO{measure pressure drop across a pipe; verify against Moody chart}
+\section{The Navier-Stokes equation}\pathtag{core}
+
+Adding the viscous stress to the Euler equation of chapter 11
+gives the \engterm{Navier-Stokes equation} for incompressible
+Newtonian flow:
+\[
+\rho\frac{D\vec{u}}{Dt} = -\nabla p + \mu\nabla^2\vec{u} +
+\rho\vec{g}.
+\]
+The viscous term $\mu\nabla^2\vec{u}$ replaces the surface-stress
+contribution that the inviscid analysis ignored. The equation was
+derived independently by Claude-Louis Navier in 1822 (from a
+molecular argument) and by George Gabriel Stokes in 1845 (from a
+continuum argument); both names are attached.
+
+Combined with the incompressible continuity equation $\nabla\cdot
+\vec{u} = 0$, the Navier-Stokes system is four equations in four
+unknowns ($u_x$, $u_y$, $u_z$, $p$) in three space dimensions plus
+time. The system is a coupled nonlinear partial differential
+equation system whose general well-posedness for arbitrary initial
+data is one of the seven Clay Millennium Prize problems
+\cite{text:white-fluid-mechanics}; the engineering problem is not
+mathematical existence but tractable analytical and numerical
+solutions in specific geometries.
+
+The Navier-Stokes equation is the foundation of nearly all of fluid
+mechanics from chapter 12 onward. The strategy of analytical fluid
+mechanics is to find configurations in which the equation
+simplifies enough to admit a closed-form solution (the exact
+solutions of section 12.4), find configurations in which one term
+is small and can be neglected (the boundary-layer approximation of
+section 12.5), or solve the equation numerically on a discretised
+grid (the computational-fluid-dynamics methods of section 12.7).
+
+\engterm{Non-dimensionalisation}. The Navier-Stokes equation has a
+characteristic non-dimensional form. Introduce a characteristic
+length scale $L$, a characteristic velocity $U$, a characteristic
+time scale $L/U$, and a characteristic pressure $\rho U^2$. Let
+$\vec{u}^* = \vec{u}/U$, $\vec{x}^* = \vec{x}/L$, $t^* = tU/L$,
+$p^* = (p - p_\infty)/(\rho U^2)$. The non-dimensional
+Navier-Stokes equation becomes
+\[
+\frac{D\vec{u}^*}{Dt^*} = -\nabla^* p^* + \frac{1}{\text{Re}}
+\nabla^{*2}\vec{u}^* + \frac{1}{\text{Fr}^2}\hat{g},
+\]
+where
+\[
+\text{Re} = \frac{\rho U L}{\mu} = \frac{U L}{\nu}, \quad
+\text{Fr} = \frac{U}{\sqrt{gL}}.
+\]
+The \engterm{Reynolds number} Re is the ratio of inertial to
+viscous forces; the \engterm{Froude number} Fr is the ratio of
+inertial to gravitational forces. Two flows with the same
+non-dimensional geometry and the same Re (and Fr, if gravity is
+relevant) have the same non-dimensional velocity and pressure
+fields. This is the principle of \engterm{dynamic similarity}: it
+is why small wind-tunnel models tested at appropriate Reynolds
+number predict the behaviour of full-scale aircraft, ship hulls,
+and bridges.
+
+\begin{principle}[The Reynolds number sets the flow regime]
+The Reynolds number $\text{Re} = \rho U L/\mu = U L/\nu$ measures
+the ratio of inertial to viscous forces in a flow. Low Re ($\ll 1$)
+corresponds to creeping flow dominated by viscosity; intermediate
+Re ($\sim 1$ to $\sim 10^3$) to laminar viscous flow; high Re
+($\gtrsim 10^4$ to $10^5$, geometry dependent) to turbulent flow.
+The Reynolds number is the single most important dimensionless
+parameter in viscous fluid mechanics, and the working engineer
+computes it before doing any other analysis.
+\end{principle}
+
+Reynolds's original 1883 experiment on the transition from laminar
+to turbulent flow in a glass-walled pipe used a dye filament
+injected on the pipe centreline. At low flow rates the filament
+remained straight and parallel to the pipe axis, indicating
+laminar flow; at high flow rates the filament dispersed across
+the pipe, indicating turbulent mixing. Reynolds identified the
+combination $\rho U D/\mu$ (with $D$ the pipe diameter) as the
+parameter governing the transition, and reported a critical value
+near $2000$ for the onset of intermittent turbulence and near
+$13{,}000$ for fully developed turbulence under his conditions
+\cite[pp.~935--982]{paper:reynolds1883}. The result is the
+empirical basis of the laminar-turbulent transition criterion in
+pipe flow.
+
+\section{Pipe flow: laminar and turbulent}\pathtag{core}
+
+A steady flow of incompressible Newtonian fluid through a long
+circular pipe of diameter $D$ at low Reynolds number admits an
+exact solution. With the axial coordinate $z$ along the pipe and
+the radial coordinate $r$ from the centreline, the steady
+Navier-Stokes equation in cylindrical coordinates gives, under
+the assumptions of fully developed flow ($\partial u_z/\partial z
+= 0$, $u_r = 0$, $u_\theta = 0$) and constant axial pressure
+gradient $dp/dz = -G$,
+\[
+\mu\frac{1}{r}\frac{d}{dr}\left(r\frac{du_z}{dr}\right) = -G.
+\]
+Integrating twice with boundary conditions $u_z(r=R) = 0$ (no-slip
+at the wall, with $R = D/2$) and $du_z/dr |_{r=0} = 0$ (symmetry
+at the centreline),
+\[
+u_z(r) = \frac{G(R^2 - r^2)}{4\mu}.
+\]
+This is the \engterm{Hagen-Poiseuille velocity profile}, a
+parabola with the maximum on the axis and zero at the wall. The
+centreline velocity is $u_{\max} = GR^2/(4\mu)$, and the
+cross-section-averaged velocity is half the maximum:
+\[
+\bar{u} = \frac{GR^2}{8\mu}.
+\]
+The volume flow rate is $Q = \pi R^2 \bar{u} = \pi R^4 G/(8\mu)$,
+giving the \engterm{Hagen-Poiseuille law}
+\[
+Q = \frac{\pi D^4 (-\Delta p)}{128 \mu L},
+\]
+where $L$ is the pipe length and $\Delta p = p_2 - p_1 = -GL$ is
+the (negative) pressure change along the length. The flow rate
+scales as $D^4$: doubling the diameter increases the flow rate by
+sixteen for the same pressure drop. The same scaling explains why
+arterial flow drops sharply when arteries narrow; a $50\,\%$
+reduction in lumen diameter reduces the flow rate by a factor of
+$16$.
+
+The \engterm{Darcy-Weisbach equation} casts the pressure drop in
+terms of a \engterm{friction factor} $f$:
+\[
+\Delta p = f\frac{L}{D}\,\frac{\rho \bar{u}^2}{2}.
+\]
+For laminar pipe flow, the friction factor is
+\[
+f = \frac{64}{\text{Re}_D}, \quad \text{Re}_D = \frac{\rho \bar{u} D}{\mu}.
+\]
+The relation is exact under the Hagen-Poiseuille assumptions and
+holds for $\text{Re}_D \lesssim 2300$.
+
+Above $\text{Re}_D \approx 2300$, the laminar pipe flow becomes
+unstable to perturbations and transitions to turbulence. The
+turbulent regime begins with intermittent slugs of disturbed flow
+at $\text{Re}_D \sim 2300$ to $4000$ and reaches fully developed
+turbulence above $\text{Re}_D \sim 4000$. In the turbulent regime
+the velocity profile is much flatter than the laminar parabola
+(with the velocity dropping rapidly only in a thin near-wall
+region) and the friction factor depends on the relative pipe-wall
+roughness $\epsilon/D$ in addition to $\text{Re}_D$.
+
+The \engterm{Moody chart} \cite{text:white-fluid-mechanics}
+plots $f$ versus $\text{Re}_D$ for various values of $\epsilon/D$,
+condensing decades of empirical and analytical work into a single
+working tool. For fully turbulent flow in a smooth pipe, the
+implicit Colebrook-White equation
+\[
+\frac{1}{\sqrt{f}} = -2\log_{10}\left(\frac{\epsilon/D}{3.7} +
+\frac{2.51}{\text{Re}_D\sqrt{f}}\right)
+\]
+gives the friction factor; explicit approximations (Swamee-Jain,
+Haaland) are used in practice for direct calculation. The chart
+shows three regimes:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Laminar regime} ($\text{Re}_D < 2300$): $f$
+    depends only on $\text{Re}_D$, with $f = 64/\text{Re}_D$.
+  \item \engterm{Transitional regime} ($2300 < \text{Re}_D <
+    4000$): unstable, intermittent, no single-curve description.
+  \item \engterm{Turbulent regime} ($\text{Re}_D > 4000$): $f$
+    depends on $\text{Re}_D$ and $\epsilon/D$. At high enough
+    Reynolds number (the \engterm{fully rough regime}), $f$
+    depends only on $\epsilon/D$ and not on $\text{Re}_D$.
+\end{itemize}
+
+The Moody chart is the working tool for pipe-flow design in every
+hydraulics, HVAC, and process-engineering application.
+
+\section{Couette flow and other exact laminar solutions}\pathtag{standard}
+
+\engterm{Couette flow}. A Newtonian fluid between two infinite
+parallel plates, one at $y = 0$ and stationary, the other at
+$y = h$ moving at velocity $U$ in the $x$-direction. In steady
+state with no pressure gradient and gravity ignored, the
+Navier-Stokes equation reduces to $d^2 u_x/dy^2 = 0$, with
+solution
+\[
+u_x(y) = \frac{U y}{h}.
+\]
+The velocity profile is linear; the shear stress is constant
+across the gap, $\tau = \mu U/h$. The force per unit area required
+to move the upper plate is the same shear stress, which appears as
+the viscous drag on the plate. This is the canonical configuration
+for a rotating viscometer (concentric cylinders with a small gap),
+which measures $\mu$ directly from the torque required to
+maintain a known rotation rate.
+
+\engterm{Combined Couette-Poiseuille flow}. The same geometry with
+a pressure gradient added gives a velocity profile that is the
+superposition of the linear Couette profile and a parabolic
+Poiseuille component. For favourable pressure gradient
+($dp/dx < 0$ with flow in the $+x$-direction), the profile is a
+forward-leaning shape with maximum velocity above the moving
+plate's level; for adverse pressure gradient, the profile has a
+reverse-flow region near the stationary plate when the pressure
+gradient is large enough. The adverse-pressure-gradient case is
+the simplest analytical model of \engterm{flow reversal} that
+underlies boundary-layer separation in section 12.6.
+
+\engterm{Stokes's first problem}. An infinite plate impulsively
+accelerated to constant velocity $U$ at $t = 0$ in a fluid at
+rest. The momentum diffuses out from the plate into the fluid; the
+velocity profile at time $t$ is
+\[
+u_x(y, t) = U\,\text{erfc}\left(\frac{y}{2\sqrt{\nu t}}\right),
+\]
+where erfc is the complementary error function. The velocity
+disturbance penetrates to a depth $\delta(t) \sim \sqrt{\nu t}$;
+the relation $\delta \sim \sqrt{\nu t}$ is the canonical viscous
+diffusion length, the spatial analogue of the heat-diffusion
+relation of chapter 4 of Volume IV.
+
+\engterm{Stokes flow past a sphere}. A sphere of radius $a$
+moving at velocity $U$ through a viscous fluid at very low
+Reynolds number (Re $\ll 1$, the \engterm{creeping flow} regime)
+experiences a drag
+\[
+F_D = 6\pi \mu a U,
+\]
+the \engterm{Stokes drag law} (Stokes, 1851). The law underlies
+the design of falling-ball viscometers, the settling velocity of
+small particles in suspensions, and the propulsion of microorganisms.
+The Stokes drag holds for Re $< 1$ on the sphere; for larger Re,
+inertial corrections (Oseen, 1910) and eventual wake separation
+modify the relation. The drag coefficient $C_D = F_D/(\tfrac{1}{2}
+\rho U^2 \pi a^2) = 24/\text{Re}$ in the Stokes regime, $\sim 0.4$
+at $\text{Re} = 10^5$ (the canonical drag-crisis transition), and
+varies non-monotonically across the transition (the topic of
+section 12.6).
+
+\section{Boundary-layer theory}\pathtag{core}
+
+Ludwig Prandtl's 1904 Heidelberg paper
+\cite{paper:prandtl1904} resolved a paradox that had stood since
+d'Alembert: an inviscid analysis of flow past a body gives zero
+drag, but real bodies in real flow experience large drag. Prandtl
+observed that viscosity, however small, cannot be neglected in a
+thin region adjacent to the surface where the no-slip condition
+$\vec{u} = 0$ at the wall forces a steep velocity gradient. He
+named this region the \engterm{boundary layer} and showed that
+inside it the Navier-Stokes equations simplify to a system that is
+analytically tractable.
+
+For a flat plate at zero angle of attack in a uniform freestream
+$U_\infty$, the boundary-layer assumption is that the layer
+thickness $\delta(x)$ is much smaller than the streamwise distance
+$x$. Inside the layer, the streamwise momentum equation becomes
+\[
+u\frac{\partial u}{\partial x} + v\frac{\partial u}{\partial y} =
+-\frac{1}{\rho}\frac{\partial p}{\partial x} + \nu\frac{\partial^2
+u}{\partial y^2},
+\]
+with the wall-normal momentum equation reducing to $\partial
+p/\partial y = 0$ (the pressure does not vary across the layer).
+The pressure inside the boundary layer is therefore set by the
+inviscid outer flow.
+
+For a flat plate at zero pressure gradient ($\partial p/\partial x
+= 0$), Heinrich Blasius (1908) solved the boundary-layer equations
+by a similarity transformation. The boundary-layer thickness
+grows as
+\[
+\delta(x) \approx 5.0\,\sqrt{\frac{\nu x}{U_\infty}} =
+\frac{5.0\,x}{\sqrt{\text{Re}_x}},
+\]
+where $\text{Re}_x = U_\infty x/\nu$ is the local Reynolds number
+based on streamwise distance. The local skin-friction coefficient
+is
+\[
+C_f(x) = \frac{\tau_w(x)}{\tfrac{1}{2}\rho U_\infty^2} =
+\frac{0.664}{\sqrt{\text{Re}_x}},
+\]
+where $\tau_w$ is the wall shear stress. The total drag on a plate
+of length $L$ is obtained by integrating $\tau_w(x)$:
+\[
+F_D = \tfrac{1}{2}\rho U_\infty^2 \cdot L \cdot \bar{C}_f, \quad
+\bar{C}_f = \frac{1.328}{\sqrt{\text{Re}_L}}.
+\]
+These are the Blasius solutions; they form the analytical
+foundation of boundary-layer engineering.
+
+\engterm{Displacement thickness}. The boundary layer reduces the
+mass flux past a surface compared to what an inviscid flow would
+deliver. The \engterm{displacement thickness} $\delta^*$ is the
+distance the outer streamline would have to be moved outward to
+recover the inviscid mass flux:
+\[
+\delta^* = \int_0^\infty \left(1 - \frac{u}{U_\infty}\right) dy.
+\]
+For the Blasius profile, $\delta^*/\delta \approx 0.345$, so the
+displacement thickness is about a third of the full
+boundary-layer thickness. The displacement thickness is the
+correction to the inviscid streamline geometry needed to account
+for the boundary layer in coupled analyses.
+
+\engterm{Momentum thickness}. The \engterm{momentum thickness}
+$\theta$ is
+\[
+\theta = \int_0^\infty \frac{u}{U_\infty}\left(1 - \frac{u}{U_
+\infty}\right) dy.
+\]
+The Kármán momentum integral relates $\theta$ to the wall shear
+stress:
+\[
+\frac{d\theta}{dx} = \frac{C_f(x)}{2}
+\]
+(for zero pressure gradient). This integral form is the
+working tool for approximate boundary-layer calculations when the
+exact Blasius solution does not apply.
+
+\engterm{Turbulent boundary layer}. Above a critical Reynolds
+number (typically $\text{Re}_x \sim 5\times 10^5$ for a smooth
+flat plate, lower with surface roughness or freestream disturbance),
+the laminar boundary layer transitions to turbulence. The turbulent
+boundary layer is thicker than the laminar layer at the same
+$\text{Re}_x$:
+\[
+\delta(x) \approx 0.37\,x\,\text{Re}_x^{-1/5}.
+\]
+The skin-friction coefficient is also larger:
+\[
+C_f(x) \approx 0.0592\,\text{Re}_x^{-1/5}, \quad
+\bar{C}_f \approx 0.074\,\text{Re}_L^{-1/5}.
+\]
+The turbulent boundary layer has a different internal structure
+than the laminar layer: a thin \engterm{viscous sublayer} near the
+wall where $u^+ = y^+$ (with $u^+ = u/u_\tau$ the velocity scaled
+by the friction velocity $u_\tau = \sqrt{\tau_w/\rho}$ and $y^+ =
+y u_\tau/\nu$ the wall-distance in viscous units), a \engterm{log
+layer} where $u^+ = (1/\kappa)\ln y^+ + B$ (with $\kappa \approx
+0.41$, $B \approx 5.0$), and an \engterm{outer wake region} where
+the profile deviates from the log law. This \engterm{law of the
+wall} structure is one of the few quantitative universals of
+turbulent flow.
+
+\engterm{Pressure gradient effects}. A favourable pressure
+gradient (pressure decreasing in the flow direction) thins the
+boundary layer and stabilises it against transition; an adverse
+pressure gradient (pressure increasing) thickens the layer and
+can produce \engterm{separation}: the wall-shear stress reverses
+sign and the flow detaches from the surface, forming a separated
+wake. Separation is the canonical failure mode of boundary-layer
+attached flow, and it underlies airfoil stall, diffuser stall,
+bluff-body wake formation, and many of the high-drag
+configurations the next section enumerates.
+
+\section{Drag, lift, and the dimensionless numbers}\pathtag{standard}
+
+The drag and lift on a body in a flow are conventionally
+expressed in dimensionless form:
+\[
+C_D = \frac{F_D}{\tfrac{1}{2}\rho U^2 A}, \quad
+C_L = \frac{F_L}{\tfrac{1}{2}\rho U^2 A},
+\]
+with $A$ a reference area (frontal area for drag, planform area
+for lift). The coefficients depend on the body's shape and on the
+dimensionless flow parameters. For incompressible viscous flow
+without surface tension, the only dimensionless parameter is the
+Reynolds number; for high-speed flow, the Mach number (chapter 13
+of this volume) enters; for free-surface flow, the Froude number;
+for surface-tension-dominated flow, the Weber number.
+
+\engterm{Drag mechanisms}. The total drag on a body has two
+components: \engterm{pressure drag} (form drag) from the integrated
+pressure distribution over the body surface, and \engterm{skin-
+friction drag} from the integrated viscous shear stress over the
+body surface. The relative importance depends on the body shape
+and on Reynolds number.
+
+For a streamlined body (an airfoil at low angle of attack, a
+fish-shaped fuselage), skin friction dominates: the pressure
+recovers nearly fully over the rear of the body, and the drag
+coefficient is small, $C_D \sim 0.01$ to $0.05$ for a well-designed
+airfoil.
+
+For a bluff body (a sphere, a cylinder, a cube), pressure drag
+dominates: the flow separates from the rear of the body, leaving a
+low-pressure wake that the surface pressure cannot recover. The
+drag coefficient is large, $C_D \sim 0.4$ to $1.5$, and depends
+weakly on Reynolds number above the transition regime.
+
+For a flat plate at zero incidence (parallel to the flow), the
+pressure drag vanishes and the drag coefficient equals the
+skin-friction coefficient. For a flat plate normal to the flow,
+the pressure drag dominates and $C_D \approx 2.0$ (the high end of
+the bluff-body range).
+
+\engterm{The drag crisis}. The drag coefficient of a sphere or
+circular cylinder exhibits a characteristic drop near $\text{Re} =
+3\times 10^5$, from $C_D \approx 0.5$ at slightly subcritical Re to
+$C_D \approx 0.2$ at slightly supercritical Re. The drop is caused
+by the laminar-turbulent transition in the boundary layer just
+upstream of the separation point: a turbulent boundary layer
+resists separation longer than a laminar one (because the turbulent
+mixing transfers high-momentum freestream fluid to the near-wall
+region), so the wake narrows and the pressure drag decreases
+sharply. The drag crisis is the working basis of golf-ball dimple
+design (the dimples trip the boundary layer to turbulence at lower
+$\text{Re}$, lowering the drag in the operational range) and of
+sandpaper strips on the front of competitive bicycle helmets.
+
+\engterm{The dimensionless numbers of fluid mechanics}. Beyond the
+Reynolds number, several other dimensionless groups carry physical
+meaning in specific regimes:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Froude number} $\text{Fr} = U/\sqrt{gL}$: ratio of
+    inertial to gravitational forces. Governs free-surface flow
+    (ship waves, river flow, weir discharge).
+  \item \engterm{Mach number} $M = U/a$, with $a$ the local speed
+    of sound: ratio of inertial to elastic-compressive forces.
+    Governs compressible flow (chapter 13 of this volume).
+  \item \engterm{Weber number} $\text{We} = \rho U^2 L/\sigma$, with
+    $\sigma$ the surface tension: ratio of inertial to
+    surface-tension forces. Governs droplet breakup, splashing,
+    spray formation.
+  \item \engterm{Knudsen number} $\text{Kn} = \lambda/L$, with
+    $\lambda$ the molecular mean free path: ratio of molecular to
+    continuum length scales. Continuum mechanics applies for
+    $\text{Kn} < 10^{-2}$; rarefied gas dynamics for higher Kn.
+  \item \engterm{Strouhal number} $\text{St} = fL/U$, with $f$ a
+    characteristic oscillation frequency: governs unsteady flow,
+    vortex shedding, flutter.
+\end{itemize}
+
+The working engineer keeps these in a short table and computes
+the relevant ones before applying any flow analysis.
+
+\engterm{The Kármán vortex street}. A circular cylinder in cross
+flow at $\text{Re}$ between about $40$ and $200$ sheds vortices
+alternately from its top and bottom surfaces, forming a regular
+pattern of staggered vortices in the wake. The shedding frequency
+is set by the Strouhal number: $\text{St} = fD/U \approx 0.21$ over
+a wide range of $\text{Re}$. The shedding produces an oscillating
+lift on the cylinder, which can drive resonant vibration of
+slender structures: chimneys, suspension-bridge cables, transmission
+lines, marine risers. The standard design discipline against vortex-
+induced vibration is to ensure that the shedding frequency at the
+operating wind speed does not coincide with the structure's
+natural frequencies; aerodynamic devices (strakes, helical
+fairings) on a cylinder disrupt the shedding pattern and reduce
+the response amplitude.
+
+\section{Turbulence: the unfinished problem}\pathtag{mastery}
+
+Above a critical Reynolds number that depends on the geometry, a
+laminar flow becomes unstable to small perturbations and
+transitions to \engterm{turbulence}: a flow regime characterised
+by chaotic, three-dimensional, multi-scale velocity fluctuations.
+Turbulent flows have been the central unsolved problem of fluid
+mechanics since Reynolds's 1883 paper
+\cite{paper:reynolds1883}; the field has developed extensive
+empirical, analytical, and computational tools, but a complete
+predictive theory of turbulence at arbitrary Reynolds number does
+not yet exist.
+
+\engterm{Statistical description}. A turbulent velocity field is
+decomposed into a mean and a fluctuation:
+\[
+u_i(\vec{x}, t) = \bar{u}_i(\vec{x}) + u'_i(\vec{x}, t),
+\]
+where the overbar denotes a time average. The Reynolds-averaged
+Navier-Stokes (RANS) equation governs the mean field:
+\[
+\bar{u}_j\frac{\partial \bar{u}_i}{\partial x_j} = -\frac{1}{\rho}
+\frac{\partial \bar{p}}{\partial x_i} + \nu\nabla^2 \bar{u}_i
+- \frac{\partial (\overline{u'_i u'_j})}{\partial x_j}.
+\]
+The new term $-\overline{u'_i u'_j}$ is the \engterm{Reynolds
+stress tensor}, a correlation of velocity fluctuations that acts
+as an additional stress on the mean flow. The Reynolds stress is
+not a closed-form function of the mean field; the \engterm{closure
+problem} of turbulence is to model the Reynolds stress in terms of
+mean-field quantities. No universally accurate closure exists; all
+working models (mixing length, $k$-$\epsilon$, $k$-$\omega$,
+Reynolds-stress models, large-eddy simulations) make assumptions
+that are accurate in some flow regimes and inaccurate in others.
+
+\engterm{The energy cascade}. Kolmogorov's 1941 theory of locally
+isotropic turbulence holds that at sufficiently high Reynolds
+number, energy injected at large scales (by some forcing) cascades
+through intermediate scales toward small scales by inertial
+nonlinear interactions, until the smallest scales (the
+\engterm{Kolmogorov scale} $\eta = (\nu^3/\epsilon)^{1/4}$, with
+$\epsilon$ the dissipation rate per unit mass) become small
+enough that viscous dissipation converts the kinetic energy to
+heat. In the inertial subrange between the forcing scale and the
+Kolmogorov scale, the energy spectrum follows Kolmogorov's
+$k^{-5/3}$ law:
+\[
+E(k) = C\epsilon^{2/3}k^{-5/3}, \quad C \approx 1.5.
+\]
+The Kolmogorov $-5/3$ scaling has been confirmed in many
+turbulent flows at very high Reynolds number. The corresponding
+ratio of largest to smallest length scales is $L/\eta \sim
+\text{Re}^{3/4}$; resolving all scales of turbulence in a direct
+numerical simulation (DNS) is therefore prohibitively expensive
+for engineering Reynolds numbers (a flow at $\text{Re} = 10^6$
+has $L/\eta \sim 30{,}000$, requiring $\sim 30{,}000^3 \sim
+3\times 10^{13}$ grid points in three dimensions). DNS remains
+restricted to research-scale Reynolds numbers; engineering
+analysis relies on RANS or large-eddy simulation (LES) with
+modelled closures.
+
+\engterm{Practical consequences}. Turbulent flow in engineering
+practice is recognised by:
+
+\begin{itemize}[leftmargin=*]
+  \item Higher skin-friction drag than laminar at the same Reynolds
+    number (the turbulent boundary-layer scaling above).
+  \item Higher heat transfer rate (the topic of Volume IV).
+  \item Higher mass-transfer rate.
+  \item Rapid mixing of dye, smoke, or other tracer scalars.
+  \item Broadband acoustic radiation (the noise of a jet engine, a
+    waterfall, a turbulent boundary layer on an aircraft wing).
+  \item Resistance to separation under adverse pressure gradient
+    (the basis of the drag crisis and of vortex generators on
+    aircraft wings).
+\end{itemize}
+
+\section{Computational fluid dynamics introduced}\pathtag{mastery}
+
+The Navier-Stokes equations admit no general analytical solution.
+Numerical solution on a discretised grid is the working tool for
+most engineering flow analysis; \engterm{computational fluid
+dynamics} (CFD) is the body of techniques that does this.
+
+The principal discretisation methods:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Finite difference}: derivatives are approximated
+    on a structured grid. Simple to implement, accurate, but
+    awkward on complex geometries.
+  \item \engterm{Finite volume}: integral conservation laws are
+    enforced on each grid cell. The standard method for industrial
+    CFD; handles complex geometries through unstructured grids.
+  \item \engterm{Finite element}: weak formulation of the
+    governing equations, suitable for complex geometries and
+    higher-order schemes; the standard method in structural
+    mechanics and some CFD codes.
+  \item \engterm{Spectral / spectral-element}: expansion in
+    smooth basis functions, used for high-accuracy DNS and LES at
+    moderate Reynolds numbers.
+\end{itemize}
+
+The choice between RANS, LES, and DNS depends on the Reynolds
+number and the accuracy requirement:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{RANS}: solves for the time-averaged flow with a
+    turbulence closure model. Most affordable; appropriate for
+    steady-state design calculations of bulk quantities (lift,
+    drag, pressure distribution). Accuracy depends strongly on the
+    closure model's match to the flow type.
+  \item \engterm{LES}: resolves the large eddies and models the
+    sub-grid scales. Computationally heavier than RANS by factors
+    of $10^2$ to $10^4$; appropriate for unsteady flow physics
+    where the large-scale dynamics dominates.
+  \item \engterm{DNS}: resolves all scales. Computationally
+    affordable only at modest Reynolds numbers ($\text{Re} \sim
+    10^3$ to $10^5$ depending on geometry). Used for research and
+    for validation of LES and RANS closures.
+\end{itemize}
+
+The discipline of CFD validation is to compare predictions
+against experimental measurements at the same Reynolds number,
+geometry, and boundary conditions. A CFD calculation that has
+not been validated against experiment is a calculation, not a
+prediction. The standard \engterm{verification and validation}
+hierarchy distinguishes \engterm{verification} (the code solves
+the equations correctly, checked by mesh refinement and
+manufactured solutions) from \engterm{validation} (the equations
+model the physics correctly, checked against experiment). Both
+are required before a CFD prediction is treated as a design
+basis.
+
+\section{Failure: separation, stall, and unexpected drag}\pathtag{core}
+
+Every chapter in this work has a failure section. The viscous-flow
+failure modes cluster into three families: boundary-layer
+separation under adverse pressure gradient, transition-related
+phenomena that change the drag coefficient discontinuously across
+a Reynolds-number range, and turbulence-induced fluctuating loads
+that drive resonant structural response.
+
+\subsection{Boundary-layer separation and airfoil stall}
+
+An airfoil at increasing angle of attack develops an increasing
+adverse pressure gradient over the rear of its upper surface. The
+boundary layer thickens, slows, and eventually reverses; the flow
+separates from the surface and forms a large, low-pressure wake.
+The lift, which had been growing linearly with angle of attack,
+peaks and then drops sharply at the stall angle. The post-stall
+drag is several times the pre-stall drag.
+
+The stall angle for a typical conventional airfoil is $12^{\circ}$
+to $20^{\circ}$, depending on Reynolds number, leading-edge
+geometry, and surface roughness. High-lift devices on aircraft
+wings (slats, slotted flaps, vortex generators) delay separation
+and extend the usable angle-of-attack range; the working principle
+is to inject high-energy flow into the boundary layer to overcome
+the adverse pressure gradient near the trailing edge.
+
+Stall is the canonical aerodynamic failure mode. Air France Flight
+447, on 1 June 2009, entered a deep stall at $35{,}000\,\text{ft}$
+after the autopilot disengaged on inconsistent airspeed data; the
+crew did not recognise the stalled state, and the aircraft
+descended in a stall until impact, with the loss of all $228$
+people aboard \cite{acc:bea-af447}. The stall at altitude is
+particularly hazardous: the recovery requires a substantial loss
+of altitude to regain airspeed, the aerodynamic control
+authority is degraded in the wake of the stalled wing, and the
+cockpit instrumentation under unreliable airspeed conditions does
+not give the crew an unambiguous indicator of the stalled state.
+The AF447 lesson for boundary-layer analysis is that stall is a
+flight-envelope boundary, not a post-hoc engineering observation.
+The working aircraft certification discipline embeds stall-warning
+systems, stick shakers, stall recovery procedures, and crew
+training in unreliable-airspeed scenarios. The post-AF447
+regulatory response included revised crew-training requirements
+for unreliable airspeed and high-altitude upset, and changes to
+autoflight handoff design \cite{acc:bea-af447}.
+
+\subsection{Diffuser stall}
+
+A diverging duct (diffuser) that tries to decelerate a flow and
+recover its dynamic pressure can suffer separation when the
+divergence angle is too large or the inlet velocity profile is too
+non-uniform. The separated flow leaves the diffuser walls and
+forms a free jet through the centre of the diffuser, with
+recirculating regions in the corners. The pressure recovery drops
+sharply; the diffuser loses its design function.
+
+The threshold divergence angle is approximately $7^{\circ}$ on
+each side for unaided flow (a $14^{\circ}$ total included angle).
+Above this, separation is likely; below it, the boundary layer
+typically stays attached. The discipline of diffuser design uses
+this empirical limit, supplemented by computational and
+experimental verification for specific geometries.
+
+\subsection{Vortex-induced vibration}
+
+A bluff body (a cylinder, a chimney, a suspension-bridge cable) in
+cross flow sheds Kármán vortices at the Strouhal frequency. The
+shedding produces an oscillating lift on the body, which excites
+resonant vibration when the shedding frequency approaches a
+natural frequency of the body. The amplitude can grow to levels
+that produce fatigue failure or, in extreme cases, structural
+collapse.
+
+The original Tacoma Narrows suspension bridge collapse of
+$7$ November $1940$ \cite{acc:tacoma-narrows-1941} is the
+canonical large-scale case (also treated in chapter 6 of this
+volume on vibrations and chapter 13 on bluff-body aerodynamics).
+The deck's torsional self-excitation under steady wind was not
+classical vortex shedding alone but a related aeroelastic
+phenomenon (torsional flutter); the chapter's narrow point is
+that the viscous-flow physics of vortex shedding and the
+aeroelastic-flutter physics of bridge decks are both governed by
+the same Reynolds-number-dependent separated-flow regimes.
+
+Industrial cases of vortex-induced vibration: power-line galloping
+in ice-coated conductors (where the asymmetric ice cross-section
+produces an instability beyond simple Kármán shedding); marine
+riser vibration in subsea oil and gas production; resonance of
+exhaust stacks of power stations under moderate cross winds; and
+acoustic resonance of vehicle door seals at highway speeds. The
+working design discipline is to compute the Strouhal frequency at
+the operating flow speed, check it against the structure's natural
+frequencies, and either shift the structural frequency or modify
+the cross-section to disrupt the vortex shedding.
+
+\subsection{The drag crisis surprise}
+
+A bluff body whose operating Reynolds number sits near the
+drag-crisis transition is at risk of dramatic drag changes from
+small perturbations. A circular cylinder at $\text{Re} = 2\times
+10^5$ has $C_D \approx 0.5$; the same cylinder at $\text{Re} =
+4\times 10^5$ has $C_D \approx 0.2$. A design that sits near the
+transition can experience a factor-of-two change in drag from
+small changes in surface roughness, freestream turbulence, or
+operating speed.
+
+The discipline is to know whether the design Reynolds number is
+subcritical, supercritical, or near transition, and to design for
+the bracket of possible $C_D$ values rather than for a single
+point estimate. A wind-tunnel test in a low-turbulence facility
+may under-predict the full-scale $C_D$ if the model sits in
+subcritical conditions while the full-scale operates supercritical.
+
+\subsection{The diagnostic principle for viscous-flow failures}
+
+The viscous-flow diagnostic question is, at every body in any
+flow:
+
+\begin{itemize}[leftmargin=*]
+  \item What is the Reynolds number? Laminar, transitional, or
+    turbulent regime?
+  \item What is the local pressure gradient on the body? Favourable
+    (boundary layer thins), zero (Blasius), or adverse (separation
+    risk)?
+  \item Where is the separation point likely to be? Has it been
+    measured or predicted by a validated tool?
+  \item What is the post-separation wake structure? Steady, with
+    vortex shedding, with reattachment?
+  \item Is the Strouhal frequency at the design speed coincident
+    with a structural natural frequency?
+  \item Is the body near a drag-crisis transition?
+\end{itemize}
+
+A design that has answered all six is a viscous-flow-aware design.
+A design that has answered none of the six is in the regime where
+real-flow drag and lift can depart from the inviscid prediction by
+factors of two or more, and the difference shows up as an
+operating-cost surprise, a structural-fatigue surprise, or, in the
+worst case, a stability or control surprise of the kind that
+brings airplanes down.
+
+\begin{principle}[Real-flow drag has two parts; both are Reynolds-number-dependent]
+The drag on a body in viscous flow is the sum of skin-friction
+drag (from the integrated viscous shear stress) and pressure drag
+(from the integrated surface pressure). The relative importance
+depends on the body's shape: streamlined bodies are
+friction-dominated, bluff bodies are pressure-dominated. Both
+components vary with Reynolds number, sometimes discontinuously
+(the drag crisis). The discipline is to compute the Reynolds number
+first, identify the regime, and use the regime-appropriate drag
+model rather than an inviscid extrapolation.
+\end{principle}
+
+\begin{archetype}[Transport, scaling, failure: the boundary-layer triad]
+The viscous-flow archetype puts three relations to work. The
+Reynolds number determines the regime (laminar, transitional,
+turbulent); the boundary-layer thickness scales as $\sqrt{\nu x/
+U_\infty}$ (laminar) or $x \cdot \text{Re}_x^{-1/5}$ (turbulent);
+the wall shear stress sets the skin-friction contribution to drag.
+The archetype's failure mode is separation, triggered by adverse
+pressure gradient; the failure's consequences are stall, drag
+spikes, vortex shedding, and aeroelastic instability. Every
+viscous-flow analysis works through these three: regime,
+boundary-layer scaling, separation risk.
+\end{archetype}
+
+\begin{estimation}
+\textbf{Estimate the skin-friction drag on a Boeing 737 fuselage at
+cruise.}
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+A working estimate goes through the following moves. A Boeing
+$737$ fuselage has a length of about $38\,\si{\meter}$ and a
+diameter of about $3.8\,\si{\meter}$. Treat the fuselage as a
+cylinder for the wetted-area estimate: the curved surface area is
+approximately $\pi D L \approx 3.14 \times 3.8 \times 38
+\approx 450\,\si{\meter}^2$. The full wetted surface including
+nose, tail, wings, and tail surfaces is roughly twice the
+fuselage value, so total wetted area $S_w \approx 900\,\si{\meter}
+^2$.
+
+At cruise (Mach $0.78$, altitude $35{,}000\,\text{ft}$), the
+freestream is $U_\infty \approx 230\,\si{\meter\per\second}$,
+the air density $\rho \approx 0.38\,\si{\kilogram\per\meter\cubed}$,
+the air kinematic viscosity $\nu \approx 4\times 10^{-5}\,\si{\meter
+}^2/\si{\second}$. The length-based Reynolds number is
+\[
+\text{Re}_L = \frac{U_\infty L}{\nu} = \frac{230 \times 38}{4
+\times 10^{-5}} \approx 2.2\times 10^8.
+\]
+The boundary layer is fully turbulent over essentially the entire
+fuselage; the average skin-friction coefficient is
+\[
+\bar{C}_f \approx \frac{0.074}{\text{Re}_L^{1/5}} \approx
+\frac{0.074}{(2.2\times 10^8)^{0.2}} \approx \frac{0.074}{47}
+\approx 0.0016.
+\]
+The skin-friction drag is then
+\[
+F_D = \tfrac{1}{2}\rho U_\infty^2 \cdot S_w \cdot \bar{C}_f
+\approx 0.5 \times 0.38 \times 230^2 \times 900 \times 0.0016
+\approx 14{,}500\,\si{\newton}.
+\]
+A working figure for total $737$ cruise drag is about $35\,\text{kN}$
+to $45\,\text{kN}$; skin friction accounts for roughly half, with
+the rest divided between induced (vortex-related) drag, pressure
+drag at the rear, and miscellaneous excrescence drag.
+
+The postmortem: the skin-friction estimate is within a factor of
+two of the working figure, despite all the simplifications
+(uniform $C_f$, cylinder approximation, neglect of wing thickness).
+The factor-of-two-or-better accuracy is characteristic of
+boundary-layer estimates done with the integrated turbulent
+correlations; the same accuracy is what makes the relations useful
+for first-pass design. A high-accuracy prediction requires
+either wind-tunnel measurement or validated CFD with appropriate
+turbulence model.
+\end{estimation}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Measure pressure drop across a pipe; verify against the Moody chart]
+The reader instruments a household pipe section, measures the
+pressure drop as a function of flow rate, computes the friction
+factor, and compares to the Moody chart for the pipe's
+roughness. The deliverable is a twenty- to thirty-page engineering
+report.
+
+\textbf{Track}. Physical build plus measurement plus analysis.
+\textbf{Hazard class}: low.
+
+\textbf{Apparatus}. A length of household pipe (smooth copper,
+PVC, or PEX) of known diameter ($15$ to $25\,\si{\milli\meter}$
+typical), length of $1$ to $2\,\si{\meter}$, with pressure taps at
+the inlet and outlet of the measured section. Pressure measurement
+by U-tube manometer (water, oil, or mercury depending on the
+pressure range), differential pressure transducer, or two
+inexpensive digital pressure gauges. Flow rate measurement by
+collecting the outflow over a measured time interval.
+
+\textbf{Procedure}. The reader varies the flow rate over the
+widest available range (from a low trickle to the maximum supply),
+records the pressure drop and the volume flow rate at each
+setting, and computes:
+
+\begin{itemize}[leftmargin=*]
+  \item The mean flow velocity $\bar{u} = Q/(\pi D^2/4)$.
+  \item The Reynolds number $\text{Re}_D = \bar{u} D/\nu$, using
+    water's kinematic viscosity at the measured temperature.
+  \item The friction factor $f = (\Delta p \cdot D)/(L \cdot
+    \tfrac{1}{2}\rho \bar{u}^2)$.
+  \item A log-log plot of $f$ vs.\ $\text{Re}_D$, overlaid on the
+    laminar curve $f = 64/\text{Re}_D$ and on the Colebrook-White
+    or Haaland approximation for the pipe's estimated roughness.
+\end{itemize}
+
+\textbf{Analysis}. The reader identifies:
+
+\begin{itemize}[leftmargin=*]
+  \item The Reynolds-number range in which the data fall (laminar,
+    transitional, turbulent).
+  \item The agreement (or disagreement) with the Moody-chart
+    prediction at each $\text{Re}_D$.
+  \item The estimated pipe roughness $\epsilon$ that best fits the
+    data, compared to handbook values for the pipe material.
+  \item Sources of error: pressure-tap geometry, entrance and exit
+    effects (the data should be in the fully developed region,
+    not in the developing flow near the pipe inlet), bend effects
+    if any, flow-rate measurement uncertainty.
+\end{itemize}
+
+\textbf{Reflection ($1{,}500$ to $3{,}000$ words)}. The reader
+addresses:
+
+\begin{itemize}[leftmargin=*]
+  \item The accuracy with which the Moody chart predicts the
+    measured friction factor across the operating range.
+  \item The Reynolds-number boundary at which the data depart from
+    the laminar prediction, compared to the textbook value of
+    $\text{Re}_D = 2300$.
+  \item One source of measurement uncertainty whose impact the
+    reader was able to bound (or could not), with a brief
+    discussion of why.
+\end{itemize}
+
+\textbf{Deliverable}. The pipe-instrument setup (photographed and
+dimensioned), the raw data, the analysis, and the reflection.
+
+\textbf{Time}. Two to four hours of apparatus construction, three
+to six hours of measurement, four to eight hours of analysis and
+write-up.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+The exercises mix calculation, derivation, estimation, simulation,
+design, diagnosis, failure analysis, and judgment.
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Water at $20\,\degC$ ($\rho = 998\,\si{\kilogram\per\meter\cubed}$,
+$\mu = 1.0\times 10^{-3}\,\si{\pascal\second}$) flows through a
+$25\,\si{\milli\meter}$ diameter pipe at $0.5\,\si{\meter\per
+\second}$. Find the Reynolds number and identify the flow regime.
+\end{exercise}
+
+\begin{exercise}
+For the same pipe and fluid as above, find the pressure drop per
+metre of length in the fully developed laminar regime. Then
+compute the pressure drop in turbulent flow at $\bar{u} = 3\,\si{
+\meter\per\second}$ for a smooth pipe ($\epsilon \approx 0$), using
+a friction factor from the explicit Haaland correlation
+$f^{-1/2} = -1.8\log_{10}[(\epsilon/(3.7D))^{1.11} + 6.9/\text{Re}_D]$.
+\end{exercise}
+
+\begin{exercise}
+A flat plate of length $1\,\si{\meter}$ is in a freestream of air
+($\rho = 1.225\,\si{\kilogram\per\meter\cubed}$, $\nu = 1.5\times
+10^{-5}\,\si{\meter}^2/\si{\second}$) at $20\,\si{\meter\per
+\second}$. Find $\text{Re}_L$, the Blasius boundary-layer thickness
+$\delta$ at the trailing edge, and the average skin-friction
+coefficient.
+\end{exercise}
+
+\begin{exercise}
+A sphere of $5\,\si{\milli\meter}$ diameter falls through glycerin
+($\rho = 1260\,\si{\kilogram\per\meter\cubed}$, $\mu = 1.5\,\si{
+\pascal\second}$) under gravity. Find the terminal velocity using
+the Stokes drag law. Check that the resulting Reynolds number is
+in the Stokes regime ($\text{Re} < 1$).
+\end{exercise}
+
+\begin{exercise}
+Air ($\nu = 1.5\times 10^{-5}\,\si{\meter}^2/\si{\second}$) flows at
+$10\,\si{\meter\per\second}$ past a circular cylinder of
+$50\,\si{\milli\meter}$ diameter. Compute the Reynolds number, the
+Strouhal number ($\approx 0.21$ in this range), and the vortex-
+shedding frequency.
+\end{exercise}
+
+\begin{exercise}
+A diffuser expands a $50\,\si{\milli\meter}$ diameter pipe to
+$100\,\si{\milli\meter}$ diameter over a length of $300\,\si{\milli
+\meter}$. Find the divergence half-angle and state whether the
+diffuser is likely to suffer separation.
+\end{exercise}
+
+\begin{exercise}
+A racing-car tyre rotates at $200\,\text{km/h}$ on
+the road; the boundary layer on its outer surface is turbulent.
+Estimate the boundary-layer thickness at a streamwise distance of
+$0.3\,\si{\meter}$ on the tyre's leading face (assume air, sea-
+level conditions).
+\end{exercise}
+
+\begin{exercise}
+A car of frontal area $2.2\,\si{\meter}^2$ travels at $30\,\si{
+\meter\per\second}$ in still air. Its drag coefficient is $0.32$.
+Find the drag force and the power dissipated against drag.
+\end{exercise}
+
+\begin{exercise}
+A long-span suspension-bridge cable of diameter $0.5\,\si{\meter}$
+is in a $15\,\si{\meter\per\second}$ wind. Compute the Reynolds
+number, the vortex-shedding frequency, and compare to a typical
+cable natural frequency (state your assumption about the cable's
+fundamental mode).
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Hagen-Poiseuille velocity profile $u_z(r) = G(R^2 -
+r^2)/(4\mu)$ from the steady cylindrical-coordinates Navier-Stokes
+equation, stating the assumptions used.
+\end{exercise}
+
+\begin{exercise}
+Show that the average velocity in Hagen-Poiseuille flow is half
+the centreline velocity, and that the laminar friction factor is
+$f = 64/\text{Re}_D$.
+\end{exercise}
+
+\begin{exercise}
+Derive the Blasius scaling $\delta(x) \sim \sqrt{\nu x/U_\infty}$
+by setting the inertial and viscous terms equal in the boundary-
+layer equation.
+\end{exercise}
+
+\begin{exercise}
+Derive the Kármán momentum integral relation $d\theta/dx = C_f/2$
+(for zero pressure gradient) by integrating the boundary-layer
+momentum equation across the layer.
+\end{exercise}
+
+\begin{exercise}
+Show that the Reynolds number is the only dimensionless parameter
+governing the steady incompressible Navier-Stokes equation in a
+geometry of fixed shape, by non-dimensionalisation with a
+characteristic velocity and length.
+\end{exercise}
+
+\begin{exercise}
+Derive Stokes's drag law $F_D = 6\pi\mu a U$ from the creeping-
+flow form of the Navier-Stokes equations around a sphere. Sketch
+the derivation; the full algebra is in any standard reference.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{core}
+
+\begin{exercise}
+Estimate the Reynolds number of human blood flow in the aorta.
+State assumptions about blood density, viscosity, aortic diameter,
+and mean flow velocity.
+\end{exercise}
+
+\begin{exercise}
+Estimate the boundary-layer thickness on a sailing yacht hull at
+its trailing edge while sailing at $5\,\si{\meter\per\second}$.
+State assumptions about hull length and water properties.
+\end{exercise}
+
+\begin{exercise}
+Estimate the drag force on a road cyclist at $10\,\si{\meter\per
+\second}$ in still air. State assumptions about the cyclist's
+frontal area, drag coefficient, and air density. Compare to a
+typical cyclist's sustainable power output.
+\end{exercise}
+
+\begin{exercise}
+Estimate the terminal velocity of a raindrop of $2\,\si{\milli
+\meter}$ diameter falling in still air. State whether the relevant
+drag regime is Stokes or beyond, and choose the appropriate
+correlation.
+\end{exercise}
+
+\begin{exercise}
+Estimate the friction-related power dissipation in a $50\,\si{
+\meter}$ section of household water-supply pipe of $20\,\si{\milli
+\meter}$ diameter carrying $0.2\,\text{L/s}$. State the relevant
+Reynolds number and friction factor.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{mastery}
+
+\begin{exercise}
+Implement a finite-difference solver for the boundary-layer
+equations on a flat plate with zero pressure gradient. Verify the
+Blasius profile by comparing the computed wall shear and
+displacement thickness to the analytical values.
+\end{exercise}
+
+\begin{exercise}
+Implement a panel method for two-dimensional incompressible viscous
+flow past a circular cylinder, including a thin-boundary-layer
+correction (Thwaites' method for laminar, Head's method for
+turbulent). Verify against published $C_D$ vs.\ $\text{Re}$ data.
+\end{exercise}
+
+\begin{exercise}
+Run a simple LES of channel flow at $\text{Re}_\tau \approx 200$
+using an existing open-source CFD code. Compare the mean velocity
+profile in the log layer to the law-of-the-wall prediction
+$u^+ = (1/\kappa)\ln y^+ + B$.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a piping system for a building's hot-water supply,
+delivering $0.5\,\text{L/s}$ to each of $20$ fixtures across a
+$30\,\si{\meter}$ run. Specify the pipe diameter at the trunk and
+at the branches, and check the pressure drop against a maximum
+allowable of $50\,\text{kPa}$.
+\end{exercise}
+
+\begin{exercise}
+Design a settling tank for separating sand ($\rho_s = 2650\,\si{
+\kilogram\per\meter\cubed}$) from a water flow at $0.01\,\text{m}
+^3\text{/s}$. Specify the tank's depth, length, and width, given
+that all particles larger than $0.5\,\si{\milli\meter}$ must
+settle out before exiting.
+\end{exercise}
+
+\begin{exercise}
+Design an exhaust stack of $50\,\si{\meter}$ height and $3\,\si{
+\meter}$ diameter to survive a $25\,\si{\meter\per\second}$ wind
+without vortex-induced resonance. Estimate the Strouhal frequency
+and the stack's fundamental natural frequency; specify any
+aerodynamic spoilers or structural changes needed.
+\end{exercise}
+
+\begin{exercise}
+Design the underbody and rear-end shape of a road vehicle to
+reduce its drag coefficient from a baseline $C_D = 0.35$ to a
+target $0.28$. State the principal mechanisms (rear-spoiler shape,
+underbody flatness, wheel housing, trailing-edge taper) and
+estimate the contribution of each.
+\end{exercise}
+
+\subsection*{Diagnosis and reverse engineering}\pathtag{core}
+
+\begin{exercise}
+A pump is delivering only $60\,\%$ of its rated flow at the rated
+discharge pressure. Identify three viscous-flow mechanisms (pipe
+fouling, partial valve closure, cavitation in the pump) that could
+produce this and the diagnostic that would distinguish among them.
+\end{exercise}
+
+\begin{exercise}
+An exhaust stack on a power station has begun to oscillate
+visibly under moderate winds. Identify the most probable
+mechanism, the test that would confirm it, and one immediate and
+one permanent remedial measure.
+\end{exercise}
+
+\begin{exercise}
+A wind-tunnel test of a passenger-car model at $1/5$ scale gives
+$C_D = 0.42$, but full-scale road testing gives $C_D = 0.32$.
+Identify the most probable cause of the discrepancy, given that
+the wind tunnel was operated at a freestream velocity matching
+the full-scale highway speed.
+\end{exercise}
+
+\begin{exercise}
+A water-supply pipe section has measured pressure drop $20\,\%$
+larger than the Moody-chart prediction for new pipe of its
+material. Identify what physical change in the pipe could account
+for this and the inspection that would confirm or refute it.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{core}
+
+\begin{exercise}
+The BEA report on Air France Flight 447 \cite{acc:bea-af447}
+identifies a sequence beginning with pitot-tube icing and ending
+with deep stall and impact. Argue, in $200$ to $300$ words, how
+the boundary-layer physics of high-altitude stall constrains the
+recovery procedure, and what design discipline (cockpit
+indication, autoflight handoff, crew training) the case
+illuminates.
+\end{exercise}
+
+\begin{exercise}
+A diffuser at the inlet of a centrifugal compressor stage stalls
+intermittently at off-design flow rates, producing surge cycles.
+Identify the boundary-layer mechanism, the parameter (typically
+diffuser flow angle or diffuser area ratio) that controls it, and
+the design countermeasure.
+\end{exercise}
+
+\begin{exercise}
+A modern long-span suspension bridge has been instrumented with
+accelerometers and has shown low-amplitude oscillation at
+specific moderate wind speeds. Argue, in $200$ to $300$ words,
+the boundary-layer / vortex-shedding mechanism most likely
+responsible, distinguishing it from the larger-amplitude
+aeroelastic flutter that destroyed the original Tacoma Narrows
+bridge \cite{acc:tacoma-narrows-1941}.
+\end{exercise}
+
+\subsection*{Judgment}\pathtag{standard}
+
+\begin{exercise}
+A senior engineer argues that pipe-flow design can be done with
+the Hagen-Poiseuille relation across the full operating range,
+because the typical design Reynolds number is well below $2300$.
+Write a one-paragraph reply that takes the argument seriously,
+identifies the operating-range conditions under which it is true,
+and identifies the conditions under which it fails.
+\end{exercise}
+
+\begin{exercise}
+A junior engineer asks why CFD results are reported with three
+significant figures when the underlying turbulence closure
+introduces uncertainties of $10$ to $30\,\%$. Write a one-paragraph
+reply that distinguishes verification from validation and the
+status of CFD predictions absent experimental anchoring.
+\end{exercise}
+
+\begin{exercise}
+A designer proposes to omit boundary-layer-transition analysis on
+a wind-turbine blade because the operating Reynolds number is in
+the fully turbulent range. Write a one-paragraph response
+addressing whether transition still matters and, if so, on what
+parts of the blade.
+\end{exercise}
+
+\begin{exercise}
+Identify a viscous-flow situation in your immediate environment
+where the boundary-layer regime controls observable behaviour.
+State, in $200$ to $300$ words, the Reynolds number you estimate,
+the regime it corresponds to, the dominant viscous mechanism, and
+the consequence you observe.
+\end{exercise}
