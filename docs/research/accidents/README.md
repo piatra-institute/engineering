@@ -20,11 +20,13 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 |---|---|---|---|
 | V | 1983 | [Air Canada Flight 143](air-canada-143-1983.md) | `acc:lockwood-gimli1985` |
 | V | 1986 | [Space Shuttle Challenger](challenger-1986.md) | `acc:nasa-challenger` |
+| V | 1988 | [Aloha Airlines Flight 243](aloha-airlines-243-1988.md) | `acc:ntsb-aar94-04` |
 | V | 1990 | [Hubble Space Telescope primary mirror](hubble-primary-mirror-1990.md) | `acc:nasa-hubble-optical-systems-1990` |
 | V | 1996 | [Ariane 5 Flight 501](ariane-501-1996.md) | `acc:ariane501-ifr` |
 | V | 1999 | [Mars Climate Orbiter](mars-climate-orbiter-1999.md) | `acc:nasa-mco-mib` |
 | V | 2003 | [Space Shuttle Columbia](columbia-2003.md) | `acc:caib-columbia` |
 | V | 2009 | [Air France Flight 447](air-france-447-2009.md) | `acc:bea-af447` |
+| V | 2013 | [Boeing 787 lithium-ion battery incidents](boeing-787-battery-2013.md) | `acc:ntsb-aar14-01-787-battery` |
 
 ### Civil
 
@@ -39,6 +41,8 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | Status | Year | Name | Primary source |
 |---|---|---|---|
 | P | 1984 | [Bhopal disaster](bhopal-1984.md) | `acc:icmr-bhopal-2004` |
+| V | 2005 | [BP Texas City refinery explosion](bp-texas-city-2005.md) | `acc:csb-bp-texas-city-2007` |
+| V | 2008 | [Imperial Sugar refinery dust explosion](imperial-sugar-2008.md) | `acc:csb-imperial-sugar-2009` |
 
 ### Power
 
@@ -62,21 +66,21 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 
 ## Counts
 
-- Aerospace: 7
+- Aerospace: 9
 - Civil: 3
-- Process: 1
+- Process: 3
 - Power: 2
 - Medical: 1
 - Software: 2
-- **Total: 16**
+- **Total: 20**
 
 ## Pending entries (~18-20)
 
 Accumulate as chapters cite them. Listed here for forward planning, not as commitment:
 
-- Aerospace: Aloha 243 (1988), Boeing 737 MAX (2018-2019).
+- Aerospace: Boeing 737 MAX (2018-2019).
 - Civil: Tay Bridge (1879), Citicorp Tower (1978-1979, averted), Genoa Morandi (2018), Aberfan (1966), Vajont Dam (1963).
-- Process: Texas City refinery (2005), Flixborough (1974), Buncefield (2005), Deepwater Horizon (2010).
+- Process: Flixborough (1974), Buncefield (2005), Deepwater Horizon (2010).
 - Power: Fukushima (2011), Northeast blackout (2003), Texas grid failure (2021).
 - Software: Knight Capital (2012).
 
