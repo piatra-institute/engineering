@@ -1,40 +1,283 @@
 \chapter{Robotics}
 \label{vol08:ch13}
 
-\epigraph{}{}
+\epigraph{A robot is a controlled machine acting on an uncontrolled world.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, interface, scaling. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, interface, scaling. Exercise target: 30. Project track: physical.}
 
 \noindent
-\TODO{Volume 8, Chapter 13. Approx 140 pp.}
+Robotics is the integration discipline. A working robot brings together mechanics (rigid bodies, joints, transmissions), actuators (motors, drives), sensors (encoders, IMUs, force, vision), electronics (drivers, controllers, communication), software (real-time control, planning, perception), and increasingly machine learning (visual recognition, manipulation policies). The robot must operate in a world it does not fully control; the discipline of robotics is the systematic management of the uncertainty between commanded action and resulting effect. This chapter develops the engineer's working understanding of robot kinematics and dynamics, trajectory and path planning, sensing for robots, manipulation and grasping, mobile robotics with SLAM and navigation, and the failure modes specific to robots. The reader who finishes this chapter has the working vocabulary to engage seriously with industrial, mobile, and humanoid robotics.
 
-\section{Kinematics: forward and inverse}
-\TODO{Section prose.}
+\section{Kinematics: forward and inverse}\pathtag{core}
 
-\section{Dynamics}
-\TODO{Section prose.}
+Robot kinematics is the geometry of robot motion: where the end-effector is given joint positions (forward kinematics) and what joint positions give a desired end-effector position (inverse kinematics).
 
-\section{Trajectory planning}
-\TODO{Section prose.}
+A serial manipulator with $n$ joints has a configuration space (joint space) of dimension $n$. The forward kinematics map $\mathbf{x}_{ee} = f(\mathbf{q})$ takes a vector of joint positions $\mathbf{q}$ to the end-effector pose $\mathbf{x}_{ee}$ (position and orientation in the workspace). The map is constructed from the joint geometry, typically using Denavit-Hartenberg (DH) parameters: four parameters per joint (link length, link twist, offset, joint angle) that parameterise the homogeneous transformation between consecutive frames. The forward kinematics is the product of these transformations.
 
-\section{Sensing for robots: vision, lidar, force}
-\TODO{Section prose.}
+Inverse kinematics is the harder problem: given a desired end-effector pose, find the joint angles. For simple geometries (planar arms, anthropomorphic six-axis arms with spherical wrist), closed-form solutions exist. For general manipulators, numerical methods (Newton-Raphson on the forward kinematics, gradient descent on a Jacobian) are used. The solution may not exist (the pose is outside the workspace), may not be unique (multiple joint configurations reach the same pose), or may be degenerate (a singular configuration where the Jacobian loses rank).
 
-\section{Path planning}
-\TODO{Section prose.}
+The Jacobian $J(\mathbf{q})$ relates joint velocities to end-effector velocities: $\dot{\mathbf{x}}_{ee} = J(\mathbf{q}) \dot{\mathbf{q}}$. The Jacobian is the linearisation of the forward kinematics at a configuration. The Jacobian's determinant indicates singularities (loss of rank): at a singular configuration, the manipulator cannot move in certain directions, and small end-effector motions require large joint motions. Singularities are kinematically detectable and must be avoided in path planning.
 
-\section{Manipulation and grasping}
-\TODO{Section prose.}
+The workspace is the set of poses the end-effector can reach. The dexterous workspace is the subset where the end-effector can reach with any orientation. Workspace shape depends on link lengths and joint limits; cylindrical, spherical, rectangular, and toroidal workspace shapes are typical of common manipulator geometries.
 
-\section{Mobile robotics: SLAM, navigation}
-\TODO{Section prose.}
+\begin{archetype}[control: kinematics as feedforward path]
+A robot's kinematic model is the feedforward path of the controller: given a desired end-effector trajectory, the inverse kinematics gives the joint trajectory, which the joint controllers track. Kinematic errors (link-length tolerance, joint-encoder offset, mounting alignment) bias the entire feedforward; an unmodelled kinematic error of a millimetre in a link is a millimetre error at the end-effector regardless of control gains. The kinematic model accuracy directly bounds the robot's positioning accuracy.
+\end{archetype}
 
-\section{Failure: collisions, kinematic singularities, vision under adversarial conditions}
-\TODO{Section prose.}
+\section{Dynamics}\pathtag{standard}
 
+Robot dynamics relates joint torques to joint accelerations, given the robot's inertia, gravity, friction, and external forces. The standard form is the manipulator equation:
+$$M(\mathbf{q}) \ddot{\mathbf{q}} + C(\mathbf{q}, \dot{\mathbf{q}}) \dot{\mathbf{q}} + G(\mathbf{q}) + F(\dot{\mathbf{q}}) = \boldsymbol{\tau}$$
+where $M$ is the inertia matrix (configuration-dependent), $C$ is the Coriolis and centrifugal matrix, $G$ is the gravity vector, $F$ is friction, and $\boldsymbol{\tau}$ is the applied joint torque.
 
-\section{Project}
-\TODO{build a small mobile robot; navigate a simple course autonomously}
+The inertia matrix's configuration dependence couples joints: moving one joint changes the effective inertia at others. This coupling is significant for fast motion and small-motor designs; it is negligible for slow motion with large gear ratios.
+
+Recursive Newton-Euler algorithms compute the inverse dynamics (torques required for a desired motion) in linear time in the number of joints. The Lagrangian formulation gives the same equations through energy considerations. Both are implemented in standard robotics simulation tools (Gazebo, MuJoCo, PyBullet, Drake).
+
+Computed-torque control uses the inverse dynamics to feedforward the expected torque for the desired motion; a PID controller corrects model errors and disturbances. Computed-torque achieves high-bandwidth tracking when the model is accurate. Robust and adaptive control methods address model uncertainty.
+
+For dynamic tasks (running, jumping, throwing, catching), the dynamics dominates the control: the robot's motion is constrained by physics, not just by joint limits. Modern dynamic robotics (Boston Dynamics' Atlas, ANYmal, MIT Cheetah) operates in the dynamic regime where dynamics-aware planning and control are essential.
+
+\section{Trajectory planning}\pathtag{standard}
+
+Trajectory planning produces a time-parameterised joint or end-effector trajectory that satisfies kinematic and dynamic constraints. The trajectory must be smooth (no infinite jerk, bounded acceleration), within velocity and torque limits, and consistent with task requirements (collision-free path, sufficient time to reach intermediate waypoints).
+
+The simplest joint-space trajectory is point-to-point: a quintic polynomial that satisfies start and end position, velocity, and acceleration. The polynomial is continuous in jerk and natural to follow. Trapezoidal velocity profiles (acceleration, constant velocity, deceleration) are simpler and produce shorter trajectories for unconstrained moves; the discontinuity in acceleration is smoothed by adding a constant-jerk phase (S-curve).
+
+Workspace trajectories follow a path in end-effector space (line, circle, splined curve) rather than joint space. The joint trajectories are computed via inverse kinematics at each point. Workspace trajectories are necessary for tasks where the end-effector path matters: welding seams, machining contours, dispensing.
+
+Time-optimal trajectories minimise execution time subject to constraints. The standard result (Bobrow et al.): the time-optimal trajectory is at a constraint boundary at every instant. Solving for the optimal trajectory is a constrained optimisation problem; practical algorithms iterate or use convex relaxations.
+
+Trajectory blending smooths the transitions between segments (a sequence of waypoints with corners). Blends use parabolic or polynomial interpolation; the blend radius is a parameter. Blending shortens execution time at the cost of small path errors at the corners.
+
+\section{Sensing for robots: vision, lidar, force}\pathtag{core}
+
+A robot's sensing capabilities determine what it can do. Joint encoders give internal state; external sensors (vision, lidar, force) give external state (the world's geometry, the contact state, the location of objects).
+
+\textbf{Vision:} cameras with image processing. Modern robot vision uses convolutional networks (CNNs) or vision transformers for object detection, semantic segmentation, and pose estimation. Stereo cameras provide depth at low cost; RGB-D cameras (structured light, time-of-flight) provide depth directly; multi-camera systems handle occlusion and provide larger workspace coverage. The vision pipeline is the most complex part of many modern robots; latencies of $50$ to $200\,\text{ms}$ are typical.
+
+\textbf{Lidar:} laser ranging. 2D lidar scans a plane at $5$ to $40\,\text{Hz}$; 3D lidar (mechanical scanning or solid-state) captures a 3D point cloud at $5$ to $20\,\text{Hz}$ with $\sim 100{,}000$ to several million points per scan. Lidar gives precise range with low data-rate compared to vision; it dominates mobile robotics for mapping and obstacle avoidance.
+
+\textbf{Force and torque:} six-axis force-torque sensors (ATI, Kistler) measure contact forces at the end-effector. Force-controlled tasks (assembly, polishing, grinding) require force sensing; the force feedback closes a loop on contact compliance. Joint-torque sensors give similar information at each joint.
+
+\textbf{Tactile sensors:} arrays of force or capacitive sensors on the gripper or skin. Tactile sensors enable slip detection, fine manipulation, and safe interaction. Modern tactile sensors (BioTac, GelSight, DIGIT) give image-like resolution of contact pressure and texture.
+
+\textbf{Inertial sensors:} MEMS IMUs (covered in the previous chapter). IMUs measure the robot's motion in inertial frame; for mobile robots, IMU fusion with encoders gives odometry; for legged robots, IMU is essential for balance.
+
+\textbf{Proximity and contact:} ultrasonic distance, capacitive proximity, mechanical limit switches. These provide simple binary or coarse-range information at low cost.
+
+Sensor fusion (previewed in the previous chapter) combines these modalities to produce an estimate of robot and world state. The Kalman filter (or its variants), particle filters, and increasingly learning-based fusion are the standard approaches. The discipline is to know each sensor's noise and bias and to weight them accordingly.
+
+\section{Path planning}\pathtag{standard}
+
+Path planning computes a collision-free path from a start configuration to a goal configuration. The configuration space (C-space) is the set of all robot configurations; the free C-space is the subset that is collision-free. Path planning is search in free C-space.
+
+Grid-based planners (A*, Dijkstra) discretise C-space and search the resulting graph. They work for low-dimensional C-spaces (mobile robots in 2D or 3D) and are widely used.
+
+Sampling-based planners (RRT, RRT*, PRM) sample C-space randomly and connect collision-free samples into a graph. They scale to high-dimensional C-spaces (manipulator arms with $6$ or $7$ joints) where grid-based planners are intractable. RRT* (asymptotically optimal RRT) guarantees convergence to an optimal path with enough samples.
+
+Optimisation-based planners (CHOMP, STOMP, TrajOpt) cast path planning as an optimisation problem with smoothness and collision-avoidance objectives. They produce smooth trajectories and accommodate continuous constraints, at the cost of dependency on good initialisation.
+
+Modern planning combines techniques: a sampling-based planner produces a feasible initial path; an optimisation-based planner refines it. Operational systems (MoveIt, OMPL, Open Motion Planning Library) implement these algorithms with standard interfaces.
+
+For mobile robots, the path planning is in $\mathbb{R}^2$ or $\mathbb{R}^3$ rather than C-space; the planner produces a path that the robot's locomotion controller follows. Hierarchical decomposition (global planner finds the path, local planner avoids dynamic obstacles) is standard.
+
+\section{Manipulation and grasping}\pathtag{standard}
+
+Manipulation is the task of changing the world's state through controlled physical contact. The fundamental problem is computing a grasp (a set of contact points with sufficient force-closure to immobilise the object) given the object's shape and the gripper's geometry.
+
+Form-closure grasps mechanically constrain the object regardless of friction; force-closure grasps use friction to constrain the object. Pinching with two parallel jaws, the standard parallel-jaw gripper, gives force-closure on objects within the jaw range. Multi-finger grippers (Allegro hand, Shadow hand) give form-closure on complex shapes at the cost of complexity and reduced robustness.
+
+Vacuum grippers (suction cups) work on flat or smooth surfaces and are widely used in pick-and-place. Magnetic grippers work on ferromagnetic materials. Specialised grippers (gel-based, electroadhesive, jamming-based) cover applications outside standard gripping.
+
+Grasp planning computes the grasp from object and gripper geometry. For known objects (CAD model available), the grasp is precomputed offline; for unknown objects, vision-based grasp synthesis (point-cloud-based grasp detection, learned grasp policies, GPD/PointNetGPD/grasp transformers) selects grasps in real-time.
+
+Manipulation in clutter, manipulation of articulated objects, manipulation requiring tool use, and assembly tasks are open research frontiers. Recent progress in language-conditioned manipulation (PaLM-E, RT-2, OpenAI's robot manipulation systems) combines vision-language models with manipulation policies; the systems generalise across tasks but remain expensive and slow compared to specialised industrial manipulators.
+
+\section{Mobile robotics: SLAM, navigation}\pathtag{standard}
+
+Mobile robotics is the discipline of robots that move through their environment. The core problems are localisation (where am I?), mapping (what does the world look like?), and navigation (how do I get from here to there?).
+
+Simultaneous localisation and mapping (SLAM) solves localisation and mapping concurrently: the robot builds a map as it moves and uses the map to localise itself. The standard formulations include EKF-SLAM, FastSLAM (particle filter), GraphSLAM (factor graph optimisation), and most recently visual-inertial SLAM with deep features (ORB-SLAM3, VINS-Fusion, BASALT). The output is a map of features (landmarks, point cloud, occupancy grid) and the robot's trajectory.
+
+For 2D mobile robots in indoor environments, lidar-based SLAM (gmapping, Cartographer) produces occupancy grids suitable for navigation. For outdoor mobile robots, GPS plus IMU plus wheel odometry plus a visual or lidar SLAM gives global localisation. For drones, visual-inertial odometry plus GPS gives metric navigation.
+
+Path planning in mobile robotics combines a global planner (Dijkstra or A* on a road network or occupancy grid) with a local planner (dynamic window approach, TEB, MPC) that handles dynamic obstacles and motion constraints. The result is a series of velocity commands to the robot's drive.
+
+Modern autonomous vehicles (Waymo, Cruise, Mobileye) combine high-precision GPS, IMUs, multi-modal vision, lidar, radar, ultrasonic sensors, pre-mapped HD maps, and machine-learning perception into a navigation stack. The stack's complexity (millions of lines of code, terabytes of model parameters) and its failure modes (edge cases in perception, planning under uncertainty, regulatory and ethical constraints) are active engineering and policy issues.
+
+\begin{estimation}
+\textbf{Question.} Estimate the minimum sensor and compute requirement for a small indoor autonomous mobile robot (vacuum-cleaner class) that navigates a $100\,\text{m}^2$ floor area.
+
+\textbf{Working.} Sensors: a 2D lidar (40$\,\text{Hz}$, $\sim 360\,$ rays per scan, $5\,\text{m}$ range, $\sim \$80$) for localisation and obstacle detection; wheel encoders ($\sim \$10$); IMU ($\sim \$3$). Optional: a bumper switch and cliff sensors (a few dollars). Compute: a single-board computer (Raspberry Pi 4, $\sim \$60$) with $4\,\text{GB}$ RAM is sufficient for the lidar-SLAM and navigation stack. Software: ROS or ROS2 with open-source SLAM (gmapping or Cartographer) and navigation (nav2). Battery: $5000\,\text{mAh}$ Li-ion ($\sim \$30$); motor drive $\sim 2\,\text{A}$, idle $\sim 0.5\,\text{A}$; runtime $\sim 2$ hours. Total bill of materials: $\sim \$200$, retail $\sim \$400$. This is consistent with commercial robot vacuums; the engineering challenge is robust operation across home environments (varied lighting, glass surfaces, stairs, cables, pets, children).
+\end{estimation}
+
+\section{Failure: collisions, kinematic singularities, vision under adversarial conditions}\pathtag{core}
+
+Robot failures have characteristic patterns.
+
+\textbf{Collisions:} the robot strikes itself, the environment, or a person. Collisions cause damage, injury, or both. Mitigation: collision-aware path planning (avoid configurations near obstacles), force-limited operation (collaborative robots with bounded interaction forces), emergency stops (physical buttons and hardware shutdown circuits), and physical safety barriers. The 1979 Robert Williams fatality at a Ford plant (the first recorded industrial robot fatality) and similar events drove the safety-standard development (ISO 10218, ISO/TS 15066) that governs current industrial robot deployment.
+
+\textbf{Kinematic singularities:} the manipulator's Jacobian loses rank; small end-effector motions require large joint motions. Symptoms: joints accelerate to high speed, motors saturate, the trajectory cannot be followed. Mitigation: singularity-avoiding path planning, damped-least-squares inverse kinematics (limits joint velocity at singularities at the cost of small path errors), and operator awareness.
+
+\textbf{Vision failures under adversarial conditions:} the vision system makes systematic errors under unexpected lighting, motion blur, fog, glare, reflective or transparent surfaces, or adversarial inputs. Self-driving and inspection robots have shown systematic failures here. Mitigation: multi-modal sensing (lidar plus camera, not camera alone), confidence-aware perception (the system knows when it does not know), and robust testing under adverse conditions.
+
+\textbf{Localisation drift:} dead-reckoning (encoders, IMU) accumulates error; without external reference (GPS, lidar against map, visual loop closure), the robot's belief about its location diverges from reality. Mitigation: regular reference fixes, redundant localisation, divergence detection.
+
+\textbf{Software bugs in the planning or perception stack:} edge cases in object detection, race conditions in real-time tasks, incorrect handling of operating-mode transitions. These present as unexpected behaviour under specific conditions, often after substantial operating time. Mitigation: rigorous testing in simulation and on hardware, formal methods for safety-critical subsystems, restricted deployment with monitoring.
+
+\textbf{Sensor failures:} a critical sensor (lidar, camera, encoder) fails. Without redundancy, the robot loses capability; with redundancy, the failure is detected and the robot degrades to a safe state. Mitigation: sensor health monitoring, redundant sensing where the consequences justify it, fail-safe degraded operating modes.
+
+\textbf{Power and communication failures:} loss of power or communication mid-task. Mitigation: brakes that engage on power loss (gravity-loaded joints hold position), redundant power, and watchdogs that halt the robot on communication loss.
+
+\textbf{Calibration and assembly errors:} a robot is installed with link lengths or encoder zeros incorrectly set; the resulting accuracy is poor or the robot collides with structure. Mitigation: commissioning calibration, post-installation verification, kinematic identification from measurement.
+
+\begin{principle}[The integration-discipline principle]
+A robot is the integration of many subsystems. Each subsystem has its own failure modes, its own design discipline, its own tests. The robot system's reliability is bounded above by the reliability of the most fragile subsystem and the discipline of the integration. The engineer who masters the integration discipline (interfaces, tests, qualification, deployment, maintenance) builds reliable robots; the engineer who optimises one subsystem at the expense of the integration builds robots that demo well and fail in service.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Mobile robot: build and navigate a course]
+\textbf{Objective.} Build a small mobile robot (two-wheel differential drive or four-wheel skid-steer), implement basic autonomous navigation, and demonstrate it navigating a simple course (a few obstacles, a defined goal).
+
+\textbf{Method.} Use a robotics kit (Pololu, SparkFun, or a Raspberry Pi-based platform). Equip with wheel encoders, an IMU, an ultrasonic or lidar sensor, and a microcontroller or single-board computer. Implement an odometry algorithm (wheel encoder integration corrected by IMU). Implement a simple navigation: read sensor, decide direction, drive. The course: a $5\,\text{m}$ corridor with two right-angle turns and an obstacle to avoid; the robot starts at one end, ends at the other.
+
+\textbf{Deliverables.} The hardware (with a parts list and a schematic), the firmware (open-source or written), a video of the robot completing the course, a discussion of the failure modes encountered during development, and a written analysis of what would be needed for robust operation across a wider range of environments.
+
+\textbf{Hazard.} Spinning wheels, sharp metal edges if metal chassis used, soldering, battery management (do not short-circuit Li-ion batteries; use protected cells). Mechanical end-stops on the actuator drives; software speed limits.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A two-link planar manipulator has link lengths $L_1 = 0.3\,\text{m}$, $L_2 = 0.25\,\text{m}$. Compute the end-effector position for joint angles $\theta_1 = 30^\circ$, $\theta_2 = 60^\circ$.
+\end{exercise}
+
+\begin{exercise}
+A three-link planar manipulator has link lengths $L_1 = L_2 = L_3 = 0.2\,\text{m}$. Compute the maximum reach and the workspace boundary equations.
+\end{exercise}
+
+\begin{exercise}
+A differential drive robot has wheel diameter $80\,\text{mm}$, wheel separation $200\,\text{mm}$. With left wheel at $200\,\text{rpm}$ and right wheel at $100\,\text{rpm}$, compute the linear and angular velocity of the robot.
+\end{exercise}
+
+\begin{exercise}
+A six-axis robot's end-effector moves at $1\,\text{m/s}$ in workspace. Estimate the joint velocity given a Jacobian condition number of $5$.
+\end{exercise}
+
+\begin{exercise}
+A robot manipulator with $1\,\text{kg}$ payload and $0.5\,\text{m}$ extension. Compute the wrist joint torque due to gravity in a horizontal pose.
+\end{exercise}
+
+\begin{exercise}
+A SLAM system uses landmarks with $1\,\text{cm}$ measurement noise. Estimate the localisation accuracy after observing $50$ landmarks if loop-closure is not available.
+\end{exercise}
+
+\begin{exercise}
+A grasp planner returns a grasp with force-closure margin $0.2$. The friction coefficient is $0.4$ and the object weight is $5\,\text{N}$. State whether the grasp is robust to a $1\,\text{N}$ horizontal perturbation.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Jacobian of a two-link planar manipulator from the forward kinematics.
+\end{exercise}
+
+\begin{exercise}
+Derive the manipulator equation $M\ddot{\mathbf{q}} + C\dot{\mathbf{q}} + G = \boldsymbol{\tau}$ from the Lagrangian.
+\end{exercise}
+
+\begin{exercise}
+Derive the kinematic constraint of a non-holonomic differential drive robot; show that it cannot move sideways.
+\end{exercise}
+
+\begin{exercise}
+Derive the time-optimal trajectory for a single joint with bounded torque, starting and ending at rest, traversing a fixed angle.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between Jacobian condition number and end-effector velocity ellipsoid.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the maximum payload of a six-axis manipulator with given motor specifications and gearbox ratios. State the assumptions.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time required for an RRT planner to find a path in a six-dimensional C-space with $10\%$ obstacle density.
+\end{exercise}
+
+\begin{exercise}
+Estimate the localisation accuracy of a visual-inertial odometry system using monocular camera ($30\,\text{fps}$) and consumer-grade IMU ($\sim 5\,^\circ/\text{hr}$ gyro bias) over $1$ minute of motion without loop closure.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput of a robotic pick-and-place line: $40\,\text{cm}$ pick-to-place distance, $1\,\text{m/s}^2$ peak acceleration, $0.5\,\text{s}$ gripper actuation. Compute the cycle time.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate the trajectory tracking of a six-axis manipulator under computed-torque control with $10\%$ inertia model error.
+\end{exercise}
+
+\begin{exercise}
+Simulate an RRT and an RRT* on a 2D mobile-robot planning problem with several obstacles. Compare path lengths and computation time.
+\end{exercise}
+
+\begin{exercise}
+Simulate a lidar-SLAM run on a recorded dataset; report the trajectory error against ground truth.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the joint architecture (motor, gearbox, encoder, brake) for a $5\,\text{kg}$-payload six-axis robot. State the actuator selections for each joint and the rationale.
+\end{exercise}
+
+\begin{exercise}
+Design the perception stack for an autonomous indoor delivery robot operating in office environments. State the sensors, the algorithms, and the failure-mode handling.
+\end{exercise}
+
+\begin{exercise}
+Design the safety architecture for a collaborative robot operating alongside human workers. State the force-limiting strategy, the emergency-stop chain, and the relevant ISO standards (10218, TS 15066).
+\end{exercise}
+
+\begin{exercise}
+Design the motion planning stack for a six-axis welding robot operating on a curved workpiece. State the trajectory generation, the singularity handling, and the path correction approach.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's manipulator shows $\pm 0.5\,\text{mm}$ repeatability and $\pm 2\,\text{mm}$ accuracy. State the engineering responses to improve accuracy.
+\end{exercise}
+
+\begin{exercise}
+A team's mobile robot's localisation drifts in featureless corridors. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between vision-based grasp synthesis and pre-computed grasps for a pick-and-place application with $1000$ known SKUs. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's vision system fails to detect dark-coloured objects against dark backgrounds. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team is integrating ROS-based software with hard-real-time joint control. State the architecture considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's robot demo works in the lab and fails at a customer's site. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team's robot has a kinematic singularity that the path planner does not handle. State the engineering response and the role of damped-least-squares inverse kinematics.
+\end{exercise}

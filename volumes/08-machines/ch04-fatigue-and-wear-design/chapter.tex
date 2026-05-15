@@ -1,40 +1,391 @@
 \chapter{Machine design under fatigue and wear}
 \label{vol08:ch04}
 
-\epigraph{}{}
+\epigraph{The fatigue test is the only honest test. Everything else is a hypothesis.}{anonymous structural engineer}
 
-\chapmeta{Half-life: medium-life. Archetypes: failure, optimisation. Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: failure, optimisation. Exercise target: 40. Project track: physical. Named cases: de Havilland Comet, Aloha Airlines Flight 243.}
 
 \noindent
-\TODO{Volume 8, Chapter 4. Approx 140 pp.}
+Volume V Chapter 9 introduced fatigue and fracture as material phenomena. This chapter takes the same material to the design level: how to dimension a part, choose a material, specify a manufacturing process, and write an inspection schedule so that the part survives its intended service life with acceptable reliability. The two dominant design philosophies are \engterm{safe-life} (design for a target life with margin; replace before failure) and \engterm{damage-tolerant} (design for residual strength after a crack of inspectable size; inspect periodically to find cracks before they grow critical). Both philosophies have engineering applications; the choice depends on inspectability, consequence of failure, and weight or cost penalty of the alternative. The canonical references are Stephens et al.\ \cite{text:stephens-fatigue} and Suresh \cite{text:suresh-fatigue}.
 
-\section{Fatigue revisited at design depth}
-\TODO{Section prose.}
+\section{Fatigue revisited at design depth}\pathtag{core}
 
-\section{S-N curves, design factors, safe-life vs damage-tolerant}
-\TODO{Section prose.}
+\subsection{The stress-life view}
 
-\section{Fracture mechanics for design}
-\TODO{Section prose.}
+The classical S-N curve plots stress amplitude $\sigma_a$ against cycles to failure $N$. For ferrous materials, the curve has an asymptote (the \engterm{endurance limit}, $\sigma_e$, typically $0.4$-$0.5 \cdot \sigma_u$ for low-strength steels). For aluminium and most non-ferrous alloys, the curve continues to drop indefinitely; there is no true endurance limit, and fatigue life is finite at any stress.
 
-\section{Wear-driven design margins}
-\TODO{Section prose.}
+The S-N curve is for fully-reversed loading ($R = -1$, where $R$ is the ratio of minimum to maximum stress). Real loading typically has a non-zero mean. The Goodman, Gerber, or Soderberg corrections adjust the allowable amplitude as a function of mean stress.
 
-\section{Reliability-based design}
-\TODO{Section prose.}
+\subsection{Stress concentration factors}
 
-\section{Service-life prediction}
-\TODO{Section prose.}
+A geometric feature (hole, notch, fillet, keyway, thread) produces a local stress concentration. The factor $K_t$ is the ratio of peak stress to nominal stress; the fatigue strength is reduced by a factor $K_f \leq K_t$, where the inequality reflects the material's notch sensitivity.
 
-\section{Worked example: aircraft, automotive, infrastructure components}
-\TODO{Section prose.}
+The engineering rule: avoid sharp corners; generous fillet radii are cheap insurance against fatigue. A fillet radius equal to the local thickness reduces $K_t$ to approximately 1.3; a sharp corner produces $K_t$ from 3 to 10.
 
-\section{Failure: design factors too low or too high; Comet, Aloha, fatigue inspections}
-\TODO{Section prose.}
+\subsection{The strain-life view}
 
+For low-cycle fatigue (lives below approximately $10^4$ cycles), the dominant variable is plastic strain rather than stress. The Coffin-Manson relation
+\[
+\frac{\Delta \epsilon_p}{2} = \epsilon_f' (2 N)^c
+\]
+is the standard. Used for thermal-cycling applications (turbine blades, soldered joints, automotive engine components) and for analysis under variable amplitude.
 
-\section{Project}
-\TODO{design a small cyclic-loaded part for $10^6$ cycles; verify with rig test}
+\subsection{Cumulative damage}
+
+Real service loads are variable. The Palmgren-Miner rule sums fractional damage:
+\[
+\sum_i \frac{n_i}{N_i} = 1 \text{ at failure},
+\]
+where $n_i$ is the number of cycles at amplitude $i$ and $N_i$ is the cycles-to-failure at that amplitude. The rule is empirical and approximate; modern variable-amplitude design uses load-spectrum analysis (rainflow counting, Volume V Chapter 9) plus the Miner rule with conservative safety factors.
+
+\section{S-N curves, design factors, safe-life vs damage-tolerant}\pathtag{core}
+
+\subsection{Design factors}
+
+The classical engineer modifies the material's endurance limit by a series of factors:
+\[
+\sigma_e' = k_a k_b k_c k_d k_e k_f \sigma_e,
+\]
+where the factors account for surface finish ($k_a$), size ($k_b$), loading mode ($k_c$), temperature ($k_d$), reliability ($k_e$), and miscellaneous ($k_f$). Each factor is empirical, derived from extensive test data. Modern engineering practice uses the Marin equation (Shigley) or the FKM-Richtlinie (German engineering standard) for more sophisticated factor accounting.
+
+The design rule is:
+\[
+\sigma_{\mathrm{design}} = \sigma_e' / n,
+\]
+where $n$ is the design safety factor (typically $1.5$ to $3$ depending on consequence and confidence).
+
+\subsection{Safe-life design philosophy}
+
+The safe-life philosophy: design so that the calculated life exceeds the operational life by a margin (the safety factor). Inspect for general airworthiness but not specifically for fatigue cracks. Replace components before the calculated life.
+
+Used for: jet-engine compressor blades, helicopter rotor heads, automotive engine cranks, train axles. The advantage: no in-service crack inspection required for fatigue. The disadvantage: components are replaced even if they would have survived longer; conservative design adds weight; the philosophy fails if the design margin is wrong (as in Comet 1).
+
+\subsection{Damage-tolerant design philosophy}
+
+The damage-tolerant philosophy: assume cracks exist (at the inspection-detection limit) at the start of life; design so that a crack grows slowly enough that scheduled inspections will detect it before it reaches critical size. Inspect periodically; remove components where cracks have grown beyond a threshold.
+
+Used for: large transport aircraft primary structure, pressure vessels, infrastructure (bridges, dams). The advantage: lighter components are acceptable because cracks are managed in service rather than excluded by design. The disadvantage: inspection regime must be maintained; some components are not inspectable (sealed, embedded, complex geometry); a missed crack can be fatal.
+
+Modern aerospace practice typically combines both: safe-life for some components (engine), damage-tolerant for others (airframe), with a redundant load-path design philosophy as a third leg.
+
+\section{Fracture mechanics for design}\pathtag{standard}
+
+\subsection{Stress intensity factor}
+
+The \engterm{stress intensity factor} $K$ characterises the singularity at a crack tip. For a crack of length $a$ in an infinite plate under uniform tension $\sigma$:
+\[
+K = \sigma \sqrt{\pi a}.
+\]
+For finite-geometry parts, the factor includes a geometry function: $K = \sigma \sqrt{\pi a} \cdot Y(a/W)$, where $W$ is the part width and $Y$ is the geometry factor (tabulated in standards like ASTM E1820).
+
+The fracture toughness $K_{Ic}$ is the material property; if $K \geq K_{Ic}$ the crack propagates unstably. The critical crack size is
+\[
+a_c = \frac{1}{\pi} \left( \frac{K_{Ic}}{Y \sigma} \right)^2.
+\]
+
+\subsection{Crack growth: Paris law}
+
+For sub-critical cracks, the growth rate per cycle is
+\[
+\frac{da}{dN} = C (\Delta K)^m
+\]
+where $\Delta K$ is the stress-intensity range, $C$ and $m$ are material constants ($m \approx 2$-$4$ for typical metals). Integrate the Paris law to find the number of cycles for a crack to grow from initial $a_0$ to critical $a_c$:
+\[
+N_{\mathrm{cycles}} = \int_{a_0}^{a_c} \frac{da}{C (\Delta K)^m}.
+\]
+
+\subsection{Inspection intervals}
+
+The damage-tolerant design specifies inspection intervals as a fraction of the time for a crack from minimum detectable size to critical size. Standard practice: inspect at 1/3 or 1/4 of the calculated propagation life. A crack that escapes detection at one inspection has ample remaining margin before the next.
+
+The minimum detectable crack size depends on the inspection method. Visual: about $10\,\si{\milli\meter}$ for unaided inspection, $1\,\si{\milli\meter}$ with magnification. Dye penetrant: about $1\,\si{\milli\meter}$. Magnetic particle: about $0.5\,\si{\milli\meter}$. Ultrasonic: about $0.5\,\si{\milli\meter}$ in good geometry. Eddy current: about $0.25\,\si{\milli\meter}$. The engineering choice of inspection method depends on the geometry, material, and required sensitivity.
+
+\section{Wear-driven design margins}\pathtag{standard}
+
+\subsection{Wear-life calculation}
+
+For a component limited by wear rather than fatigue, the Archard wear law gives the volumetric wear rate:
+\[
+V = k \cdot F \cdot s / H,
+\]
+where $V$ is wear volume, $F$ is normal force, $s$ is sliding distance, $H$ is hardness, $k$ is the wear coefficient (empirical, varies by orders of magnitude across material pairs and lubrication regimes).
+
+The wear life is the time to accumulate enough wear that the component fails to perform its function. A gear's wear life is the time for tooth-thickness reduction to compromise the load-carrying capacity; a brake's wear life is the time for the lining to wear through; a bearing's wear life is governed by surface fatigue (rolling bearings) or by sliding wear (plain bearings).
+
+\subsection{Wear allowance in design}
+
+A part subject to wear is dimensioned to allow the expected wear without compromising function. The classical example: a cylinder bore in an engine is bored slightly larger than the design dimension so that wear over the engine's life leaves the cylinder within usable tolerance. A more elaborate practice is to design for replaceable wear surfaces (cylinder liners, replaceable cutting inserts, wear plates).
+
+\section{Reliability-based design}\pathtag{standard}
+
+\subsection{The probabilistic view}
+
+Material strength, load, and geometry all have distributions. The classical safety-factor approach treats them as deterministic and adds a margin. The reliability-based approach treats them probabilistically and computes the probability of failure.
+
+For a load distribution $f_L$ and a strength distribution $f_S$, the probability of failure is
+\[
+P_f = \int_0^\infty f_L(\ell) F_S(\ell) d\ell + \int_0^\infty f_S(s) (1 - F_L(s)) ds,
+\]
+which evaluates to the probability that $L > S$. The reliability is $R = 1 - P_f$.
+
+\subsection{The reliability target}
+
+The engineering choice is the acceptable failure probability. Aviation aim for $P_f < 10^{-9}$ per flight hour for fatal failures (about $0.01$ fatal failures per fleet per year). Nuclear: similar; automotive: less stringent ($10^{-6}$ per operating hour for safety-critical); consumer products: variable.
+
+The reliability target drives the design choice. A $P_f = 10^{-9}$ target requires the load-strength distributions to barely overlap; the safety factor in deterministic terms is large (3 to 5 in standard deviations).
+
+\section{Service-life prediction}\pathtag{standard}
+
+The combined fatigue, wear, corrosion, creep, and overload service life of a part is the minimum of the individual lives. The engineering practice is to identify the limiting mode for the expected service profile and design for that.
+
+\textbf{Aircraft component example.} A wing root attachment fitting on a transport aircraft. The limiting mode is fatigue under gust and manoeuvre loads, with an estimated 80,000-flight-hour life. The damage-tolerant design specifies a minimum detectable initial crack, a calculated propagation life, and an inspection interval of 4 to 8 thousand flight hours.
+
+\textbf{Automotive component example.} A connecting rod in a passenger-car engine. The limiting mode is high-cycle fatigue at the upper-end of the operating envelope; the design target is $10^9$ cycles (about $200\,000\,\si{\kilo\meter}$ at the engine's speed range). Safe-life design with no in-service inspection; the part is replaced only on overhaul.
+
+\textbf{Infrastructure component example.} A welded steel joint in a road bridge. The limiting mode is fatigue under traffic loading. Design life: $100$ years. The fatigue analysis uses load spectra from traffic data, the AASHTO/Eurocode S-N curves for welded details, and the safe-life or damage-tolerant philosophy depending on whether the joint is inspectable.
+
+\section{Worked example: aircraft, automotive, infrastructure}\pathtag{standard}
+
+\subsection{Aircraft wing-skin lap joint}
+
+Consider a wing-skin lap joint in a transport aircraft, similar to those that failed on Aloha 243. Material: 2024-T3 aluminium. Cyclic load: gust and manoeuvre stresses; one full pressure cycle per flight; estimated $10^5$ flight cycles in design life.
+
+The damage-tolerant analysis:
+\begin{enumerate}[leftmargin=*]
+  \item Assume an initial crack of $0.5\,\si{\milli\meter}$ at the most-stressed rivet.
+  \item Compute the stress intensity range under the operating spectrum.
+  \item Integrate the Paris law to find cycles for the crack to grow from $0.5\,\si{\milli\meter}$ to the critical length (perhaps $30\,\si{\milli\meter}$ in this geometry).
+  \item Divide by 3 for inspection interval; specify an eddy-current inspection at that interval.
+\end{enumerate}
+
+The actual crack-propagation analysis for a fuselage skin gives an inspection interval of approximately $8\,000$ flight cycles for the canonical case; Aloha 243's airframe had not received the inspection at its scheduled interval, the crack had grown beyond the previously inspected length, and the multi-site-fatigue mechanism kicked in.
+
+\subsection{Automotive crankshaft}
+
+A passenger-car crankshaft. Material: forged steel, typically a medium-carbon alloy (e.g., AISI 4340). Operating cycles: about $10^9$ over the vehicle's life.
+
+The safe-life analysis: identify the high-stress location (typically the fillet between the journal and the crank web); apply S-N analysis with stress-concentration factor and a fatigue safety factor of 1.5 to 2.5. Verify by fatigue rig test before production.
+
+\subsection{Highway-bridge welded joint}
+
+A welded plate-girder junction in a steel highway bridge. Material: structural steel. Loading: heavy-vehicle traffic, with about $10^7$ load cycles over a 100-year design life.
+
+The fatigue analysis uses Eurocode 3 Part 1-9 fatigue detail categories for welded joints. The detail category provides a S-N curve with built-in factors for residual stress, geometry, and inspectability. Design rule: stress amplitude at the detail must not exceed the category's allowable for the design life.
+
+\section{Failure: design factors that were too low or too high; Comet, Aloha, fatigue inspections}\pathtag{core}
+
+\subsection{Comet 1, 1954: design factor too optimistic}
+
+The de Havilland Comet 1 \cite{acc:cohen-comet-report-1955}, the first jet airliner, suffered two in-flight cabin disintegrations in 1954: G-ALYP near Elba on 10 January (35 dead) and G-ALYY near Naples on 8 April (21 dead). The Royal Aircraft Establishment investigation, including a full-scale water-tank fatigue test, identified fatigue-crack initiation at the corners of the rectangular ADF antenna cutouts on the cabin roof.
+
+The technical mechanism: each flight pressurised the cabin to approximately $0.55\,\si{\bar}$ differential and depressurised on descent. The cyclic stress at the cutout corners exceeded the aluminium's fatigue limit. Cracks initiated, propagated under continued pressure cycling, and at a critical length ran across the fuselage, causing explosive depressurisation and airframe disintegration. The water-tank test reproduced the failure after about 1,830 pressure cycles, consistent with the lost aircraft's service histories.
+
+The design-philosophy lesson: the pre-Comet certification did not include full-airframe fatigue testing under the cyclic pressurisation. The static-strength margin was adequate but irrelevant to the failure mode. The post-Comet response was systematic: full-airframe fatigue testing became a certification requirement, the safe-life concept was formalised, and (later) damage-tolerant design was added to the engineering toolbox. Modern transport aircraft routinely complete two to four lifetimes of fatigue testing before entry into service.
+
+\subsection{Aloha 243, 1988: inspection interval inadequate}
+
+The Aloha Airlines Flight 243 (28 April 1988) \cite{acc:ntsb-aar94-04} rupture, named in Chapter 3 and Volume V, illustrated multi-site fatigue damage: many of the riveted skin lap joints had small fatigue cracks; the cracks coupled through the shared structure into a catastrophic failure when one cracked sufficiently to load the adjacent joints beyond their reduced strength.
+
+The aircraft was operated in a high-cycle, hot-and-humid environment (Hawaiian inter-island flights) which exacerbated the corrosion-fatigue mechanism. The inspection program had been calibrated for an average-fleet environment; the Aloha fleet exceeded the inspection thresholds. The case forced the FAA and the industry to adopt fleet-specific fatigue analysis and the Aircraft Structural Integrity Program (ASIP).
+
+\subsection{Design factors too high}
+
+The opposite failure is rare in primary structure but common in commodity products: a design factor of 5 or 10 where 2 would suffice produces a part that is heavier, more expensive, and more material-consuming than necessary. The engineering discipline is to know the actual operating envelope, the actual material properties, and the actual reliability target; design factors should be commensurate.
+
+The discipline is hardest in the cases where consequence of failure is high but probability of failure is rare: aerospace, nuclear, civil infrastructure. The engineering response is to invest in better testing (full-scale fatigue tests, environmental tests) rather than in larger safety factors that produce conservatism without confidence.
+
+\begin{principle}[Fatigue design is the engineering of the unknown distribution]
+A part's fatigue life is a statistical quantity, not a deterministic one. The engineer's job is to characterise the load distribution, the material's distribution, and the joint distribution well enough that the design produces an acceptable failure probability. The safe-life and damage-tolerant philosophies are two different management strategies for the same underlying problem. The engineering discipline is to choose the philosophy that matches the inspectability, the consequence, and the cost of the alternative.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Design a small cyclic-loaded part for $10^6$ cycles]
+Design a small cyclic-loaded part for $10^6$ cycles. Build it. Test it on a rig.
+
+\begin{enumerate}[leftmargin=*]
+  \item Specify the part: a small cantilever beam or a small machined bracket. Specify the cyclic load amplitude and the target life $10^6$ cycles.
+  \item Compute the design stress, the design margin, and verify against material's S-N curve with appropriate factors.
+  \item Identify the most-stressed location and the dominant stress concentration. Compute or estimate $K_f$.
+  \item Manufacture the part. Document the surface finish, the fillet radii, the material certification.
+  \item Build a rig (a cam-driven cyclic loader, an electromagnetic shaker, an off-the-shelf fatigue tester). Apply the cyclic load.
+  \item Run to failure or to $10^6$ cycles, whichever first.
+  \item If failure occurs, examine the fracture surface (Volume V Chapter 9) to identify initiation, propagation, and final-fracture zones.
+\end{enumerate}
+
+The deliverable is the design calculations, the manufactured parts, the rig, the test results, and a short report (no more than five pages) on the engineering decisions and the comparison between predicted and actual life.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+For a steel with $\sigma_u = 600\,\si{\mega\pascal}$, estimate the endurance limit. Apply factors for ground surface, $30\,\si{\milli\meter}$ diameter, bending load, $20\,\si{\degreeCelsius}$, $99\%$ reliability.
+\end{exercise}
+
+\begin{exercise}
+For a $\sigma_a = 200\,\si{\mega\pascal}$, $\sigma_m = 150\,\si{\mega\pascal}$, $\sigma_u = 800\,\si{\mega\pascal}$, $\sigma_e' = 300\,\si{\mega\pascal}$, compute the Goodman safety factor.
+\end{exercise}
+
+\begin{exercise}
+For a centre-cracked plate with $a = 5\,\si{\milli\meter}$, $\sigma = 100\,\si{\mega\pascal}$, compute the stress intensity factor.
+\end{exercise}
+
+\begin{exercise}
+For a material with $K_{Ic} = 50\,\si{\mega\pascal\sqrt{m}}$ and stress $\sigma = 200\,\si{\mega\pascal}$, compute the critical crack size in an infinite plate.
+\end{exercise}
+
+\begin{exercise}
+For Paris law constants $C = 10^{-11}$, $m = 3$, $\Delta K = 20\,\si{\mega\pascal\sqrt{m}}$, compute the crack growth rate per cycle.
+\end{exercise}
+
+\begin{exercise}
+For a load spectrum with $10^5$ cycles at amplitude A (allowable $10^7$), $10^4$ at amplitude B (allowable $10^6$), $10^3$ at amplitude C (allowable $10^5$), compute the Miner damage sum.
+\end{exercise}
+
+\begin{exercise}
+For load mean $\mu_L = 100$, $\sigma_L = 20$, strength mean $\mu_S = 200$, $\sigma_S = 30$ (normal distributions), compute the probability of failure.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Paris-law integration for crack growth: $N = \int da/(C(\Delta K)^m)$ for a constant-amplitude load.
+\end{exercise}
+
+\begin{exercise}
+Derive the Goodman line: $\sigma_a/\sigma_e + \sigma_m/\sigma_u = 1$.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between safety factor and probability of failure for normally distributed load and strength.
+\end{exercise}
+
+\begin{exercise}
+Show that the inspection interval is approximately $a$-growth-life/3 for a damage-tolerant design.
+\end{exercise}
+
+\begin{exercise}
+Derive the Coffin-Manson relation from the plastic-strain-controlled fatigue model.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the design life of a fastener in a vibrating automotive subframe.
+\end{exercise}
+
+\begin{exercise}
+Estimate the inspection interval for an aircraft fuselage lap joint with eddy-current detection.
+\end{exercise}
+
+\begin{exercise}
+Estimate the weight penalty of designing for $P_f = 10^{-9}$ instead of $P_f = 10^{-6}$ for a structural part.
+\end{exercise}
+
+\begin{exercise}
+Estimate the fatigue-life reduction of a polished vs.\ rough surface on a steel shaft.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a Miner-rule cumulative-damage calculator. Feed it a synthetic load spectrum; predict failure cycle.
+\end{exercise}
+
+\begin{exercise}
+Simulate Paris-law crack growth from a $0.5\,\si{\milli\meter}$ initial crack to fracture; identify the inspection interval.
+\end{exercise}
+
+\begin{exercise}
+Simulate a load-strength interference: compute $P_f$ for varying mean offset.
+\end{exercise}
+
+\begin{exercise}
+Reproduce the Comet 1 water-tank test: simulate cyclic-pressure loading at a cabin cutout corner; estimate cycles to failure.
+\end{exercise}
+
+\begin{exercise}
+Simulate the variable-amplitude fatigue of a wind-turbine blade root over a 25-year service life.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a connecting rod for a passenger-car engine: 10^9 cycle life, $10\,\si{\kilo\newton}$ peak load, light weight.
+\end{exercise}
+
+\begin{exercise}
+Design the inspection program for a bridge welded detail: load spectrum, design life, inspection method, interval.
+\end{exercise}
+
+\begin{exercise}
+Design the safety-margin strategy for a wind-turbine blade: safe-life, damage-tolerant, redundant. State your choice and justification.
+\end{exercise}
+
+\begin{exercise}
+Design a fatigue-resistant aircraft fitting under combined bending and shear loading.
+\end{exercise}
+
+\begin{exercise}
+Design the surface treatment specification for a high-cycle automotive valve spring.
+\end{exercise}
+
+\begin{exercise}
+Design a damage-tolerant analysis for a pressure-vessel circumferential weld.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The Comet 1 case \cite{acc:cohen-comet-report-1955} hinged on a design philosophy that did not include full-airframe fatigue testing. State three engineering practices introduced as a result.
+\end{exercise}
+
+\begin{exercise}
+The Aloha 243 case \cite{acc:ntsb-aar94-04} hinged on multi-site fatigue damage with an inadequate inspection interval. State the engineering response in fleet management.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between safe-life and damage-tolerant for an aerospace fitting. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's reliability-based design produces a $P_f = 10^{-7}$ for a safety-critical component. State whether this is acceptable and the questions you would ask.
+\end{exercise}
+
+\begin{exercise}
+A team uses a safety factor of $4$ on yield strength without explicit fatigue analysis. State three engineering risks.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to extend the inspection interval on an ageing fleet of aircraft. State the engineering analysis and the conditions under which the extension is justified.
+\end{exercise}
+
+\begin{exercise}
+A team's variable-amplitude fatigue analysis uses Miner's rule directly. State the conservatism and the cases where it is too optimistic.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern materials are tougher; safety factors can be reduced.'' Critique. State the cases where this is and is not true.
+\end{exercise}
+
+\begin{exercise}
+A team's design has high $K_t$ at a sharp corner that the manufacturer claims cannot be radiused. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team's component fails by fatigue at $5\%$ of the calculated life. State three engineering hypotheses for the discrepancy.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``damage-tolerant design is always better than safe-life because it allows lighter parts.'' Critique.
+\end{exercise}
+
+\begin{exercise}
+A team uses a generic material's S-N curve in a chemical-corrosion environment. State the engineering risk.
+\end{exercise}
+
+\begin{exercise}
+A team is using probabilistic fracture-mechanics models for an aircraft fitting; the model gives $P_f = 10^{-10}$ per flight hour. State the engineering questions that must be answered before relying on the prediction.
+\end{exercise}

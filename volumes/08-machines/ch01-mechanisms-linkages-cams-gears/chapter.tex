@@ -1,40 +1,438 @@
 \chapter{Mechanisms: linkages, cams, gears}
 \label{vol08:ch01}
 
-\epigraph{}{}
+\epigraph{A machine is a combination of resistant bodies arranged so that by means of them the mechanical forces of nature are compelled to do work accompanied by certain determinate motion.}{Franz Reuleaux, \emph{Kinematics of Machinery}, 1875}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, scaling. Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, scaling. Exercise target: 40. Project track: physical.}
 
 \noindent
-\TODO{Volume 8, Chapter 1. Approx 120 pp.}
+A \engterm{mechanism} is a kinematic chain: an arrangement of rigid bodies connected by joints, organised so that input motion at one body produces a determinate output motion at another. Mechanisms are the working substrate of mechanical engineering. A watch escapement, a sewing-machine needle drive, a robot's revolute joint, the valve train of a combustion engine, the steering linkage of a car, the cam-driven indexing of a packaging machine, the differential of a vehicle drivetrain are each a mechanism with the same kinematic vocabulary.
 
-\section{Degrees of freedom, mobility}
-\TODO{Section prose.}
+This chapter teaches the working vocabulary. Section 1.1 covers degrees of freedom and Gruebler's mobility equation. Sections 1.2-1.4 cover the canonical mechanism families: four-bar linkages, cam-follower pairs, and gears. Section 1.5 covers gear trains and the efficiency calculations that govern drivetrain design. Section 1.6 covers synthesis: starting from a desired motion and arriving at a mechanism that produces it. Section 1.7 walks through three worked examples at different scales. Section 1.8 names the canonical failure modes. The standard references are Norton \cite{text:norton-machinery} and Shigley \cite{text:shigley-mechanical-design}.
 
-\section{Four-bar and other planar linkages}
-\TODO{Section prose.}
+\section{Degrees of freedom, mobility}\pathtag{core}
 
-\section{Cams and followers}
-\TODO{Section prose.}
+The \engterm{degrees of freedom} (DOF) of a mechanism is the number of independent inputs required to determine the position of every body in the mechanism. A rigid body in 3D space has 6 DOF (three translational, three rotational); a rigid body in 2D has 3 DOF.
 
-\section{Gears: spur, helical, bevel, worm}
-\TODO{Section prose.}
+\subsection{Joints and their constraints}
 
-\section{Gear trains, ratios, efficiency}
-\TODO{Section prose.}
+A \engterm{joint} (also called a kinematic pair) connects two bodies and constrains some of the DOF of one body relative to the other. The standard joints:
 
-\section{Synthesis: designing for a desired motion}
-\TODO{Section prose.}
+\textbf{Revolute (R, hinge).} One rotational DOF. Constrains 2 translational and 2 rotational in 3D; 2 translational in 2D.
 
-\section{Worked examples: bicycle drivetrain, watch escapement, robotic arm}
-\TODO{Section prose.}
+\textbf{Prismatic (P, slider).} One translational DOF. Constrains 2 translational and 3 rotational in 3D; 1 translational and 1 rotational in 2D.
 
-\section{Failure: gear-tooth fatigue, backlash, linkage jam}
-\TODO{Section prose.}
+\textbf{Cylindrical (C).} One rotational, one translational along the same axis. 2 DOF.
 
+\textbf{Spherical (S, ball).} Three rotational DOF, no translation. 3 DOF.
 
-\section{Project}
-\TODO{design and 3D-print a four-bar linkage with specified motion}
+\textbf{Planar (E, flat).} 2 translational and 1 rotational in a plane. 3 DOF.
+
+\textbf{Helical (H, screw).} One DOF, with rotation and translation coupled by a pitch.
+
+\textbf{Gear pair.} Two rotational, kinematically coupled, leaving 1 DOF.
+
+\textbf{Cam-follower.} One rotational input drives a translational or rotational output through a specified profile.
+
+\subsection{Gruebler's equation}
+
+For a planar mechanism with $n$ bodies (including the ground link), $j_1$ lower pairs (revolute, prismatic, 1-DOF joints) and $j_2$ higher pairs (cam-follower, gear, 2-DOF joints):
+\[
+\text{DOF} = 3(n-1) - 2 j_1 - j_2.
+\]
+For a spatial mechanism:
+\[
+\text{DOF} = 6(n-1) - \sum_{i=1}^{5} (6 - f_i),
+\]
+where $f_i$ is the DOF of each joint. The equation is the engineer's first check: does the proposed mechanism have the intended DOF?
+
+\begin{example}
+A four-bar linkage has 4 bodies (three moving links plus the ground), 4 revolute joints. Gruebler: $3(4-1) - 2 \cdot 4 = 9 - 8 = 1$. The mechanism has one DOF; one input determines the motion of all moving links.
+\end{example}
+
+\begin{example}
+A planar five-bar linkage has 5 bodies, 5 revolute joints. Gruebler: $3 \cdot 4 - 10 = 2$. Two inputs are required; one is not enough. Five-bar linkages are common in robotics where two motors drive the two inputs.
+\end{example}
+
+\subsection{Overconstrained mechanisms}
+
+A mechanism can satisfy Gruebler with DOF = 0 (statically determinate, no motion) or DOF $<$ 0 (overconstrained, no general motion possible). Overconstrained mechanisms can still move if the constraints are geometrically compatible. The classical example is Bricard's six-bar overconstrained linkage; the analysis returns to Volume II Chapter 9 (linear algebra of constraint matrices).
+
+The engineering implication: Gruebler is necessary but not sufficient. A mechanism that satisfies Gruebler with DOF $\geq 1$ \emph{can} move (subject to geometry); a mechanism that satisfies Gruebler with DOF $\leq 0$ might still move if a Special geometric arrangement makes the constraints compatible. The mechanical engineer who builds a mechanism that Gruebler predicts will not move, and finds that it does, has discovered an overconstrained mechanism.
+
+\begin{archetype}[Scaling]
+The mobility of a mechanism scales with the number of bodies and joints in a deterministic way. The discipline of designing a mechanism is, in part, the discipline of choosing the body count and joint topology to produce the desired DOF without overconstraining. A robot with 6 revolute joints has 6 DOF in space (one per joint, in a serial chain), enough to reach any position and orientation within its workspace. A robot with 7 revolute joints has redundancy: 7 DOF for a 6-DOF task, useful for avoiding obstacles or singularities.
+\end{archetype}
+
+\section{Four-bar and other planar linkages}\pathtag{core}
+
+The \engterm{four-bar linkage} is the simplest closed-loop planar linkage with one DOF. It is the working starting point for mechanism design.
+
+\subsection{Geometry}
+
+A four-bar linkage has four bodies: ground (fixed), input crank, coupler, output rocker (or crank). Four revolute joints connect them in a closed chain. Let $a, b, c, d$ be the lengths of the four links, with $d$ the ground link. Let $\theta$ be the input crank angle and $\phi$ the output rocker angle.
+
+The coupler's position is found by the geometric loop-closure equation:
+\[
+a e^{j\theta} + b e^{j\beta} = d + c e^{j\phi}
+\]
+where $\beta$ is the coupler angle. Two unknowns ($\beta, \phi$) and one complex equation (two real equations) give a unique solution up to a branch choice (the coupler can fold ``above'' or ``below'' the line through the input and output pivots).
+
+\subsection{Grashof's rule}
+
+\textbf{Grashof's rule.} Let $L$ be the length of the longest link, $S$ the shortest, $P$ and $Q$ the two intermediate. If $L + S \leq P + Q$, at least one link can fully rotate. The configurations:
+
+\textbf{Crank-rocker.} The shortest link is adjacent to the ground; the input link rotates fully, the output rocks.
+
+\textbf{Double-crank.} The shortest link is the ground; both input and output rotate fully.
+
+\textbf{Double-rocker.} The shortest link is the coupler; neither input nor output rotates fully.
+
+\textbf{Change-point.} $L + S = P + Q$; the linkage has a singularity where multiple configurations coincide.
+
+If $L + S > P + Q$, no link can fully rotate; the mechanism is a triple-rocker.
+
+The rule is the engineer's first cut at four-bar design. A pump that needs an oscillating output from a rotating input is a crank-rocker; an automotive windshield-wiper drive is typically a crank-rocker; a watch escapement is more complex than four-bar but follows similar reasoning.
+
+\subsection{Slider-crank and other variants}
+
+The \engterm{slider-crank} replaces the rocker with a prismatic joint: the output is a sliding piston. The internal-combustion engine's piston-connecting-rod-crankshaft is the canonical example. Same Gruebler analysis (three bodies + ground, three revolute + one prismatic = 4 joints; DOF = $3 \cdot 3 - 2 \cdot 4 = 1$).
+
+\textbf{Other planar linkages.} Six-bar linkages (Watt's, Stephenson's), parallel five-bar, parallelogram, cognate linkages (different geometries producing the same coupler curve).
+
+\section{Cams and followers}\pathtag{core}
+
+A \engterm{cam} is a rotating or sliding body whose profile drives a follower through a specified motion. Cams provide a way to convert rotational input into arbitrary follower motion, without the closed-form geometric constraints of linkages.
+
+\subsection{Cam motion profiles}
+
+The \engterm{follower displacement} $s(\theta)$ is the position of the follower as a function of cam angle. The choice of profile is the engineer's design decision; standard profiles include:
+
+\textbf{Constant velocity.} Linear in $\theta$. Discontinuous acceleration at the rise/dwell transitions, causing impact loading. Rarely used.
+
+\textbf{Constant acceleration.} Parabolic in $\theta$ during rise, parabolic during return. Smooth velocity, discontinuous jerk.
+
+\textbf{Simple harmonic.} Cosine-based. Smooth through second derivative; discontinuous third.
+
+\textbf{Cycloidal.} Sine-of-cosine. Smooth through fourth derivative; the standard for high-speed cams where vibration matters.
+
+\textbf{Modified sine, modified trapezoid.} Hybrid profiles optimising peak velocity or acceleration for a given rise.
+
+The motion profile determines the maximum velocity, acceleration, and jerk the follower experiences. High-speed cams in modern automotive valve trains use cycloidal or higher-order profiles because the inertial loads scale with acceleration; lower-grade profiles produce vibration and noise.
+
+\subsection{Pressure angle}
+
+The \engterm{pressure angle} $\alpha$ is the angle between the follower's motion direction and the normal to the cam surface at the point of contact. A large pressure angle produces high side loads on the follower and large bearing forces. The classical rule of thumb is $\alpha \leq 30°$ for translating roller followers, $\alpha \leq 45°$ for swinging followers. Designs that violate these limits suffer high friction, accelerated wear, and risk follower jam.
+
+\subsection{Cam manufacture}
+
+Cam profiles are produced by milling, grinding, or hobbing. The manufacturing tolerance on the profile directly affects the follower's motion: a $10\,\si{\micro\meter}$ profile error produces $10\,\si{\micro\meter}$ of follower position error, which can be amplified into noise and wear at high speeds. Chapter 5 returns to the GD\&T specification of cam profiles.
+
+\section{Gears: spur, helical, bevel, worm}\pathtag{core}
+
+\engterm{Gears} are toothed wheels that transmit rotational motion between shafts. The teeth engage with conjugate action: as one gear rotates, the contact point traces a specified curve that produces uniform velocity ratio. The canonical curve is the \engterm{involute}, the curve traced by a point on a line as the line rolls without slipping along a circle.
+
+\subsection{Gear types}
+
+\textbf{Spur gears.} Parallel shafts, teeth parallel to the axis. The simplest, cheapest. Noisy at high speed due to instantaneous tooth engagement.
+
+\textbf{Helical gears.} Parallel shafts, teeth at an angle to the axis. Smooth engagement (multiple teeth in contact); produces axial thrust requiring thrust bearings.
+
+\textbf{Bevel gears.} Intersecting shafts. Used in differentials.
+
+\textbf{Worm gears.} Non-intersecting, non-parallel shafts. Large reduction ratios in a single stage; self-locking (cannot be back-driven) at typical helix angles.
+
+\textbf{Planetary gears.} An arrangement of sun, planets, ring; multiple gear engagements provide high ratio in a compact package. Used in automotive transmissions, robot joints, wind-turbine generators.
+
+\subsection{Gear geometry}
+
+The gear's defining parameters: \engterm{module} $m$ (metric) or \engterm{diametral pitch} $P_d$ (imperial), the size of one tooth; \engterm{pressure angle} (usually 20°); \engterm{number of teeth} $N$. The pitch diameter is $D = mN$ (metric) or $D = N/P_d$ (imperial). The velocity ratio between two meshing gears is the inverse ratio of their tooth counts: $\omega_2 / \omega_1 = -N_1 / N_2$ (the negative sign indicates the gears rotate in opposite senses).
+
+The engineering choice of gear geometry is workload-dependent. High-precision applications (machine tools, watches) use ground gears with very accurate tooth profiles. High-speed power-transmission applications (turbines, generators) use helical or double-helical (herringbone) gears for smooth engagement. Cost-driven applications use cut spur gears.
+
+\section{Gear trains, ratios, efficiency}\pathtag{standard}
+
+\subsection{Compound gear trains}
+
+A \engterm{gear train} is a sequence of meshing gears. The overall velocity ratio is the product of individual ratios:
+\[
+\frac{\omega_{\mathrm{out}}}{\omega_{\mathrm{in}}} = \prod_i \frac{N_{\mathrm{driver}, i}}{N_{\mathrm{driven}, i}}.
+\]
+A two-stage reduction of 10:1 each gives 100:1 overall. The compactness vs.\ efficiency trade-off: more stages mean more losses, more bearings, more assembly cost.
+
+\subsection{Planetary gear trains}
+
+A planetary set has three potential inputs/outputs: sun, ring, carrier (planets). Locking any one and applying input to another produces a specific velocity ratio. The flexibility is the working virtue.
+
+The defining equation (Willis's rule):
+\[
+\frac{\omega_{\mathrm{sun}} - \omega_{\mathrm{carrier}}}{\omega_{\mathrm{ring}} - \omega_{\mathrm{carrier}}} = -\frac{N_{\mathrm{ring}}}{N_{\mathrm{sun}}}.
+\]
+The minus sign reflects the kinematic constraint of meshing.
+
+\subsection{Efficiency}
+
+Gear efficiency is high (typically 96-99\% per stage) for spur and helical; lower (50-90\%) for worm gears, the variation driven by helix angle. The efficiency loss is sliding friction at the tooth contact, plus churning of lubricant. For a high-reduction worm drive ($\geq 50:1$), efficiency can drop below 50\%; the engineering choice between a worm and a multi-stage helical is between compactness and efficiency.
+
+\subsection{Backlash}
+
+\engterm{Backlash} is the small clearance between meshing teeth, deliberately allowed to prevent binding due to thermal expansion, manufacturing tolerance, and lubricant accumulation. Backlash produces a dead band in motion control: a reversal of motion does not produce any output until the dead band is taken up. The engineering response: minimise backlash through precise tooth geometry and pre-loaded gear pairs (anti-backlash) when motion control matters; tolerate it when only power transmission matters.
+
+\section{Synthesis: designing for a desired motion}\pathtag{standard}
+
+\engterm{Synthesis} is the inverse problem of mechanism analysis: given a desired motion, design a mechanism that produces it.
+
+\subsection{Three-position synthesis}
+
+For a four-bar linkage required to move a coupler-attached point through three specified positions (with orientation), the kinematic constraints determine the linkage's geometry up to a small number of parameters. The standard graphical or analytical procedure: locate the centres of rotation that connect the three positions, then determine the link lengths.
+
+For more than three positions, the synthesis is over-determined and proceeds by optimisation: minimise the deviation between the achieved and desired motion.
+
+\subsection{Cognate linkages and Roberts-Chebyshev}
+
+A given coupler curve can be produced by three different four-bar linkages (\engterm{cognates}, by the Roberts-Chebyshev theorem). The engineer's choice among cognates is governed by manufacturability, packaging, and dynamic balance: same curve, different physical shapes.
+
+\subsection{Computer-aided synthesis}
+
+Modern mechanism-design software (SolidWorks Motion, GIM, MotionGen) automates the synthesis: the engineer specifies the desired motion as a set of positions or a continuous curve, the software returns candidate linkages. The engineer's discipline becomes selecting among the candidates based on engineering criteria the software cannot evaluate (manufacturing cost, robustness to wear, sensitivity to manufacturing tolerance).
+
+\section{Worked examples}\pathtag{standard}
+
+\subsection{Bicycle drivetrain}
+
+A modern bicycle has a chainring at the pedal axis driving a chain that engages a freewheel cog at the rear wheel. The velocity ratio is the chainring-tooth-count divided by the cog-tooth-count; a 50-tooth chainring and a 25-tooth cog produces a 2:1 ratio (the wheel turns twice per pedal revolution).
+
+A multi-gear bicycle has multiple chainrings (front) and multiple cogs (rear). The total available ratios is the product; an 11-speed cassette with a triple chainring gives 33 distinct ratios. The engineering discipline is to space the ratios so that the rider can find an appropriate cadence at each speed.
+
+The efficiency of a bicycle drivetrain is high (95-98\%) at moderate load; losses are friction in the chain, the bearings, and the chain articulation around the cogs. Chain wear (the chain stretches as the pins and bushings wear) requires periodic replacement to prevent accelerated wear on the chainring and cogs.
+
+\subsection{Watch escapement}
+
+A mechanical watch's escapement converts the continuous unwinding of the mainspring into the discrete tick-tock of the balance wheel. The standard Swiss lever escapement has three bodies (escape wheel, pallet fork, balance wheel) with a kinematic structure that allows the balance wheel to oscillate freely most of the time while receiving a tiny impulse on each oscillation to replenish energy lost to friction.
+
+The engineering discipline is in the tooth profile of the escape wheel and the pallet stones: errors of a few micrometres translate into seconds of timekeeping error per day. Modern Swiss escapements are produced to tolerances of approximately $1\,\si{\micro\meter}$ on the relevant features.
+
+\subsection{Robotic arm joint}
+
+A typical six-DOF industrial robotic arm has six revolute joints, each driven by a motor-gearbox assembly. The gearbox is typically a strain-wave gear (harmonic drive): a flexible toothed cup engaged with a rigid ring gear, driven by an elliptical wave generator. The gear achieves 100:1 reduction in a single stage with zero backlash, low weight, and high precision.
+
+The kinematics of the full arm follow Denavit-Hartenberg conventions (Chapter 13). The dynamics involve coupled equations of motion for the six bodies, the torque-speed characteristics of each motor, and the controller's joint-position commands.
+
+\section{Failure: gear-tooth fatigue, backlash, linkage jam}\pathtag{core}
+
+\subsection{Gear-tooth fatigue}
+
+Gear teeth fail by two main mechanisms.
+
+\textbf{Surface pitting (contact fatigue).} Repeated rolling contact at the tooth flank produces sub-surface fatigue. Pits form, grow, coalesce; eventually the tooth's working surface is destroyed. The Hertzian contact stress (Volume III) drives the analysis; the working design rule is to keep the contact stress below a material-specific endurance limit.
+
+\textbf{Tooth bending fatigue.} Repeated load at the tooth root produces fatigue crack initiation. The tooth eventually breaks off, often catastrophically. The Lewis bending equation (with modern Spotts-Shoup or AGMA refinements) is the working design equation; the working design rule is to keep the bending stress below the material's endurance limit with appropriate stress-concentration factor.
+
+The engineering response: select tooth geometry, material, and surface treatment for the expected duty cycle; specify a lubrication regime that maintains the necessary film; inspect periodically for the early indicators (vibration, audible whine, oil debris).
+
+\subsection{Backlash-induced limit cycles}
+
+A motion control loop with backlash in its mechanism exhibits limit cycles: the controller commands a small position change, the mechanism takes up the backlash, overshoots, the controller commands a correction, the mechanism takes up the backlash in the other direction, and so on. The result is a steady oscillation that wastes energy and wears the mechanism.
+
+The engineering response: minimise the backlash in the mechanism (anti-backlash gears, preloaded leadscrews); add a dead-band non-linearity to the controller that matches the mechanism's backlash; redesign the mechanism with a backlash-free type (strain-wave gear, cycloidal drive).
+
+\subsection{Linkage jam}
+
+A linkage that exceeds its kinematic limits jams. The mechanism is no longer free to move; subsequent input torque produces no output motion and may cause damage. The classical cases: a four-bar linkage operating near its toggle position (where the input crank is collinear with the coupler), a slider-crank with the connecting rod buckling under compression, an over-rotated revolute joint that hits its end stop.
+
+The engineering response: design the mechanism so that operating positions are well away from singularities; add explicit end stops sized for the intended impact load; include a torque limiter or current limit in the driving motor that prevents damage when the linkage jams.
+
+\begin{principle}[Mechanism failure is a design responsibility]
+A working mechanism is one whose kinematic analysis, stress analysis, and lubrication specification all close. A mechanism that ``works at first'' but fails in a year, ten years, or a million cycles is one whose design has not engaged with the failure mode. The engineering discipline is to identify the failure mode at design time, specify the design margin, and verify the margin in service.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Design and 3D-print a four-bar linkage with specified motion]
+Design a four-bar linkage that produces a specified motion at a coupler-attached point. Build it. Verify the motion.
+
+\begin{enumerate}[leftmargin=*]
+  \item Specify the motion: a coupler curve of your choice (a straight line, a figure-eight, a specific closed path). Document at least 8 positions of the coupler point along the desired path.
+  \item Design the four-bar linkage to produce this curve. Use a synthesis tool or manual procedure; document your link lengths, pivot positions, and orientation.
+  \item Verify the synthesis kinematically (in CAD or by hand): plot the actual coupler curve over one full input-crank rotation. Compare to the desired curve.
+  \item Apply Grashof's rule: confirm the configuration (crank-rocker, double-crank, etc.).
+  \item Identify the singularities (toggle positions, change points) of your design. Ensure the operating range does not approach them.
+  \item 3D print the linkage in plastic. Use revolute joints sized for the loads. Assemble and operate by hand. Photograph the achieved coupler curve.
+\end{enumerate}
+
+The deliverable is the design (drawings, link lengths), the verification (kinematic analysis, coupler curve), the printed linkage, and a short report (no more than four pages) on the engineering decisions and the comparison between design and physical reality.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the DOF of a planar mechanism with $n = 5$ bodies, $4$ revolute joints, and $1$ prismatic joint. Compare to a five-bar four-revolute linkage.
+\end{exercise}
+
+\begin{exercise}
+A four-bar linkage has link lengths $a = 50, b = 130, c = 90, d = 110$. Determine the Grashof configuration.
+\end{exercise}
+
+\begin{exercise}
+For a spur gear with module $m = 2\,\si{\milli\meter}$ and $N = 30$ teeth, compute the pitch diameter.
+\end{exercise}
+
+\begin{exercise}
+Compute the velocity ratio of a planetary set with $N_{\mathrm{sun}} = 20$, $N_{\mathrm{ring}} = 80$, when the carrier is the output and the ring is held fixed.
+\end{exercise}
+
+\begin{exercise}
+For a cycloidal cam profile with rise of $20\,\si{\milli\meter}$ over $90°$ of cam rotation at $300\,\si{rpm}$, compute the maximum follower velocity and acceleration.
+\end{exercise}
+
+\begin{exercise}
+A three-stage compound gear train has stages of $4:1$, $3:1$, $5:1$. Compute the overall reduction ratio and the output torque for $10\,\si{\newton\meter}$ input.
+\end{exercise}
+
+\begin{exercise}
+Compute the slider-crank piston position as a function of crank angle for crank length $r = 50\,\si{\milli\meter}$ and connecting-rod length $L = 200\,\si{\milli\meter}$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive Gruebler's mobility equation for a planar mechanism from first principles.
+\end{exercise}
+
+\begin{exercise}
+Derive Grashof's rule from the geometric requirement that the shortest link can fully rotate.
+\end{exercise}
+
+\begin{exercise}
+Derive the velocity ratio of a planetary gear set using Willis's relative-motion approach.
+\end{exercise}
+
+\begin{exercise}
+Show that the involute profile produces conjugate action (constant velocity ratio).
+\end{exercise}
+
+\begin{exercise}
+Derive the Lewis bending equation for a spur-gear tooth treated as a cantilever beam.
+\end{exercise}
+
+\begin{exercise}
+Show that a cycloidal cam profile has zero discontinuity in acceleration through the dwell-rise transition.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the peak tooth contact stress in a $50\,\si{\milli\meter}$ spur gear transmitting $10\,\si{\kilo\watt}$ at $1000\,\si{rpm}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the efficiency loss of a worm drive with $20°$ helix angle at $50:1$ reduction.
+\end{exercise}
+
+\begin{exercise}
+Estimate the backlash budget for a robotic arm joint that must achieve $0.1\,\si{\milli\meter}$ end-effector precision at $1\,\si{\meter}$ reach.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of wear cycles a typical bicycle chain can withstand before replacement.
+\end{exercise}
+
+\begin{exercise}
+Estimate the maximum cam rotation speed for a constant-acceleration profile with $5\,\si{\milli\meter}$ rise, before the follower acceleration exceeds $100\,\si{\meter\per\second\squared}$.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a four-bar linkage kinematic simulator in your language of choice. Plot coupler curves for several link-length combinations.
+\end{exercise}
+
+\begin{exercise}
+Implement a cam-follower simulator with cycloidal motion profile. Plot displacement, velocity, acceleration, jerk.
+\end{exercise}
+
+\begin{exercise}
+Simulate a slider-crank mechanism at constant input crank speed; plot the piston displacement, velocity, acceleration.
+\end{exercise}
+
+\begin{exercise}
+Simulate a planetary gear train. Verify Willis's equation for several inputs.
+\end{exercise}
+
+\begin{exercise}
+Simulate a backlash-induced limit cycle in a position-controlled joint. Identify the cycle amplitude and frequency.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a four-bar linkage that converts continuous input-crank rotation into approximately straight-line output coupler-point motion over $50\,\si{\milli\meter}$.
+\end{exercise}
+
+\begin{exercise}
+Design a cam profile for a packaging machine that lifts a part $30\,\si{\milli\meter}$, dwells for $90°$, and returns; cam runs at $200\,\si{rpm}$. State your motion profile and the pressure angle.
+\end{exercise}
+
+\begin{exercise}
+Design a two-stage helical gearbox for a 1.5\,\si{\kilo\watt} motor running at $3000\,\si{rpm}$ driving a $50\,\si{rpm}$ output shaft. Specify module, tooth counts, and bearing types.
+\end{exercise}
+
+\begin{exercise}
+Design a strain-wave gear (harmonic drive) for a robotic arm joint with $100:1$ reduction and zero backlash.
+\end{exercise}
+
+\begin{exercise}
+Design a mechanism for an automotive windshield wiper. State your kinematic synthesis and the motor specifications.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's four-bar linkage operates near a singularity; the mechanism occasionally jams. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a worm drive and a multi-stage helical gearbox for a 100:1 reduction. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's gear set experiences premature tooth pitting; the failure analysis shows under-specified lubrication. State the engineering remediation.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``cycloidal cam profiles are over-engineered for low-speed applications.'' Critique. State the threshold at which cycloidal becomes preferable.
+\end{exercise}
+
+\begin{exercise}
+A team's backlash-induced limit cycle wears the joint over six months. State three remediations in order of engineering effort.
+\end{exercise}
+
+\begin{exercise}
+A team's robotic arm has approached but not entered a kinematic singularity for a year; recently the joint torque has begun to overshoot. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern mechanism synthesis software has eliminated the need for hand calculation.'' Critique. State the cases where hand analysis remains essential.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between an anti-backlash spur gear set and a strain-wave gear for a precision positioning application. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``Grashof's rule is sufficient for four-bar linkage design.'' Critique. State the design considerations Grashof does not address.
+\end{exercise}
+
+\begin{exercise}
+A team's mechanism design satisfies Gruebler with DOF $\geq 1$ but the physical mechanism does not move. State three engineering hypotheses for the discrepancy.
+\end{exercise}
+
+\begin{exercise}
+A team is designing a planetary gearbox for an electric-vehicle drivetrain. State the engineering considerations: efficiency, weight, cost, noise, durability under thermal cycling.
+\end{exercise}
+
+\begin{exercise}
+A team's high-precision machine tool exhibits a periodic surface-finish defect at a spatial frequency that matches one rotation of a gear in the drivetrain. State the engineering analysis and the most likely cause.
+\end{exercise}

@@ -1,40 +1,299 @@
 \chapter{Digital electronics, embedded systems}
 \label{vol08:ch10}
 
-\epigraph{}{}
+\epigraph{The microcontroller is the cheapest universal machine ever produced. Use it.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: interface, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: interface, failure. Exercise target: 35. Project track: physical.}
 
 \noindent
-\TODO{Volume 8, Chapter 10. Approx 140 pp.}
+Digital electronics is the technology of binary-valued signals, logic operations, and stored programs. The microcontroller, costing cents and consuming microwatts, is the cheapest universal machine ever produced; every modern artefact larger than a screw contains at least one. Embedded systems are the application of digital electronics to physical-world control: read sensors, decide, drive actuators, communicate, store, respond. This chapter develops the engineer's working understanding of logic families and timing, the choice between microcontroller, microprocessor, and FPGA, the discipline of real-time firmware, the communication buses that connect sensors and actuators to processors, power management in embedded systems, the PCB and layout discipline that makes digital boards work, EMC and certification considerations, and the failure modes of digital systems. The reader who finishes this chapter can specify, design, and qualify a production-grade embedded system.
 
-\section{Logic families and timing}
-\TODO{Section prose.}
+\section{Logic families and timing}\pathtag{standard}
 
-\section{Microcontrollers vs microprocessors vs FPGAs}
-\TODO{Section prose.}
+Digital logic represents information with discrete voltage levels: a "logic high" and a "logic low," with a forbidden region between. CMOS (complementary metal-oxide-semiconductor) dominates modern logic, with TTL (transistor-transistor logic) surviving as legacy in some applications and ECL (emitter-coupled logic) in high-speed niches. Within CMOS, the supply voltage has dropped from $5\,\text{V}$ through $3.3\,\text{V}$, $2.5\,\text{V}$, $1.8\,\text{V}$, $1.2\,\text{V}$, to $0.8\,\text{V}$ for modern core logic, while I/O remains at higher voltages for compatibility.
 
-\section{Embedded firmware: real-time considerations}
-\TODO{Section prose.}
+The static characteristic gives the input thresholds ($V_{IH}$, $V_{IL}$) and the output drive ($V_{OH}$, $V_{OL}$). Noise margins ($V_{OH} - V_{IH}$ for high, $V_{IL} - V_{OL}$ for low) determine how much noise the signal can tolerate. CMOS at $3.3\,\text{V}$ has noise margins around $0.7$ to $0.8\,\text{V}$; at $1.2\,\text{V}$, around $0.2\,\text{V}$. The shrinking margins drive the layout discipline of modern boards.
 
-\section{Communication buses: I$^2$C, SPI, UART, CAN, USB, Ethernet}
-\TODO{Section prose.}
+The dynamic characteristic gives the propagation delay (input change to output change), the rise and fall times, the setup time (data must be stable before clock edge), the hold time (data must remain stable after clock edge), and the maximum clock frequency. Static timing analysis (STA) verifies that all paths through a synchronous logic block satisfy the setup and hold constraints across worst-case process, voltage, and temperature corners; failing STA is the first cause of digital boards that work intermittently.
 
-\section{Power management in embedded}
-\TODO{Section prose.}
+Clock distribution is the central discipline of synchronous digital design. The clock must arrive at all flip-flops with bounded skew (variation in arrival time); otherwise setup and hold conditions are violated. Clock trees (balanced fan-out structures), clock buffers, and clock-domain crossing logic (handling signals that cross between asynchronously-related clocks) are the working tools.
 
-\section{PCB design for digital and mixed-signal}
-\TODO{Section prose.}
+Synchronous design (every state element triggered by a global clock) is the dominant paradigm. Asynchronous design (handshake-based) survives in niches (clock-data recovery, low-power, security against side-channel attacks) but rarely escapes specialised application. The engineer designs synchronous by default and reaches for asynchronous only with justification.
 
-\section{EMC and certification preview}
-\TODO{Section prose.}
+\section{Microcontrollers vs microprocessors vs FPGAs}\pathtag{core}
 
-\section{Failure: brownouts, ESD damage, undocumented errata}
-\TODO{Section prose.}
+A microcontroller integrates a processor core, on-chip memory (flash and RAM), and peripherals (timers, ADCs, communication interfaces, GPIO) into a single chip. Costs range from $\sim\$0.20$ (8-bit, $4\,\text{kB}$ flash) to $\sim\$30$ (32-bit, $2\,\text{MB}$ flash, high-end peripherals). Power consumption ranges from microamperes (sleeping) to milliamperes (active). Microcontrollers dominate embedded systems: every appliance, every sensor, every motor controller, every IoT device has one.
 
+A microprocessor is a processor core without on-chip program memory and minimal peripherals; the system uses external memory and external peripherals on a board. Microprocessors target higher-performance applications (Linux-running single-board computers, smartphones, servers) where the additional memory and peripheral flexibility justify the cost and complexity.
 
-\section{Project}
-\TODO{build a working data-logger on a microcontroller; archive output}
+An FPGA (field-programmable gate array) is a chip whose internal logic is configurable to implement arbitrary digital circuits. The user describes the desired logic in HDL (VHDL, Verilog, SystemVerilog) or higher-level languages (HLS from C/C++); synthesis tools convert the description to a configuration loaded into the FPGA. FPGAs implement custom logic at clock speeds in the $100\,\text{MHz}$ to $1\,\text{GHz}$ range, with hardware parallelism that processors cannot match. Costs range from $\sim\$10$ (small CPLDs) to $\$10{,}000$ (high-end FPGAs).
+
+The decision between microcontroller, microprocessor, and FPGA follows the application. For sequential logic with moderate compute, ADC, PWM, communication: microcontroller. For Linux-class applications, file systems, networking, video decoding: microprocessor. For parallel signal processing, custom protocols, hardware acceleration, low-latency control loops, image processing, communications PHY: FPGA. For mixed (a processor and custom hardware on one chip): a SoC FPGA (Zynq, SmartFusion) or a hard-core SoC.
+
+\begin{archetype}[interface: microcontroller as physical-world bridge]
+The microcontroller is the standard interface between the digital world (where computation is cheap and storage is cheap) and the physical world (where sensors produce analog signals and actuators draw current). The microcontroller's peripherals (ADC, PWM, GPIO, I$^2$C, SPI, UART) implement the physical-world interface; the firmware implements the application logic. The engineer who is comfortable with one or two microcontroller families can build essentially any embedded application within their power and performance limits.
+\end{archetype}
+
+\section{Embedded firmware: real-time considerations}\pathtag{standard}
+
+Embedded firmware differs from desktop software in three ways: resource constraints (kilobytes of RAM rather than gigabytes), real-time constraints (responses required within microseconds to milliseconds of stimuli), and direct hardware interaction (read peripheral registers, write peripheral registers, handle interrupts).
+
+The simplest embedded firmware is a super-loop: an infinite loop that reads inputs, computes, writes outputs, and repeats. The super-loop is appropriate for systems where the timing is dominated by a single slow process and where simplicity matters. Adding interrupts (peripheral events trigger interrupt service routines, ISRs, that pre-empt the main loop) extends the super-loop to handle real-time stimuli; the discipline is to keep ISRs short and to use flags or queues to communicate between ISR and main loop.
+
+Real-time operating systems (RTOS) provide pre-emptive scheduling, multiple threads, inter-thread communication (queues, semaphores, mutexes), and time services. The standard open-source RTOS (FreeRTOS, Zephyr, RIOT) and commercial RTOS (ThreadX, VxWorks, QNX) implement the same essential abstractions. An RTOS is appropriate for systems with multiple concurrent activities, where scheduling and timing must be deterministic. The cost is added complexity and the burden of correct synchronisation (deadlocks, race conditions, priority inversions).
+
+The 1997 Mars Pathfinder priority-inversion incident (\cite{paper:jones-pathfinder-1997}) demonstrated the consequences of incomplete real-time discipline: a low-priority task held a mutex needed by a medium-priority task, while a high-priority task was blocked waiting for the medium-priority task's data. The bus reset (a watchdog response) brought the system back; the priority-inheritance protocol (enabled in VxWorks but disabled by default) would have prevented the inversion. The fix was enabling priority inheritance via uplinked configuration. Real-time bugs do not show in unit tests.
+
+Real-time analysis (rate-monotonic, earliest-deadline-first scheduling theory) gives the conditions under which a set of periodic tasks is schedulable. The standard result: for $n$ tasks with periods $T_i$ and execution times $C_i$, rate-monotonic scheduling is feasible if $\sum C_i/T_i \leq n(2^{1/n} - 1)$, approaching $\ln 2 \approx 0.693$ for large $n$. Earliest-deadline-first allows utilisation up to $1$ at the cost of more complex scheduling. Real-time analysis is the formal counterpart to the empirical "does the system meet its deadlines."
+
+Firmware quality matters in proportion to the consequences. Toy applications can tolerate occasional bugs; medical, automotive, and aerospace firmware undergo formal coding standards (MISRA C, CERT C), static analysis, code review, and structural coverage testing. The discipline scales with the consequence of failure.
+
+\section{Communication buses: I$^2$C, SPI, UART, CAN, USB, Ethernet}\pathtag{standard}
+
+Communication buses connect microcontrollers to sensors, actuators, displays, storage, and other processors. The bus selection depends on speed, distance, topology, complexity, and existing ecosystem.
+
+I$^2$C (inter-integrated circuit) is a two-wire (clock and data) multi-drop bus with addressing in software. Speeds are $100\,\text{kHz}$ (standard), $400\,\text{kHz}$ (fast), $1\,\text{MHz}$ (fast-plus), $3.4\,\text{MHz}$ (high-speed). I$^2$C is the workhorse of board-level sensor connection: accelerometers, gyroscopes, temperature sensors, EEPROMs, OLED displays, real-time clocks all speak I$^2$C. Distances are short (centimetres to perhaps a metre with high-current pull-ups and care).
+
+SPI (serial peripheral interface) is a four-wire (clock, data-out, data-in, chip-select) point-to-point bus with no addressing. Speeds reach $50\,\text{MHz}$ and higher. SPI is faster than I$^2$C and is used for higher-bandwidth sensors and storage: ADCs, DACs, flash memory, SD cards, displays, radios. Each peripheral has a dedicated chip-select.
+
+UART (universal asynchronous receiver-transmitter) is the oldest bus, two wires (TX and RX), serial, asynchronous with explicit start and stop bits. RS-232 and RS-485 are physical-layer extensions for longer distances. UART speeds are typically $9.6\,\text{kbps}$ to $1\,\text{Mbps}$. UART is the bus that connects to debug consoles, GPS modules, GSM modems, and legacy industrial equipment.
+
+CAN (controller area network) is a differential, two-wire, multi-drop bus with built-in error detection, retransmission, and message-priority arbitration. CAN dominates automotive electronics and industrial machinery, with the ISO 11898 standard governing physical and data link layers. Speeds are $1\,\text{Mbps}$ for classic CAN and $5\,\text{Mbps}$ with CAN-FD. The CAN priority arbitration scheme means lower message IDs always win; system designers allocate IDs by criticality.
+
+USB (universal serial bus) is the standard for host-device communication: a host (PC, embedded host) communicates with devices (keyboards, storage, sensors, audio, video). USB speeds range from $1.5\,\text{Mbps}$ (low-speed) through $480\,\text{Mbps}$ (USB 2.0 high-speed) to $5$ to $40\,\text{Gbps}$ (USB 3.x and 4). The complexity of USB (enumeration, descriptor structures, class drivers) usually requires a dedicated USB peripheral or controller; bit-banging USB in software is exotic.
+
+Ethernet is the dominant networking bus, with speeds from $10\,\text{Mbps}$ to $100\,\text{Gbps}$. Embedded Ethernet uses MII or RMII interfaces between the MAC (in the microcontroller) and an external PHY. Industrial Ethernet variants (EtherCAT, PROFINET, EtherNet/IP) add real-time scheduling on top of standard Ethernet hardware.
+
+\section{Power management in embedded}\pathtag{standard}
+
+Embedded power management balances three competing requirements: enough power to run the active circuitry, low enough power to run from a battery or harvested energy, and stable enough power to keep the system reliable.
+
+Modern microcontrollers offer multiple power modes. "Run" or "active" consumes the most current; "sleep" stops the CPU but keeps peripherals running; "stop" or "deep-sleep" stops most clocks; "standby" preserves only minimal state with low-power oscillators running. The current ratios are typically $1$ (run) : $0.1$ (sleep) : $0.01$ (stop) : $0.001$ (standby), with absolute currents ranging from milliamperes (run) to nanoamperes (standby).
+
+Battery-powered designs spend most of their time in deep-sleep, waking briefly to sample sensors, decide, and act. Average current is dominated by the wake duty cycle and the wake current. A design with $10\,\mu\text{A}$ standby current and $10\,\text{mA}$ wake current, waking $1$ second every minute, has average current $\sim 10 \times (1/60) + 10 \times 10^{-3} \times (59/60) \approx 0.18\,\text{mA}$. On a $2000\,\text{mAh}$ battery, that lasts $\sim 11{,}000$ hours, or $15$ months. The duty cycle is the design parameter.
+
+Power-supply transients matter. A microcontroller running at $50\,\text{MHz}$ draws current in $10$ to $20\,\text{ns}$ pulses; decoupling capacitors at each VDD pin absorb these pulses locally. The brownout reset detects when the supply drops below a threshold; without brownout reset, low-voltage operation can corrupt flash or RAM in ways that survive across resets.
+
+Energy harvesting (solar, thermoelectric, RF, vibration) supplies microwatts to milliwatts. Energy-harvesting designs include a charge controller, a storage element (capacitor or rechargeable battery), and an ultra-low-power microcontroller running at low duty cycle. The application must tolerate intermittent operation when harvested energy runs low.
+
+\begin{estimation}
+\textbf{Question.} Estimate the battery life of a temperature-logging IoT sensor that wakes every $5$ minutes, takes $200\,\text{ms}$ to sample and transmit, draws $30\,\text{mA}$ awake and $5\,\mu\text{A}$ asleep. The battery is a $1200\,\text{mAh}$ coin cell.
+
+\textbf{Working.} Duty cycle: $0.2/(5 \times 60) = 0.2/300 \approx 6.7 \times 10^{-4}$. Average current: $30 \times 6.7 \times 10^{-4} + 5 \times 10^{-3} \times (1 - 6.7 \times 10^{-4}) \approx 0.020 + 0.005 = 0.025\,\text{mA}$. Battery life: $1200/0.025 = 48{,}000\,\text{hours} \approx 5.5$ years. The asleep current dominates because the awake duty cycle is so low; halving the asleep current nearly doubles the lifetime. The coin cell's self-discharge ($\sim 1\%/\text{year}$) and the calendar life (typically $5$ to $10$ years) set the practical ceiling.
+\end{estimation}
+
+\section{PCB design for digital and mixed-signal}\pathtag{core}
+
+Digital PCB design is the discipline that makes a schematic-correct board actually work. The relevant phenomena are signal integrity (waveform quality at high speed), power integrity (clean supply rails at every chip), thermal management (keeping junctions below limits), and EMI (controlling emissions and susceptibility).
+
+A modern digital board uses a multi-layer stack-up (typically $4$ to $12$ layers): signal layers above and below ground planes, with power planes and additional signal layers as needed. Continuous ground planes provide low-impedance return paths and shield signal layers from each other. Splits or cuts in the ground plane should be avoided; signal traces that cross splits cause the return current to detour, increasing radiation and crosstalk.
+
+High-speed signals (rising edges faster than a few hundred picoseconds) require controlled-impedance traces, typically $50\,\Omega$ for single-ended and $100\,\Omega$ differential. The trace width and the dielectric separation from the reference plane set the impedance; the fabricator's stack-up specifies the dimensions. Length matching across a parallel bus (DDR memory, parallel imagers) keeps the signals' arrival times within the timing budget.
+
+Decoupling capacitors at each chip's supply pins shunt high-frequency currents locally. A modern processor with $20$ supply pins may have $20$ to $40$ decoupling capacitors of varying values (nF and $\mu\text{F}$), placed within millimetres of the pins. The decoupling network's impedance over frequency (target impedance method) is the design criterion.
+
+Mixed-signal boards (analog and digital on the same board) require careful partitioning. Separate analog and digital ground planes connected at a single point are one approach; a single ground plane with careful analog placement and routing is another. The right answer depends on the signal levels, the layout density, and the EMI environment.
+
+Differential signalling (USB, Ethernet, LVDS, MIPI, SATA, PCIe) routes signal and complement together with matched length and tight coupling. The differential receiver cancels common-mode noise; the routing must preserve the matching that the receiver depends on.
+
+\section{EMC and certification preview}\pathtag{mastery}
+
+Electromagnetic compatibility (EMC) testing verifies that a product does not emit excessive radiation and is not unduly susceptible to radiation. The relevant standards include CISPR 11 (industrial), CISPR 22/32 (information technology equipment), FCC Part 15 (US), and product-specific standards (medical IEC 60601-1-2, automotive ISO 11452, aerospace DO-160).
+
+EMC testing measures conducted emissions (noise on the power input, $150\,\text{kHz}$ to $30\,\text{MHz}$) and radiated emissions ($30\,\text{MHz}$ to several $\text{GHz}$). Class A limits apply to industrial environments; Class B (more stringent) applies to residential. Failing emissions tests is the most common pre-release roadblock.
+
+Susceptibility testing applies ESD (electrostatic discharge, $\pm 4$ to $\pm 15\,\text{kV}$ contact or air discharge), RF radiated immunity ($3$ to $10\,\text{V/m}$ across $80\,\text{MHz}$ to $1\,\text{GHz}$ or higher), conducted RF immunity, electrical fast transients (bursts), surge, and magnetic-field immunity. The product must continue to operate within specification through the tests.
+
+The design discipline that produces EMC-compliant boards includes: power-supply filtering (input filter, decoupling, careful ground), layout (ground planes, controlled-impedance, length matching), shielding (where necessary, metal enclosures with conductive seams), cable management (shielded cables, common-mode chokes, ferrite beads), and clock management (spread-spectrum clocking to spread emissions over frequency).
+
+Pre-compliance testing (in-house with simpler equipment) catches problems before formal certification testing (at an accredited lab, with calibrated equipment, with formal reporting). The cost ratio is $\sim 10:1$ (pre-compliance vs formal); the time saved by catching problems early is much larger.
+
+\begin{principle}[The certification-and-test-early principle]
+A digital product cannot ship without passing certification. The certification tests are non-negotiable, the test laboratories are expensive, and the time to re-test after a failure is long. The engineer who designs for compliance from the first prototype (not after the fact) avoids the late-stage redesigns that ship dates do not survive. Pre-compliance testing during development is cheap insurance.
+\end{principle}
+
+\section{Failure: brownouts, ESD damage, undocumented errata}\pathtag{core}
+
+Digital systems fail in characteristic ways.
+
+\textbf{Brownouts:} the supply voltage drops below the operational limit briefly, during which the system may execute random instructions, write garbage to flash or EEPROM, or enter undefined states. Brownout reset circuitry (built into modern microcontrollers, supplemented by external supervisors for critical applications) holds the system in reset when the supply is too low. Without brownout protection, a flash that gets written during a brownout can be corrupted permanently.
+
+\textbf{ESD damage:} a static discharge ($\pm 15\,\text{kV}$ from a person walking on carpet) through an unprotected pin damages the chip's input transistors. The damage can be immediate (the chip stops working) or latent (the chip works but fails earlier in life). Input protection diodes, series resistors, and TVS (transient voltage suppression) devices on exposed pins (connector pins, button pins, antenna pins) prevent ESD damage.
+
+\textbf{Undocumented errata:} the chip does not behave as the datasheet describes. Modern microcontrollers have errata sheets that document known deviations from the datasheet; the firmware must work around them. Some errata are not documented and are discovered by users in the field, leading to firmware updates and (rarely) chip revisions.
+
+\textbf{Watchdog failures:} a software bug or hardware glitch hangs the firmware. A watchdog timer (a hardware counter that resets the system if the firmware fails to "kick" it within a timeout) recovers from hangs. Without a watchdog, the system stays hung until power-cycled.
+
+\textbf{Latch-up:} CMOS chips have parasitic SCR-like structures that can be triggered by injected current (from ESD, supply transients, or unexpected high-voltage on a pin), causing the chip to draw destructive current. Power-cycle clears the latch-up; the chip may be damaged. Latch-up resistant logic families and careful pin protection prevent the issue.
+
+\textbf{Single-event upsets:} cosmic rays and alpha particles flip bits in memory. SRAM is vulnerable; flash is more resilient. Aerospace and high-reliability applications use ECC (error-correcting code) memory, radiation-hardened chips, and triple modular redundancy. Most terrestrial applications can ignore SEUs; the rate is $\sim 10^{-12}$ upsets per bit per hour at sea level, rising rapidly with altitude.
+
+\textbf{Firmware bugs:} the most common cause of field failures in modern embedded systems. Buffer overflows, race conditions, integer overflows, missing error handling, untested code paths, edge cases in state machines, time wrap-around, leap-year and leap-second bugs, off-by-one errors in array indexing, all common. Discipline (code review, static analysis, fuzz testing, comprehensive test coverage) reduces but does not eliminate firmware bugs.
+
+The 1991 Patriot missile system clock-drift incident (\cite{acc:gao-patriot-1992}) is a software-induced failure of the kind that a hardware engineer would call impossible: the timing accumulated error over operating time, eventually missing a Scud missile and killing $28$ soldiers. The fix was a firmware patch already in the field but not yet installed. Embedded firmware quality matters in proportion to the consequences.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Data-logger: microcontroller, sensor, storage, host download]
+\textbf{Objective.} Design, build, and validate a battery-powered environmental data-logger. Specifications: log temperature and humidity to non-volatile storage every minute; battery life $\geq 1$ year on a coin cell; download logged data via USB to a host PC; firmware survives power-down without corruption.
+
+\textbf{Method.} Select a microcontroller (STM32L0, ATSAML21, MSP430, or similar low-power family). Select a temperature/humidity sensor (SHT3x, BME280) and a flash storage device (SPI flash or SD card). Design the schematic: microcontroller, sensor on I$^2$C, flash on SPI, USB pins, coin-cell holder with reverse-polarity protection, ESD protection on USB. Lay out the PCB. Implement firmware: wake-up, read sensor, write to flash, sleep. Implement USB CDC or HID for host download. Measure: battery current in sleep and active modes; calculate expected battery life; verify the data survives power-cycling; verify USB enumeration and download.
+
+\textbf{Deliverables.} The schematic, the PCB layout, the firmware source, the current-vs-time measurement, the battery-life calculation, a successful USB download, and a written analysis of where the design met specification.
+
+\textbf{Hazard.} Soldering; coin cells are a swallowing hazard for small children (specify on packaging if applicable); reverse polarity can damage the microcontroller.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A microcontroller's GPIO drives an LED through a $1\,\text{k}\Omega$ resistor. With $V_{OH} = 3.0\,\text{V}$ and LED forward voltage $2.0\,\text{V}$, compute the LED current.
+\end{exercise}
+
+\begin{exercise}
+A $50\,\text{MHz}$ clock has rise time $1\,\text{ns}$. Compute the dominant frequency content (assume bandwidth $\approx 0.35/t_r$).
+\end{exercise}
+
+\begin{exercise}
+An I$^2$C bus at $400\,\text{kHz}$ has $C_{bus} = 200\,\text{pF}$ and $V_{DD} = 3.3\,\text{V}$. Compute the maximum pull-up resistor for the bus rise-time specification ($300\,\text{ns}$ to $30\%$).
+\end{exercise}
+
+\begin{exercise}
+A $32$-bit microcontroller running at $48\,\text{MHz}$ executes one cycle per arithmetic instruction. Compute the time to execute a $1000$-iteration loop with one multiply per iteration ($3$ cycles each).
+\end{exercise}
+
+\begin{exercise}
+A flash memory has $100{,}000$ erase cycles endurance and $10$ year retention. A wear-levelling firmware uses $1\,\text{MB}$ of $4\,\text{MB}$ total. Compute the lifetime in years if the application writes $1\,\text{kB}/\text{minute}$ on average.
+\end{exercise}
+
+\begin{exercise}
+A device sleeps drawing $2\,\mu\text{A}$ and wakes every $30$ seconds for $50\,\text{ms}$ drawing $25\,\text{mA}$. Compute the average current.
+\end{exercise}
+
+\begin{exercise}
+A SPI bus at $20\,\text{MHz}$ transfers $4\,\text{kB}$ of data. Compute the transfer time, neglecting protocol overhead.
+\end{exercise}
+
+\begin{exercise}
+A CAN bus at $500\,\text{kbps}$ has $11$-bit identifier frames carrying $8$ bytes of payload. Compute the maximum throughput in messages per second, neglecting inter-frame spacing.
+\end{exercise}
+
+\begin{exercise}
+Static timing analysis on a $100\,\text{MHz}$ design finds a path with setup slack of $-0.5\,\text{ns}$. State the implication and three engineering responses.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the maximum clock frequency for a synchronous logic block given combinational propagation delay $T_{prop}$, setup time $T_{setup}$, clock-to-Q delay $T_{cq}$, and clock skew $T_{skew}$.
+\end{exercise}
+
+\begin{exercise}
+Derive the Liu-Layland rate-monotonic schedulability bound for $n$ periodic tasks.
+\end{exercise}
+
+\begin{exercise}
+Derive the impedance of a microstrip trace as a function of trace width, dielectric thickness, and relative permittivity. State the assumptions.
+\end{exercise}
+
+\begin{exercise}
+Derive the average power consumption of a duty-cycled embedded device as a function of sleep current, wake current, wake duration, and wake period.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the maximum I$^2$C bus length for $400\,\text{kHz}$ operation in a noisy industrial environment.
+\end{exercise}
+
+\begin{exercise}
+Estimate the FLASH endurance required for a logger that writes $1\,\text{kB}/\text{second}$ for $5$ years, with $4\,\text{MB}$ available flash and wear levelling.
+\end{exercise}
+
+\begin{exercise}
+Estimate the EMI emissions reduction from changing the slew rate of $24$ parallel I/O lines from $100\,\text{V}/\mu\text{s}$ to $20\,\text{V}/\mu\text{s}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost difference (parts, manufacturing) between a $2$-layer and a $4$-layer PCB for a moderate-complexity embedded design.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a transmission-line termination problem: a $5\,\text{V}$ driver, $50\,\Omega$ trace of $30\,\text{cm}$, $1\,\text{k}\Omega$ load. Plot the unterminated reflection waveform and the series-terminated waveform.
+\end{exercise}
+
+\begin{exercise}
+Simulate a synchronous digital path with clock skew and characterise the maximum operating frequency.
+\end{exercise}
+
+\begin{exercise}
+Simulate an RTOS scheduler with two periodic tasks and one event-driven task; verify schedulability.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a microcontroller-based motor controller for a BLDC fan with Hall sensors, with low-side current sensing and over-current shutdown. State the architecture choices and the partition between firmware and hardware.
+\end{exercise}
+
+\begin{exercise}
+Design the firmware architecture for a vital-signs monitor: continuous ECG sampling at $1\,\text{kHz}$, periodic blood-pressure cuff measurement, wireless data transmission. State the threading or super-loop approach and the rationale.
+\end{exercise}
+
+\begin{exercise}
+Design the layout strategy for a $4$-layer PCB carrying a $480\,\text{MHz}$ Ethernet PHY, a microcontroller, and an analog audio codec. State the stack-up, the layer assignments, and the partitioning.
+\end{exercise}
+
+\begin{exercise}
+Design an ESD protection strategy for a USB connector exposed at a product's enclosure.
+\end{exercise}
+
+\begin{exercise}
+Design a watchdog architecture for a safety-critical embedded controller. State the watchdog kick policy and the recovery sequence.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's embedded board passes lab testing and fails ESD compliance at $\pm 4\,\text{kV}$ contact discharge. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team's microcontroller-based logger occasionally corrupts saved data after a brownout event. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's CAN bus experiences message-loss bursts during certain operating conditions. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a microcontroller and an FPGA for a real-time motor control application. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's USB device works on Linux hosts and fails enumeration on Windows. State three engineering causes.
+\end{exercise}
+
+\begin{exercise}
+A team's prototype board exhibits $50\,\text{MHz}$ oscillation visible on an oscilloscope when probed. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's battery-powered IoT device's actual lifetime is $50\%$ below the calculated lifetime. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team finds that the production board fails EMI testing while the engineering prototype passed. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's firmware crashes intermittently during long operation, with no apparent pattern. State the engineering investigation, including the role of watchdog logs, stack-canary patterns, and code review.
+\end{exercise}
+
+\begin{exercise}
+A vendor offers a microcontroller with documented errata affecting the I$^2$C peripheral under specific clock-divider settings. State the engineering response: workaround, alternative peripheral, or part substitution, and the criteria for choosing among them.
+\end{exercise}

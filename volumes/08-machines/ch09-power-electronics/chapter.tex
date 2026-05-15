@@ -1,40 +1,281 @@
 \chapter{Power electronics: drives, inverters, grid-tie}
 \label{vol08:ch09}
 
-\epigraph{}{}
+\epigraph{Power electronics is the gearbox of the electrical age: it matches the source to the load.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, transport, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, transport, failure. Exercise target: 35. Project track: physical.}
 
 \noindent
-\TODO{Volume 8, Chapter 9. Approx 120 pp.}
+Power electronics converts electrical energy from one form to another with high efficiency: AC to DC, DC to DC at a different voltage, DC to AC at a controlled frequency. The discipline emerged from rectifier tubes and grew on the back of the thyristor (1957), the power MOSFET (1976), the IGBT (1985), and most recently SiC and GaN devices (2000s onward). Power electronics is the silent infrastructure of the electrified world: every laptop charger, every solar inverter, every variable-frequency drive, every electric vehicle traction system, every modern data centre, every high-voltage DC transmission line is power electronics. This chapter develops the engineer's working understanding of switched-mode conversion, the converter topologies that implement DC-DC, DC-AC, and AC-DC, the control schemes for motor drives, the architecture of battery management and electric-vehicle powertrains, the grid-tied applications, and the failure mechanisms that distinguish high-power circuits from signal-level analog. The reader who finishes this chapter can specify, analyse, and qualify a power converter at scales from watts to megawatts.
 
-\section{Switched-mode power conversion}
-\TODO{Section prose.}
+\section{Switched-mode power conversion}\pathtag{core}
 
-\section{DC-DC converters: buck, boost, buck-boost, isolated topologies}
-\TODO{Section prose.}
+The central idea of switched-mode conversion is to use semiconductor switches (BJT, MOSFET, IGBT, thyristor, SiC, GaN) operated between fully-on and fully-off states, with reactive components (inductors, capacitors) to store and transfer energy between cycles. The switch dissipates power only during the brief transitions between states; the resistive on-state dissipation is small. The result is efficiency typically $90$ to $99\%$, in contrast to linear regulators' $V_{out}/V_{in}$.
 
-\section{Inverters: single-phase, three-phase, multilevel}
-\TODO{Section prose.}
+The basic switching cycle: turn the switch on, energy flows from source to storage; turn the switch off, energy flows from storage to load. The duty cycle (fraction of time the switch is on) controls the output. The switching frequency (typically $10\,\text{kHz}$ to $1\,\text{MHz}$ for kilowatt-class converters, lower for megawatt-class) sets the size of reactive components and the dynamics.
 
-\section{Rectifiers and power-factor correction}
-\TODO{Section prose.}
+The trade-offs are direct. Higher switching frequency reduces inductor and capacitor size (and thus weight and cost) but increases switching losses (a fixed energy per transition times frequency). Wide-bandgap devices (SiC, GaN) have lower switching losses than silicon at high frequency, enabling smaller magnetics for the same losses. The choice of switching device and frequency is a top-level design decision.
 
-\section{Motor drives: BLDC, induction, synchronous, field-oriented control}
-\TODO{Section prose.}
+The control loop adjusts the duty cycle to maintain the output regardless of input variation or load. The standard control architectures are voltage-mode control (output voltage error drives duty cycle), current-mode control (peak or average inductor current is the inner loop, output voltage the outer loop), and hysteretic control (the output voltage's hysteresis directly toggles the switch). Current-mode dominates kilowatt-class designs; modern digital controllers implement these with state-space or model-predictive variants for the highest performance.
 
-\section{Battery management systems and EV powertrains}
-\TODO{Section prose.}
+\begin{archetype}[transport: switched-mode conversion as energy routing]
+A switched-mode converter is the electrical equivalent of a mechanical gearbox. The input source and the output load have different voltage-current characteristics; the converter matches them at high efficiency. The same architectural pattern (storage element, switching element, control) implements voltage step-down, step-up, isolation, AC-to-DC, DC-to-AC, and frequency conversion. The differences are in the storage element (inductor, capacitor, transformer), the switching pattern, and the control objective.
+\end{archetype}
 
-\section{Grid-tied power electronics: PV inverters, STATCOMs, HVDC}
-\TODO{Section prose.}
+\section{DC-DC converters: buck, boost, buck-boost, isolated topologies}\pathtag{standard}
 
-\section{Failure: thermal, EMI, switching transients, capacitor end-of-life}
-\TODO{Section prose.}
+The buck converter steps a higher input voltage down to a lower output. A switch (MOSFET) connects the input to an inductor; when on, current ramps up; when off, the inductor's stored energy flows through a diode (or synchronous MOSFET) to the load and output capacitor. The output voltage in continuous conduction is $V_{out} = D \cdot V_{in}$, where $D$ is the duty cycle. The inductor current ripple, output voltage ripple, and capacitor RMS current set the component sizing.
 
+The boost converter steps a lower input voltage up. The switch shorts the inductor to ground during the on-time, building stored energy; during the off-time, the inductor's voltage adds to the input and forces current through a diode to the output. The output voltage in continuous conduction is $V_{out} = V_{in}/(1-D)$. Boost converters dominate solar inverter front-ends and LED drivers from low-voltage sources.
 
-\section{Project}
-\TODO{design and build a buck converter; characterise efficiency vs load}
+The buck-boost converter can step up or down with the polarity inverted ($V_{out} = -V_{in} D/(1-D)$). The SEPIC and Cuk topologies offer non-inverting buck-boost behaviour at the cost of more components.
+
+Isolated topologies use a transformer to provide galvanic isolation between input and output. The flyback (single-switch, stores energy in the transformer magnetising inductance, suits low to medium power, typically $< 100\,\text{W}$), forward (single-switch with separate output choke, medium power), push-pull (two switches, suits transformer with centre-tapped primary), half-bridge and full-bridge (two or four switches, high power), and resonant LLC (soft-switching, high efficiency at high frequency, dominant in modern server and EV chargers) are the standard catalogue.
+
+The selection between topologies follows the application. For a $5\,\text{V}$ rail at $1\,\text{A}$ from a $12\,\text{V}$ input, a synchronous buck IC at $1\,\text{MHz}$ is the answer. For $48\,\text{V}$ to $400\,\text{V}$ at $1\,\text{kW}$, a boost. For $400\,\text{V}$ DC input to multiple isolated rails at $5\,\text{kW}$, an LLC. For $400\,\text{V}$ to $12\,\text{V}$ at $200\,\text{W}$ in an EV's auxiliary power unit, a phase-shifted full-bridge.
+
+\section{Inverters: single-phase, three-phase, multilevel}\pathtag{standard}
+
+An inverter converts DC to AC. The simplest is a square-wave inverter (a full-bridge switching at the desired output frequency); the square-wave output is rich in harmonics and is acceptable only for resistive or motor loads that filter the harmonics themselves.
+
+Pulse-width modulation (PWM) chops the DC bus into pulses whose average over a switching cycle traces a sinusoid. The high-frequency components are filtered by the load inductance (in a motor) or by an output filter (in a grid-tie inverter). Sinusoidal PWM, space-vector PWM, and selective harmonic elimination are the standard modulation schemes; space-vector PWM is the workhorse of three-phase drives.
+
+Three-phase inverters use three half-bridges to produce three sinusoids $120^\circ$ apart, suited to three-phase motors and grid-tie. The three-phase output has $\sqrt{3}/2 \approx 0.87$ times the peak-to-peak voltage of a single phase from the same DC bus, giving better DC-bus utilisation than three single-phase inverters.
+
+Multilevel inverters use multiple voltage levels rather than just two (or three for a three-level), producing an output that more closely approximates the desired sinusoid with less harmonic content. The neutral-point clamped, flying capacitor, and modular multilevel converter (MMC) topologies are common. Multilevel inverters dominate medium-voltage drives ($2.3$ to $13.8\,\text{kV}$) and HVDC transmission. The MMC has become the standard for new HVDC since the mid-2000s.
+
+The output filter design balances filter inductance and capacitance against the residual harmonics and the inverter's switching frequency. Grid-tie inverters meet harmonic limits in standards (IEEE 1547, IEC 61000-3); failure to meet harmonic limits prevents grid connection.
+
+\section{Rectifiers and power-factor correction}\pathtag{standard}
+
+A rectifier converts AC to DC. The simplest is a full-bridge diode rectifier with a smoothing capacitor; the capacitor draws current in pulses at the AC peak, producing a poor power factor (typically $0.5$ to $0.7$) and high harmonic distortion.
+
+Active power-factor correction (PFC) uses a switching converter (commonly a boost) between the rectifier and the bulk capacitor, controlling the input current to follow the input voltage. The result is a power factor near unity, low harmonic distortion, and meets harmonic limits (IEC 61000-3-2 mandates PFC above $75\,\text{W}$ in many jurisdictions). Most modern power supplies above this threshold use active PFC.
+
+Three-phase rectifiers use six diodes or six switches (active rectifier) to convert three-phase AC to DC. Active three-phase rectifiers achieve near-unity power factor and bidirectional power flow (essential for regenerative braking in motor drives, vehicle-to-grid applications, and grid-tie). The three-phase active rectifier and three-phase inverter share the same hardware (six switches plus a DC link) with different control; they are the same circuit, controlled differently for the two functions.
+
+\section{Motor drives: BLDC, induction, synchronous, field-oriented control}\pathtag{standard}
+
+Motor drives convert DC or AC source to the variable-frequency, variable-amplitude waveform that controls a motor. The motor types are direct-current (DC, brushed), brushless DC (BLDC, permanent-magnet rotor, electronic commutation), AC induction (squirrel-cage rotor, slip frequency), permanent-magnet synchronous (PMSM, rotor with magnets, synchronous speed), and switched reluctance (SR, salient-pole rotor, no magnets).
+
+Brushed DC motors are simple: a DC voltage drives the armature; speed is proportional to voltage (less the IR drop), torque proportional to current. A buck converter is sufficient to drive a brushed DC motor. The brushes wear and limit lifetime; brushed DC is fading from new designs.
+
+BLDC motors use Hall sensors (or back-EMF sensing) to detect rotor position and commutate the three windings electronically. The drive is a three-phase inverter; the control is six-step commutation (simple, audible noise at low speed) or sinusoidal commutation (smoother, quieter, more complex). BLDC dominates consumer and small-industrial applications.
+
+AC induction motors are the workhorse of industrial drives: simple, rugged, no permanent magnets, well understood. Variable-frequency drives (VFDs) implement constant volts-per-hertz control at low cost or field-oriented control (FOC) at higher cost for precise torque and speed control. The VFD market is mature, with cost per kilowatt steadily declining.
+
+PMSM motors use permanent magnets for the rotor field, giving higher efficiency and power density than induction at the cost of magnet material (rare-earth NdFeB or ferrite). Modern EV traction motors and high-performance servo drives are PMSM. FOC is the standard control; the drive uses encoder or sensorless position estimation.
+
+Field-oriented control decomposes the motor stator current into a torque-producing component (q-axis) and a flux-producing component (d-axis) in the rotor's reference frame, controlling each independently. FOC requires rotor position knowledge (encoder or sensorless), high-bandwidth current control, and a coordinate transformation. The result is DC-machine-like control of an AC motor: independent flux and torque, fast dynamic response, full torque at zero speed. FOC is the standard for high-performance drives since the 1990s.
+
+\section{Battery management systems and EV powertrains}\pathtag{standard}
+
+A battery management system (BMS) monitors a battery pack, balances cells, manages thermal state, estimates state-of-charge (SOC) and state-of-health (SOH), and enforces safe operating limits. The BMS is the safety boundary between the lithium-ion battery and everything else; loss of BMS oversight has caused thermal runaway events.
+
+The BMS measures each cell's voltage, the pack's current, and cell temperatures. The cell-voltage measurement requires a stack-monitor IC (LTC6804, BQ76952, MAX17841) that handles the high common-mode voltage and provides per-cell ADC readings. Communication is via isoSPI (isolated SPI) or daisy-chained communication.
+
+Cell balancing equalises cell SOC across the pack. Passive balancing dissipates energy in resistors on high-voltage cells; active balancing transfers energy from high cells to low cells. Active balancing is more efficient and faster but more expensive and complex.
+
+State-of-charge estimation combines coulomb counting (integration of current) with voltage-based correction (open-circuit voltage versus SOC table, with rest periods for accurate measurement). State-of-health estimation tracks capacity fade and impedance growth over the pack's life.
+
+EV powertrains integrate the battery, BMS, traction inverter, traction motor, on-board charger, and DC-DC converters for auxiliary rails. The high-voltage bus is $400\,\text{V}$ in most current EVs, $800\,\text{V}$ in newer designs (Porsche Taycan, Hyundai E-GMP, Tesla Cybertruck) for faster charging and lower current. SiC inverters are the standard for $800\,\text{V}$; their lower switching losses and higher operating temperature enable smaller, lighter drives.
+
+The 2013 Boeing 787 lithium-ion battery incidents (\cite{acc:ntsb-aar14-01-787-battery}) illustrated the consequences of inadequate BMS oversight: the cells underwent thermal runaway, the propagation between cells was not contained, and the resulting fires grounded the fleet. The redesigned battery system added cell-level monitoring, an enclosure designed to contain thermal runaway, and modified charging that avoided the operating regime where the initial failure occurred.
+
+\begin{estimation}
+\textbf{Question.} Estimate the energy density advantage of an $800\,\text{V}$ EV bus over a $400\,\text{V}$ bus, for a given motor power and inverter losses.
+
+\textbf{Working.} For a given power, halving the current doubles the voltage. Cable mass scales with $I^2$ for a given resistive loss budget, so doubling voltage cuts cable mass by $4\times$ (for the same loss). Inverter conduction losses (in MOSFETs) scale with $I^2 R_{ds(on)}$; halving the current at the same $R_{ds(on)}$ cuts conduction loss by $4\times$ (allowing smaller silicon or higher efficiency). Switching losses scale with $V \cdot I$; at $800\,\text{V}$ the switching is harder, and SiC becomes necessary to keep losses manageable. The overall trade-off: $800\,\text{V}$ saves cable and conduction losses, requires SiC switches and higher-voltage isolation, and roughly halves DC-fast-charging time at the same charge power. The architecture decision is system-level, not component-level.
+\end{estimation}
+
+\section{Grid-tied power electronics: PV inverters, STATCOMs, HVDC}\pathtag{mastery}
+
+Photovoltaic inverters convert DC from solar panels to AC for the grid. Architectures range from string inverters (one inverter per several panels in series) to central inverters (one inverter for a utility-scale plant) to microinverters (one per panel) and power optimisers (DC-DC per panel feeding a string inverter). Modern PV inverters operate at $97$ to $99\%$ peak efficiency, with maximum-power-point tracking, anti-islanding (disconnect on grid loss), and grid-support functions (reactive power, frequency response, fault ride-through).
+
+STATCOMs (static synchronous compensators) inject controlled reactive power into the grid to support voltage, suppress flicker, or compensate harmonics. The hardware is a voltage-source converter with a DC capacitor; the control determines the injected current. STATCOMs replaced rotating synchronous condensers for new installations from the 1990s.
+
+HVDC transmission uses converters at each end of a long high-voltage DC link to transfer power between AC grids. The line-commutated converter (LCC, based on thyristors) was the original technology, dominant from the 1950s. The voltage-source converter (VSC, based on IGBTs or modular multilevel converters) emerged in the 1990s and now dominates new HVDC installations because of its bidirectional power flow, black-start capability, and grid-support functions. HVDC links of several gigawatts and several thousand kilometres are operating worldwide (e.g., the $\pm 800\,\text{kV}$ Jinping-Sunan link in China, the North Sea Link between UK and Norway).
+
+Grid-tie power electronics must meet grid codes (IEEE 1547, EN 50549, country-specific codes) that specify voltage range, frequency response, harmonic limits, anti-islanding, fault ride-through, and reactive-power support. Grid-following inverters synchronise to the existing grid voltage (the established control approach, suits a grid with strong synchronous generation). Grid-forming inverters establish their own voltage and frequency reference, enabling operation on grids with high inverter penetration where synchronous-generator support is reduced; grid-forming control is a current research and standardisation frontier.
+
+\section{Failure: thermal, EMI, switching transients, capacitor end-of-life}\pathtag{core}
+
+Power-electronics failures have characteristic signatures.
+
+\textbf{Thermal failure:} the dominant lifetime-limiting mechanism. Power semiconductors have a maximum junction temperature (typically $125$ to $175\,^\circ\text{C}$ for silicon, $200\,^\circ\text{C}$ for SiC). The lifetime decreases approximately exponentially with junction temperature (Arrhenius). Solder fatigue from thermal cycling cracks die-attach and bond-wire connections; bond-wire lift-off and die cracking are typical end-of-life modes. Conservative thermal design (heatsink, fan, derating, ambient margin) extends life; aggressive design at the thermal limit shortens it.
+
+\textbf{EMI:} switching events generate high-frequency emissions that must meet conducted (CISPR 11, CISPR 32, FCC Part 15) and radiated emission limits. The emissions couple through the input wires (conducted), the case (radiated), and parasitic paths (chassis ground, control cables). Input EMI filters (common-mode chokes, line-to-ground capacitors, differential capacitors) suppress conducted emissions; layout discipline and shielding suppress radiated emissions. EMI compliance is often the last hurdle before product release.
+
+\textbf{Switching transients:} the rapid voltage and current changes at switch transitions produce overshoots driven by parasitic inductances and capacitances. Voltage overshoots can exceed the switch's breakdown voltage and cause destructive failure. Snubbers (resistor-capacitor or RCD networks) and gate-drive design (controlled $dV/dt$ and $dI/dt$) limit the overshoots. The miller-plateau interaction between gate-drive impedance and drain-gate capacitance causes the most subtle switching issues; the gate-drive design deserves careful attention.
+
+\textbf{Capacitor end-of-life:} electrolytic capacitors used as bulk DC-link storage age by losing electrolyte and rising ESR. The lifetime is approximately halved for every $10\,^\circ\text{C}$ rise in operating temperature; manufacturers quote $2000$ to $10{,}000$ hours at rated temperature, longer at lower temperatures. Capacitor end-of-life shows as increased output ripple, then audible noise, then ultimately a short or open. Film capacitors are more robust but more expensive; ceramic capacitors are limited in energy storage. The capacitor choice is a lifetime trade-off.
+
+\textbf{Software and control:} the firmware in a digital controller is itself a failure mode. Bad PWM patterns, integrator wind-up under saturation, missing fault response in over-current or over-voltage events, and corner cases in mode transitions have all caused field failures. The control firmware must be tested across the full operating envelope, including transients and faults.
+
+\textbf{Isolation breakdown:} galvanic isolation in transformers or optocouplers protects low-voltage control and the user from the high-voltage power side. Isolation degrades from voltage stress, thermal stress, and contamination; testing per safety standards (IEC 60664, IEC 62109) qualifies the isolation; field failures from isolation loss have caused electrocution and equipment damage.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Buck converter: design, build, characterise]
+\textbf{Objective.} Design, build, and characterise a synchronous buck converter. Specifications: input $12\,\text{V}$, output $3.3\,\text{V}$, load $0$ to $3\,\text{A}$, switching frequency $500\,\text{kHz}$, peak efficiency $> 90\%$, output voltage ripple $< 50\,\text{mV}$.
+
+\textbf{Method.} Select a synchronous buck controller IC (LM5145, TPS54160, or similar) and external MOSFETs (or use an integrated module). Design the inductor, output capacitor, input capacitor, and compensation network. Lay out a PCB with attention to switch-node loop area, ground plane, gate-drive routing, and feedback routing. Build the board. Measure: efficiency vs load, output voltage ripple, line and load regulation, transient response to load steps, switching waveforms, EMI conducted emissions on the input. Compare measured to specification and to simulation.
+
+\textbf{Deliverables.} The schematic, the PCB layout, the simulation results, the measured efficiency curve, the load-transient plot, the switching-waveform images, the EMI scan, and a written analysis explaining where the design met specification, where it diverged, and why.
+
+\textbf{Hazard.} The DC supply at $12\,\text{V}$ is not electrocution-hazardous but currents can be large; loose probe leads on the switch node can short and damage the board. The MOSFETs can fail destructively (audible "pop", smoke); wear safety glasses; have a fuse on the supply. Hot components after operation; let cool before touching.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A buck converter has $V_{in} = 24\,\text{V}$, $V_{out} = 5\,\text{V}$. Compute the duty cycle in continuous conduction.
+\end{exercise}
+
+\begin{exercise}
+A boost converter has $V_{in} = 12\,\text{V}$ and duty cycle $0.6$. Compute the output voltage.
+\end{exercise}
+
+\begin{exercise}
+A buck converter switches at $500\,\text{kHz}$ with $V_{in} = 12\,\text{V}$, $V_{out} = 3.3\,\text{V}$, $L = 4.7\,\mu\text{H}$. Compute the inductor current ripple.
+\end{exercise}
+
+\begin{exercise}
+Compute the conduction loss in a synchronous buck's low-side MOSFET, with $R_{ds(on)} = 10\,\text{m}\Omega$, $I_{out} = 5\,\text{A}$, duty cycle $0.3$.
+\end{exercise}
+
+\begin{exercise}
+A three-phase PMSM has $200\,\text{V}$ DC bus, $20\,\text{A}$ peak phase current, $5\,\text{kHz}$ switching. Compute the peak motor phase voltage assuming sinusoidal PWM.
+\end{exercise}
+
+\begin{exercise}
+A flyback transformer has primary inductance $200\,\mu\text{H}$, peak primary current $4\,\text{A}$. Compute the stored energy per switching cycle.
+\end{exercise}
+
+\begin{exercise}
+Compute the output ripple of a buck converter with $\Delta I_L = 1\,\text{A}$, $C_{out} = 47\,\mu\text{F}$, ESR $20\,\text{m}\Omega$, $f_{sw} = 500\,\text{kHz}$.
+\end{exercise}
+
+\begin{exercise}
+Compute the RMS input current of a single-phase diode rectifier with $10\,\mu\text{F}$ bulk cap drawing $1\,\text{A}$ average from a $230\,\text{V}$ RMS line. State the power factor.
+\end{exercise}
+
+\begin{exercise}
+A $400\,\text{V}$ EV battery delivers $200\,\text{kW}$ peak. Compute the peak phase current at $97\%$ efficiency for a three-phase inverter driving the traction motor.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the continuous-conduction-mode transfer function $V_{out}/V_{in}$ for a buck-boost converter.
+\end{exercise}
+
+\begin{exercise}
+Derive the small-signal transfer function from duty cycle to output voltage for a buck converter operating in continuous conduction.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between PWM modulation index and fundamental output voltage for a three-phase inverter with sinusoidal modulation.
+\end{exercise}
+
+\begin{exercise}
+Derive the Park transformation between three-phase abc and direct-quadrature (dq) reference frames for a synchronous motor.
+\end{exercise}
+
+\begin{exercise}
+Derive the lifetime expression for an electrolytic capacitor using the Arrhenius rate doubling-per-$10\,^\circ\text{C}$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the inductor mass for a $1\,\text{kW}$ buck converter at $100\,\text{kHz}$ versus the same converter at $1\,\text{MHz}$ for the same ripple.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cooling requirement for a $10\,\text{kW}$ motor drive with $98\%$ efficiency, fan-cooled.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cable mass saving from going from a $400\,\text{V}$ to an $800\,\text{V}$ EV powertrain, for $5\,\text{m}$ of high-voltage cable carrying $200\,\text{kW}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the lifetime of an electrolytic capacitor specified at $5000$ hours at $105\,^\circ\text{C}$, operating at $65\,^\circ\text{C}$.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate the transient response of a buck converter to a $0$ to $100\%$ load step. Identify the loop bandwidth from the response.
+\end{exercise}
+
+\begin{exercise}
+Simulate a three-phase inverter driving a PMSM with field-oriented control. Plot the q-axis current step response.
+\end{exercise}
+
+\begin{exercise}
+Simulate a single-phase PFC boost converter. Plot the input current waveform, output voltage ripple, and power factor.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a $48\,\text{V}$ to $12\,\text{V}$ buck converter at $20\,\text{A}$, $300\,\text{kHz}$, peak efficiency target $96\%$. State the MOSFET choice, the inductor, the capacitors, and the compensation network.
+\end{exercise}
+
+\begin{exercise}
+Design a $230\,\text{V}$ AC input PFC boost stage for a $400\,\text{V}$ DC output at $500\,\text{W}$. State the inductor, switch, output capacitor, and control approach.
+\end{exercise}
+
+\begin{exercise}
+Design an EMI filter for a $1\,\text{kW}$ flyback converter to meet CISPR 32 Class B conducted limits. State the common-mode and differential-mode component values.
+\end{exercise}
+
+\begin{exercise}
+Design a BMS architecture for a $400\,\text{V}$, $100\,\text{kWh}$ EV battery pack with $96$ cells in series. State the stack-monitor IC choice, the balancing approach, and the SOC estimation algorithm.
+\end{exercise}
+
+\begin{exercise}
+Design a thermal solution for a $20\,\text{kW}$ traction inverter operating at $97\%$ efficiency, with $40\,^\circ\text{C}$ ambient and $125\,^\circ\text{C}$ junction limit.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's buck converter has $80\%$ efficiency, target $94\%$. State three engineering hypotheses and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team's motor drive overheats at $80\%$ rated load. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's PV inverter fails EMI compliance testing. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team's converter prototype works at $25\,^\circ\text{C}$ and shuts down at $40\,^\circ\text{C}$ ambient. State the likely causes and the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between SiC and silicon MOSFETs for a $48\,\text{V}$ EV drivetrain. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's BMS reports inconsistent SOC across the pack. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's converter shows audible noise at low load. State three likely causes and the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's inverter occasionally trips on overcurrent during motor starting. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's grid-tied inverter disconnects spuriously during minor grid faults. State the engineering response and the relevant standard requirements.
+\end{exercise}

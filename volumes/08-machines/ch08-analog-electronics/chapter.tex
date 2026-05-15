@@ -1,40 +1,293 @@
 \chapter{Analog electronics}
 \label{vol08:ch08}
 
-\epigraph{}{}
+\epigraph{The schematic shows the circuit; the layout shows whether it will work.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, interface, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, interface, failure. Exercise target: 35. Project track: physical.}
 
 \noindent
-\TODO{Volume 8, Chapter 8. Approx 140 pp.}
+Analog electronics is the discipline of working with continuous voltages and currents: amplifying weak signals, filtering noise, converting one quantity to another, driving loads, conditioning sensor outputs for digital systems. Despite four decades of digital migration, analog has not disappeared. Every digital system has an analog boundary: the sensor that observes the world, the actuator that drives it, the power supply that feeds the digital silicon, the radio that carries the data, the audio that the human hears. This chapter develops the engineer's working understanding of the building blocks (op-amps, filters, amplifiers, oscillators, power conversion), the design and analysis of analog circuits, the noise mechanisms that limit performance, the layout discipline that determines whether a schematic-correct design works in hardware, and the failure modes that distinguish analog from digital. The reader who finishes this chapter can design, build, debug, and qualify a precision analog circuit.
 
-\section{Op-amps as building blocks}
-\TODO{Section prose.}
+\section{Op-amps as building blocks}\pathtag{core}
 
-\section{Filters: passive and active}
-\TODO{Section prose.}
+The operational amplifier is the central abstraction of analog electronics. An ideal op-amp has infinite voltage gain, infinite input impedance, zero output impedance, infinite bandwidth, and zero offset; it amplifies the difference between its inputs without loading them and drives any load. Real op-amps approximate this ideal closely enough that the abstraction is the right place to start.
 
-\section{Amplifiers: small-signal, power, RF}
-\TODO{Section prose.}
+The ideal op-amp with feedback gives two analysis rules: the inputs are at the same voltage (the "virtual short"), and no current flows into the inputs. These rules, applied to the topology around the op-amp, give the circuit equations directly. A non-inverting amplifier with feedback resistor $R_f$ and ground resistor $R_g$ has gain $1 + R_f/R_g$. An inverting amplifier has gain $-R_f/R_{in}$. A summing amplifier sums its inputs with gains set by each input resistor. An integrator integrates its input; a differentiator differentiates. The topologies are catalogued and the analysis is mechanical.
 
-\section{Oscillators}
-\TODO{Section prose.}
+Real op-amps diverge from the ideal in ways the designer must know. The gain-bandwidth product is finite, typically $1\,\text{MHz}$ for general-purpose, $100\,\text{MHz}$ to $1\,\text{GHz}$ for high-speed. The slew rate limits how fast the output can change ($V/\mu\text{s}$); for a $1\,\text{V}$ amplitude $10\,\text{MHz}$ sine wave, the maximum slew is $2\pi \times 10^7 \approx 63\,V/\mu\text{s}$, demanding a fast op-amp. The input offset voltage is the differential input required to give zero output, typically $0.1$ to $5\,\text{mV}$ for general-purpose, $1$ to $50\,\mu\text{V}$ for precision. The input bias current is the DC current that flows into the inputs, typically $10\,\text{nA}$ for bipolar, $1\,\text{pA}$ for FET. The common-mode rejection ratio (CMRR) measures how well the op-amp rejects voltage common to both inputs, typically $80$ to $120\,\text{dB}$. The power-supply rejection ratio (PSRR) measures how well the op-amp rejects power-supply noise, similar.
 
-\section{Power conversion: linear, switching}
-\TODO{Section prose.}
+Standard op-amp circuits include the difference amplifier (precision sensor read-out), the instrumentation amplifier (high CMRR, high input impedance, sensor interface), the transimpedance amplifier (photodiode read-out), the active filter (Sallen-Key, multiple-feedback), the integrator (analog control loops), the comparator (threshold detection), and the precision rectifier. The catalogue is the working engineer's library.
 
-\section{Noise: sources, characterisation, mitigation}
-\TODO{Section prose.}
+\begin{archetype}[interface: instrumentation amplifier for sensor read-out]
+A strain gauge produces a small differential voltage on a common-mode background. The instrumentation amplifier (three op-amps, one gain-setting resistor) amplifies the difference while rejecting the common-mode. CMRR of $100$ to $120\,\text{dB}$ is typical. The output is then filtered, possibly digitised, possibly fed to a control loop. The instrumentation amplifier is the standard analog interface between the physical world and the digital system.
+\end{archetype}
 
-\section{PCB design for analog}
-\TODO{Section prose.}
+\section{Filters: passive and active}\pathtag{standard}
 
-\section{Failure: ground loops, oscillation in unwanted feedback paths, layout-induced noise}
-\TODO{Section prose.}
+A filter passes some frequencies and attenuates others. Filter design balances four parameters: passband flatness, stopband attenuation, transition steepness, and phase linearity. The choice of filter family (Butterworth, Chebyshev, Bessel, elliptic) reflects which parameters matter for the application.
 
+Butterworth filters have the flattest passband at the cost of mild transition steepness. They are the default. Chebyshev filters trade passband ripple for steeper transition; the ripple amplitude is a design parameter. Bessel filters have the most linear phase response (constant group delay) at the cost of gentle transitions; they are the right choice for time-domain signals where waveform shape matters. Elliptic filters have the steepest transitions but with both passband and stopband ripple; they are used where transition steepness is paramount.
 
-\section{Project}
-\TODO{design and build a low-noise instrumentation amplifier}
+Passive filters use only resistors, capacitors, and inductors. A simple RC low-pass passes signals below $f_c = 1/(2\pi R C)$; a CR high-pass passes signals above. RLC tank circuits implement band-pass and notch filters. Passive filters require no power, have wide dynamic range, and are robust; they have limited gain and high source-impedance sensitivity.
+
+Active filters use op-amps to implement the same transfer functions with several advantages: arbitrary gain, low output impedance, isolation from source and load, ability to implement complex transfer functions without large inductors. The Sallen-Key topology implements second-order sections; cascaded sections implement higher-order filters. The multiple-feedback (MFB) topology offers higher Q and different sensitivity characteristics.
+
+Filter design proceeds by selecting the topology and order, computing the component values from filter tables or design tools, simulating the response, building the circuit, and measuring the response. The measured response should match the simulation; mismatches usually trace to component tolerances, parasitic capacitance, or layout-induced coupling.
+
+\section{Amplifiers: small-signal, power, RF}\pathtag{standard}
+
+Small-signal amplifiers operate in a linear regime where the signal is much smaller than the supply rails. The op-amp circuits of the previous section are small-signal. Transistor small-signal amplifiers (common-emitter, common-source, cascode) achieve higher bandwidth or lower noise than op-amps in specific applications.
+
+Power amplifiers drive significant current into loads (loudspeakers, motors, transducers). Class A operates the transistors in the linear region for the entire signal cycle (high quality, low efficiency, $25$ to $50\%$). Class B operates each transistor for half the cycle (higher efficiency $\sim 78\%$ at full output, but crossover distortion). Class AB compromises (small bias to eliminate crossover, $\sim 50$ to $70\%$ efficiency). Class D switches the transistor between fully on and fully off, modulating duty cycle to encode the signal (very high efficiency $> 90\%$, requires low-pass filtering on the output, increasingly common in audio).
+
+RF amplifiers operate at radio frequencies (kHz to GHz). RF design has its own discipline: impedance matching to $50\,\Omega$, stability under all load conditions, noise figure at the input stage, gain compression and intermodulation at the output. The Smith chart, S-parameters, and stability circles are the working tools.
+
+The amplifier designer's first question is: what is the load, what is the source, and what bandwidth, gain, distortion, and efficiency are required? The answer narrows the topology and the technology (bipolar, MOSFET, LDMOS, GaN) to a small set.
+
+\section{Oscillators}\pathtag{standard}
+
+An oscillator produces a continuous waveform without external input. The two main classes are harmonic oscillators (sinusoidal output) and relaxation oscillators (non-sinusoidal output).
+
+Harmonic oscillators include the LC tank (Colpitts, Hartley, Clapp), the crystal oscillator (quartz crystal as the frequency-determining element, high Q, narrow tuning range), the Wien bridge (RC, audio frequencies), and the phase-shift oscillator. The Barkhausen criterion (loop gain $\geq 1$, phase shift $0^\circ$ or multiple of $360^\circ$ around the loop) sets the oscillation condition. Practical oscillators include amplitude regulation to prevent saturation distortion (a non-linear element in the feedback loop).
+
+Relaxation oscillators (astable multivibrator, 555 timer) charge and discharge a capacitor through resistors with hysteresis in the threshold. The waveform is square, triangle, or sawtooth. The frequency depends on R, C, and the threshold levels.
+
+Crystal oscillators dominate frequency-reference applications: microcontroller clocks, communication systems, instrumentation. Quartz crystals have stability of $10^{-6}$ (general-purpose) to $10^{-9}$ (temperature-compensated) over operating range. Atomic clocks ($10^{-12}$ to $10^{-15}$) take over where crystal stability is insufficient.
+
+Phase-locked loops combine an oscillator with feedback from a reference, locking the oscillator's frequency and phase to a multiple of the reference. PLLs are everywhere: clock recovery in communications, frequency synthesisers, motor control. The PLL is a control system; the loop bandwidth and damping determine its dynamics.
+
+\section{Power conversion: linear, switching}\pathtag{standard}
+
+Power conversion changes one voltage (or current, or power form) into another. The two families are linear regulators and switching regulators.
+
+Linear regulators drop the input voltage to the output by dissipating the difference as heat. The efficiency is $V_{out}/V_{in}$; for a $5\,\text{V}$ output from a $12\,\text{V}$ input, efficiency is $42\%$, and $58\%$ of the power is dissipated as heat. Linear regulators are simple, low-noise, and have fast transient response; they are the right choice for low-power, low-noise applications (analog supply rails, voltage references), and they are unacceptable for high-current applications because of the heat.
+
+Switching regulators switch the input on and off at high frequency, filtering the result to produce the desired output. Topologies include buck (step-down), boost (step-up), buck-boost, and isolated topologies (flyback, forward, push-pull, full-bridge). Efficiency is typically $85$ to $98\%$. The switching produces high-frequency noise that must be filtered (input and output) and managed by layout discipline.
+
+The choice between linear and switching: for an analog supply rail with strict noise requirements at low current ($< 1\,\text{A}$), linear or low-noise switching followed by linear post-regulation. For a digital rail at any current, switching. For a battery-powered device where efficiency dominates, switching. For a quick lab supply where simplicity is the goal, linear.
+
+A complete power system in a modern device has multiple rails: input from a wall adapter or battery, a switching pre-regulator to a bulk rail, switching post-regulators to individual rails, linear post-regulators for sensitive analog rails. The architecture decision is the first step of the design.
+
+\begin{estimation}
+\textbf{Question.} Estimate the heat dissipated in a linear $3.3\,\text{V}$ regulator drawing $500\,\text{mA}$ from a $12\,\text{V}$ supply. State whether a heatsink is needed.
+
+\textbf{Working.} Voltage drop: $12 - 3.3 = 8.7\,\text{V}$. Power: $8.7 \times 0.5 = 4.35\,\text{W}$. The junction-to-ambient thermal resistance of a TO-220 package without heatsink is $\sim 60$ to $80\,^\circ\text{C}/\text{W}$. The junction temperature rise is $4.35 \times 70 = 305\,^\circ\text{C}$ above ambient. At an ambient of $25\,^\circ\text{C}$, the junction reaches $330\,^\circ\text{C}$; the maximum junction temperature is $125$ to $150\,^\circ\text{C}$. A heatsink is essential. A heatsink with $5\,^\circ\text{C}/\text{W}$ (small finned aluminum) brings the rise to $\sim 25\,^\circ\text{C}$, junction at $50\,^\circ\text{C}$, acceptable. Alternatively, a switching regulator (efficiency $90\%$, dissipating $0.5 \times 3.3 \times 0.1/0.9 \approx 0.18\,\text{W}$) eliminates the heat problem entirely.
+\end{estimation}
+
+\section{Noise: sources, characterisation, mitigation}\pathtag{core}
+
+Noise sets the floor of analog performance. The dominant noise sources are thermal (Johnson) noise in resistors, shot noise in semiconductors, flicker (1/f) noise in active devices, popcorn noise in some old technologies, and external interference (50/60 Hz mains, radio, switching power supplies).
+
+Thermal noise has spectral density $\sqrt{4 k_B T R}\,V/\sqrt{\text{Hz}}$, where $k_B$ is Boltzmann's constant, $T$ is absolute temperature, $R$ is resistance. At room temperature, $1\,\text{k}\Omega$ produces $4\,\text{nV}/\sqrt{\text{Hz}}$. The noise voltage in a bandwidth $B$ is $\sqrt{4 k_B T R B}$; over $10\,\text{kHz}$, $1\,\text{k}\Omega$ gives $0.4\,\mu\text{V}$ RMS.
+
+Shot noise has spectral density $\sqrt{2 q I}\,A/\sqrt{\text{Hz}}$, where $q$ is electronic charge, $I$ is DC current. Shot noise dominates in low-current circuits and photodetectors.
+
+Flicker noise has a $1/f$ spectrum: equal noise in each decade of frequency. Flicker noise dominates at low frequencies (below $\sim 1\,\text{kHz}$ for typical op-amps). Chopper-stabilised op-amps reduce flicker noise by chopping the input at high frequency, transferring the DC information to a higher frequency where flicker noise is lower.
+
+External interference is the noise the engineer can sometimes control: mains pickup (twisted-pair routing, shielding, ground planes), digital switching noise (separate analog and digital supply rails, careful layout), and radio interference (shielding, filtering, board layout).
+
+Noise figure ($NF$) characterises an amplifier or system by the degradation of signal-to-noise ratio: $NF = 10\log_{10}(SNR_{in}/SNR_{out})$. Cascaded systems have a noise figure dominated by the first stage (Friis's formula); the input stage of an amplifier chain deserves the most attention.
+
+Mitigating noise is a hierarchy: choose the right components (low-noise op-amps, low-noise resistors, careful capacitor selection), design the right circuit (minimise impedance at high-noise nodes, balanced signal paths, differential signalling), layout the right board (ground planes, separate analog and digital, careful routing), and shield where necessary (Faraday cage, twisted pair, balanced lines). The order matters: layout cannot save a noisy circuit, and circuit choice cannot save a noisy layout.
+
+\section{PCB design for analog}\pathtag{core}
+
+The printed circuit board layout is the part of analog design that distinguishes a working circuit from a debug-forever circuit. The schematic captures the topology; the layout captures the parasitic capacitances, inductances, ground impedances, and electromagnetic couplings that the schematic ignores.
+
+A ground plane (a continuous copper area on one layer) provides a low-impedance return path for currents. Without a ground plane, return currents take whatever path the routing allows, often producing ground loops and inducing noise into neighbouring traces. A single solid ground plane is the analog default; some designs use separate analog and digital ground planes connected at a single point ("star grounding") to prevent digital switching currents from flowing through analog return paths.
+
+Decoupling capacitors at each IC supply pin shunt high-frequency currents locally, preventing them from propagating along the supply traces. A small ceramic ($0.1\,\mu\text{F}$) handles high-frequency, a larger electrolytic or tantalum ($1$ to $10\,\mu\text{F}$) handles low-frequency. Place the ceramic as close to the supply pin as possible; trace inductance defeats the purpose if the cap is far away.
+
+Sensitive signal traces (high impedance, high gain, low signal level) require careful treatment: short routing, away from digital traces, above a ground plane (not crossing splits), guarded by surrounding ground traces if necessary. Inputs to op-amps in transimpedance configurations are particularly sensitive: a few picofarads of stray capacitance can destabilise the amplifier.
+
+Differential signalling routes signal and complement together; common-mode interference picked up by both traces cancels at the differential receiver. Audio, sensor read-out, high-speed data links all use differential signalling.
+
+The board fabricator's design rules (trace width, spacing, via size, layer stack-up, copper weight, surface finish) constrain the layout. The designer learns these rules and works within them. A multilayer board with controlled impedance traces, complete ground plane, and tight component placement is the standard for production-grade analog.
+
+\begin{principle}[The layout-determines-performance principle]
+The schematic states the intended circuit. The layout states the actual circuit, including the parasitics that the schematic omits. For analog at any reasonable signal level or speed, the layout determines whether the circuit works, what its noise floor is, and what its bandwidth is. The engineer who treats the layout as draftsman's work delegates the most important design decisions to whoever drew the board.
+\end{principle}
+
+\section{Failure: ground loops, oscillation in unwanted feedback paths, layout-induced noise}\pathtag{core}
+
+Analog circuits fail in characteristic ways.
+
+\textbf{Ground loops:} a return current finds an unintended path through the ground network, picking up impedance and producing voltage differences that appear as noise. The classic symptom is $50/60\,\text{Hz}$ hum in audio. Diagnosis: identify the return paths; restructure to a star ground or single ground plane.
+
+\textbf{Unwanted oscillation:} the circuit has a feedback path that no one intended, with sufficient gain and the right phase to oscillate. Symptoms: a DC circuit produces $\text{MHz}$ output; a sensitive amplifier becomes unstable when the layout changes; a power supply rings. Diagnosis: oscilloscope on the output, look for high-frequency content; check the input pins; trace the feedback path; add compensation capacitors or reduce the gain at the offending frequency.
+
+\textbf{Layout-induced noise:} the circuit is correctly designed and the noise is below specification on a good layout, but the production board fails. Diagnosis: compare the production layout to the working layout; find the difference (a trace too close to a digital line, a missing ground via, a too-long supply trace); fix.
+
+\textbf{Component drift and aging:} the circuit works at delivery and degrades over years. Capacitor electrolytes dry; resistor values shift; op-amps accumulate offset. Diagnosis: spot-check old units; identify the drifting component; specify higher-quality components in next revision.
+
+\textbf{Temperature dependence:} the circuit works at room temperature and fails in the field at $-20\,^\circ\text{C}$ or $+85\,^\circ\text{C}$. Diagnosis: temperature-cycle the circuit; identify the temperature-sensitive component (bandgap reference, op-amp, capacitor); compensate or replace.
+
+\textbf{EMI susceptibility:} the circuit works in the lab and fails near a radio transmitter, a microwave oven, a switching power supply. Diagnosis: ESD/EMI testing; identify the coupling path (PCB trace, cable, enclosure aperture); shield, filter, or relayout.
+
+The 1985 Therac-25 accidents had an analog component: the high-voltage power supply for the electron beam exhibited unexpected behaviour under software-induced conditions. The 2013 Boeing 787 battery incidents involved analog charging circuits whose behaviour under fault conditions had not been fully characterised. Real analog failures cost lives.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Low-noise instrumentation amplifier: design, build, measure]
+\textbf{Objective.} Design, build, and characterise an instrumentation amplifier for strain-gauge read-out. Specifications: gain $1000$, bandwidth $1\,\text{kHz}$, input-referred noise $< 50\,\text{nV}/\sqrt{\text{Hz}}$ at $100\,\text{Hz}$, CMRR $> 100\,\text{dB}$ at DC, supply $\pm 5\,\text{V}$.
+
+\textbf{Method.} Select an instrumentation amplifier IC (AD620, INA128, or AD8221) and a low-noise op-amp for output buffering. Design the gain-setting resistor; design the supply decoupling; design the output filter (single-pole or two-pole low-pass at $1\,\text{kHz}$). Lay out a PCB with full ground plane, decoupling at each IC, short signal traces, and isolation from digital. Build the board; measure DC gain, frequency response, input-referred noise, CMRR, output offset, and supply current. Compare measurements to specification and to simulation.
+
+\textbf{Deliverables.} The schematic, the PCB layout, the simulation results, the measured performance plots (DC gain, frequency response, noise spectrum, CMRR vs frequency), and a written analysis explaining where the design met specification and where it did not. Include a discussion of the dominant noise source at $100\,\text{Hz}$.
+
+\textbf{Hazard.} Solder fumes; lead solder if used; $\pm 5\,\text{V}$ supplies are not hazardous but the test equipment may be (the oscilloscope chassis must be grounded; some power supplies have floating outputs that must be earthed for safe measurement).
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A non-inverting amplifier has $R_f = 10\,\text{k}\Omega$ and $R_g = 1\,\text{k}\Omega$. Compute the closed-loop gain.
+\end{exercise}
+
+\begin{exercise}
+A first-order low-pass RC filter has $R = 1\,\text{k}\Omega$, $C = 100\,\text{nF}$. Compute the cutoff frequency.
+\end{exercise}
+
+\begin{exercise}
+An inverting amplifier has $R_{in} = 1\,\text{k}\Omega$, $R_f = 100\,\text{k}\Omega$. Compute the output for an input of $50\,\text{mV}$.
+\end{exercise}
+
+\begin{exercise}
+An op-amp has gain-bandwidth product $4\,\text{MHz}$ and closed-loop gain $100$. Compute the closed-loop bandwidth.
+\end{exercise}
+
+\begin{exercise}
+A linear regulator drops $7\,\text{V}$ at $250\,\text{mA}$. Compute the dissipated power and the required thermal resistance to keep the junction below $125\,^\circ\text{C}$ in $25\,^\circ\text{C}$ ambient.
+\end{exercise}
+
+\begin{exercise}
+Compute the Johnson noise voltage of a $10\,\text{k}\Omega$ resistor in a $10\,\text{kHz}$ bandwidth at $25\,^\circ\text{C}$.
+\end{exercise}
+
+\begin{exercise}
+A photodiode produces $1\,\mu\text{A}$ at the design illumination. The transimpedance amplifier has $R_f = 1\,\text{M}\Omega$ and $C_f = 5\,\text{pF}$. Compute the output voltage and the bandwidth.
+\end{exercise}
+
+\begin{exercise}
+Compute the slew-rate-limited maximum frequency for a $5\,\text{V}$ peak output with slew rate $10\,V/\mu\text{s}$.
+\end{exercise}
+
+\begin{exercise}
+A Sallen-Key low-pass filter is designed for $f_c = 10\,\text{kHz}$ with $C_1 = C_2 = 10\,\text{nF}$. Compute the resistor values for a Butterworth response ($Q = 0.707$).
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the transfer function of an op-amp integrator with feedback resistor $R$ and capacitor $C$. State the assumptions and the conditions under which the model is valid.
+\end{exercise}
+
+\begin{exercise}
+Derive the input-referred noise voltage of an instrumentation amplifier in terms of the op-amp noise voltage, op-amp noise current, gain-setting resistor noise, and gain.
+\end{exercise}
+
+\begin{exercise}
+Derive the small-signal gain and input impedance of a common-emitter bipolar amplifier with emitter degeneration.
+\end{exercise}
+
+\begin{exercise}
+Derive the Barkhausen oscillation criterion from the loop-gain expression. State the form for amplitude regulation in a practical oscillator.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between phase margin and step-response overshoot for a second-order op-amp closed loop.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the bandwidth of a transimpedance amplifier with $R_f = 100\,\text{k}\Omega$, photodiode capacitance $20\,\text{pF}$, op-amp GBW $10\,\text{MHz}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the input-referred noise of a non-inverting amplifier with gain $100$, op-amp noise $5\,\text{nV}/\sqrt{\text{Hz}}$, $R_g = 100\,\Omega$, $R_f = 9.9\,\text{k}\Omega$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the maximum input-offset error in a single-supply $3.3\,\text{V}$ amplifier with gain $200$ using an op-amp with $V_{os} = 2\,\text{mV}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the dropout voltage requirement for a $3.3\,\text{V}$ LDO regulator supplied from a battery that varies from $3.0$ to $4.2\,\text{V}$. State the design implications.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a second-order Sallen-Key low-pass filter with $f_c = 1\,\text{kHz}$, Butterworth response. Compare to a Chebyshev $0.5\,\text{dB}$ ripple design at the same cutoff.
+\end{exercise}
+
+\begin{exercise}
+Simulate the open-loop gain and phase of an instrumentation amplifier; compute the phase margin and the closed-loop step response for several gains.
+\end{exercise}
+
+\begin{exercise}
+Simulate the transient response of a switching buck regulator (PWM, inductor, output capacitor, load step). Identify the loop bandwidth and the load-step transient.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a precision difference amplifier for a $50\,\Omega$ source and a $\pm 1\,\text{V}$ output range. State the op-amp choice, the resistor values, and the resistor matching requirement.
+\end{exercise}
+
+\begin{exercise}
+Design a fourth-order Butterworth low-pass filter with $f_c = 5\,\text{kHz}$, using Sallen-Key sections. State the component values and the sensitivity to component tolerances.
+\end{exercise}
+
+\begin{exercise}
+Design a transimpedance amplifier for a photodiode with $30\,\text{pF}$ capacitance, $100\,\text{nA}$ peak signal, $1\,\text{MHz}$ bandwidth. State the op-amp choice, the feedback resistor and capacitor, and the noise prediction.
+\end{exercise}
+
+\begin{exercise}
+Design a power-supply tree for a system with $\pm 12\,\text{V}$ analog rails ($100\,\text{mA}$), $3.3\,\text{V}$ digital rail ($500\,\text{mA}$), and $1.8\,\text{V}$ core rail ($1\,\text{A}$), from a single $24\,\text{V}$ input. State the topology choices and the rationale.
+\end{exercise}
+
+\begin{exercise}
+Design a Wien-bridge oscillator at $1\,\text{kHz}$ with amplitude regulation. State the component values and the regulation mechanism.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's instrumentation amplifier shows $50\,\text{Hz}$ hum on the output. State three engineering hypotheses and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team's op-amp circuit oscillates at $10\,\text{MHz}$. State three engineering hypotheses and the corresponding fixes.
+\end{exercise}
+
+\begin{exercise}
+A team's analog board works at room temperature and fails at $-20\,^\circ\text{C}$. State three likely causes and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team's photodiode amplifier has a bandwidth $50\%$ below specification. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A vendor offers an op-amp with $0.1\,\mu\text{V}$ offset and another with $10\,\mu\text{V}$ offset at one-tenth the price. State the conditions under which each is the right choice.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a switching regulator and a linear regulator for a sensitive analog supply. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's board has $0.1\%$ resistors in a difference amplifier; the CMRR is below specification. State the engineering analysis and the corrective actions.
+\end{exercise}
+
+\begin{exercise}
+A team finds that a working prototype fails on the production board. State three layout-related causes and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team's analog board passes lab testing and fails EMI compliance. State the engineering response.
+\end{exercise}

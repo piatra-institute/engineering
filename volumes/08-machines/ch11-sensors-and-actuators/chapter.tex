@@ -1,40 +1,271 @@
 \chapter{Sensors and actuators}
 \label{vol08:ch11}
 
-\epigraph{}{}
+\epigraph{The sensor sets what you can measure; the actuator sets what you can do.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: interface, control. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: interface, control. Exercise target: 30. Project track: physical.}
 
 \noindent
-\TODO{Volume 8, Chapter 11. Approx 130 pp.}
+Sensors and actuators are the boundary of any mechatronic system. Sensors transduce a physical quantity (position, force, temperature, pressure, light, sound, chemical composition) into an electrical signal; actuators transduce an electrical signal into mechanical force, motion, heat, flow, or another physical effect. The closed-loop intelligence of modern machines depends on both: the controller can only correct what the sensor measures and only command what the actuator can produce. This chapter develops the engineer's working understanding of sensor families at design depth (beyond catalogue selection), calibration in the system context, sensor fusion, the actuator catalogue (electrical motors, hydraulic, pneumatic, piezoelectric, shape-memory), driver electronics for actuators, and the failure modes of sensors and actuators in service. The reader who finishes this chapter can specify, integrate, and qualify a closed-loop electromechanical system.
 
-\section{Sensor families revisited at design depth}
-\TODO{Section prose.}
+\section{Sensor families revisited at design depth}\pathtag{standard}
 
-\section{Calibration in the system context}
-\TODO{Section prose.}
+The sensor catalogue covers the measurands an engineer encounters: position (potentiometers, encoders, LVDTs, capacitive, Hall, time-of-flight), velocity (tachometers, Doppler), acceleration (accelerometers: piezoelectric, MEMS capacitive, piezoresistive), force (strain gauges, load cells, piezoelectric), pressure (strain gauge, capacitive, piezoresistive, piezoelectric), temperature (thermocouples, RTDs, thermistors, integrated bandgap), flow (turbine, ultrasonic, Coriolis, vortex, thermal), level (capacitive, ultrasonic, radar, float), light (photodiodes, photoresistors, image sensors), and chemical (electrochemical, optical, mass spectrometers).
 
-\section{Sensor fusion preview}
-\TODO{Section prose.}
+Beyond the catalogue, the design-depth view requires four parameters: the transduction principle (which determines noise, bandwidth, drift, environmental sensitivity), the conditioning circuit (which determines the signal-to-noise ratio at the digital boundary), the calibration approach (which determines the systematic error), and the mounting and environment (which determines whether the sensor reads what the user thinks).
 
-\section{Actuators: motors (DC, BLDC, stepper, servo)}
-\TODO{Section prose.}
+For position: a $13$-bit absolute encoder gives $0.04^\circ$ resolution and absolute knowledge of position; an incremental encoder gives the same resolution but requires homing after power loss. Capacitive sensors give sub-micron resolution over short range. Time-of-flight (laser distance, ultrasonic) gives metres of range at millimetre to centimetre resolution. The choice is dictated by range, resolution, response time, cost, and environmental robustness.
 
-\section{Hydraulic and pneumatic actuators}
-\TODO{Section prose.}
+For temperature: a thermocouple gives $\sim 0.5\,^\circ\text{C}$ accuracy over $-200$ to $+1750\,^\circ\text{C}$ at low cost; an RTD (Pt100, Pt1000) gives $\sim 0.1\,^\circ\text{C}$ over $-200$ to $+850\,^\circ\text{C}$ at higher cost; a thermistor (NTC) gives $\sim 0.05\,^\circ\text{C}$ over $-50$ to $+150\,^\circ\text{C}$ at very low cost; an integrated bandgap (LM75, TMP102) gives $\sim 0.5\,^\circ\text{C}$ with a digital output and no conditioning circuit.
 
-\section{Piezoelectric and shape-memory actuators}
-\TODO{Section prose.}
+For pressure: piezoresistive silicon strain gauges (Honeywell, Bosch automotive) give $\sim 1\%$ accuracy at low cost; capacitive sensors (Validyne) give $0.25\%$ accuracy over wide range; piezoelectric sensors give high-bandwidth dynamic pressure without DC capability. The pressure measurement world has standardised on integrated MEMS devices for most consumer and automotive applications.
 
-\section{Driver electronics for actuators}
-\TODO{Section prose.}
+For inertial measurement: a $\$1$ MEMS accelerometer gives milli-g resolution over $\pm 16\,\text{g}$ for consumer applications; a $\$100$ navigation-grade MEMS gives $\mu\text{g}$ resolution with $1\,^\circ/\text{hr}$ gyro drift; a $\$10{,}000$ fibre-optic gyro gives $0.01\,^\circ/\text{hr}$ drift; a $\$1{,}000{,}000$ ring-laser gyro gives $0.001\,^\circ/\text{hr}$ drift for inertial-grade navigation. The price-performance ladder spans $10^9$ in range.
 
-\section{Failure: sensor drift unaccounted for; actuator stalls and runaway}
-\TODO{Section prose.}
+\begin{archetype}[interface: sensor as system boundary]
+A sensor is not an isolated component; it is the system's boundary with the physical world. The sensor's accuracy, drift, environmental sensitivity, mounting, and calibration set the system's ultimate accuracy. The controller cannot correct beyond what the sensor measures; the actuator cannot achieve beyond what the controller commands; the system's accuracy is bounded above by the sensor's accuracy. The engineer who selects sensors carefully and mounts them carefully buys system performance; the engineer who substitutes algorithm for sensor pays for the substitution later.
+\end{archetype}
 
+\section{Calibration in the system context}\pathtag{standard}
 
-\section{Project}
-\TODO{build a closed-loop position controller using a motor and an encoder}
+A sensor's calibration is the mapping from physical quantity to digital output, valid under specified conditions. Calibration has four sources of error: zero offset (the output at zero input), gain error (the slope of the mapping), non-linearity (deviation from straight-line behaviour), and drift (change of the previous three with time, temperature, supply voltage).
+
+Factory calibration applies the sensor's individual coefficients (offset and gain at a reference temperature) at the factory; the sensor ships with a calibration certificate or with the coefficients programmed into on-chip non-volatile memory. Modern integrated sensors (Honeywell pressure transducers, Bosch IMUs, Sensirion humidity sensors) leave the factory already linearised and temperature-compensated, with the conditioned digital output reporting engineering units.
+
+System-level calibration applies the integrated system's coefficients (sensor plus mounting plus electronics plus signal processing). The system calibration cannot be done at the sensor vendor; it must be done in the final assembly, typically as part of the production test or commissioning. Examples: an automotive throttle position sensor is calibrated end-to-end in the engine management system; a robot's joint encoder is homed and zeroed during system assembly; a CNC machine's axis sensors are calibrated against laser interferometers at installation.
+
+Drift requires periodic recalibration. Laboratory instruments come with calibration intervals (commonly $1$ year, sometimes shorter) and recalibration through an accredited laboratory (ISO 17025) that maintains traceability to national standards. Industrial sensors may have field-recalibration procedures (zero-bias capture during known states, span check against a reference). Consumer sensors may have lifetime calibration with no field recalibration, accepting larger drift as a cost trade-off.
+
+In the system context, calibration discipline encompasses: what is calibrated, by whom, how often, against what reference, and how the calibration is recorded. The calibration records are part of the qualification basis; for a regulated product (medical, aerospace, automotive safety-relevant), the records must be retained and auditable.
+
+\section{Sensor fusion preview}\pathtag{mastery}
+
+Sensor fusion combines measurements from multiple sensors to produce a state estimate better than any single sensor. The standard formulation is a Kalman filter or its variants (extended Kalman filter, unscented Kalman filter, particle filter), which propagates a state estimate forward in time using a process model and corrects the estimate using new sensor measurements with weighting based on the relative uncertainties.
+
+The canonical example is inertial navigation: an IMU provides high-rate acceleration and angular-velocity measurements that integrate into position and orientation but drift over time; GPS provides absolute position with low rate and moderate noise; the fusion combines them, using the IMU at high rate between GPS updates and the GPS to correct accumulated IMU drift. The result is high-rate position estimates with absolute accuracy: smartphones, drones, and aircraft all use this fusion.
+
+Other fusion examples: the lambda-and-oxygen sensors plus mass-air-flow sensors plus throttle position in an engine's fuelling control; the wheel-speed sensors plus IMU plus steering angle plus radar/camera in an automotive stability control; the joint encoders plus force-torque sensors plus vision in robotic manipulation.
+
+Sensor fusion is not magic. The fused estimate's accuracy is bounded by the underlying sensors and the model. Fusion can mask sensor faults (a divergent sensor's contribution is reduced, but a slow drift can poison the estimate); fault detection (innovation tests, residual checking, hardware redundancy) is part of robust fusion design.
+
+\section{Actuators: motors (DC, BLDC, stepper, servo)}\pathtag{core}
+
+Actuators convert electrical signals into mechanical action. The major families are electric motors (DC, BLDC, stepper, AC induction, PMSM, switched reluctance), solenoids, voice coils, hydraulic and pneumatic cylinders and motors, piezoelectric, shape-memory, and ultrasonic.
+
+Brushed DC motors are simple, controllable with PWM, and produce torque proportional to current. They have brushes that wear (limited lifetime), produce electrical noise from commutation, and have power densities lower than brushless. Brushed DC dominates low-cost applications: toys, small actuators, automotive (window lifts, mirrors), and most where lifetime under a few thousand hours is acceptable.
+
+Brushless DC (BLDC) motors use electronic commutation (a controller with Hall sensors or back-EMF detection) to switch the windings in sync with rotor position. BLDC has high power density, long lifetime (no brushes), and high efficiency. The controller is more complex than for a brushed DC motor. BLDC dominates consumer (drones, fans, hard drives, vacuums) and small-industrial applications.
+
+Stepper motors move in discrete angular steps ($1.8^\circ$ typical), commanded by sequencing the stator windings. The motor has known position without feedback if no steps are missed. Steppers are open-loop, simple, and produce torque without feedback at standstill. They miss steps under overload and are inefficient for sustained motion. Steppers dominate small CNC, $3$D printers, scientific instruments, and applications where the motion is dominated by discrete moves.
+
+Servo motors are motors with integrated position feedback (encoder or resolver) and a closed-loop controller, presenting a "go to this position" or "follow this velocity profile" interface. Modern servo motors are PMSM with field-oriented control, optical encoders, and sophisticated motion controllers. Servos dominate industrial robotics, machine tools, and high-performance automation.
+
+AC induction motors (covered in the power-electronics chapter) dominate industrial fixed-speed applications and increasingly variable-speed via VFDs.
+
+The choice of motor type follows the application: torque, speed, power, duty cycle, control requirement, environment, cost, and lifetime. A spreadsheet of these parameters across candidate motors usually identifies the right answer quickly.
+
+\section{Hydraulic and pneumatic actuators}\pathtag{standard}
+
+Hydraulic systems use pressurised oil (typically $50$ to $350\,\text{bar}$) to drive cylinders, rotary motors, or rotary actuators. Power density is high; force capability is very high (a $100\,\text{mm}$ diameter cylinder at $200\,\text{bar}$ produces $157\,\text{kN}$); response is fast. Hydraulics dominate construction equipment, aircraft control surfaces, heavy machinery, and stamping presses.
+
+Pneumatic systems use compressed air (typically $6$ to $10\,\text{bar}$) to drive cylinders and rotary actuators. Power density is lower than hydraulics; force is moderate; response is fast; energy is wasted in compression. Pneumatics dominate factory automation (assembly, pick-and-place, clamping), where the infrastructure (compressed air) is shared across many actuators.
+
+A hydraulic or pneumatic actuator's behaviour is determined by the valve that controls flow into and out of the actuator. Directional control valves (on-off-on, two-position, three-position) implement simple sequencing; proportional valves implement variable flow; servo valves implement high-bandwidth flow control with internal feedback. The valve is the active element; the cylinder is passive.
+
+The control of hydraulic and pneumatic actuators is non-trivial: the flow-to-velocity relationship is non-linear, the compressibility of the fluid (especially gas) introduces dynamics, and load disturbances couple back through the fluid. Modern motion control with proportional or servo valves uses pressure feedback, position feedback, and explicit modelling of the fluid dynamics.
+
+\section{Piezoelectric and shape-memory actuators}\pathtag{mastery}
+
+Piezoelectric actuators use the inverse piezoelectric effect: an applied voltage produces a small strain. Piezo stack actuators produce $0.1\%$ strain (about $10\,\mu\text{m}$ per $10\,\text{mm}$ of stack length) at $100$ to $1000\,\text{V}$, with force in the kilonewton range. Bandwidth extends to kilohertz. Piezo actuators dominate precision applications: scanning probe microscopes, fast-steering mirrors, fuel injectors, ink-jet printers, and active vibration control.
+
+The control of piezo actuators must address hysteresis (the same voltage produces different displacements depending on history) and creep (the displacement changes slowly under constant voltage). Open-loop control with feedforward compensation, or closed-loop control with capacitive or strain-gauge position feedback, are standard.
+
+Shape-memory alloys (SMA, typically nickel-titanium "Nitinol") change shape with temperature: cold in martensite form, deformed easily; heated above the transition temperature, reverts to its remembered shape. SMA actuators are silent, simple, and have high force-to-mass ratio; they are slow (heating and cooling cycles take seconds), have limited cycle life ($10^4$ to $10^6$ cycles depending on strain), and require thermal management. SMA dominates niche applications (some medical devices, low-cycle actuators, some aerospace deployment mechanisms).
+
+Other unconventional actuators: voice coils (linear motors, high bandwidth, used in disk-drive heads and shake tables), magnetorheological fluids (variable damping under magnetic field, used in some adaptive suspensions), and ionic polymer-metal composites (soft actuators with low force and slow response, research-grade).
+
+\section{Driver electronics for actuators}\pathtag{core}
+
+The driver electronics between the controller and the actuator is part of the actuator system. Driver responsibilities include: providing the required voltage and current; switching efficiently; protecting against over-current, over-voltage, and thermal limits; isolating from the controller; providing position feedback path (for servo applications); and communicating with the supervisor.
+
+For DC motors: an H-bridge (four switches, two each side of the motor) provides bidirectional voltage. PWM at $20\,\text{kHz}$ (above audio) or higher is standard; the motor's inductance smooths the PWM into a controlled current. Integrated H-bridge ICs (DRV8x family, A4900x, BD6x) cover up to several amperes; discrete MOSFET designs handle higher currents.
+
+For BLDC motors: a three-phase inverter (six switches) drives the three windings; the controller sequences the switches based on rotor position. Integrated three-phase gate-drivers and IPMs (intelligent power modules) integrate the switching and protection.
+
+For stepper motors: a bipolar driver (typically two H-bridges) sequences the windings. Modern stepper drivers (A4988, TMC2208, DRV8825) implement microstepping (interpolating between full steps to give finer resolution) and current chopping (regulating the winding current to a programmed level). The drivers are inexpensive and well-supported in the $3$D printing community.
+
+For piezo actuators: a high-voltage amplifier ($\pm 100$ to $\pm 1000\,\text{V}$) with high current capability (for high-bandwidth operation) drives the piezo. Linear amplifiers handle low to medium power; switching amplifiers (high efficiency, more challenging EMI) handle high power.
+
+Protection in driver electronics: over-current shutdown (response in microseconds), thermal shutdown, over-voltage clamping, under-voltage lockout, and supervisor communication. The driver's protection is the actuator's safety; a driver that allows uncontrolled current causes burned windings, magnetised cores, and (in extreme cases) fires.
+
+\begin{estimation}
+\textbf{Question.} Estimate the driver requirements for a $1\,\text{kW}$ BLDC motor at $48\,\text{V}$, $20{,}000\,\text{rpm}$, $30\,\text{kHz}$ switching.
+
+\textbf{Working.} Phase current: at $1\,\text{kW}$ output and $90\%$ efficiency, total input power is $1.11\,\text{kW}$. The DC bus current is $1110/48 = 23\,\text{A}$. Peak phase current depends on modulation but is typically $\sqrt{2}$ times the RMS phase current; assume $25$ to $30\,\text{A}$ peak. The MOSFETs need $V_{ds} > 100\,\text{V}$ (margin over $48\,\text{V}$ for transients), $I_d > 30\,\text{A}$, $R_{ds(on)} < 10\,\text{m}\Omega$ for acceptable conduction loss. The gate driver must drive the gate to $10$ to $12\,\text{V}$ in less than $50\,\text{ns}$ to keep switching losses low; a $1$ to $2\,\text{A}$ peak gate driver is typical. Heat dissipation: conduction loss is $I^2 R_{ds(on)} = 30^2 \times 0.01 = 9\,\text{W}$ per MOSFET, times $6$ MOSFETs and a duty factor of $\sim 0.5$ gives $\sim 27\,\text{W}$. Switching losses add another $\sim 10\,\text{W}$. Total $\sim 35\,\text{W}$; a heatsink with $1\,^\circ\text{C}/\text{W}$ keeps the junction $\sim 35\,^\circ\text{C}$ above ambient.
+\end{estimation}
+
+\section{Failure: sensor drift unaccounted for; actuator stalls and runaway}\pathtag{core}
+
+Sensor and actuator failures have characteristic patterns.
+
+\textbf{Sensor drift unaccounted for:} the sensor's calibration changes (temperature, time, mechanical stress, contamination) and the system uses the wrong calibration. Symptoms: gradual loss of accuracy, performance degradation that no fault flag indicates. Mitigation: periodic recalibration; in-situ reference (a known-good source applied to the sensor periodically); statistical health monitoring (an unexpected change in the sensor's noise or correlation with other sensors flags the drift). Aircraft inertial systems align periodically to ground reference; industrial scales recalibrate against a known weight; gas chromatographs check against reference samples.
+
+\textbf{Actuator stall:} the actuator commanded to move stops moving because of mechanical jamming, over-load, or a fault. Symptoms: the position does not change as commanded, the current is high (for a current-driven motor), the system fails to respond. Detection: stall current threshold, position deviation, time-to-position. Mitigation: detect the stall, remove the command, alert the supervisor, do not continue applying torque (which can melt windings).
+
+\textbf{Actuator runaway:} the actuator moves uncommanded, typically due to a fault in the controller, the driver, or the feedback. Symptoms: the position changes when it should not. Mitigation: independent position monitoring, mechanical end-stops, electrical limit switches that physically interrupt the drive, software watchdogs. The 1985-1987 Therac-25 accidents involved an actuator runaway via software: the electron-beam current selection latched in high-power mode when the operator changed commands too fast. The fix was hardware interlocks independent of the software.
+
+\textbf{Wrong sensor reading from the right sensor:} the sensor is working but reads what the engineer did not intend (the wrong location, the wrong reference, the wrong axis, the wrong reference frame). The 1999 Mars Climate Orbiter loss (\cite{acc:nasa-mco-mib}) was a unit conversion: the navigation team expected SI units but the ground software produced English units, and the trajectory calculation was wrong. Sensors and the conventions around them are part of the system; getting the sensor right is necessary but not sufficient.
+
+\textbf{Mechanical or electrical wear of the actuator:} bearings degrade, magnets lose strength, brushes wear, windings burn out. Predictive maintenance (vibration, current, temperature monitoring) detects degradation before failure; preventive maintenance (replacement at scheduled intervals) avoids failures at higher cost.
+
+\textbf{Driver and electronics failures:} MOSFET shorts, gate-drive failures, capacitor end-of-life, optoisolator degradation. These present as sudden uncontrolled behaviour, smoke, current spikes. The driver's protection circuitry should detect and isolate; mechanical contactors provide a second layer of disconnection.
+
+\begin{principle}[The closed-loop completeness principle]
+A closed-loop system is closed only when every link is intact: the controller commands the actuator, the actuator produces motion, the sensor measures it, the controller receives the measurement, the controller computes the next command. A break in any link, including any wire, any connector, any signal-conditioning element, any software path, opens the loop. The engineer who designs the closed loop must enumerate every link and consider its failure mode; the assumption that "the loop is closed" is the assumption that no link has failed.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Closed-loop position controller: motor, encoder, control law]
+\textbf{Objective.} Build a position controller for a small DC motor with optical encoder feedback. Specifications: position accuracy $\pm 0.5^\circ$, settling time $< 200\,\text{ms}$ for a $90^\circ$ step, no overshoot $> 5\%$, hold position against $10\,\text{g}$ disturbance load.
+
+\textbf{Method.} Use a $6$-$12\,\text{V}$ brushed DC motor with an attached optical encoder ($500$ to $1000$ pulses per revolution). Drive the motor with an H-bridge controlled by PWM from a microcontroller. Implement a PID position controller in firmware; tune by Ziegler-Nichols and then refine. Test step response, disturbance rejection, and steady-state error. Log encoder counts and motor command at high rate; plot the response.
+
+\textbf{Deliverables.} The hardware (motor, encoder, driver, microcontroller, power supply), the firmware (open-source or written), the measured step responses, the PID gains and the rationale, a comparison of measured response to specification, and a written analysis of the limits (encoder resolution, motor inertia, driver current limit).
+
+\textbf{Hazard.} The motor can produce significant torque suddenly; secure the mechanical setup; do not put fingers in the shaft. Mechanical end-stops in software and hardware to prevent over-travel.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A Pt100 RTD has resistance $100\,\Omega$ at $0\,^\circ\text{C}$ and temperature coefficient $\alpha = 3.85 \times 10^{-3}/^\circ\text{C}$. Compute the resistance at $80\,^\circ\text{C}$.
+\end{exercise}
+
+\begin{exercise}
+A strain gauge has gauge factor $2.0$ and unstrained resistance $350\,\Omega$. Compute the resistance change at $1000\,\mu\varepsilon$.
+\end{exercise}
+
+\begin{exercise}
+A DC motor has back-EMF constant $0.05\,\text{V/(rad/s)}$ and is driven at $12\,\text{V}$ through a $0.5\,\Omega$ winding resistance. Compute the no-load speed and the stall current.
+\end{exercise}
+
+\begin{exercise}
+An incremental encoder produces $2000$ pulses per revolution. Compute the resolution in degrees and the maximum speed for a $1\,\text{MHz}$ counter input.
+\end{exercise}
+
+\begin{exercise}
+A stepper motor has $200$ full steps per revolution and a $16$-microstep driver. Compute the position resolution in degrees.
+\end{exercise}
+
+\begin{exercise}
+A pneumatic cylinder with $50\,\text{mm}$ bore is supplied at $6\,\text{bar}$. Compute the force at full extension.
+\end{exercise}
+
+\begin{exercise}
+A piezo stack produces $15\,\mu\text{m}$ at $1000\,\text{V}$ with $1.0\,\mu\text{F}$ capacitance. Compute the energy stored at full voltage.
+\end{exercise}
+
+\begin{exercise}
+An H-bridge driving a $0.3\,\Omega$ motor at $24\,\text{V}$, $50\%$ PWM duty cycle. Compute the average motor current assuming the back-EMF is $6\,\text{V}$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the transfer function of a DC motor from voltage to angular velocity, with armature resistance $R$, inductance $L$, torque constant $K_t$, back-EMF constant $K_e$, and inertia $J$.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between Wheatstone bridge output voltage and strain for a quarter-bridge, half-bridge, and full-bridge strain-gauge configuration.
+\end{exercise}
+
+\begin{exercise}
+Derive the bandwidth limitation of a piezoelectric accelerometer in terms of charge-amplifier feedback resistance and the sensor's capacitance.
+\end{exercise}
+
+\begin{exercise}
+Derive the natural frequency and damping of a hydraulic cylinder-mass system, including the compressibility of the oil.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the thermal time constant of a Pt100 RTD in still air; in flowing water.
+\end{exercise}
+
+\begin{exercise}
+Estimate the velocity resolution of a Hall-sensor BLDC commutation at $1000\,\text{rpm}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the position accuracy of an unaided inertial navigation after $60$ seconds, given a MEMS gyro with $10\,^\circ/\text{hr}$ bias and a MEMS accelerometer with $1\,\text{mg}$ bias.
+\end{exercise}
+
+\begin{exercise}
+Estimate the energy consumption of a $24\,\text{V}$ solenoid valve activated $1$ time per minute, held for $5$ seconds each activation, in a $24$-hour period.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a PID position controller for a DC motor. Compare three sets of gains and report the step response.
+\end{exercise}
+
+\begin{exercise}
+Simulate a stepper motor's torque-speed characteristic; identify the pull-out torque at the maximum operating speed.
+\end{exercise}
+
+\begin{exercise}
+Simulate the integration of an IMU through a $30$-second trajectory; identify the drift contribution from gyro bias and from accelerometer bias.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a temperature measurement system for a process at $-50$ to $+250\,^\circ\text{C}$ with $\pm 0.5\,^\circ\text{C}$ accuracy. State the sensor choice, the conditioning circuit, and the calibration approach.
+\end{exercise}
+
+\begin{exercise}
+Design an actuation system for a robotic gripper requiring $20\,\text{N}$ grip force, $50\,\text{ms}$ response time, and quiet operation. State the actuator choice and the driver architecture.
+\end{exercise}
+
+\begin{exercise}
+Design a feedback architecture for a pick-and-place machine requiring $\pm 50\,\mu\text{m}$ positioning over a $300 \times 300\,\text{mm}$ work area. State the sensor choice, the actuator choice, and the control approach.
+\end{exercise}
+
+\begin{exercise}
+Design a sensor-fusion strategy for a drone's attitude estimation, combining MEMS gyro, MEMS accelerometer, and magnetometer.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's pressure sensor drifts $1\%$ over a week. State three engineering hypotheses and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team's servo motor commands the correct position but does not reach it. State three engineering causes and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a stepper motor and a servo motor for a $3$D printer. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's thermocouple readings show $5\,^\circ\text{C}$ scatter on stable conditions. State three engineering causes.
+\end{exercise}
+
+\begin{exercise}
+A team's actuator runaway during firmware testing damaged equipment. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is considering replacing a hydraulic actuator with an electric one for an aircraft control surface. State the engineering trade-offs including the lessons from the 787 hydraulic-to-electric architectural shift.
+\end{exercise}
+
+\begin{exercise}
+A team's MEMS IMU shows acceptable performance at room temperature and degrades $3\times$ over the operating temperature range. State the engineering options: better sensor, software temperature compensation, controlled enclosure temperature, and the criteria for choosing among them.
+\end{exercise}

@@ -18,6 +18,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 
 | Status | Year | Name | Primary source |
 |---|---|---|---|
+| V | 1954 | [de Havilland Comet](comet-1954.md) | `acc:cohen-comet-report-1955` |
 | V | 1983 | [Air Canada Flight 143](air-canada-143-1983.md) | `acc:lockwood-gimli1985` |
 | V | 1986 | [Space Shuttle Challenger](challenger-1986.md) | `acc:nasa-challenger` |
 | V | 1988 | [Aloha Airlines Flight 243](aloha-airlines-243-1988.md) | `acc:ntsb-aar94-04` |
@@ -68,13 +69,13 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 
 ## Counts
 
-- Aerospace: 10
+- Aerospace: 11
 - Civil: 3
 - Process: 3
 - Power: 2
 - Medical: 1
 - Software: 3
-- **Total: 22**
+- **Total: 23**
 
 ## Pending entries (~18-20)
 
