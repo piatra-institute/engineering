@@ -20,11 +20,11 @@ What we need to settle: where each kind of content lives by default, what the sp
 
 This question becomes load-bearing if Phase 1 runs the Volume I production-density lane (figures, project artifacts, solutions, code, datasets all need a home). Without a settled answer, each chapter improvises and the answers diverge.
 
-### Q55. Per-chapter project track (165 chapters remaining)
+### Q55. Per-chapter project track (98 chapters remaining)
 
-Volume I is settled chapter-by-chapter (Q55-pilot, Q55-ch02 through Q55-ch09, all in `editorial-decisions.md`). The remaining 165 chapters across Volumes II-XII still carry `Project track: TBD (physical, simulation, household, or hybrid)` in their `\chapmeta`. The dossier projects strongly imply tracks; the editorial work is to confirm and record per chapter.
+Volumes I-V are settled chapter-by-chapter, plus Vol VI Ch 1-10, with project tracks recorded in each chapter's `\chapmeta`. The remaining 98 chapters (Vol VI Ch 11-13 plus all of Volumes VII-XII) still carry `Project track: TBD (physical, simulation, household, or hybrid)` in their `\chapmeta`. The dossier projects strongly imply tracks; the editorial work is to confirm and record per chapter.
 
-What we need to settle: who does this pass, and on what schedule. A reasonable cadence is one volume's worth of project tracks at a time, as that volume comes into prose drafting.
+What we need to settle: who does this pass, and on what schedule. The cadence followed so far is one volume's worth of project tracks at a time as that volume comes into prose drafting, settled by the drafting agent itself; that cadence has held cleanly across five-and-a-half volumes and can be carried forward.
 
 ### Q56. Named-cases registry. Settled 2026-04-29
 
@@ -34,17 +34,28 @@ Registry exists with 15 entries and the supporting machinery: schema (`docs/rese
 
 ### Q57. Page density vs. target
 
-Volume I currently runs ~220 pages of first-draft prose against a ~720-page target. Per-chapter spans (from `main.toc`): Ch 1 18pp, Ch 2 20pp, Ch 3 22pp, Ch 4 22pp, Ch 5 22pp, Ch 6 28pp, Ch 7 22pp, Ch 8 30pp, Ch 9 28pp. Average ~24pp/ch against ~80pp/ch target.
+Five-and-a-half volumes are now drafted at first-draft density, against the page targets in `landscape.md`. Per-volume spans (from `main.toc`):
+
+| Volume | Drafted (first-draft pp) | Target (pp) | Ratio | Chapters drafted |
+| --- | --- | --- | --- | --- |
+| I Quantity | 220 | ~720 | 31% | 9 of 9 |
+| II Form | 490 | ~1800 | 27% | 18 of 18 |
+| III Force | 274 | ~1300 | 21% | 13 of 13 |
+| IV Energy | 234 | ~1400 | 17% | 14 of 14 |
+| V Matter | 238 | ~1200 | 20% | 12 of 12 |
+| VI Life (partial) | 178 | ~1300 | 14% (extrapolated full Vol VI ~230pp, 18%) | 10 of 13 |
+
+The first-draft ratio stabilises in the 17-31% band across six volumes, with an average around 22%. Average per-chapter prose is ~22pp against varying targets.
 
 Two readings of the gap, neither obviously right:
 
-1. **The chapters are dense; the target was loose.** `landscape.md` itself says page totals are "planning estimates, not commitments." A 22-30pp adult-engineer chapter is not thin if it has the right material; it just lacks decoration. Under this reading, Volume I is closer to done than the page count suggests, and Phase 1 should run forward into Volume II prose.
+1. **The chapters are dense; the target was loose.** `landscape.md` itself says page totals are "planning estimates, not commitments." A 20-30pp adult-engineer chapter is not thin if it has the right material; it just lacks decoration. Under this reading, six volumes are closer to done than the page counts suggest, and Phase 1 should run forward into Volumes VII-XII prose, with a possible target-revision pass downward.
 
-2. **Most of the missing 500 pages are artifacts that have not landed.** Figures, expanded worked examples, project-artifact templates, full solution sets, inline diagrams, code/data co-located with each chapter, case-study expansions. Under this reading, Volume I is at ~30% of the deliverable, and Phase 1 should run a Volume I production-density pass first.
+2. **Most of the missing pages are artifacts that have not landed.** Figures, expanded worked examples, project-artifact templates, full solution sets, inline diagrams, code/data co-located with each chapter, case-study expansions. Under this reading, the project is at ~22% of the artifact-complete deliverable, and Phase 1 should run a production-density pass per volume before moving forward.
 
-What we need to settle: which reading governs. The two imply materially different Phase 1 sequences.
+What we need to settle: which reading governs. The two imply materially different forward sequences. With six volumes of consistent first-draft data behind the question, the decision is now defensible either way; the question is no longer "what density do we hit" but "which deliverable are we building."
 
-The decision interacts with Q54: if reading (2) wins, Q54 must be settled before the production-density pass starts.
+The decision interacts with Q54: if reading (2) wins, Q54 must be settled before the production-density pass starts. The decision also interacts with the Codex-review lane: Vols II-VI are at Stage 4 awaiting review and the per-chapter feedback will surface artifact gaps that a production-density pass would have to close anyway.
 
 ## How to use this file
 

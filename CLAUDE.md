@@ -246,20 +246,28 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 - **Phase 0.5** (structural hardening) **Complete** 2026-04-28.
 - **Phase 0.6** (curriculum expansion: 11 new chapters, 4 renames) **Complete** 2026-04-28.
 - **Phase 0.7** (registry foundation and pilot prose) **Complete** 2026-04-29.
-- **Phase 1** (production prose at scale) **In progress**. Volume II prose drafted in full on 2026-04-29 by two parallel-agent passes (Ch 1-9, then Ch 10-18). Volume I production-density pass and Volume III prose lane both open; Q57 (page density vs target) gates the production-density choice.
+- **Phase 1** (production prose at scale) **In progress**. Volumes I-V drafted in full at first-draft density; Volume VI 10 of 13 drafted. Volume I is at Stage 5 (reviewed and resolved); Volumes II-VI are at Stage 4 awaiting Codex review. Codex-review lane for Vols II-VI and forward-prose lane into Vol VI Ch 11-13 and Vol VII both open; Q57 (page density vs target) gates the production-density choice and now has six volumes of evidence behind it.
 
-Verified at last edit (2026-04-29):
+Verified at last edit (2026-05-15):
 
 - 12 volumes / 174 chapters / 174 dossiers.
-- ~1161-page PDF.
-- 9 chapters at Stage 5 (all of Volume I, drafted 2026-04-28 to 2026-04-29 and carried through Codex review individually). Vol I prose ~220pp at first-draft density against a ~720pp target.
-- 18 chapters at Stage 4 (all of Volume II, drafted 2026-04-29 by parallel agents). Vol II prose ~482pp at first-draft density against an ~1800pp target.
-- 147 chapters at Stage 1 (all of Volumes III-XII).
-- 94 bibliography entries.
-- 15 named-case registry entries (`make accidents` PASS).
+- 1972-page PDF.
+- 76 chapters with first-draft prose. Per-volume status:
+  - **Vol I** 9/9 at Stage 5, pp 1-220 (~220pp; target ~720).
+  - **Vol II** 18/18 at Stage 4, pp 221-710 (~490pp; target ~1800).
+  - **Vol III** 13/13 at Stage 4, pp 711-984 (~274pp; target ~1300).
+  - **Vol IV** 14/14 at Stage 4, pp 985-1218 (~234pp; target ~1400).
+  - **Vol V** 12/12 at Stage 4, pp 1219-1456 (~238pp; target ~1200).
+  - **Vol VI** 10/13 at Stage 4, pp 1457-1634 (~178pp; target ~1300). Ch 11-13 still at Stage 1.
+  - **Vols VII-XII** 95 chapters at Stage 1 (scaffolding shells only).
+- 210 bibliography entries (105 text, 27 hist, 21 acc, 18 paper, 12 web, 11 std, 8 gen, 5 method, 2 data, 1 law).
+- 20 named-case registry entries; 21 `acc:` keys cited in prose; `make accidents` PASS.
+- 1 research seed on disk under `docs/research/seeds/`.
+- 98 chapters still carry `Project track: TBD` (Vol VI Ch 11-13 plus all of Vols VII-XII). Q55 settled per-chapter for Vols I-V and Vol VI Ch 1-10 during drafting.
+- Vol I review log complete: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`, each with a `Resolved:` banner. Vols II-VI reviews not yet started; the same three-role protocol carries forward.
 - Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
-- Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`) added during Vol II Ch 9 integration; trace and diagonal (`\tr`, `\diag`) added during Vol II Ch 10-18 pre-flight; optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`) added at the same time.
-- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make strict` produces a clean 1161-page PDF with no undefined references.
+- Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`); trace and diagonal (`\tr`, `\diag`); optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`). Added during Vol II drafting; carried forward unchanged through Vols III-VI.
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 1972-page PDF.
 
 ## What not to do
 

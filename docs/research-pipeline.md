@@ -21,10 +21,11 @@ A chapter at Stage 1 has a generated shell under `volumes/<NN>-<slug>/ch<MM>-<sl
 
 **Promotion criterion to Stage 2**: dossier metadata is consistent and the chapter shell rebuilds cleanly via `make scaffolding`.
 
-Stage status, current as of 2026-04-29:
+Stage status, current as of 2026-05-15:
 
-- **Stage 5**: 9 chapters (Vol I Ch 1 through Vol I Ch 9). All carried through Codex review with the resolution banner on the corresponding `docs/reviews/vol01-chNN-review.md`.
-- **Stage 1**: 165 chapters (Vol II Ch 1 through Vol XII Ch 14). Shells exist with dossier-derived metadata; no prose yet.
+- **Stage 5**: 9 chapters (all of Volume I). All carried through Codex review with the resolution banner on the corresponding `docs/reviews/vol01-chNN-review.md`.
+- **Stage 4**: 67 chapters awaiting Codex review (all 18 of Volume II, all 13 of Volume III, all 14 of Volume IV, all 12 of Volume V, Ch 1-10 of Volume VI).
+- **Stage 1**: 98 chapters (Vol VI Ch 11-13 plus all of Volumes VII-XII). Shells exist with dossier-derived metadata; no prose yet.
 
 Stage 6 (Released) is not yet reached; the project has produced no issued release. The Stage-5 chapters are integration-complete but await release packaging.
 

@@ -9,6 +9,16 @@ Date: 2026-04-28
 > below. The diagnostic's three top risks (source-of-truth drift, scale honesty,
 > verification discipline) are now partially mitigated; see `docs/status.md`
 > for the current treatment. The diagnostic is preserved as a snapshot.
+>
+> **Note (2026-05-15).** Phase 1 has advanced through Volumes II-V drafted in
+> full and Volume VI partially drafted (Ch 1-10 of 13). The PDF now runs 1972
+> pages; 76 chapters carry first-draft prose; 210 bibliography entries; 20
+> named-case registry entries. Vol I remains at Stage 5; Vols II-VI sit at
+> Stage 4 awaiting Codex review. The diagnostic's content recommendations
+> (curriculum coverage, source discipline, named-case treatment) have largely
+> been honoured during drafting; gaps now sit at the page-density question
+> (Q57) and the companion-note architecture question (Q54). The diagnostic
+> remains preserved as a snapshot of Phase 0.6.
 
 This diagnostic is a second pass over the current repository after the
 Phase 0.6 expansion. It supersedes the earlier diagnostic that described the
