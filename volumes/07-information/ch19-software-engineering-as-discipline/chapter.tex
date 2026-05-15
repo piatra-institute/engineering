@@ -1,40 +1,344 @@
 \chapter{Software engineering as discipline}
 \label{vol07:ch19}
 
-\epigraph{}{}
+\epigraph{Programming is the art of doing one thing at a time.}{Edsger W. Dijkstra}
 
-\chapmeta{Half-life: durable. Archetypes: ethics, control, failure. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: ethics, control, failure. Exercise target: 25. Project track: hybrid.}
 
 \noindent
-\TODO{Volume 7, Chapter 19. Approx 110 pp.}
+The previous eighteen chapters taught what computation is, how it is built, how it runs, and how it fails. This chapter teaches the engineering practices that make software actually work in production: version control, testing, code review, continuous integration, deployment, observability, incident response, architecture. The discipline is what turns the technical capabilities of the prior chapters into systems that serve users reliably. The standard reference for the production-engineering view is Google's \emph{Site Reliability Engineering} books \cite{text:google-sre}; for the broader discipline, Sommerville \cite{text:sommerville}.
 
-\section{What software engineering is}
-\TODO{Section prose.}
+\section{What software engineering is}\pathtag{core}
 
-\section{Version control and change discipline}
-\TODO{Section prose.}
+Software engineering, as the term has been used since the NATO conferences of 1968-1969, is the application of engineering discipline to the production of software. The discipline includes: requirements analysis, design, implementation, testing, deployment, operations, maintenance, evolution.
 
-\section{Testing: unit, integration, property, fuzz}
-\TODO{Section prose.}
+The discipline differs from the engineering of physical artifacts in important ways. Software is built by changing other software (the source code is its own representation). Software has effectively zero marginal cost of reproduction. Software's failure modes are often discontinuous (the small bug causes the large outage). Software's complexity scales without obvious physical limit.
 
-\section{Code review}
-\TODO{Section prose.}
+The discipline shares with physical engineering: the need for explicit specifications, the need for verification before deployment, the need for monitoring after deployment, the need to learn from incidents, the responsibility for consequences when the product fails.
 
-\section{CI/CD}
-\TODO{Section prose.}
+\subsection{The lifecycle}
 
-\section{Deployment, observability, incident response}
-\TODO{Section prose.}
+A software system has phases: requirements, design, implementation, testing, deployment, operation, maintenance, retirement. The phases are not strictly sequential (modern practices interleave them) but each is a distinct discipline with distinct activities.
 
-\section{Software architecture: monoliths, services, modular design}
-\TODO{Section prose.}
+\textbf{Waterfall.} The classical sequential model. Phases proceed in order; each completes before the next begins. Out of favour since the 1990s for most applications.
 
-\section{Failure: production incidents that started as PR comments dismissed}
-\TODO{Section prose.}
+\textbf{Agile, Scrum, Kanban.} Iterative practices that produce working software in short cycles (weeks or smaller). Dominant since approximately 2010.
 
+\textbf{Continuous deployment.} Production deployment on every commit, after automated verification. The modern web-service standard.
 
-\section{Project}
-\TODO{ship a small project end-to-end with tests, CI, deployment, monitoring}
+The specific methodology matters less than the underlying disciplines. Every methodology that works rests on the same practices: explicit specifications, automated testing, version control, code review, continuous monitoring.
+
+\section{Version control and change discipline}\pathtag{core}
+
+\engterm{Version control} tracks every change to the source code: who made it, when, why, what before, what after. The dominant tool is Git (Linus Torvalds, 2005); the dominant hosting platforms are GitHub, GitLab, Bitbucket.
+
+\subsection{The working discipline}
+
+\textbf{Every change is a commit.} The unit of work is a commit; commits are reviewable, revertable, attributable.
+
+\textbf{Every commit has a message.} Why the change was made, in enough detail that a future engineer can understand without conversation.
+
+\textbf{Every commit passes tests.} Pre-commit hooks, CI gates, branch protections enforce.
+
+\textbf{Branches for in-progress work.} The main branch is always deployable; feature work happens on branches and merges via pull request.
+
+\textbf{Pull requests are reviewed.} Section 19.4.
+
+The discipline is the engineering equivalent of laboratory notebook practice in the physical sciences: every change is recorded, every change is traceable, every change is justifiable. The discipline is honoured in modern engineering teams routinely; the discipline is sometimes broken (force-pushes to main, commits without messages, large mixed-purpose pull requests) at corresponding cost.
+
+\subsection{Branching strategies}
+
+\textbf{Trunk-based development.} All work on a single main branch with short-lived feature flags. Used by Google, Meta, Netflix. Requires strong CI and feature-flag infrastructure.
+
+\textbf{Git flow.} Main branch for releases, develop branch for integration, feature branches for work, release branches for stabilisation. Used by teams with discrete release cycles.
+
+\textbf{GitHub flow.} Main branch is deployable; feature branches merge to main via pull request. The standard for modern web services.
+
+The choice is operations-dependent. Continuous-deployment shops use trunk-based or GitHub flow; teams with phased releases use git flow.
+
+\section{Testing: unit, integration, property, fuzz}\pathtag{core}
+
+\subsection{Test types}
+
+\textbf{Unit tests.} Test a single function or class in isolation. Should be fast (milliseconds), deterministic, runnable without external dependencies. The bulk of tests in most codebases.
+
+\textbf{Integration tests.} Test a multi-component path. Slower (seconds), require a working test environment.
+
+\textbf{End-to-end tests.} Test the full system from the user's perspective. Slowest, most fragile, but catch issues no unit test can.
+
+\textbf{Property tests.} Specify a property the code should satisfy; the framework generates random inputs and verifies the property. QuickCheck (Haskell), Hypothesis (Python), proptest (Rust). Find bugs unit tests miss.
+
+\textbf{Fuzz tests.} Generate random or mutated inputs to look for crashes or security violations. AFL, libFuzzer, OSS-Fuzz. Standard for security-sensitive code.
+
+\textbf{Snapshot tests.} Compare current output against a stored expected output. Useful for UI, API responses, generated code.
+
+\subsection{The test pyramid}
+
+A common visualisation: many fast unit tests at the base, fewer slow integration tests in the middle, even fewer end-to-end tests at the top. The pyramid shape reflects the engineering trade-offs: unit tests are cheap to write and fast to run; end-to-end tests are expensive and slow.
+
+\subsection{Test-driven development}
+
+\engterm{Test-driven development} (TDD, Kent Beck 1999) writes the test before the implementation. The cycle: write a failing test, write enough code to pass it, refactor, repeat. The practice produces well-tested code; whether it produces better code is debated.
+
+\subsection{Coverage and what it does not measure}
+
+Test coverage (percentage of lines executed by tests) is a common metric. It measures one thing: whether the line was executed. It does not measure whether the test would catch a bug in that line.
+
+The engineering discipline is to use coverage as a floor (less than $80\%$ coverage means significant code is unverified) rather than a ceiling ($90\%$ coverage does not imply the code is well-tested).
+
+\section{Code review}\pathtag{standard}
+
+A \engterm{code review} is an engineer reading another engineer's proposed change before it merges. The practice serves multiple purposes:
+
+\textbf{Catching bugs.} Empirical studies (Cohen et al.\ at Cisco) found that code review catches approximately $60\%$ of defects.
+
+\textbf{Knowledge sharing.} The reviewer learns about the part of the codebase the author worked on.
+
+\textbf{Standards enforcement.} Style, architecture, naming.
+
+\textbf{Mentoring.} Junior engineers learn from senior reviewers; seniors learn from juniors.
+
+\textbf{Accountability.} The pre-merge gate forces the author to articulate the change.
+
+\subsection{Review practices}
+
+The empirical literature (Bacchelli-Bird 2013, others) suggests that effective code review: focuses on a small change (under $400$ lines), reviews promptly (within hours), uses asynchronous tools but allows synchronous discussion for complex changes, distinguishes blocking comments from suggestions.
+
+The cost is engineering time on both sides. The benefit is widely-cited bug reduction and codebase health.
+
+\section{CI/CD}\pathtag{standard}
+
+\engterm{Continuous integration} (CI) builds, tests, and analyses every commit automatically. \engterm{Continuous deployment} (CD) deploys passing commits to production automatically.
+
+\subsection{CI pipeline}
+
+A typical CI pipeline: lint and format check; build; unit tests; integration tests; security scans; container image build. The pipeline runs in minutes; failures block the merge.
+
+The dominant tools: GitHub Actions, GitLab CI, Jenkins, CircleCI, BuildKite. The choice matters less than the discipline.
+
+\subsection{CD pipeline}
+
+Continuous deployment requires confidence: the test suite must catch enough regressions that pushing untested code to production is acceptable. Common safeguards: canary deployment (deploy to a small fraction first, observe, roll out), feature flags (deploy code disabled, enable gradually), blue-green deployment (switch traffic between two production environments).
+
+\subsection{Pipeline as code}
+
+CI/CD configuration is itself code, lives in version control, is reviewed like any other change. The trend since approximately 2015 is to define pipelines in code rather than in UI.
+
+\section{Deployment, observability, incident response}\pathtag{core}
+
+\subsection{Deployment}
+
+A modern deployment changes the running production system. The discipline includes: atomic deployment (the change is applied to all targets or none), rollback capability (a fresh failure can be reverted to the previous version), gradual rollout (the change reaches one user, then ten, then a hundred, then everyone), observability (the deployment's effect is measurable before it spreads).
+
+\textbf{Blue-green.} Two production environments; one serves traffic, the other is updated; traffic flips after verification.
+
+\textbf{Canary.} A small fraction of traffic to the new version; if the metrics are good, expand.
+
+\textbf{Rolling.} The fleet updates one node at a time.
+
+\subsection{Observability}
+
+\engterm{Observability} is the property of being able to understand the system's internal state from its external outputs. The three pillars:
+
+\textbf{Logs.} Discrete events emitted by the application. Structured logs (JSON, key-value) are easier to query than free-form.
+
+\textbf{Metrics.} Numeric measurements aggregated over time. Counters (requests per second), gauges (active connections), histograms (latency).
+
+\textbf{Traces.} The path of a single request through multiple services. OpenTelemetry is the modern standard.
+
+The discipline: instrument production code to emit useful signals; aggregate the signals in a tool that supports querying and alerting (Prometheus + Grafana, Datadog, Honeycomb); make the dashboards visible to the team.
+
+\subsection{Incident response}
+
+A \engterm{production incident} is an event that degrades the service's user experience. The standard practice:
+
+\textbf{Detection.} Monitoring alerts on the symptom.
+
+\textbf{Diagnosis.} On-call engineer determines the cause.
+
+\textbf{Mitigation.} The engineer applies a fix (often rolling back the recent change).
+
+\textbf{Resolution.} The system returns to normal operation.
+
+\textbf{Post-mortem.} The team writes up what happened, why, and what changes will prevent recurrence. The Google SRE book \cite{text:google-sre} is the standard reference for the blameless post-mortem discipline.
+
+The discipline is the engineering version of accident investigation: the same instinct that drives the NTSB to investigate every commercial-aviation incident drives a mature engineering organisation to investigate every production incident.
+
+\section{Software architecture: monoliths, services, modular design}\pathtag{standard}
+
+\subsection{Monolith vs services}
+
+\textbf{Monolith.} The entire application is a single deployable unit. Easier to develop, easier to test, easier to deploy initially; harder to scale parts independently, harder to evolve when the team grows.
+
+\textbf{Microservices.} The application is a collection of independent services. Easier to scale, evolve, and reason about in pieces; harder to develop, test, deploy, and operate. (Chapter 11.)
+
+The 2020s engineering consensus: start with a modular monolith; extract services only when the monolith's pain becomes worse than the services' pain. Many organisations that aggressively adopted microservices in the 2010s have moved partway back to monoliths.
+
+\subsection{Modular design}
+
+Whether monolith or services, the internal structure must be modular. The classical principles (Parnas 1972, others): high cohesion within modules (each module has one responsibility), low coupling between modules (each module talks to others through stable interfaces), information hiding (each module's internals are private).
+
+Modern practices implement these through: explicit module boundaries (Java packages, Python modules, Rust crates), dependency injection, interface-based programming, the dependency-inversion principle (depend on abstractions, not implementations).
+
+\subsection{Architectural patterns}
+
+\textbf{Layered.} Presentation, business logic, data access. Each layer depends only on the one below.
+
+\textbf{Hexagonal / ports-and-adapters.} The application core is independent of external concerns; adapters connect to the outside.
+
+\textbf{Event-driven.} Components communicate through events on a message bus rather than direct calls.
+
+\textbf{CQRS.} Separate models for command (write) and query (read). Useful for systems with very different write and read workloads.
+
+The engineering choice is workload-dependent. The discipline is to make the choice deliberately, document the architecture, and revisit when the workload changes.
+
+\section{Failure: production incidents that started as PR comments dismissed}\pathtag{core}
+
+The pattern recurs across post-mortem databases. A reviewer comments on a pull request: ``this race condition could be a problem under high concurrency.'' The author responds: ``unlikely in production.'' The comment is dismissed; the change merges; the production incident occurs months later.
+
+The pattern is partly about authority (the reviewer was junior, the author was senior; the reviewer was a contractor, the author was full-time), partly about evidence (the reviewer's claim was speculative; the author's data was empirical), partly about urgency (the change was time-pressured; the reviewer's concern would have delayed the merge).
+
+The engineering response: review comments that identify a potential failure mode must be addressed, not dismissed. The mode can be addressed by: fixing the underlying issue, adding a test for the case, documenting the assumption and adding monitoring for its violation, accepting the risk in writing. ``Unlikely'' is not an acceptable response to a specific failure-mode hypothesis.
+
+\subsection{The broader pattern}
+
+The pattern generalises. Most production incidents are not surprising in retrospect; they were known risks that were assessed as acceptable and turned out not to be. The engineering response is to take known risks seriously: log them, monitor for them, plan for them, address them as their priorities warrant.
+
+The 2018 SRE-community survey of post-mortems found that approximately $40\%$ of incidents had been flagged in some form before they occurred: in design documents, in code reviews, in monitoring alerts that were dismissed, in chaos-engineering tests that were skipped. The engineering response is to listen.
+
+\begin{principle}[Software engineering is what makes software work over time]
+A working program is the starting point. A working program that continues to work as it is changed, scaled, deployed, monitored, debugged, and evolved is the achievement of software engineering. The discipline is what turns capability into reliability; the practices are the engineering layer atop the technical substrate of the prior chapters.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Ship a small project end-to-end]
+Pick a small application you actually want to build: a personal finance tracker, a notes service, a tool for your hobby. Ship it end-to-end with the engineering discipline this chapter teaches.
+
+\begin{enumerate}[leftmargin=*]
+  \item Set up version control. Make the first commit; document the initial design in the commit message.
+  \item Set up CI. Every commit must pass the linter, the test suite, and the build.
+  \item Set up CD. Every commit on the main branch deploys to a staging environment.
+  \item Add tests. Aim for $80\%$ unit-test coverage; add at least three integration tests.
+  \item Add observability. Logs, metrics, and at least one end-to-end trace.
+  \item Deploy to production. Confirm it works for at least one real user (you).
+  \item Run it for thirty days. Observe what breaks. Write the post-mortem of each incident.
+\end{enumerate}
+
+The deliverable is the running service, the source code, and the post-mortems. The report (no more than four pages) must explicitly identify three engineering practices you would do differently next time.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A team's deployment pipeline runs in $20$ minutes. Compute the maximum deployment frequency if the team has a single rolling pipeline.
+\end{exercise}
+
+\begin{exercise}
+A team's test suite has $10\,000$ unit tests at $10\,\si{\milli\second}$ each. Compute the test-suite runtime.
+\end{exercise}
+
+\begin{exercise}
+A code review covers $400$ lines at $20$ lines per minute. Compute the review time. Compare to a $4000$-line review.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that a unit test missing a code path catches only one failure mode in that path. Identify the engineering practice that supplements unit-test coverage.
+\end{exercise}
+
+\begin{exercise}
+Show that canary deployment limits the user-facing impact of a defective deployment to a fixed fraction. Identify the conditions under which the analysis fails.
+\end{exercise}
+
+\begin{exercise}
+Derive the engineering value of blameless post-mortems: separating cause from blame produces better data on which to improve.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the engineering time savings from automated CI versus manual testing on a typical week's commits.
+\end{exercise}
+
+\begin{exercise}
+Estimate the production-incident reduction from adding integration tests to a service that previously had only unit tests.
+\end{exercise}
+
+\begin{exercise}
+Estimate the deployment-rollback rate of a mature engineering organisation. Compare to a less mature organisation.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Set up a small Git repository with a CI pipeline (GitHub Actions, GitLab CI, or equivalent). Commit a deliberate test failure; observe the pipeline blocks the merge.
+\end{exercise}
+
+\begin{exercise}
+Implement a feature-flag system for a small application. Use it to deploy a change disabled, then enable it gradually.
+\end{exercise}
+
+\begin{exercise}
+Set up observability for a small service: logs, metrics, traces. Generate load; observe the system from the dashboards.
+\end{exercise}
+
+\begin{exercise}
+Run a chaos-engineering exercise: deliberately fail a component of a working system. Observe the failure modes.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the testing strategy for a payment-processing service. State the test types, the coverage targets, and the acceptable risk.
+\end{exercise}
+
+\begin{exercise}
+Design the deployment pipeline for a service deployed across $10$ regions. State your rollout strategy, your rollback mechanism, and the failure thresholds.
+\end{exercise}
+
+\begin{exercise}
+Design the observability stack for a multi-service application. State the logs, metrics, and trace collection.
+\end{exercise}
+
+\begin{exercise}
+Design the incident-response playbook for a service with $24/7$ on-call. State the escalation, the communication, and the post-mortem process.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's deployment cadence drops from once per day to once per month after a major incident. State the engineering trade-offs and the path back to faster deployment.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``the test suite is not adding value at this point.'' Critique the argument.
+\end{exercise}
+
+\begin{exercise}
+A team's CI runs in $90$ minutes; engineers context-switch during the wait. State three engineering options to address this.
+\end{exercise}
+
+\begin{exercise}
+A team's post-mortem identifies the same root cause three times in a quarter. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A team is migrating from a monolith to microservices because ``it does not scale.'' State the engineering analysis. What evidence would justify or contraindicate the migration?
+\end{exercise}
+
+\begin{exercise}
+A team's code-review comments are routinely dismissed as ``too pedantic.'' State the engineering and cultural responses.
+\end{exercise}
+
+\begin{exercise}
+A team uses LLMs (Chapter 18) to generate code. State the engineering practices that must be in place for the generated code to meet the chapter's quality bar.
+\end{exercise}
+
+\begin{exercise}
+A team's deployment to production happens on Friday afternoons. State the engineering case for changing the cadence.
+\end{exercise}
+

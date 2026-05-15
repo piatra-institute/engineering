@@ -1,40 +1,320 @@
 \chapter{Signal processing}
 \label{vol07:ch15}
 
-\epigraph{}{}
+\epigraph{Frequency is reciprocal time; time is reciprocal frequency. Most engineering insight at a signal-processing boundary is at this duality.}{anonymous DSP engineer}
 
-\chapmeta{Half-life: durable. Archetypes: transport, interface. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: transport, interface. Exercise target: 35. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 15. Approx 110 pp.}
+Signal processing is the engineering of representing, transforming, and analysing signals: time-varying or space-varying quantities carrying information. The chapter teaches the working tools: Fourier analysis, sampling, filtering, time-frequency representations, and compression. Volume I Chapter 6 introduced time, frequency, and signals at the measurement level; this chapter takes the same material to the engineering-tools level. The standard reference is Oppenheim and Schafer's \emph{Discrete-Time Signal Processing} \cite{text:oppenheim-schafer}.
 
-\section{Continuous- and discrete-time signals}
-\TODO{Section prose.}
+\section{Continuous- and discrete-time signals}\pathtag{core}
 
-\section{Fourier analysis}
-\TODO{Section prose.}
+A \engterm{continuous-time signal} is a function $x(t)$ of a continuous variable $t$. A \engterm{discrete-time signal} is a sequence $x[n]$ indexed by an integer. Most engineering signals are continuous in their physical reality (a sound wave, an EM field) and discrete in their digital representation (samples in memory).
 
-\section{Sampling and reconstruction revisited from Volume I}
-\TODO{Section prose.}
+The standard operations on signals: addition, scaling, time-shift, time-reversal, modulation, convolution. A \engterm{system} is an operator that maps an input signal to an output signal. The system is \engterm{linear} if it satisfies superposition; \engterm{time-invariant} if a time-shifted input produces a time-shifted output. Linear time-invariant (LTI) systems are the central object of signal-processing theory.
 
-\section{Filters: FIR, IIR, design}
-\TODO{Section prose.}
+\subsection{Convolution}
 
-\section{Time-frequency analysis}
-\TODO{Section prose.}
+The convolution $y = x * h$ of input $x$ and impulse response $h$:
+\[
+y[n] = \sum_{k=-\infty}^{\infty} x[k] \, h[n-k].
+\]
+An LTI system is completely characterised by its impulse response: the output is the convolution of the input with the impulse response.
 
-\section{Compression: DCT, wavelets}
-\TODO{Section prose.}
+\section{Fourier analysis}\pathtag{core}
 
-\section{Modern audio, image, video coding overview}
-\TODO{Section prose.}
+The Fourier transform decomposes a signal into sinusoidal components. The four main variants:
 
-\section{Failure: aliasing, ringing, lossy-compression artifacts in safety-critical systems}
-\TODO{Section prose.}
+\textbf{Continuous-time Fourier transform (CTFT).} For a continuous-time aperiodic signal:
+\[
+X(\omega) = \int_{-\infty}^{\infty} x(t) e^{-j\omega t} \dd t.
+\]
 
+\textbf{Continuous-time Fourier series.} For a continuous-time periodic signal: a sum of harmonics.
 
-\section{Project}
-\TODO{design and implement a digital filter; characterise its response}
+\textbf{Discrete-time Fourier transform (DTFT).} For a discrete-time signal: a continuous function of frequency.
+
+\textbf{Discrete Fourier transform (DFT).} For a finite-length discrete signal:
+\[
+X[k] = \sum_{n=0}^{N-1} x[n] e^{-j 2\pi k n / N}.
+\]
+
+The DFT is the workhorse: every digital signal-processing computation that touches the frequency domain uses the DFT (or its fast cousin, the FFT).
+
+\subsection{The fast Fourier transform}
+
+The naive DFT is $\oom{N^2}$. The Cooley-Tukey fast Fourier transform (1965) computes the DFT in $\oom{N \log N}$ for $N$ a power of 2. The FFT was one of the canonical algorithmic breakthroughs of the twentieth century; modern digital signal processing rests on its ubiquity.
+
+The variants: radix-2, radix-4, mixed radix, prime-factor FFT, Bluestein's algorithm (for arbitrary $N$). The dominant production library in 2026 is FFTW (Frigo and Johnson), which auto-tunes the algorithm to the target hardware.
+
+\subsection{Properties}
+
+The Fourier transform has working properties the engineer uses constantly: linearity, time-shift, modulation, convolution (convolution in time is multiplication in frequency), Parseval's theorem (energy in time equals energy in frequency).
+
+\section{Sampling and reconstruction}\pathtag{core}
+
+Volume I introduced the Nyquist-Shannon sampling theorem. This section takes the theorem to the engineering level.
+
+\subsection{The sampling theorem}
+
+If a signal $x(t)$ has no frequency components above $f_{\max}$ (band-limited), it can be perfectly reconstructed from samples taken at rate $f_s \geq 2 f_{\max}$. The reconstruction is by the Whittaker-Shannon interpolation: sum of sinc functions centred at the sample points.
+
+The Nyquist rate $f_s = 2 f_{\max}$ is the engineering boundary. Below this, the signal cannot be recovered exactly (aliasing, Section 15.8). Above, the signal is over-sampled and the extra samples are redundant.
+
+\subsection{Engineering practice}
+
+The reality of analogue-to-digital conversion includes: anti-aliasing filters before sampling (a low-pass filter that removes frequencies above $f_s / 2$ so that aliasing does not occur), oversampling and decimation (sample at a higher rate, then digitally filter and downsample), sigma-delta modulation (a high-oversampling-rate one-bit converter followed by digital filtering).
+
+The choice of sample rate is workload-driven. Audio: $44.1\,\si{\kilo\hertz}$ (CD, just above twice the human-audible upper limit of $\approx 20\,\si{\kilo\hertz}$); $48\,\si{\kilo\hertz}$ (DAT, broadcast video); $96\,\si{\kilo\hertz}$ or $192\,\si{\kilo\hertz}$ (high-end audio production). Image and video: pixel rate determined by spatial resolution and frame rate; modern HD video at $60\,\text{Hz}$ produces approximately $10^8$ pixels per second.
+
+\section{Filters: FIR, IIR, design}\pathtag{core}
+
+A \engterm{filter} is an LTI system designed to attenuate some frequencies relative to others. The two main classes:
+
+\textbf{Finite impulse response (FIR).} The impulse response has finite support. The output is a finite weighted sum of past inputs. FIR filters are always stable, can be designed with exactly linear phase (no group-delay distortion), are typically more expensive per unit performance than IIR.
+
+\textbf{Infinite impulse response (IIR).} The impulse response extends infinitely. The output depends on past outputs (recursive). IIR filters can match given frequency-response specifications with fewer coefficients than FIR; they can be unstable; they introduce non-linear phase.
+
+\subsection{Filter design}
+
+FIR design: window method (multiply the ideal impulse response by a windowing function; Hamming, Hanning, Blackman are standard), Parks-McClellan (optimal equiripple), least-squares.
+
+IIR design: typically by analogue prototyping. Design an analogue filter (Butterworth, Chebyshev, elliptic); transform to digital (bilinear transform, impulse invariance).
+
+The engineering choice depends on the specification: latency requirements (FIR has known delay; IIR's group delay varies), stability (FIR always stable; IIR must be checked), filter order (IIR is typically lower for the same specification), implementation complexity.
+
+\subsection{Filter implementation}
+
+In production: direct-form, transposed direct-form, cascade of biquads (the standard for IIR), polyphase decomposition (efficient for resampling), FFT-based fast convolution (efficient for long FIR filters).
+
+\section{Time-frequency analysis}\pathtag{standard}
+
+A signal whose frequency content changes over time (speech, music, biomedical signals, radar) is poorly captured by the Fourier transform alone. \engterm{Time-frequency analysis} represents the signal in both time and frequency simultaneously.
+
+\textbf{Short-time Fourier transform (STFT).} Compute the Fourier transform of windowed sections of the signal. The spectrogram is the squared magnitude of the STFT. Standard in speech, audio, music.
+
+\textbf{Wavelets.} Multi-resolution analysis: short windows at high frequencies, long windows at low frequencies. Wavelet transforms (discrete wavelet, continuous wavelet, wavelet packet) are the basis of JPEG-2000, modern medical imaging, seismic analysis.
+
+\textbf{Wigner-Ville distribution.} Time-frequency representation with no window function; provides higher resolution but introduces cross-term artefacts.
+
+The uncertainty principle bounds time-frequency resolution: $\Delta t \cdot \Delta f \geq 1/(4\pi)$. A signal cannot be sharply localised in both time and frequency simultaneously. The engineering choice of window length is the trade-off.
+
+\section{Compression: DCT, wavelets}\pathtag{standard}
+
+Modern lossy compression rests on signal-processing transforms that concentrate signal energy in few coefficients.
+
+\textbf{Discrete cosine transform (DCT).} A real-valued transform similar to the DFT. The basis of JPEG (8x8 DCT on image blocks), MP3 (modified DCT), H.264 (4x4 and 8x8 transforms).
+
+\textbf{Wavelets.} The basis of JPEG-2000 (CDF 9/7 wavelet).
+
+\textbf{Predictive coding.} Predict the next sample from past samples; transmit only the prediction error. Used in audio (LPC), speech (CELP, ADPCM), video (motion compensation).
+
+\textbf{Vector quantisation.} Group samples into vectors; transmit the index of the nearest entry in a codebook.
+
+The combination of transform, quantisation, and entropy coding (Chapter 13) produces the modern compression pipeline. Engineering choice is among compression standards (JPEG, JPEG-2000, HEIC, AVIF for images; MP3, AAC, Opus for audio; H.264, H.265, AV1, VVC for video) based on quality, bitrate, computational cost, licensing.
+
+\section{Modern audio, image, video coding overview}\pathtag{standard}
+
+\textbf{Audio.} Speech: G.711, Opus, AMR, EVS. Music: MP3, AAC, Opus, FLAC (lossless). The 2010s saw Opus emerge as the modern default for both speech and music, with bitrates from $6\,\si{\kilo\bit\per\second}$ (narrowband speech) to $510\,\si{\kilo\bit\per\second}$ (transparent quality at $48\,\si{\kilo\hertz}$ stereo).
+
+\textbf{Image.} JPEG (1992) for photographs; PNG (1996) for lossless; modern formats include JPEG-2000 (rarely deployed), WebP (Google, 2010), HEIC (Apple, 2017), AVIF (AOMedia, 2019). The 2026 state: JPEG remains dominant; HEIC and AVIF growing slowly.
+
+\textbf{Video.} MPEG-2 (DVD, broadcast TV), H.264/AVC (modern broadcast, web), H.265/HEVC (Apple, broadcast 4K), AV1 (royalty-free, web), VVC/H.266 (next-generation). The competitive dynamics are heavily licensing-driven; the engineering choice for a new deployment is typically AV1 (no royalties) or H.264 (universally supported).
+
+\section{Failure: aliasing, ringing, lossy-compression artifacts}\pathtag{core}
+
+\subsection{Aliasing}
+
+A signal sampled below the Nyquist rate exhibits aliasing: frequency components above $f_s/2$ fold back into the lower-frequency band, masquerading as different frequencies. The output is wrong in ways that look like real signal content.
+
+The engineering remedy is the anti-aliasing filter, applied before sampling. The remedy is widely understood and routinely violated: sensor data is often digitised without proper anti-aliasing in industrial control systems, embedded systems, and consumer devices.
+
+A safety-critical example: an industrial vibration sensor monitoring a turbine, sampling at $1\,\si{\kilo\hertz}$ without anti-aliasing. A $1.5\,\si{\kilo\hertz}$ resonance from a developing fault aliases to $500\,\si{\hertz}$. The fault-detection algorithm sees an apparently-normal $500\,\si{\hertz}$ vibration instead of a developing problem at $1.5\,\si{\kilo\hertz}$. The fault progresses undetected until catastrophic.
+
+\subsection{Ringing and Gibbs phenomena}
+
+Sharp filter cutoffs produce ringing: oscillation near step changes in the input. The classical Gibbs phenomenon at the truncation of a Fourier series. In production, ringing artefacts appear in image-compression edges, audio compression transients, and digital filter responses.
+
+The engineering remedy is gradual filter rolloff (windowing in FIR design, transition bandwidth in IIR design) at the cost of imperfect frequency separation.
+
+\subsection{Lossy-compression artefacts in safety-critical systems}
+
+Lossy compression discards information judged perceptually insignificant; the discarding can be safety-relevant when the consumer of the signal is not the human eye or ear.
+
+The 2009 paper of Lerios et al.\ documented compression-induced artefacts in medical-imaging data that fooled diagnostic algorithms. The engineering response is to never apply lossy compression to safety-critical signals, or to verify that the algorithms downstream tolerate the specific artefact profile.
+
+\begin{principle}[Signals must respect Nyquist before they enter the digital domain]
+The engineering boundary between continuous and discrete signals is the anti-aliasing filter. A signal sampled without filtering above the Nyquist rate is permanently corrupted in ways that look like real content. The discipline is to know the bandwidth of the signal, to filter before sampling, and to verify that the filter is doing what it claims.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Design and implement a digital filter; characterise its response]
+Design a digital filter for a specified frequency response. Implement it. Characterise its actual behaviour against the specification.
+
+\begin{enumerate}[leftmargin=*]
+  \item Pick a specification: a low-pass filter with cutoff $1\,\si{\kilo\hertz}$ on a $48\,\si{\kilo\hertz}$ sample rate, stopband attenuation $60\,\si{\dB}$, passband ripple $1\,\si{\dB}$, transition $200\,\si{\hertz}$.
+  \item Design an FIR filter meeting the spec (Parks-McClellan or window method).
+  \item Design an IIR filter meeting the same spec (Butterworth, Chebyshev, or elliptic).
+  \item Plot the actual frequency response of each; verify against the spec.
+  \item Apply both filters to a test signal (sum of sinusoids at known frequencies plus white noise). Compare the outputs.
+  \item Measure group delay, computational cost, and stability margin for each filter.
+\end{enumerate}
+
+The deliverable is the design tools, the plots, the test signals, and a short report (no more than four pages) on the engineering trade-offs.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the DFT of the four-sample sequence $[1, 1, -1, -1]$. Identify the dominant frequency.
+\end{exercise}
+
+\begin{exercise}
+Compute the impulse response of the simple averaging filter $y[n] = (x[n] + x[n-1])/2$. Compute its frequency response.
+\end{exercise}
+
+\begin{exercise}
+A signal contains components at $100\,\si{\hertz}$, $500\,\si{\hertz}$, and $2000\,\si{\hertz}$. The sample rate is $1\,\si{\kilo\hertz}$. Identify which components alias and to what frequencies.
+\end{exercise}
+
+\begin{exercise}
+Compute the Nyquist rate for the human auditory range ($20\,\si{\hertz}$ to $20\,\si{\kilo\hertz}$). Compare to standard sample rates.
+\end{exercise}
+
+\begin{exercise}
+For an FIR filter with $N = 64$ taps, compute the computational cost per output sample.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the sampling theorem informally: if a signal is band-limited to $f_{\max}$, samples at $2 f_{\max}$ suffice for reconstruction.
+\end{exercise}
+
+\begin{exercise}
+Derive Parseval's theorem for the DFT: the energy in the time domain equals the energy in the frequency domain (up to a normalising constant).
+\end{exercise}
+
+\begin{exercise}
+Show that convolution in the time domain corresponds to multiplication in the frequency domain.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between the bandwidth of an analog filter and the cutoff frequency of its bilinear-transformed digital equivalent.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the computational cost of computing a $1024$-point FFT on a modern CPU.
+\end{exercise}
+
+\begin{exercise}
+Estimate the bandwidth occupied by a CD-quality stereo audio stream ($44.1\,\si{\kilo\hertz}$, $16$ bits, stereo).
+\end{exercise}
+
+\begin{exercise}
+Estimate the compression ratio of JPEG at quality $80$ for a typical photograph.
+\end{exercise}
+
+\begin{exercise}
+Estimate the latency added by an FIR filter with $64$ taps on a $48\,\si{\kilo\hertz}$ audio stream.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement the FFT in your favourite language. Benchmark against a library implementation.
+\end{exercise}
+
+\begin{exercise}
+Implement an FIR filter using the window method. Plot the impulse response and frequency response.
+\end{exercise}
+
+\begin{exercise}
+Implement an IIR filter as a cascade of biquads. Verify numerical stability under various quantisation precisions.
+\end{exercise}
+
+\begin{exercise}
+Simulate aliasing: generate a sinusoid above the Nyquist rate, sample without filtering, observe the aliased signal.
+\end{exercise}
+
+\begin{exercise}
+Implement the DCT used in JPEG. Apply to an image block, quantise, transform back. Identify the artefacts.
+\end{exercise}
+
+\begin{exercise}
+Implement a short-time Fourier transform and plot a spectrogram of a speech sample.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the anti-aliasing filter and sample-rate strategy for a vibration-monitoring system on rotating machinery (range up to $5\,\si{\kilo\hertz}$).
+\end{exercise}
+
+\begin{exercise}
+Design the audio-compression strategy for a voice-over-IP service with latency budget $50\,\si{\milli\second}$.
+\end{exercise}
+
+\begin{exercise}
+Design the image-compression strategy for an archival photography service: long-term storage, occasional retrieval.
+\end{exercise}
+
+\begin{exercise}
+Design the time-frequency analysis tool for a music-information-retrieval application: identify key, tempo, and chord progression from raw audio.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's industrial-sensor system samples at the rate of the slowest signal component. Identify the failure mode and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team uses JPEG to compress medical X-ray images. State the engineering risk and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between FIR and IIR for a real-time audio processor. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's video encoder produces blocky artefacts on rapid motion. State three engineering causes and the corresponding remediations.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern formats like AV1 are always better than older formats like H.264.'' Critique the argument. State the cases where H.264 is still preferable.
+\end{exercise}
+
+\begin{exercise}
+A team's compression pipeline reorders DCT coefficients for storage; an adversary observes the storage pattern to learn about the input. State the side-channel risk and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to add an EQ feature to a music app. State the engineering choices: filter type, filter implementation, parameter mapping.
+\end{exercise}
+
+\begin{exercise}
+A team's wavelet-based image-compression algorithm performs poorly on high-contrast diagrams. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A team uses FFT-based fast convolution for a long FIR filter. State the engineering implications: latency, accuracy, memory.
+\end{exercise}
+
+\begin{exercise}
+A team's real-time audio service has a latency budget of $30\,\si{\milli\second}$ end-to-end. State the engineering implications for filter design.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between time-domain and frequency-domain analysis for a fault-detection algorithm. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's signal-acquisition pipeline samples at exactly the Nyquist rate. State the engineering risk and the standard remediation.
+\end{exercise}

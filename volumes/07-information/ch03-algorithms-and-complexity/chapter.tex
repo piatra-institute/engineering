@@ -1,40 +1,550 @@
 \chapter{Algorithms and complexity}
 \label{vol07:ch03}
 
-\epigraph{}{}
+\epigraph{Premature optimisation is the root of all evil. Yet we should not pass up our opportunities in that critical 3\%.}{Donald Knuth, \emph{Structured Programming with go to Statements}, 1974}
 
-\chapmeta{Half-life: durable. Archetypes: scaling, optimisation. Exercise target: 45. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: scaling, optimisation. Exercise target: 45. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 3. Approx 110 pp.}
+An \engterm{algorithm} is a finite procedure for transforming an input into an output. The word and the discipline are older than the computer: al-Khwārizmī's ninth-century treatise on linear and quadratic equations contained algorithms in the modern sense, and Euclid's two-thousand-year-old greatest-common-divisor procedure remains one of the cleanest. What the computer added was an account of \emph{how much} an algorithm costs: how many steps it takes, how much memory it needs, how its cost scales with input size. The discipline that names these costs and reasons about them is the discipline of algorithm analysis. This chapter teaches the working version of that discipline.
 
-\section{What an algorithm is}
-\TODO{Section prose.}
+The standard references are Cormen, Leiserson, Rivest, and Stein (CLRS) \cite{text:cormen-clrs} and Kleinberg and Tardos \cite{text:kleinberg-tardos}. The reader who finishes this chapter and wants the deeper treatment should go to CLRS for breadth and to Kleinberg-Tardos for the explanation of why each technique works the way it does.
 
-\section{Time and space complexity}
-\TODO{Section prose.}
+\section{What an algorithm is}\pathtag{core}
 
-\section{Sorting and searching as canonical examples}
-\TODO{Section prose.}
+A working definition: an algorithm is a finite sequence of well-defined steps that takes an input from some specified set and produces an output from some specified set. ``Finite,'' ``well-defined,'' and ``specified'' carry weight. An infinite procedure is not an algorithm. A step that says ``do whatever seems reasonable'' is not well-defined. An input ``some number'' without specifying integer or real, bounded or unbounded, is not specified.
 
-\section{Greedy, divide-and-conquer, dynamic programming}
-\TODO{Section prose.}
+The reader will recognise this as the engineer's version of the same formal apparatus Chapter 1 named computability. The difference is that Chapter 1 asked which functions can be computed in principle; this chapter asks how much it costs to compute them.
 
-\section{Graph algorithms}
-\TODO{Section prose.}
+\subsection{Specification, correctness, complexity}
 
-\section{NP-completeness, intractability}
-\TODO{Section prose.}
+Every algorithm has three properties an engineer reasons about.
 
-\section{Approximation and randomisation}
-\TODO{Section prose.}
+\textbf{Specification.} The contract: what input shapes are allowed, what output shape is produced, what relation the output bears to the input. The specification is a proposition in the Chapter 1 sense.
 
-\section{Failure: $O(n^2)$ algorithms in production at scale}
-\TODO{Section prose.}
+\textbf{Correctness.} The proof or argument that the algorithm meets its specification. Correctness arguments come in several forms: invariant maintenance for loops, induction on input size for recursive algorithms, exchange arguments for greedy algorithms, optimality arguments for dynamic programming.
 
+\textbf{Complexity.} The cost: time as a function of input size, space as a function of input size, sometimes other resources (network messages, disk seeks, cache misses).
 
-\section{Project}
-\TODO{implement and benchmark four sorting algorithms; explain crossover behaviour}
+The three are independent. A correct algorithm can be too slow. A fast algorithm can be incorrect. A specification can be wrong (specifying behaviour the engineer did not actually want). The engineering discipline is to keep all three in view.
+
+\subsection{Worked example: GCD}
+
+Euclid's algorithm for the greatest common divisor of two non-negative integers:
+
+\begin{verbatim}
+function gcd(a, b):
+    while b != 0:
+        a, b = b, a mod b
+    return a
+\end{verbatim}
+
+\textbf{Specification.} Input: two non-negative integers $a, b$, not both zero. Output: the largest integer dividing both.
+
+\textbf{Correctness.} Invariant: the GCD of the current $(a, b)$ equals the GCD of the original input. The invariant is maintained because $\gcd(a, b) = \gcd(b, a \bmod b)$. The loop terminates because $b$ strictly decreases each iteration. When $b = 0$, the GCD is $a$.
+
+\textbf{Complexity.} Lamé's theorem (1844) shows the number of iterations is bounded by $5 \cdot \lceil \log_{10} \min(a, b) \rceil$. Time complexity is therefore $O(\log \min(a, b))$ assuming constant-time arithmetic on the operands.
+
+The three together constitute the engineer's analysis of an algorithm. Asked ``does this algorithm work?'' the engineer answers with the specification, the correctness argument, and the complexity bound. ``It runs my test cases'' is not an answer to any of the three.
+
+\section{Time and space complexity}\pathtag{core}
+
+The cost of an algorithm is described in two main ways: \engterm{worst case} (the largest cost over all inputs of a given size), \engterm{average case} (the expected cost over a stated input distribution). A third notion, \engterm{amortised cost}, is the cost averaged over a long sequence of operations.
+
+\subsection{Asymptotic notation}
+
+Engineering interest in algorithm cost typically focuses on asymptotic behaviour: how the cost scales as the input grows, ignoring constant factors and lower-order terms. The standard notation is the Bachmann-Landau family.
+
+\textbf{Big-O}: $f(n) = \oom{g(n)}$ if there exist constants $C, n_0$ such that $\abs{f(n)} \leq C \cdot g(n)$ for all $n \geq n_0$. An upper bound: ``$f$ grows no faster than $g$.''
+
+\textbf{Big-Omega}: $f(n) = \Omega(g(n))$ if there exist $C, n_0$ such that $f(n) \geq C \cdot g(n)$ for all $n \geq n_0$. A lower bound.
+
+\textbf{Big-Theta}: $f(n) = \Theta(g(n))$ if $f(n) = \oom{g(n)}$ and $f(n) = \Omega(g(n))$. A tight bound.
+
+\textbf{Little-o}: $f(n) = o(g(n))$ if $\lim_{n \to \infty} f(n) / g(n) = 0$. Strictly slower growth.
+
+The asymptotic notation discards information. $f(n) = 10^{12} \cdot n$ and $f(n) = n$ are both $\oom{n}$. For algorithm engineering at small constant inputs, the constant matters as much as the asymptotic. The discipline is to use big-O for the scaling story and the actual constant for the production decision.
+
+\subsection{Common complexity classes}
+
+The classes that recur in engineering:
+
+\textbf{$\oom{1}$ constant.} Array index, hash-table lookup (amortised), arithmetic operation on bounded-width integers. The operation's cost is independent of input size.
+
+\textbf{$\oom{\log n}$ logarithmic.} Binary search, balanced-tree operations, Euclid's GCD. Doubling the input adds a constant to the cost.
+
+\textbf{$\oom{n}$ linear.} Single pass over the input. Linear scans, simple counting, single-pass summation.
+
+\textbf{$\oom{n \log n}$ linearithmic.} The natural complexity of comparison-based sorting and many divide-and-conquer algorithms. Doubling the input slightly more than doubles the cost.
+
+\textbf{$\oom{n^2}$ quadratic.} Pairwise comparison, naive matrix-vector product on small inputs, naive substring matching. Doubling the input quadruples the cost.
+
+\textbf{$\oom{n^3}$ cubic.} Naive matrix-matrix product, all-pairs shortest paths.
+
+\textbf{$\oom{2^n}$ exponential.} Brute-force enumeration of subsets, recursive Fibonacci without memoisation, brute-force satisfiability checking.
+
+\textbf{$\oom{n!}$ factorial.} Brute-force enumeration of permutations, brute-force travelling salesman.
+
+The engineering question is which class the algorithm lives in for the workload it will see, and whether that class is acceptable.
+
+\begin{estimation}
+\textbf{Question.} An algorithm is $\oom{n^2}$ with a constant of $1\,\si{\micro\second}$ per pair. Estimate the running time on input sizes $n = 10^3, 10^4, 10^5, 10^6$. Compare to a $\oom{n \log n}$ algorithm with a constant of $10\,\si{\micro\second}$ per element.
+
+\textbf{Working.}
+\begin{tabular}{rrr}
+\toprule
+$n$ & $\oom{n^2}$ at $1\mu$s/pair & $\oom{n \log n}$ at $10\mu$s/element \\
+\midrule
+$10^3$ & $1\,\si{\second}$ & $0.1\,\si{\second}$ \\
+$10^4$ & $100\,\si{\second}$ & $1.3\,\si{\second}$ \\
+$10^5$ & $10\,000\,\si{\second}$ ($2.8\,\si{\hour}$) & $17\,\si{\second}$ \\
+$10^6$ & $10^6\,\si{\second}$ ($11.6\,\si{\day}$) & $200\,\si{\second}$ \\
+\bottomrule
+\end{tabular}
+
+\textbf{Implication.} For small inputs ($n = 10^3$), the constant matters and $\oom{n^2}$ is faster than $\oom{n \log n}$ in absolute terms. The crossover is around $n = 100$. For production data sizes ($n \geq 10^5$), the $\oom{n^2}$ algorithm is unusable.
+\end{estimation}
+
+\subsection{Space complexity}
+
+Space complexity counts the working memory the algorithm needs beyond its input. The standard distinctions:
+
+\textbf{In-place.} The algorithm uses $\oom{1}$ extra space beyond the input. Quicksort with the in-place partition, heap sort, the simple-iterative GCD.
+
+\textbf{$\oom{\log n}$ extra.} The recursion-stack depth of a divide-and-conquer algorithm. Quicksort with worst-case pivots, merge sort with iterative merging.
+
+\textbf{$\oom{n}$ extra.} The standard merge sort, hash-table builds, BFS queue depth.
+
+\textbf{$\oom{n^2}$ or larger.} Memoisation tables for dynamic programming, dense graph representations.
+
+Modern systems are often memory-bound rather than compute-bound; the algorithm that fits in cache outperforms the algorithm that does not, even if their asymptotic compute costs are identical. Chapter 7 returns to this with the architecture lens.
+
+\section{Sorting and searching as canonical examples}\pathtag{core}
+
+Sorting is the canonical algorithmic problem. Many other problems reduce to sorting; many algorithmic techniques originated in sorting; sorting illustrates the asymptotic distinctions cleanly.
+
+\subsection{The comparison-based lower bound}
+
+A comparison-based sorting algorithm decides on each step by comparing two elements. Each comparison distinguishes between two possibilities, giving the algorithm one bit of information. An algorithm that sorts $n$ distinct elements must distinguish among $n!$ possible permutations, requiring at least $\log_2(n!)$ comparisons. By Stirling's approximation $\log_2(n!) = \Theta(n \log n)$, so any comparison-based sort takes $\Omega(n \log n)$ comparisons.
+
+The bound is tight: merge sort, heap sort, and well-implemented quicksort achieve $\oom{n \log n}$ in the average and worst (for the first two) or expected (for randomised quicksort) cases.
+
+\subsection{Linear-time sorts}
+
+The $\Omega(n \log n)$ bound applies only to comparison-based sorts. Algorithms that exploit structure in the data can sort in linear time.
+
+\textbf{Counting sort.} If the input is integers in $[0, k]$, count occurrences in a $k$-sized array, then expand. Time $\oom{n + k}$, space $\oom{k}$.
+
+\textbf{Radix sort.} Sort by successive digit positions, using counting sort at each digit. Time $\oom{d(n + b)}$ for $d$ digits in base $b$.
+
+\textbf{Bucket sort.} Distribute into buckets by value range, sort each bucket, concatenate. Time $\oom{n}$ in expectation for uniformly distributed inputs.
+
+These are the algorithms used in high-throughput sorting of bounded-domain data: integer keys with known range, fixed-length strings, dates within a year.
+
+\subsection{Searching}
+
+\textbf{Linear search.} Scan from one end. $\oom{n}$ worst case.
+
+\textbf{Binary search.} On a sorted array. $\oom{\log n}$. The implementation hides a subtle bug: the midpoint calculation $\lfloor (l + r) / 2 \rfloor$ overflows for large arrays in fixed-width integer arithmetic. The standard fix is $l + \lfloor (r - l) / 2 \rfloor$. This bug existed in Java's standard library Arrays.binarySearch from 1.2 (1998) until 2006.
+
+\textbf{Hash lookup.} On a hash table. $\oom{1}$ expected; worst case depends on collision handling, up to $\oom{n}$ for adversarial inputs (Chapter 4 returns to this).
+
+\section{Greedy, divide-and-conquer, dynamic programming}\pathtag{standard}
+
+Three working algorithmic techniques cover most engineering algorithm design.
+
+\subsection{Greedy}
+
+A \engterm{greedy} algorithm makes a locally optimal choice at each step and commits to it. The technique is the simplest, the fastest in most cases, and the most prone to error. Greedy algorithms work when the problem has the \engterm{greedy-choice property}: the locally optimal choice is part of some globally optimal solution.
+
+\textbf{Examples.} Huffman coding (Chapter 13), Kruskal's and Prim's minimum-spanning-tree algorithms, Dijkstra's single-source shortest-path algorithm (on non-negative edge weights), interval scheduling by earliest finish time.
+
+\textbf{Non-examples.} Greedy graph colouring is suboptimal. Greedy travelling salesman ``go to the nearest unvisited city'' is suboptimal. Greedy 0/1 knapsack ``take the highest-value item that fits'' is suboptimal.
+
+The discipline is to prove the greedy-choice property before relying on it. An exchange argument (showing that any non-greedy choice can be swapped for the greedy choice without losing optimality) is the standard form.
+
+\subsection{Divide and conquer}
+
+A \engterm{divide-and-conquer} algorithm recurses on smaller subproblems and combines results. The technique works when the problem decomposes cleanly into subproblems whose solutions combine into a solution of the original.
+
+\textbf{Examples.} Merge sort, quicksort, fast Fourier transform, Karatsuba multiplication, Strassen's matrix multiplication.
+
+The standard analysis tool is the \engterm{master theorem}: a recurrence $T(n) = aT(n/b) + f(n)$ (where $a$ subproblems each of size $n/b$, plus $f(n)$ combining work) solves to
+\[
+T(n) = \begin{cases}
+  \Theta(n^{\log_b a}) & \text{if } f(n) = \oom{n^{\log_b a - \epsilon}} \\
+  \Theta(n^{\log_b a} \log n) & \text{if } f(n) = \Theta(n^{\log_b a}) \\
+  \Theta(f(n)) & \text{if } f(n) = \Omega(n^{\log_b a + \epsilon}) \text{ and a regularity condition holds.}
+\end{cases}
+\]
+For merge sort, $T(n) = 2 T(n/2) + \Theta(n)$, $a = 2, b = 2, \log_b a = 1, f(n) = \Theta(n^1)$, giving $T(n) = \Theta(n \log n)$.
+
+\subsection{Dynamic programming}
+
+\engterm{Dynamic programming} solves a problem by combining solutions to overlapping subproblems, storing each solution once. Two requirements: \engterm{optimal substructure} (an optimal solution decomposes into optimal solutions of subproblems) and \engterm{overlapping subproblems} (the same subproblems recur).
+
+\textbf{Examples.} Shortest paths in a DAG, longest common subsequence, knapsack (the integer-weights case), matrix-chain multiplication ordering, Bellman-Ford shortest paths, sequence alignment in bioinformatics (Volume VI Chapter 11).
+
+The art is to identify the state: what facts about the input determine an optimal substructure. The naive recursive formulation typically has exponential cost (recomputing subproblems); the memoised or tabular formulation has cost equal to (number of states) $\times$ (work per state).
+
+\begin{example}
+The longest common subsequence (LCS) of two strings $X, Y$ of lengths $m, n$ has a dynamic-programming solution. Let $L[i, j]$ be the LCS length of $X[1..i]$ and $Y[1..j]$. The recurrence:
+\[
+L[i, j] = \begin{cases}
+  0 & \text{if } i = 0 \text{ or } j = 0 \\
+  L[i-1, j-1] + 1 & \text{if } X[i] = Y[j] \\
+  \max(L[i-1, j], L[i, j-1]) & \text{otherwise.}
+\end{cases}
+\]
+The table has $mn$ entries, each computed in $\oom{1}$. Total cost $\oom{mn}$, against $\oom{2^{\min(m,n)}}$ for the brute-force enumeration.
+\end{example}
+
+\section{Graph algorithms}\pathtag{standard}
+
+Many engineering problems are graph problems: network routing, dependency resolution, scheduling, flow optimisation, parsing. A graph $G = (V, E)$ is a set of vertices $V$ and a set of edges $E \subseteq V \times V$ (directed) or $E \subseteq \binom{V}{2}$ (undirected). Weights may be attached to edges (distances, capacities, costs).
+
+\subsection{Representations}
+
+\textbf{Adjacency matrix.} An $|V| \times |V|$ matrix with entry $(i, j)$ giving the edge $(i, j)$. Space $\oom{|V|^2}$. Edge presence check in $\oom{1}$. Neighbour enumeration in $\oom{|V|}$. Good for dense graphs.
+
+\textbf{Adjacency list.} For each vertex, a list of its neighbours. Space $\oom{|V| + |E|}$. Edge check in $\oom{\deg(v))}$. Neighbour enumeration in $\oom{\deg(v))}$. Good for sparse graphs.
+
+Most real graphs are sparse ($|E| \ll |V|^2$); adjacency-list representation dominates.
+
+\subsection{Traversal}
+
+\textbf{Breadth-first search (BFS).} Explore neighbours level by level using a queue. Finds shortest paths in unweighted graphs. Time $\oom{|V| + |E|}$.
+
+\textbf{Depth-first search (DFS).} Explore as deep as possible before backtracking, using a stack (or recursion). Used for cycle detection, topological sort, strongly-connected components. Time $\oom{|V| + |E|}$.
+
+\subsection{Shortest paths}
+
+\textbf{Dijkstra's algorithm.} Single-source shortest paths on non-negative edge weights. Time $\oom{(|V| + |E|) \log |V|}$ with a binary heap; $\oom{|E| + |V| \log |V|}$ with a Fibonacci heap.
+
+\textbf{Bellman-Ford.} Single-source shortest paths allowing negative edge weights (no negative cycles). Time $\oom{|V| \cdot |E|}$.
+
+\textbf{Floyd-Warshall.} All-pairs shortest paths. Time $\oom{|V|^3}$.
+
+\textbf{A*.} Heuristic single-source single-target search using a admissible heuristic. Time depends on heuristic quality.
+
+\subsection{Minimum spanning tree}
+
+\textbf{Kruskal.} Sort edges by weight; add each edge if it does not form a cycle (use union-find). Time $\oom{|E| \log |E|}$.
+
+\textbf{Prim.} Grow a tree from a single vertex, adding the minimum-weight edge crossing the current cut. Time $\oom{|E| \log |V|}$ with a binary heap.
+
+\subsection{Maximum flow}
+
+\textbf{Ford-Fulkerson.} Augmenting paths. Time $\oom{|E| \cdot |f^*|}$ where $|f^*|$ is the maximum flow value (so pseudopolynomial).
+
+\textbf{Edmonds-Karp.} Ford-Fulkerson with BFS to find augmenting paths. Time $\oom{|V| \cdot |E|^2}$.
+
+\textbf{Dinic.} Time $\oom{|V|^2 \cdot |E|}$.
+
+Maximum-flow algorithms are the engineering workhorse for assignment problems (jobs to machines, requests to servers, students to courses), network reliability under capacity constraints, and a wide class of optimisation problems that admit a flow formulation.
+
+\section{NP-completeness, intractability}\pathtag{standard}
+
+The complexity class $\mathsf{P}$ contains decision problems solvable in polynomial time on a deterministic Turing machine. The class $\mathsf{NP}$ contains decision problems whose ``yes'' instances admit a polynomial-time-verifiable certificate. Equivalently, $\mathsf{NP}$ is the class of problems solvable in polynomial time on a non-deterministic Turing machine.
+
+The question whether $\mathsf{P} = \mathsf{NP}$ has been open since Cook stated it formally in 1971. The consensus among working complexity theorists is that the answer is no: most natural $\mathsf{NP}$ problems are believed to require super-polynomial time on deterministic machines, but no proof of this is known. The Clay Mathematics Institute lists $\mathsf{P}$ versus $\mathsf{NP}$ as one of the seven Millennium Prize Problems.
+
+\subsection{Reduction and NP-completeness}
+
+A problem $A$ \engterm{reduces} to a problem $B$ if a solver for $B$ can be used to solve $A$ in polynomial extra time. A problem is \engterm{NP-hard} if every problem in $\mathsf{NP}$ reduces to it; \engterm{NP-complete} if it is both in $\mathsf{NP}$ and NP-hard.
+
+Cook (1971) and Levin (independently) proved that Boolean satisfiability (SAT) is NP-complete. Karp (1972) gave reductions establishing NP-completeness of $21$ other problems including:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Travelling Salesman}: given a graph with edge weights, is there a tour of total weight $\leq k$?
+  \item \textbf{Knapsack (0/1)}: given items with weights and values, is there a subset of total weight $\leq W$ and value $\geq V$?
+  \item \textbf{Vertex Cover}: is there a set of $k$ vertices covering every edge?
+  \item \textbf{3-Colouring}: can the graph be coloured with three colours so no adjacent vertices share a colour?
+  \item \textbf{Subset Sum}: given a set of integers, is there a subset summing to $S$?
+\end{itemize}
+
+The engineering consequence: a working algorithm that decides any one of these in polynomial time would (assuming $\mathsf{P} \neq \mathsf{NP}$ is false) decide all of them in polynomial time. Decades of work by competent people have produced no such algorithm. The working assumption in industrial computer science is that no such algorithm exists, and engineering effort goes into approximation, heuristics, and identification of tractable special cases.
+
+\subsection{The engineering response to NP-hardness}
+
+\textbf{Identify tractable special cases.} The general satisfiability problem is NP-complete; 2-SAT (each clause has at most two literals) is in $\mathsf{P}$. The general vertex-cover problem is NP-complete; vertex cover on trees is in $\mathsf{P}$. The general scheduling problem is NP-complete; scheduling with identical tasks on identical machines is in $\mathsf{P}$.
+
+\textbf{Approximation algorithms.} An $\alpha$-approximation algorithm finds a solution whose cost is within a factor of $\alpha$ of the optimum. The metric TSP admits a $1.5$-approximation (Christofides 1976). Vertex cover admits a $2$-approximation. Some problems admit polynomial-time approximation schemes (PTAS), which return a $(1 + \epsilon)$-approximation for any $\epsilon > 0$.
+
+\textbf{Randomised algorithms.} Many problems admit polynomial-time algorithms with bounded probability of error.
+
+\textbf{Heuristics.} Local search, simulated annealing, genetic algorithms, branch-and-bound, modern SAT solvers. These have no theoretical worst-case bound but often perform well on real-world inputs. Modern industrial SAT solvers can decide instances with millions of variables and clauses that arise from hardware verification, despite SAT being NP-complete.
+
+\section{Approximation and randomisation}\pathtag{standard}
+
+\subsection{Approximation algorithms}
+
+The classical example: \textbf{vertex cover by maximal matching}. Find any maximal matching; output the set of endpoints. This set covers every edge (any edge not covered would extend the matching) and has size at most twice the optimal cover (the matching itself is a lower bound). Hence a $2$-approximation in $\oom{|E|}$.
+
+\textbf{Christofides on metric TSP}: build a minimum spanning tree, find a minimum-weight perfect matching of odd-degree vertices, form an Eulerian circuit, shortcut to a Hamiltonian cycle. Gives $1.5$-approximation. Improved to $1.5 - \epsilon$ for tiny $\epsilon$ in Karlin-Klein-Oveis Gharan 2020; this was the first improvement in $44$ years.
+
+\subsection{Randomised algorithms}
+
+A \engterm{randomised algorithm} makes random choices during execution; its running time, output, or both depend on the random choices. Two main classes:
+
+\textbf{Las Vegas.} Always produces a correct result; running time is random. Quicksort with random pivots, random binary search trees.
+
+\textbf{Monte Carlo.} Running time is bounded; result is correct with high probability. Polynomial identity testing, primality testing (Miller-Rabin), randomised contraction algorithms.
+
+The engineering value of randomisation is twofold. First, randomised algorithms are often simpler than their deterministic counterparts (compare quicksort to median-finding). Second, randomisation defeats adversarial inputs: an adversary cannot construct a worst-case input for an algorithm whose behaviour depends on random choices unknown to the adversary. Chapter 4 returns to this with hash-table attacks.
+
+\subsection{Online algorithms and competitive analysis}
+
+An \engterm{online algorithm} makes decisions on each input as it arrives, without knowledge of future inputs. The \engterm{competitive ratio} compares the online algorithm's performance to the optimal offline algorithm (which sees the entire input in advance). The ski-rental problem (rent at \$1/day or buy at \$$B$, not knowing how many days remaining) admits a $2$-competitive deterministic algorithm and an $e/(e-1) \approx 1.58$-competitive randomised algorithm. Online algorithms underpin caching, load balancing, and request scheduling in operating systems and distributed systems.
+
+\section{Failure: \texorpdfstring{$O(n^2)$}{O(n²)} algorithms in production at scale}\pathtag{core}
+
+The most common algorithmic failure in industrial software is not an incorrect algorithm. It is a correct algorithm whose complexity is acceptable on test data and unacceptable on production data. The pattern recurs across enough independent incidents that it has earned a name: \engterm{quadratic explosion}.
+
+\subsection{The pattern}
+
+The pattern has three ingredients.
+
+First, the algorithm is straightforward and obviously correct on small inputs. A nested loop that compares every pair; a regular-expression engine that backtracks; a string-concatenation routine that allocates a new buffer for each appended character.
+
+Second, the test data is small enough that the quadratic cost is invisible. The test suite runs in milliseconds. The code-review reviewer reads the function and confirms it is correct.
+
+Third, the production data is large enough that the quadratic cost is fatal. A user submits a request with $10^5$ items. The function takes hours rather than the expected milliseconds. The service times out, the database connection times out, the operator pages the on-call engineer.
+
+\subsection{Concrete patterns}
+
+\textbf{String concatenation in a loop.} The pattern
+\begin{verbatim}
+s = ""
+for x in xs:
+    s = s + str(x)
+\end{verbatim}
+appears safe. In a language where strings are immutable and concatenation allocates a new string, each iteration takes time proportional to the current length of $s$, giving $\oom{n^2}$ total cost. The fix is to use a builder (Java's StringBuilder, C++'s ostringstream, a list-and-join idiom in Python).
+
+\textbf{Repeated linear scan.} The pattern ``for each item, check whether it has been seen before by scanning a list'' is $\oom{n^2}$. The fix is a hash set: $\oom{1}$ amortised per check, $\oom{n}$ total.
+
+\textbf{Regex with catastrophic backtracking.} A regular expression with nested quantifiers ($(a+)+$ on the input ``aaab'') can take exponential time. Many modern languages still ship regex engines that exhibit this behaviour. The fix is a non-backtracking engine (Rust's regex crate, Go's RE2, Hyperscan), or a careful audit of regex complexity.
+
+\textbf{N+1 database queries.} The pattern ``fetch a list of items, then for each item fetch its related rows in a separate query'' is $\oom{n}$ queries, each with constant cost. The cost is dominated by the round trip rather than the algorithm. The fix is a join, a batched fetch, or an explicit prefetch.
+
+\textbf{Quadratic data structure operations.} An array as a set, with linear-scan ``contains'' checks. A linked list as a deque, with linear traversal to find a midpoint. The fix is the right data structure (Chapter 4).
+
+\subsection{Why the pattern persists}
+
+The pattern persists for two reasons. First, the cost is invisible on the small inputs typical of unit tests. A test that uses $n = 10$ items observes $100\,\si{\micro\second}$; the same code at $n = 10^5$ observes $10^4 \times 10^4 \times 1\,\si{\micro\second} = 100\,\si{\second}$. The first is invisible; the second is fatal. Second, the asymptotic analysis is not part of the typical code-review workflow. The reviewer reads the code for correctness, not for complexity.
+
+The engineering remedies are well-known and routinely under-applied. Performance tests at production-realistic input sizes. Code-review checklists that include complexity. Static analysis tools that flag suspicious nested loops, string concatenation in loops, $\oom{n^2}$ regex patterns. Profiling in staging environments. Each of these is cheap; the discipline is to apply them.
+
+\begin{principle}[Complexity is part of correctness]
+A correct algorithm with the wrong complexity is incorrect for production. The engineer who treats complexity as a separate concern from correctness has admitted into the codebase an undefined behaviour that surfaces only at production scale. The discipline of asymptotic analysis is the discipline of completing the specification.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement and benchmark four sorting algorithms; explain crossover behaviour]
+Implement four sorting algorithms in a language of your choice: insertion sort (the $\oom{n^2}$ baseline), merge sort (top-down), quicksort (with random pivots), and one linear-time sort suitable for your data (counting sort or radix sort).
+
+\begin{enumerate}[leftmargin=*]
+  \item Benchmark all four on random integer arrays of sizes $n = 10, 100, 1\,000, 10\,000, 100\,000, 10^6$. Plot running time vs $n$ on log-log axes.
+  \item Identify the crossover where insertion sort becomes slower than merge sort. State the crossover in terms of $n$ on your hardware.
+  \item Repeat the benchmarks on already-sorted input, reverse-sorted input, and input with many duplicates. Identify which algorithm degrades on each pathological case and explain why.
+  \item For your quicksort, implement both deterministic-first-element pivoting and randomised pivoting. Construct an adversarial input that triggers $\oom{n^2}$ behaviour on the deterministic version. Verify your construction.
+  \item Compare your linear-time sort to the comparison-based sorts. State the input regime in which the linear-time sort is preferable, and the regime in which the comparison-based sorts win on constants.
+\end{enumerate}
+
+The deliverable is a short report (no more than six pages) containing the implementations, the plots, and the analysis. The report must explicitly identify which algorithm and which input combination it would recommend for a production environment with the input characteristics typical of the reader's domain.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 45 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute Euclid's algorithm by hand on $\gcd(252, 198)$. State the sequence of intermediate values.
+\end{exercise}
+
+\begin{exercise}
+Determine the asymptotic complexity of each: \begin{enumerate*}[label=(\alph*)] \item three nested loops over $n$ each, \item a loop over $n$ with a binary search inside, \item a recursive function $f(n) = 2 f(n/2) + n$, \item a recursive function $f(n) = f(n-1) + 1$. \end{enumerate*}
+\end{exercise}
+
+\begin{exercise}
+Apply the master theorem to the recurrence $T(n) = 4 T(n/2) + n^2$. State the asymptotic complexity.
+\end{exercise}
+
+\begin{exercise}
+Run merge sort by hand on the list $[5, 2, 8, 1, 9, 3, 7, 4, 6]$. Show all intermediate merges.
+\end{exercise}
+
+\begin{exercise}
+Run quicksort with first-element pivoting by hand on the list $[5, 2, 8, 1, 9, 3, 7, 4, 6]$. Now run it on $[1, 2, 3, 4, 5, 6, 7, 8, 9]$. Compare the recursion-tree depths.
+\end{exercise}
+
+\begin{exercise}
+Run Dijkstra's algorithm by hand on a small weighted graph of your choice. State the priority-queue contents at each iteration.
+\end{exercise}
+
+\begin{exercise}
+Compute the longest common subsequence of ``ABCBDAB'' and ``BDCABC'' using the dynamic-programming recurrence. State the resulting table.
+\end{exercise}
+
+\begin{exercise}
+For the 0/1 knapsack with weights $\{2, 3, 4, 5\}$, values $\{3, 4, 5, 6\}$, capacity $5$, compute the dynamic-programming table.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Prove by exchange argument that the greedy interval-scheduling algorithm (always pick the interval with the earliest finish time among those not yet conflicting) produces an optimal schedule.
+\end{exercise}
+
+\begin{exercise}
+Prove the $\Omega(n \log n)$ lower bound on comparison-based sorting using the decision-tree argument.
+\end{exercise}
+
+\begin{exercise}
+Prove that a $2$-approximation for vertex cover can be obtained by repeatedly selecting both endpoints of an uncovered edge.
+\end{exercise}
+
+\begin{exercise}
+Prove that the maximum-flow value in a network equals the minimum-cut capacity (max-flow min-cut theorem). State the proof at the engineer's level.
+\end{exercise}
+
+\begin{exercise}
+Show that 3-SAT reduces to vertex cover. State the reduction explicitly.
+\end{exercise}
+
+\begin{exercise}
+Show that the recursive Fibonacci $F(n) = F(n-1) + F(n-2)$ without memoisation has time complexity $\Theta(\phi^n)$ where $\phi$ is the golden ratio. With memoisation, show that it is $\oom{n}$.
+\end{exercise}
+
+\begin{exercise}
+Show that the master theorem's third case fails for the recurrence $T(n) = T(n/2) + n / \log n$. Derive the complexity directly.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the running time of bubble sort on $10^9$ integers given $10^9$ operations per second. Compare to merge sort.
+\end{exercise}
+
+\begin{exercise}
+Estimate the size of input at which an $\oom{n^3}$ algorithm becomes infeasible (more than $1$ hour at $10^9$ operations per second). Compare to $\oom{n^2 \log n}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time complexity of a brute-force travelling-salesman solution on $20$ cities. Compare to a dynamic-programming solution.
+\end{exercise}
+
+\begin{exercise}
+A web service processes user requests, each with a list of up to $1000$ items. Estimate the latency budget the engineer must respect for the per-request algorithm to keep $p99$ latency below $200\,\si{\milli\second}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cache-miss-dominated running time of merge sort on $10^9$ integers given a $32\,\si{\mega\byte}$ L3 cache and a memory latency of $80\,\si{\nano\second}$. Compare to the CPU-cycle-dominated running time.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement Euclid's GCD algorithm in two languages of your choice. Benchmark on large operand pairs.
+\end{exercise}
+
+\begin{exercise}
+Implement the $\oom{n^2}$ pairwise-comparison closest-pair-of-points algorithm. Benchmark its crossover against the divide-and-conquer $\oom{n \log n}$ algorithm.
+\end{exercise}
+
+\begin{exercise}
+Implement Dijkstra's algorithm with a binary heap. Run it on a road network of your choice. Compare to a Bellman-Ford implementation.
+\end{exercise}
+
+\begin{exercise}
+Implement a memoised LCS and a tabular LCS. Compare cache behaviour and running time.
+\end{exercise}
+
+\begin{exercise}
+Implement a brute-force SAT solver and a modern conflict-driven clause-learning (CDCL) solver (or use one off-the-shelf). Run both on a synthetic suite of $3$-SAT instances. Compare running times as a function of the number of variables.
+\end{exercise}
+
+\begin{exercise}
+Implement Kruskal's algorithm with the union-find data structure. Benchmark vs Prim's on sparse and dense graphs.
+\end{exercise}
+
+\begin{exercise}
+Implement and benchmark three different priority-queue implementations (binary heap, pairing heap, Fibonacci heap). Compare on Dijkstra's algorithm.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design an algorithm for the following problem: given a stream of integers and a window size $w$, output the median of every sliding window of $w$ consecutive integers. State the time complexity. Identify the appropriate data structure.
+\end{exercise}
+
+\begin{exercise}
+Design an algorithm for shortest paths in a road network with rush-hour-dependent travel times. State your inputs, outputs, and approach.
+\end{exercise}
+
+\begin{exercise}
+Design a load-balancing algorithm for assigning incoming requests to a fleet of identical servers. State your assumptions and your competitive ratio against the optimal offline algorithm.
+\end{exercise}
+
+\begin{exercise}
+Design a code-review checklist for catching $\oom{n^2}$-on-production-data defects. List five patterns and the static or dynamic check that catches each.
+\end{exercise}
+
+\begin{exercise}
+Design an approximation algorithm for the makespan-minimisation scheduling problem (assigning jobs to identical machines to minimise the maximum total time on any machine). State your approximation ratio.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+An engineering team proposes to use a quadratic-time algorithm for processing user-uploaded files because ``users won't upload that much.'' Critique the proposal. What questions must be answered before accepting it?
+\end{exercise}
+
+\begin{exercise}
+A library function uses a regex with nested quantifiers (e.g., \texttt{(a+)+}) for input validation. Identify the failure mode under adversarial input. State the engineering remedy.
+\end{exercise}
+
+\begin{exercise}
+The Christofides $1.5$-approximation for metric TSP was the state of the art for $44$ years before the recent $1.5 - \epsilon$ improvement. Identify what this longevity says about the algorithmic discipline. What does it imply about the value of a $1\%$ improvement in industrial routing software?
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a polynomial $\oom{n^{10}}$ algorithm and a worst-case-exponential algorithm that performs well empirically on the team's inputs. State the engineering considerations. What evidence would shift your recommendation?
+\end{exercise}
+
+\begin{exercise}
+Knuth's quotation that opens the chapter (``Premature optimisation is the root of all evil. Yet we should not pass up our opportunities in that critical 3\%'') is often quoted only in its first half. Critique the half-quotation. What does the full quotation actually counsel?
+\end{exercise}
+
+\begin{exercise}
+The hypothesis $\mathsf{P} \neq \mathsf{NP}$ is a working assumption rather than a theorem. State what would change in the engineering discipline if $\mathsf{P} = \mathsf{NP}$ were proven tomorrow. Identify three industrial practices that depend on the assumption.
+\end{exercise}
+
+\begin{exercise}
+Modern SAT solvers solve industrial instances with millions of variables in seconds, despite SAT being NP-complete. State what this implies about ``hard'' instances versus typical instances. Compare the engineering response to other NP-complete problems.
+\end{exercise}
+
+\begin{exercise}
+For each of the following, state whether you would use a randomised algorithm or a deterministic one and why: \begin{enumerate*}[label=(\alph*)] \item primality testing of a $4096$-bit RSA key, \item the routing algorithm in a deployed road-navigation service, \item the hash function for storing user-provided keys in a hash table, \item the sort routine in a database query engine. \end{enumerate*}
+\end{exercise}
+
+\begin{exercise}
+A team proposes to replace an $\oom{n \log n}$ comparison sort with an $\oom{n}$ radix sort in their production hot path. State the conditions under which the swap is safe, and the conditions under which it would degrade performance or correctness.
+\end{exercise}
+
+\begin{exercise}
+Knuth's analysis of average-case quicksort assumes random input. State why this assumption fails for many real workloads (logs, sorted-by-id inserts, partially-sorted external feeds) and what engineering response avoids the resulting $\oom{n^2}$ degradation.
+\end{exercise}
+
+\begin{exercise}
+Identify three places in your own work (or in a public open-source project of your choice) where an $\oom{n^2}$ or worse algorithm is used. For each, state the input scale at which the algorithm becomes problematic, and the remediation cost of switching to a faster algorithm.
+\end{exercise}
+
+\begin{exercise}
+Approximation algorithms guarantee a bound relative to the optimal cost. Heuristics give no such guarantee but often work well in practice. State the engineering case for using each in: \begin{enumerate*}[label=(\alph*)] \item daily delivery-route planning for a 1000-vehicle fleet, \item once-per-quarter facility-location planning for a national retail chain, \item real-time job-shop scheduling for a factory floor. \end{enumerate*}
+\end{exercise}
+
+\begin{exercise}
+A research paper claims an algorithm runs in ``polynomial time'' for an industrial problem. Identify three questions the engineering reader must ask before treating the claim as a working engineering result.
+\end{exercise}

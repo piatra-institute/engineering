@@ -4,7 +4,7 @@ Last updated: 2026-05-15.
 
 ## Phase
 
-**Phase 1: production prose at scale.** In progress. Volumes I through V are drafted in full at first-draft density; Volume VI is partially drafted (Ch 1 through Ch 10 of 13). All 76 drafted chapters compile cleanly in `main.pdf`. The discipline guards (`make check`, `make audit-docs`, `make accidents`, `make exercise-counts`) report PASS across the current state.
+**Phase 1: production prose at scale.** In progress. Volumes I through V are drafted in full at first-draft density; Volume VI is partially drafted (Ch 1 through Ch 10 of 13); Volume VII is drafted in full (19 of 19 chapters). All 95 drafted chapters compile cleanly in `main.pdf`. The discipline guards (`make check`, `make audit-docs`, `make accidents`, `make exercise-counts`) report PASS across the current state.
 
 Per-volume state:
 
@@ -14,13 +14,14 @@ Per-volume state:
 - **Volume IV (Energy)** — 14 of 14 chapters at **Stage 4** awaiting Codex review. Drafted on the `dev: vol04` commit.
 - **Volume V (Matter)** — 12 of 12 chapters at **Stage 4** awaiting Codex review. Drafted on the `dev: vol05` commit.
 - **Volume VI (Life)** — 10 of 13 chapters at **Stage 4** awaiting Codex review. Ch 11 (Bioinformatics), Ch 12 (Biocompatibility and medical devices), and Ch 13 (Living engineering, the anatomical compiler) remain at Stage 1.
-- **Volumes VII through XII** — 95 chapters at **Stage 1** (scaffolding shells with dossier-derived metadata; no prose).
+- **Volume VII (Information)** — 19 of 19 chapters at **Stage 4** awaiting Codex review. Drafted on the `dev: vol07` commit.
+- **Volumes VIII through XII** — 76 chapters at **Stage 1** (scaffolding shells with dossier-derived metadata; no prose).
 
 Two lanes remain open:
 
-- Continue forward into Volume VI Ch 11-13 and Volume VII prose.
-- Codex review for Volumes II through VI (67 chapters awaiting review on the same three-role protocol that carried Volume I from Stage 4 to Stage 5).
-- Volume I-V production-density pass: figures, project artifacts, expanded solution sets, case-study expansions, code/data co-located with each chapter. Q57 (page density vs target) is the open question that gates whether this lane runs at all; with five full volumes drafted at the same ~22-30pp/chapter density, the empirical case is now strong.
+- Continue forward into Volume VI Ch 11-13 and Volume VIII prose.
+- Codex review for Volumes II through VII (86 chapters awaiting review on the same three-role protocol that carried Volume I from Stage 4 to Stage 5).
+- Volume I-VII production-density pass: figures, project artifacts, expanded solution sets, case-study expansions, code/data co-located with each chapter. Q57 (page density vs target) is the open question that gates whether this lane runs at all; with six full volumes plus Vol VI partial and Vol VII full drafted at consistent ~14-31% of target density, the empirical case is now strong.
 
 Previous phases:
 
@@ -39,36 +40,37 @@ Previous phases:
 | Per-chapter dossiers | 174 |
 | `\chapmeta` blocks in chapter shells | 174 |
 | Half-life: TBD remaining | 0 |
-| `Project track: TBD` remaining | 98 (Vol VI Ch 11-13 plus all of Vols VII-XII) |
-| TODO markers in TeX | ~1055 |
-| Empty epigraphs in chapter shells | 99 |
-| Section headings | ~1653 |
-| Bibliography entries | 210 |
-| Named-case registry entries | 20 |
-| `acc:` keys cited in chapter prose | 21 |
+| `Project track: TBD` remaining | 79 (Vol VI Ch 11-13 plus all of Vols VIII-XII) |
+| TODO markers in TeX | ~875 |
+| Empty epigraphs in chapter shells | 80 |
+| Section headings | ~1800 |
+| Bibliography entries | 252 |
+| Named-case registry entries | 22 |
+| `acc:` keys cited in chapter prose | 22 |
 | Research seeds on disk | 1 |
-| Chapters with prose (Stage 4 or 5) | 76 |
+| Chapters with prose (Stage 4 or 5) | 95 |
 | Vol I chapters at Stage 5 | 9 of 9 |
-| Vols II-VI chapters at Stage 4 | 67 awaiting review |
-| Chapters at Stage 1 | 98 |
-| `main.pdf` page count (last build) | 1972 |
+| Vols II-VII chapters at Stage 4 | 86 awaiting review |
+| Chapters at Stage 1 | 79 |
+| `main.pdf` page count (last build) | 2201 |
 | Volume I page span | pp 1-220 (~220pp; target ~720) |
 | Volume II page span | pp 221-710 (~490pp; target ~1800) |
 | Volume III page span | pp 711-984 (~274pp; target ~1300) |
 | Volume IV page span | pp 985-1218 (~234pp; target ~1400) |
 | Volume V page span | pp 1219-1456 (~238pp; target ~1200) |
 | Volume VI page span (partial) | pp 1457-1634 (~178pp; target ~1300) |
+| Volume VII page span | pp 1635-1898 (~264pp; target ~1980) |
 
 Bibliography breakdown by category prefix:
 
 | Prefix | Count | Use |
 | --- | --- | --- |
-| `text:` | 105 | textbooks, monographs, working handbooks |
-| `hist:` | 27 | historical and biographical primary/secondary sources |
-| `acc:` | 21 | accident investigation reports and the registry's primary keys |
-| `paper:` | 18 | peer-reviewed papers |
-| `web:` | 12 | tertiary explainers and reference web content (non-load-bearing) |
-| `std:` | 11 | standards documents |
+| `text:` | 131 | textbooks, monographs, working handbooks |
+| `hist:` | 31 | historical and biographical primary/secondary sources |
+| `paper:` | 27 | peer-reviewed papers |
+| `acc:` | 22 | accident investigation reports and the registry's primary keys |
+| `web:` | 13 | tertiary explainers and reference web content (non-load-bearing) |
+| `std:` | 12 | standards documents |
 | `gen:` | 8 | general references |
 | `method:` | 5 | research-methods literature (replication, p-hacking, HARKing) |
 | `data:` | 2 | datasets with provenance |
@@ -99,15 +101,15 @@ Run `make stats` for the live numbers.
 Active items from `open-questions.md`:
 
 - **Q54 companion-note architecture**: spine vs companion-notes vs code repo vs data repo vs errata. Not yet decided. Becomes load-bearing if a production-density lane runs (figures, code, datasets all need a home).
-- **Q55 per-chapter project track (98 chapters remaining)**: Volumes I-V are complete; Volume VI is partially complete (Ch 1-10 settled, Ch 11-13 still TBD); Volumes VII-XII still carry `Project track: TBD`. Editorial pass needed per volume as that volume comes into prose drafting.
-- **Q57 page density vs target**: Five full volumes are now drafted at the same ~22-30pp/chapter density Volume I landed at. Volume I 220 of 720; Vol II 490 of 1800; Vol III 274 of 1300; Vol IV 234 of 1400; Vol V 238 of 1200; Vol VI (partial) 178 of 1300. The pattern across five-and-a-half volumes is consistent: first-draft prose lands at roughly one-third to one-fifth of the planned page budget. The two readings (chapters dense vs artifacts missing) are now testable against six volumes of evidence rather than one.
+- **Q55 per-chapter project track (79 chapters remaining)**: Volumes I-V are complete; Volume VI is partially complete (Ch 1-10 settled, Ch 11-13 still TBD); Volume VII is complete; Volumes VIII-XII still carry `Project track: TBD`. Editorial pass needed per volume as that volume comes into prose drafting.
+- **Q57 page density vs target**: Six full volumes plus partial Vol VI are now drafted at consistent first-draft density (~14-31\% of target across the seven volumes). Volume I 220 of 720; Vol II 490 of 1800; Vol III 274 of 1300; Vol IV 234 of 1400; Vol V 238 of 1200; Vol VI (partial) 178 of 1300; Vol VII 264 of 1980. The pattern is consistent: first-draft prose lands at roughly one-third to one-fifth of the planned page budget. The two readings (chapters dense vs artifacts missing) are now testable against seven volumes of evidence.
 
 Settled but kept on the wider planning radar:
 
 - **Q51 reader-path model** (core / standard / mastery): settled 2026-04-28. Implemented through `\pathtag{}` on every section across the Vol I chapters and propagated through subsequent volumes' drafting.
 - **Q52 pilot chapter**: settled and surpassed; all nine Vol I chapters carried through Stage 5.
 - **Q53 license confirmation**: settled 2026-04-28.
-- **Q56 named-cases registry**: settled 2026-04-29; registry now holds 20 entries, all `acc:` keys cited in prose resolve to a registry entry, and every named accident in prose carries at least one of its registry's citation keys.
+- **Q56 named-cases registry**: settled 2026-04-29; registry now holds 22 entries (Pentium FDIV bug and Mars Pathfinder priority inversion added during Vol VII drafting), all `acc:` keys cited in prose resolve to a registry entry, and every named accident in prose carries at least one of its registry's citation keys.
 
 Queued from `interludes.md`:
 
@@ -119,8 +121,8 @@ Queued from `interludes.md`:
 The diagnostic identified three top risks (`docs/diagnostic.md`). Phase 0.5 mitigated the first; Phase 0.7 and the nine Vol I reviews mitigated the third in part; Vols II-VI prose passes scaled the bibliography from 86 to 210 entries and the registry from 12 to 20 entries without breaking citation discipline. The second remains.
 
 1. **Source-of-truth drift between generator and dossiers.** **Mitigated.** The generator reads dossiers as the canonical source; `make check` enforces `\chapmeta` presence on every chapter shell.
-2. **Scale honesty for the reader.** **Open.** Q57 is the live form; six volumes of evidence now sit under the question.
-3. **Verification (citation discipline, reproducible examples, table provenance).** **Substantially mitigated for Volume I; carried forward into Vols II-VI as first-draft discipline awaiting Codex review.** Bibliography grew from 86 to 210 entries across Vols II-VI drafting. The Stage 4 review pass for Vols II-VI is the discipline carrier for the rest of the project.
+2. **Scale honesty for the reader.** **Open.** Q57 is the live form; seven volumes of evidence now sit under the question.
+3. **Verification (citation discipline, reproducible examples, table provenance).** **Substantially mitigated for Volume I; carried forward into Vols II-VII as first-draft discipline awaiting Codex review.** Bibliography grew from 86 to 252 entries across Vols II-VII drafting. The Stage 4 review pass for Vols II-VII is the discipline carrier for the rest of the project.
 
 ## Build state
 
@@ -130,7 +132,7 @@ The current build runs cleanly:
 make distclean && make
 ```
 
-Produces `main.pdf` at 1972 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
+Produces `main.pdf` at 2201 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
 
 ## Operational notes
 
@@ -145,10 +147,10 @@ Produces `main.pdf` at 1972 pages. `make check`, `make audit-docs`, `make accide
 
 1. Commission Codex reviews for Volume II Ch 1 onward, one chapter at a time, applying the same three-role protocol that carried Vol I from Stage 4 to Stage 5.
 2. Finish Vol VI prose (Ch 11 Bioinformatics, Ch 12 Biocompatibility and medical devices, Ch 13 Living engineering / anatomical compiler).
-3. Start Volume VII prose (Information) once Vol VI is complete. Vol VII is 19 chapters and is the largest single volume; pre-flight will likely add discrete-math, complexity, and ML operators to `eng-macros.sty` analogous to the Vol II expansion.
-4. Settle Q57 with six volumes of evidence behind the decision. The two readings imply different forward sequences (forward to Vol VII vs back to Vol I production-density pass).
+3. Start Volume VIII prose (Machines) once Vol VI is complete. The bridge from Vol VII (Information) is direct: the architecture and digital-systems content of Vol VII Ch 7 and Ch 16 land in Vol VIII.
+4. Settle Q57 with seven volumes of evidence behind the decision. The two readings imply different forward sequences (forward to Vol VIII vs back to Vols I-VII production-density pass).
 5. Settle Q54 (companion-note architecture) before any production-density lane runs.
-6. Continue closing the 98 remaining Q55 project-track decisions, one volume at a time as that volume comes into prose drafting.
+6. Continue closing the 79 remaining Q55 project-track decisions, one volume at a time as that volume comes into prose drafting.
 7. Apply or formally defer the queued III-IV and IV-V interlude revisions.
 
-Five-and-a-half volumes of first-draft prose are now on disk at consistent density. The pipeline has been exercised at scale (parallel-agent passes for Vol II ran cleanly; single-agent passes for Vols III, IV, V, and the Vol VI partial ran cleanly). The next gating decisions are review throughput and page-density target, not whether the project can produce defensible chapters.
+Six-and-a-half volumes of first-draft prose are now on disk at consistent density. The pipeline has been exercised at scale (parallel-agent passes for Vol II ran cleanly; single-thread main-thread passes for Vols III, IV, V, Vol VI partial, and the largest single volume Vol VII all ran cleanly). The next gating decisions are review throughput and page-density target, not whether the project can produce defensible chapters.

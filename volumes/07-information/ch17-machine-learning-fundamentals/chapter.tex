@@ -1,40 +1,369 @@
 \chapter{Machine learning fundamentals}
 \label{vol07:ch17}
 
-\epigraph{}{}
+\epigraph{Most machine-learning practice is the discipline of not fooling yourself, and you are the easiest person to fool.}{after Richard Feynman, applied}
 
-\chapmeta{Half-life: medium-life. Archetypes: optimisation, uncertainty, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: optimisation, uncertainty, failure. Exercise target: 35. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 17. Approx 120 pp.}
+Machine learning is the discipline of programming computers to perform tasks by learning from data rather than by following explicit rules. The field has accumulated, in seventy years, a large body of techniques: linear models, neural networks, decision trees, ensembles, kernel methods, probabilistic graphical models. This chapter teaches the working fundamentals; Chapter 18 takes the modern deep-learning extension. The standard references are Bishop \cite{text:bishop-prml} and Hastie, Tibshirani, and Friedman \cite{text:hastie-tibshirani-friedman}.
 
-\section{The setup: data, model, loss}
-\TODO{Section prose.}
+The chapter is also a primer in the discipline of not deceiving oneself. Machine-learning systems are easy to build, easy to demonstrate on the training data, and hard to verify before deployment. The engineering discipline is to assume the model is wrong and to identify how before the consequences arrive.
 
-\section{Supervised learning: regression, classification}
-\TODO{Section prose.}
+\section{The setup: data, model, loss}\pathtag{core}
 
-\section{Unsupervised learning: clustering, dimensionality reduction}
-\TODO{Section prose.}
+A machine-learning problem has three working components.
 
-\section{Generalisation: bias-variance, regularisation}
-\TODO{Section prose.}
+\textbf{Data.} A set of input-output examples (supervised learning), inputs alone (unsupervised learning), or sequences of state-action-reward (reinforcement learning). The data is the empirical evidence on which the model is built.
 
-\section{Cross-validation revisited}
-\TODO{Section prose.}
+\textbf{Model.} A family of functions parameterised by some set of weights. The model class encodes the engineer's assumption about what the input-output relationship might look like.
 
-\section{Decision trees, ensembles}
-\TODO{Section prose.}
+\textbf{Loss.} A function that measures how badly the model's predictions match the data. The engineer chooses the loss to reflect the cost of mistakes.
 
-\section{Probabilistic graphical models}
-\TODO{Section prose.}
+The training process finds the parameters that minimise the loss on the training data, ideally producing a model that generalises to new examples.
 
-\section{Failure: overfitting, distribution shift, data leakage}
-\TODO{Section prose.}
+\subsection{The empirical risk}
 
+For training data $\{(x_i, y_i)\}_{i=1}^N$ and a model $f_\theta$ with parameters $\theta$, the empirical risk is
+\[
+R(\theta) = \frac{1}{N} \sum_{i=1}^N \ell(f_\theta(x_i), y_i)
+\]
+where $\ell$ is the loss function. Training minimises $R(\theta)$. The hope is that this also minimises the true risk over the data distribution.
 
-\section{Project}
-\TODO{build a working classifier from scratch on a real dataset}
+The gap between empirical risk and true risk is the \engterm{generalisation gap}. The discipline of machine learning is to manage this gap: keep the model simple enough that the gap is small, complex enough that the empirical risk is small. Section 17.4 takes this seriously.
+
+\section{Supervised learning: regression, classification}\pathtag{core}
+
+\subsection{Linear regression}
+
+The simplest supervised model: $\hat{y} = \vect{w}^T \vect{x} + b$. Fit by least squares: minimise $\sum (\hat{y}_i - y_i)^2$. Closed-form solution (the normal equations), or iterative (gradient descent).
+
+\textbf{Engineering applications.} The straight-line fit that recurs in every engineering domain. Calibration, regression analysis, baseline modelling.
+
+\textbf{Variants.} Ridge regression (add $L_2$ penalty), lasso (add $L_1$ penalty), elastic net (combination). Each addresses overfitting at the cost of biased estimates.
+
+\subsection{Logistic regression}
+
+For binary classification: $P(y = 1 | \vect{x}) = \sigma(\vect{w}^T \vect{x} + b)$ where $\sigma$ is the logistic sigmoid. Train by maximum-likelihood: minimise cross-entropy loss. The decision boundary is linear in $\vect{x}$.
+
+Logistic regression remains the working baseline for classification tasks with many features and many examples; it is interpretable (coefficients show feature importance), fast to train, often within $1\%$ of the performance of more sophisticated methods.
+
+\subsection{Support vector machines}
+
+A linear classifier that maximises the margin between the decision boundary and the nearest training points. With kernels, SVM produces non-linear decision boundaries by mapping the data into a higher-dimensional feature space.
+
+SVMs were the workhorse of mainstream machine learning in the 1990s and 2000s. They have been largely displaced by neural networks in performance-critical applications but remain useful for small-data, structured problems.
+
+\subsection{$k$-nearest neighbours}
+
+The simplest non-parametric classifier: predict by majority vote among the $k$ training points closest to the query. No training; all the work is at inference time. The distance metric and $k$ are the design choices.
+
+Engineering virtue: very simple, interpretable, works with any feature representation. Liability: requires the full training set at inference time, slow with many features (the curse of dimensionality).
+
+\section{Unsupervised learning}\pathtag{standard}
+
+Unsupervised learning finds structure in data without labels.
+
+\subsection{Clustering}
+
+\textbf{$k$-means.} Partition the data into $k$ clusters; each cluster represented by its centroid; each point assigned to the nearest centroid; alternate between assignment and centroid update until convergence. Fast, simple, requires the engineer to specify $k$.
+
+\textbf{Hierarchical clustering.} Build a tree of clusters by successive agglomeration (start with each point as its own cluster, merge closest pairs) or division. Useful for exploratory analysis; expensive ($\oom{n^2}$ to $\oom{n^3}$) on large data.
+
+\textbf{Gaussian mixture models.} Each cluster is a Gaussian; fit by expectation-maximisation. Soft cluster assignment (each point has probability of belonging to each cluster).
+
+\textbf{DBSCAN, HDBSCAN.} Density-based clustering. Identifies clusters of arbitrary shape; handles noise.
+
+\subsection{Dimensionality reduction}
+
+\textbf{Principal component analysis (PCA).} The classical method. Find the directions of maximum variance; project the data onto the top $k$ directions. Linear; based on the eigendecomposition of the covariance matrix.
+
+\textbf{$t$-SNE, UMAP.} Non-linear methods for visualising high-dimensional data in 2 or 3 dimensions. Preserve local structure (nearest-neighbour relationships) rather than global geometry.
+
+\textbf{Autoencoders.} Neural networks trained to reconstruct their input through a low-dimensional bottleneck. Section 17.7 returns to this.
+
+\section{Generalisation: bias-variance, regularisation}\pathtag{core}
+
+The central problem of machine learning is generalisation: making predictions on data the model has not seen during training. A model that perfectly fits the training data may perform badly on new data because it has memorised the training data's noise rather than the underlying pattern.
+
+\subsection{Bias-variance decomposition}
+
+For squared-error loss, the expected prediction error decomposes:
+\[
+\E[(y - \hat{y})^2] = \text{(noise)} + \text{(bias)}^2 + \text{variance}.
+\]
+
+\textbf{Bias} is the systematic error of the model: even with infinite data, the model cannot match the true function. A linear model fitted to a non-linear function has high bias.
+
+\textbf{Variance} is the model's sensitivity to the specific training set: different training sets produce different models. A complex model on small data has high variance.
+
+\textbf{Noise} is irreducible: even the true function has some randomness in the data.
+
+The bias-variance trade-off: simpler models have higher bias and lower variance; more complex models have lower bias and higher variance. The engineer's job is to choose model complexity to minimise the sum.
+
+\subsection{Regularisation}
+
+\engterm{Regularisation} adds a penalty on model complexity to the loss:
+\[
+R_{\text{reg}}(\theta) = R(\theta) + \lambda \Omega(\theta)
+\]
+where $\Omega(\theta)$ measures complexity. The standard choices: $L_2$ ($\Omega = \norm{\theta}_2^2$, encourages small weights), $L_1$ ($\Omega = \norm{\theta}_1$, encourages sparse weights, drives some weights to exactly zero), early stopping (stop training before the model fits the noise), dropout (randomly zero some units during training, a stochastic regularisation), data augmentation (transform training examples in ways that preserve the label).
+
+The regularisation strength $\lambda$ is itself a hyperparameter that must be chosen via cross-validation.
+
+\section{Cross-validation}\pathtag{core}
+
+Volume I Chapter 8 introduced cross-validation. The engineering practice in machine learning:
+
+\textbf{Hold-out validation.} Split the data into training and test sets. Train on the training set; evaluate on the test set. Simple but high-variance: the estimate of test performance depends on the specific split.
+
+\textbf{$k$-fold cross-validation.} Split the data into $k$ folds. Train on $k-1$ folds, test on the remaining fold; repeat for each fold; average. Lower variance than hold-out.
+
+\textbf{Stratified $k$-fold.} For classification: ensure each fold has the same class distribution as the full data.
+
+\textbf{Time-series cross-validation.} For time-series data: train on past, test on future. Standard hold-out is wrong because future-leaks-into-training would be an unrealistic assumption.
+
+\textbf{Leave-one-out.} The extreme case of $k$-fold with $k = N$. Expensive but unbiased.
+
+The discipline is to use cross-validation on a subset of the data and reserve a final test set for final evaluation. The test set must not be touched during model development; touching it (computing test loss to guide design decisions) leaks information from test to train and inflates apparent performance.
+
+\section{Decision trees, ensembles}\pathtag{standard}
+
+\subsection{Decision trees}
+
+A decision tree partitions the input space by axis-aligned splits. Each internal node tests a single feature; each leaf is a prediction. The splits are chosen greedily to minimise impurity (Gini, entropy) at each step.
+
+Engineering virtues: interpretable (the decision path is a sequence of human-readable rules), handles mixed numerical and categorical features, no scaling needed, captures non-linear relationships.
+
+Liabilities: high variance (small changes in data can produce very different trees), poor performance on extrapolation (no prediction beyond the training range).
+
+\subsection{Random forests}
+
+A \engterm{random forest} (Breiman 2001) is an ensemble of decision trees, each trained on a bootstrap sample of the data and a random subset of the features. Predictions are by majority vote (classification) or averaging (regression).
+
+Random forests are the workhorse of structured-data prediction: tabular data with mixed feature types, modest dataset size, no need for feature engineering. They consistently outperform linear methods on these tasks and are competitive with the more complex gradient-boosting methods.
+
+\subsection{Gradient boosting}
+
+\engterm{Gradient boosting} (Friedman 2001) trains an ensemble of weak learners (typically shallow decision trees) sequentially, each new learner fitting the residual error of the previous ensemble. The modern implementations (XGBoost, LightGBM, CatBoost) are highly optimised and dominate Kaggle competitions on structured data.
+
+Engineering choice between random forest and gradient boosting: gradient boosting typically performs better with careful tuning; random forest is more forgiving of hyperparameter choice.
+
+\section{Probabilistic graphical models}\pathtag{mastery}
+
+A \engterm{probabilistic graphical model} represents a joint probability distribution as a graph where nodes are random variables and edges are conditional dependencies. Two main classes:
+
+\textbf{Bayesian networks.} Directed acyclic graphs. The joint factorises as a product of conditional distributions, one per node. Used for causal modelling, expert systems, time-series with hidden states.
+
+\textbf{Markov random fields.} Undirected graphs. The joint factorises by cliques. Used for image segmentation, low-level vision, computational biology.
+
+\textbf{Hidden Markov models.} A special case of Bayesian network for sequence data. The hidden state is a Markov chain; the observations depend on the state. Used for speech recognition (historically), bioinformatics, natural-language tagging.
+
+The engineering value of graphical models has decreased as deep learning has displaced them in most applications. They remain useful when the model structure carries domain knowledge worth preserving (causal claims, scientific simulations, interpretability requirements).
+
+\section{Failure: overfitting, distribution shift, data leakage}\pathtag{core}
+
+Three classes of failure dominate production machine learning.
+
+\subsection{Overfitting}
+
+The model memorises the training data's noise. Training loss is low; test loss is high. The symptom is well-known; the remedies (regularisation, more data, simpler models, ensembles) are standard.
+
+The subtler failure: the engineer trains a model, observes high test performance, deploys, observes lower production performance. The test set was small, or the test set was not representative, or the engineer touched the test set repeatedly while iterating on the model.
+
+\subsection{Distribution shift}
+
+The training data was sampled from distribution $P$; the production data is sampled from distribution $Q$. The model's performance on $Q$ has no guarantee of relating to its performance on $P$.
+
+The classical examples: a recommendation model trained on summer behaviour deployed in winter; a fraud-detection model trained on historical patterns deployed in a market where fraud patterns have evolved; a vision model trained on stock photos deployed on user-generated content; a language model trained pre-pandemic deployed during the pandemic.
+
+The engineering response: monitor production data for distribution shift, retrain frequently, design models that degrade gracefully on out-of-distribution input.
+
+\subsection{Data leakage}
+
+\engterm{Data leakage} is the situation where the training data contains information about the target that would not be available in production. Example: a fraud detector trained with the case-resolution timestamp as a feature; in production, this timestamp is set after the fraud is detected, so the feature carries information not available at prediction time. The model appears to work; in production, it fails.
+
+The classical leakage patterns: using future information in time series, using post-event features, using features that are computed from the target.
+
+The engineering remedy is to think hard about feature provenance: when in the data pipeline is each feature computed, and is that the same as production?
+
+\subsection{The replication crisis}
+
+The 2010s saw a replication crisis in psychology, biology, economics, and increasingly machine learning. The Open Science Collaboration's 2015 study found that approximately $40\%$ of published psychology findings did not replicate; subsequent studies in other fields produced similar numbers \cite{method:open-science-collaboration-2015}.
+
+In machine learning, the analogous problem is benchmark overfitting: methods designed against a specific benchmark over many years develop unrealistic performance on that benchmark but do not transfer to new applications. The remedies are similar: pre-registration, hold-out test sets, independent validation, transparent reporting of negative results.
+
+\begin{principle}[Model performance must be measured on data the model has not seen]
+A model's training-set performance is a lower bound on its production performance only in vacuous cases. The engineering discipline is to maintain a test set the model has never seen until final evaluation, to use cross-validation for model selection, and to deploy with monitoring that detects when production behaviour diverges from test-set behaviour.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Build a working classifier from scratch]
+Pick a real dataset of your choice (UCI machine-learning repository, your own measurement data, a public Kaggle dataset). Build a classifier from scratch, document the methodology, and evaluate honestly.
+
+\begin{enumerate}[leftmargin=*]
+  \item Identify the task: binary or multi-class classification. State the input features and the target.
+  \item Split the data: training, validation, test. Document the split methodology; for time-series data, use a time-ordered split.
+  \item Train a baseline (logistic regression or simple decision tree). Report training and validation performance.
+  \item Train a second method (random forest, gradient boosting, or your choice). Tune hyperparameters via cross-validation on the training set.
+  \item Evaluate on the test set once. Report the test-set performance.
+  \item Identify the cases where the model fails. Are they random or systematic?
+\end{enumerate}
+
+The deliverable is the implementation, the evaluation, and a short report (no more than six pages). The report must explicitly identify the distribution-shift risk, the data-leakage risk, and the production-monitoring plan.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+For a linear regression with training data $\{(1, 2), (2, 4), (3, 5)\}$, compute the least-squares fit.
+\end{exercise}
+
+\begin{exercise}
+For a binary classification with logistic regression, compute the probability of class $1$ given a feature vector and weights of your choice.
+\end{exercise}
+
+\begin{exercise}
+Compute the Gini impurity of a node containing $\{5, 3, 2\}$ examples of three classes. Compute the entropy.
+\end{exercise}
+
+\begin{exercise}
+For $k$-means with $k = 2$, do one update step on the data $\{(0, 0), (1, 0), (0, 1), (10, 10), (10, 11), (11, 10)\}$, starting from initial centroids at $(0.5, 0.5)$ and $(10.5, 10.5)$.
+\end{exercise}
+
+\begin{exercise}
+For PCA on a $2$-dimensional dataset, compute the principal components from the covariance matrix.
+\end{exercise}
+
+\begin{exercise}
+Compute the expected accuracy of a random classifier on a $10$-class balanced dataset. Compare to the majority-class baseline.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the normal equations for linear regression.
+\end{exercise}
+
+\begin{exercise}
+Show that ridge regression's $L_2$ penalty produces a closed-form solution $\hat{\theta} = (\mat{X}^T \mat{X} + \lambda \mat{I})^{-1} \mat{X}^T \vect{y}$.
+\end{exercise}
+
+\begin{exercise}
+Derive the bias-variance decomposition for squared-error loss.
+\end{exercise}
+
+\begin{exercise}
+Show that minimising the cross-entropy loss for binary classification is equivalent to maximum likelihood on a Bernoulli model.
+\end{exercise}
+
+\begin{exercise}
+Show that $k$-means converges in finite steps. Identify the conditions.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+A model trained with $80\%$ accuracy on training and $50\%$ accuracy on validation indicates overfitting. Estimate three remediations.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of training examples needed for a logistic regression with $100$ features to generalise reliably.
+\end{exercise}
+
+\begin{exercise}
+Estimate the computational cost of a random-forest training with $100$ trees on $10^6$ examples with $100$ features.
+\end{exercise}
+
+\begin{exercise}
+Estimate the impact of $5\%$ distribution shift between training and production on test-set accuracy. Assume a baseline accuracy of $90\%$ on training distribution.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement linear regression with gradient descent. Compare to the closed-form normal equations.
+\end{exercise}
+
+\begin{exercise}
+Implement logistic regression. Train on a binary classification task; evaluate.
+\end{exercise}
+
+\begin{exercise}
+Implement $k$-means and run on a synthetic dataset of $1000$ points in $\mathbb{R}^2$ with three Gaussian clusters.
+\end{exercise}
+
+\begin{exercise}
+Implement a decision tree. Train on a tabular dataset; visualise the tree.
+\end{exercise}
+
+\begin{exercise}
+Implement $k$-fold cross-validation. Use it to tune the regularisation strength of a ridge regression.
+\end{exercise}
+
+\begin{exercise}
+Construct a data-leakage example: a feature that should not be available at prediction time but is. Train a model with and without the feature; compare.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the train-validation-test split strategy for a fraud-detection model where the data is highly imbalanced ($1\%$ fraud).
+\end{exercise}
+
+\begin{exercise}
+Design the monitoring strategy for a production machine-learning model. State the metrics and the alert thresholds.
+\end{exercise}
+
+\begin{exercise}
+Design the retraining cadence for a recommendation system that experiences quarterly distribution shift.
+\end{exercise}
+
+\begin{exercise}
+Design the evaluation metrics for a multi-class classification problem where some classes are much more costly to misclassify than others.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's machine-learning model achieves $99\%$ accuracy on a held-out test set. The production deployment shows $80\%$ accuracy. State three causes you would investigate.
+\end{exercise}
+
+\begin{exercise}
+A team uses the test set to tune hyperparameters. State the engineering risk and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team's model fails on a specific demographic subgroup. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``with enough data, any model works.'' Critique the argument.
+\end{exercise}
+
+\begin{exercise}
+A team's model is overfitting; the proposal is to add more data. State three engineering alternatives and the conditions under which each is preferable.
+\end{exercise}
+
+\begin{exercise}
+The replication crisis in psychology and machine learning shares structural causes. State three engineering practices that would mitigate the analogous problem in production ML.
+\end{exercise}
+
+\begin{exercise}
+A team uses a deep neural network for a tabular-data problem. State the engineering case for comparing to gradient boosting first.
+\end{exercise}
+
+\begin{exercise}
+A team's model is used to make hiring decisions; the model's training data shows historical bias. State the engineering and ethical responsibilities.
+\end{exercise}
+
+\begin{exercise}
+A team uses cross-validation to select hyperparameters and reports the cross-validation score as the model's expected performance. State the optimistic bias and the corrective practice.
+\end{exercise}
+
+\begin{exercise}
+A team's deployed model degrades steadily over six months without retraining. State three sources of degradation and the corresponding monitoring.
+\end{exercise}

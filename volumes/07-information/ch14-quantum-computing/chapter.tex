@@ -1,43 +1,276 @@
 \chapter{Quantum information and quantum computing}
 \label{vol07:ch14}
 
-\epigraph{}{}
+\epigraph{Nature isn't classical, dammit, and if you want to make a simulation of nature, you'd better make it quantum mechanical.}{Richard Feynman, 1981}
 
-\chapmeta{Half-life: fast-aging. Archetypes: scaling, uncertainty, failure. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: fast-aging. Archetypes: scaling, uncertainty, failure. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 14. Approx 100 pp.}
+Quantum information is the generalisation of classical information theory to the quantum-mechanical substrate. A quantum bit (qubit) is not a classical bit in a probability distribution; it is a complex-amplitude superposition that, on measurement, collapses to a classical outcome with probability given by the squared amplitudes. Quantum computers manipulate qubits through quantum gates; the gates can produce interference patterns that classical algorithms cannot easily simulate.
 
-\section{Qubits and quantum gates}
-\TODO{Section prose.}
+This chapter is tagged fast-aging. The state of quantum-computing hardware in 2026 is still in the noisy intermediate-scale quantum (NISQ) regime: machines with hundreds to thousands of physical qubits, no large-scale fault-tolerant logical qubit yet demonstrated. The algorithms and the engineering challenges are durable; the specific platforms and the practical capability envelopes are not. The standard reference is Nielsen and Chuang \cite{text:nielsen-chuang}.
 
-\section{Quantum entanglement and Bell inequalities}
-\TODO{Section prose.}
+\section{Qubits and quantum gates}\pathtag{core}
 
-\section{Quantum algorithms: Shor, Grover, VQE}
-\TODO{Section prose.}
+\subsection{The qubit}
 
-\section{Quantum error correction}
-\TODO{Section prose.}
+A classical bit is $0$ or $1$. A \engterm{qubit} is a unit vector in $\mathbb{C}^2$:
+\[
+|\psi\rangle = \alpha |0\rangle + \beta |1\rangle, \quad |\alpha|^2 + |\beta|^2 = 1.
+\]
+The basis vectors $|0\rangle$ and $|1\rangle$ are the classical states; the qubit is a superposition with complex amplitudes $\alpha, \beta$. Measurement in the computational basis returns $0$ with probability $|\alpha|^2$ and $1$ with probability $|\beta|^2$; after measurement, the qubit is in the classical state.
 
-\section{Quantum-classical hybrid: variational methods}
-\TODO{Section prose.}
+The qubit's state cannot be cloned (the no-cloning theorem, Wootters-Zurek 1982). The state cannot be measured without disturbance. Successive measurements of the same qubit return the same result. The state evolves through unitary operations (quantum gates) and through measurement.
 
-\section{Quantum computing platforms: trapped ions, transmons, photonics, neutral atoms}
-\TODO{Section prose.}
+\subsection{Quantum gates}
 
-\section{Post-quantum cryptography}
-\TODO{Section prose.}
+A \engterm{quantum gate} on $n$ qubits is a unitary matrix on $\mathbb{C}^{2^n}$. The standard one-qubit gates:
 
-\section{Failure: decoherence, quantum noise, current limits as of 2026}
-\TODO{Section prose.}
+\textbf{Pauli-X (NOT)}: $X = \begin{pmatrix} 0 & 1 \\ 1 & 0 \end{pmatrix}$. Swaps $|0\rangle$ and $|1\rangle$.
 
-\section{Reality check: where quantum computing actually delivers}
-\TODO{Section prose.}
+\textbf{Pauli-Y, Pauli-Z}: variants that introduce phase changes.
 
+\textbf{Hadamard}: $H = \frac{1}{\sqrt{2}} \begin{pmatrix} 1 & 1 \\ 1 & -1 \end{pmatrix}$. Maps $|0\rangle$ to $\frac{1}{\sqrt{2}}(|0\rangle + |1\rangle)$ and $|1\rangle$ to $\frac{1}{\sqrt{2}}(|0\rangle - |1\rangle)$.
 
-\section{Project}
-\TODO{implement Grover's algorithm in Qiskit on simulated and real backends; characterise the quantum advantage envelope}
+\textbf{Phase gate}: $S = \begin{pmatrix} 1 & 0 \\ 0 & i \end{pmatrix}$, $T = \begin{pmatrix} 1 & 0 \\ 0 & e^{i\pi/4} \end{pmatrix}$.
+
+Two-qubit gates introduce entanglement. The most common:
+
+\textbf{CNOT (controlled NOT)}: flips the second qubit when the first is $|1\rangle$.
+
+\textbf{CZ (controlled Z)}: applies $Z$ to the second qubit when the first is $|1\rangle$.
+
+The set $\{H, T, \text{CNOT}\}$ is universal: any unitary can be approximated to arbitrary precision by sequences from this set.
+
+\section{Quantum entanglement and Bell inequalities}\pathtag{standard}
+
+Two qubits can be in an \engterm{entangled} state: a state that cannot be written as a product of single-qubit states. The canonical example is the Bell pair
+\[
+|\Phi^+\rangle = \frac{1}{\sqrt{2}}(|00\rangle + |11\rangle).
+\]
+Measurement of either qubit reveals the same outcome ($0$ or $1$) for both, but the outcome is randomised by the measurement, not predetermined.
+
+Bell (1964) showed that any local-realist theory (classical reality with no faster-than-light influence) must satisfy a set of inequalities; quantum mechanics violates them. The 2022 Nobel Prize in Physics was awarded to Aspect, Clauser, and Zeilinger for experimentally verifying the violation. Entanglement is real, and any classical model of the world is wrong.
+
+Entanglement is the engineering substrate of quantum computing's potential power: an $n$-qubit entangled state has $2^n$ amplitudes that evolve in parallel under a unitary operation. Quantum algorithms exploit this through interference: amplitudes for unwanted outcomes cancel; amplitudes for desired outcomes reinforce.
+
+\section{Quantum algorithms: Shor, Grover, VQE}\pathtag{standard}
+
+\subsection{Shor's algorithm (1994)}
+
+Peter Shor's algorithm factors integers in polynomial time on a quantum computer. The classical best is sub-exponential (the general number field sieve). Shor's algorithm reduces factoring to order-finding in a multiplicative group; quantum Fourier transform finds the order efficiently.
+
+The engineering consequence is severe: RSA, DSA, ECC, and all classical public-key cryptography rely on factoring or related problems being hard. A large-scale fault-tolerant quantum computer breaks them. The post-quantum cryptography standardisation (Section 12.3) is the long-running engineering response.
+
+Current (2026) Shor implementations factor numbers up to about $35$. The classical record without Shor is approximately $250$ digits. A practical Shor-breaking attack on RSA-$2048$ requires approximately $20$ million physical qubits with quantum error correction; current hardware has approximately $1000$ physical qubits without error correction. The gap is large but not infinite.
+
+\subsection{Grover's algorithm (1996)}
+
+Lov Grover's algorithm finds a marked element in an unsorted database of $N$ elements in $\oom{\sqrt{N}}$ queries (versus $\oom{N}$ classical). The quadratic speedup is not as dramatic as Shor's exponential, but it applies to a much broader class of problems.
+
+For brute-force key search, Grover halves the effective key length: AES-128's $128$-bit security becomes $64$-bit security against a quantum attacker. The remedy is to use $256$-bit keys.
+
+\subsection{Variational quantum eigensolver (VQE)}
+
+VQE combines a quantum computer with a classical optimiser. The quantum computer prepares a parametrised state and measures an energy expectation; the classical optimiser adjusts the parameters to minimise the energy. Used for quantum chemistry (ground-state energy of molecules) and combinatorial optimisation (QAOA, the quantum approximate optimisation algorithm).
+
+VQE is the dominant algorithmic style for NISQ-era quantum computers because it tolerates noise: small errors in the quantum computer translate into approximate-but-still-useful gradients for the classical optimiser. The engineering payoff is small but real on current hardware; the projected payoff at error-corrected scale is substantial.
+
+\section{Quantum error correction}\pathtag{standard}
+
+\subsection{The threshold theorem}
+
+A physical qubit has an error rate (per gate operation) of approximately $10^{-3}$ on the best current platforms. Useful quantum computation requires error rates below approximately $10^{-15}$ per gate. The threshold theorem (Aharonov-Ben-Or, Kitaev, others, mid-1990s) shows that if the physical error rate is below a threshold (approximately $1\%$), quantum error correction can suppress the logical error rate to arbitrarily low levels, at the cost of using many physical qubits per logical qubit.
+
+\subsection{The surface code}
+
+The dominant family of quantum error-correcting codes is the surface code. A logical qubit is encoded on a $d \times d$ grid of physical qubits with $d^2$ qubits per logical qubit. The code detects errors through stabiliser measurements; the decoder traces the syndrome to identify likely errors. The logical error rate scales as $(p/p_{\mathrm{th}})^{d/2}$ where $p$ is the physical error rate and $p_{\mathrm{th}}$ is the threshold.
+
+For RSA-$2048$ factoring via Shor, current estimates require approximately $2$ million logical qubits (each protected by approximately $10^3$ physical qubits), running for hours. The total physical qubit count is in the tens of millions. The 2026 hardware state is approximately $10^3$ physical qubits; the gap is about $10^4$.
+
+\section{Quantum-classical hybrid: variational methods}\pathtag{standard}
+
+The variational methods (Section 14.3) are the dominant practice in 2026. The classical optimiser runs on a conventional CPU; the quantum computer runs short circuits (tens to hundreds of gates) that prepare candidate states. The combination is suitable for current hardware: short circuits stay within coherence times, simple measurements yield the gradient signal the classical optimiser needs.
+
+The variational methods are being applied to: quantum chemistry (industrial drug discovery, materials science), combinatorial optimisation (logistics, finance, scheduling), machine learning (quantum kernel methods, quantum-classical neural networks). The empirical results in 2026 are encouraging but not yet definitively showing quantum advantage over classical baselines.
+
+\section{Quantum computing platforms}\pathtag{standard}
+
+The major hardware platforms in 2026:
+
+\textbf{Superconducting transmons.} Aluminium circuits cooled to $10\,\si{\milli\kelvin}$; qubits encoded as charge or flux. The platform of IBM, Google, Rigetti, IQM. Gate times in tens of nanoseconds; coherence times of $100\,\si{\micro\second}$.
+
+\textbf{Trapped ions.} Individual ions held in electromagnetic traps; qubits encoded as electronic states. The platform of IonQ, Quantinuum, Oxford Ionics. Gate times in microseconds; coherence times of seconds. All-to-all connectivity within a trap.
+
+\textbf{Photonic.} Light-based qubits, often using single-photon detectors and beam splitters. The platform of Xanadu (continuous-variable) and PsiQuantum (discrete-variable). Room-temperature operation; high gate counts but moderate fidelity.
+
+\textbf{Neutral atoms.} Atoms in optical tweezers, with Rydberg interactions for gates. The platform of QuEra, Pasqal, Atom Computing. Hundreds to thousands of qubits demonstrated; gate fidelities improving.
+
+\textbf{Silicon spin.} Electrons in silicon quantum dots. The platform of Intel, Quantum Motion, Diraq. Compatible with conventional semiconductor fabrication; relatively early stage.
+
+\textbf{Topological.} Hypothetical Majorana-based qubits with intrinsic error protection. Microsoft has been the major investor; in 2023-2024 reported initial experimental confirmation of Majorana states, but no qubit operations yet.
+
+The platforms have different strengths and weaknesses; the engineering question for an application is which platform's noise model, connectivity, and gate set fit the algorithm.
+
+\section{Post-quantum cryptography}\pathtag{core}
+
+The threat: a sufficiently large quantum computer breaks RSA, DSA, ECC. The response: develop and standardise cryptographic algorithms whose security does not rest on the factoring or discrete-log problems Shor's algorithm solves.
+
+NIST began the post-quantum standardisation effort in 2016. The first algorithms standardised (2024):
+
+\textbf{CRYSTALS-Kyber} (FIPS 203): a lattice-based key-encapsulation mechanism. Replaces RSA / ECDH key exchange.
+
+\textbf{CRYSTALS-Dilithium} (FIPS 204): a lattice-based digital signature. Replaces RSA / ECDSA signatures.
+
+\textbf{SPHINCS+} (FIPS 205): a hash-based signature. Slower than Dilithium but with simpler security assumptions.
+
+\textbf{FALCON} (NIST IR 8413, work in progress): a lattice-based signature with smaller signatures than Dilithium.
+
+Industrial deployment in 2026 is starting in ``harvest now, decrypt later'' threat models: traffic encrypted today with RSA / ECDH may be recorded by an adversary and decrypted in $10$-$20$ years if quantum computers achieve scale. Long-secrecy traffic (state secrets, medical records, certain commercial agreements) is being migrated to post-quantum schemes now.
+
+\section{Failure: decoherence, quantum noise, current limits as of 2026}\pathtag{core}
+
+Quantum computing's central engineering problem is noise. A qubit interacts with its environment; the interaction decoheres the qubit, destroying the quantum properties on which computation rests. Coherence times in 2026 are typically $100\,\si{\micro\second}$ for transmons, $1\,\si{\second}$ for trapped ions, much shorter for photonics. A useful quantum algorithm must complete within the coherence time, which limits the circuit depth.
+
+Beyond decoherence, quantum gates have intrinsic error rates of $10^{-3}$ to $10^{-4}$ per gate on the best current platforms. The cumulative error grows with circuit depth; current hardware is limited to circuits of depth approximately $100$ before the cumulative error makes the result useless.
+
+The path to large-scale fault-tolerant quantum computing requires substantial reductions in physical error rates and substantial increases in physical qubit count. Both are progressing; the slope of progress is debated. Optimistic projections see fault-tolerance around 2030; pessimistic projections push it to 2040-2050.
+
+\section{Reality check: where quantum computing actually delivers}\pathtag{core}
+
+In 2026, no demonstrated quantum-computing application achieves an unambiguous, useful quantum advantage over the best classical algorithm. The 2019 Google ``quantum supremacy'' demonstration (random-circuit sampling) was a synthetic benchmark with no clear utility. The 2023-2024 IBM demonstrations of utility-scale quantum simulation (the Eagle and Heron processors running condensed-matter simulations) have been partially answered by improved classical algorithms (tensor-network methods) running on conventional hardware.
+
+The honest engineering position in 2026: quantum computing is an active research and development area with credible theoretical promise and substantial industrial investment. It is not yet a working tool for production engineering. The post-quantum cryptography migration is the only quantum-related engineering practice with immediate consequence; everything else is preparation for capability that may or may not arrive on the projected schedule.
+
+\begin{principle}[Quantum advantage requires a problem the classical algorithm cannot solve efficiently]
+A quantum speedup is meaningful only against the best classical algorithm, not against a naive baseline. Many claimed quantum advantages have evaporated as classical algorithms improved. The engineering discipline is to identify problems where the classical complexity is rigorously bounded (factoring, certain quantum-simulation tasks, perhaps certain machine-learning problems) and to apply quantum methods there. For everything else, classical algorithms running on classical hardware remain the working tool.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement Grover's algorithm in Qiskit]
+Use IBM Qiskit (or an equivalent framework) to implement Grover's algorithm. Run it both on a classical simulator and on a real quantum-computing backend (IBM Quantum provides free access to small machines).
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement Grover's algorithm for a $4$-qubit search problem. Define an oracle that marks one of $16$ items. Run on the simulator; verify that the marked item is found with high probability after $\lfloor \pi/4 \sqrt{N} \rfloor$ iterations.
+  \item Run the same circuit on a real backend. Plot the probability distribution of outcomes. Compare to the simulator.
+  \item Repeat for a $5$-qubit and a $6$-qubit problem. Document how the noise on the real backend degrades performance as the circuit depth grows.
+  \item Estimate the qubit count and error rate that would be required to make Grover useful for a search of $2^{30}$ items. Compare to the 2026 state of the art.
+\end{enumerate}
+
+The deliverable is the code, the plots, and a short report (no more than four pages) on the engineering implications of the observed noise.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the state of a qubit after applying the Hadamard gate to $|0\rangle$. Compute the measurement probabilities.
+\end{exercise}
+
+\begin{exercise}
+Apply a CNOT gate to the state $\frac{1}{\sqrt{2}}(|0\rangle + |1\rangle) \otimes |0\rangle$. Identify the resulting Bell state.
+\end{exercise}
+
+\begin{exercise}
+Compute the number of Grover iterations needed for a search over $2^{30}$ items.
+\end{exercise}
+
+\begin{exercise}
+A qubit has decoherence time $T_2 = 100\,\si{\micro\second}$ and a gate time of $50\,\si{\nano\second}$. Estimate the maximum useful circuit depth.
+\end{exercise}
+
+\begin{exercise}
+A surface code with code distance $d = 21$ at physical error rate $10^{-3}$ achieves what logical error rate? (Use $p_L \approx (p/p_{\mathrm{th}})^{d/2}$ with $p_{\mathrm{th}} = 10^{-2}$.)
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the no-cloning theorem informally: no unitary can take an arbitrary $|\psi\rangle$ to $|\psi\rangle |\psi\rangle$.
+\end{exercise}
+
+\begin{exercise}
+Show that the Hadamard gate is its own inverse: $H^2 = I$.
+\end{exercise}
+
+\begin{exercise}
+Show informally why Shor's algorithm uses quantum Fourier transform: the period of $a^x \bmod N$ is the quantity needed for factoring.
+\end{exercise}
+
+\begin{exercise}
+Derive the quadratic speedup of Grover's algorithm from the geometric interpretation of the rotation in the marked-unmarked subspace.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the qubit count required to factor RSA-2048 via Shor's algorithm, using contemporary error-correction estimates.
+\end{exercise}
+
+\begin{exercise}
+Estimate the timeline for a fault-tolerant quantum computer to break RSA-2048, given current progress in qubit count and error rate.
+\end{exercise}
+
+\begin{exercise}
+Estimate the impact on cryptographic key sizes if a 1-million-qubit quantum computer becomes available in 2040.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Use a quantum simulator (Qiskit, Cirq, Pennylane) to implement Deutsch's algorithm. Verify the speedup over the classical worst case.
+\end{exercise}
+
+\begin{exercise}
+Simulate Grover's algorithm for various problem sizes. Plot the iteration count and success probability.
+\end{exercise}
+
+\begin{exercise}
+Implement a simple variational quantum eigensolver for the ground-state energy of the H$_2$ molecule.
+\end{exercise}
+
+\begin{exercise}
+Simulate a noisy quantum channel: apply a Pauli-X error with probability $p$ after each gate. Verify the threshold for useful computation.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the migration plan for an organisation moving from RSA/ECC to post-quantum cryptography. State your timeline, your hybrid scheme, and your fallback plan.
+\end{exercise}
+
+\begin{exercise}
+Design a small quantum-circuit specification for a useful chemistry computation. State the qubit count, the gate depth, the expected noise tolerance.
+\end{exercise}
+
+\begin{exercise}
+Design the error-correction scheme for a 100-logical-qubit machine targeting one logical error per second.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A vendor claims their 1000-qubit machine is ``ready for production workloads.'' Critique the claim. What questions would you ask?
+\end{exercise}
+
+\begin{exercise}
+A team's organisation has long-secrecy traffic (e.g., medical records with 50-year retention). State the engineering case for migrating now to post-quantum cryptography.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``quantum computing is hype.'' Critique the argument. State the cases where it is fair and the cases where it is not.
+\end{exercise}
+
+\begin{exercise}
+A team is considering investing in quantum-application research for a chemistry use case. State the engineering analysis: what evidence would justify or contraindicate the investment?
+\end{exercise}
+
+\begin{exercise}
+A claim states that a quantum advantage has been demonstrated for a machine-learning task. State the questions you would ask before accepting the claim.
+\end{exercise}
+
+\begin{exercise}
+A team's cryptographic infrastructure uses ECC for signatures. State the engineering options ranging from monitor-and-wait to immediate migration.
+\end{exercise}

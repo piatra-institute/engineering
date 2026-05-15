@@ -1,40 +1,372 @@
 \chapter{Computer architecture}
 \label{vol07:ch07}
 
-\epigraph{}{}
+\epigraph{Time is the simulation substrate; the substrate's structure shapes what runs efficiently on it.}{anonymous architect, 2019}
 
-\chapmeta{Half-life: durable. Archetypes: scaling, interface, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: scaling, interface, failure. Exercise target: 35. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 7. Approx 120 pp.}
+Computer architecture is the engineering of the machine on which software runs. The architecture determines what operations the hardware supports, how fast each operation is, what the machine's memory hierarchy looks like, and what failure modes the engineer must defend against. The architecture is not invisible: a program that ignores its architecture leaves an order-of-magnitude of performance on the table, and a program that misunderstands its architecture's security model leaves the system open to attack.
 
-\section{Digital logic refresher}
-\TODO{Section prose.}
+The standard reference is Hennessy and Patterson \cite{text:hennessy-patterson2019}. The reader who wants the engineering view of the machine should read it for breadth. This chapter teaches the working model an engineer of software needs: enough architecture to understand performance, to write code that runs well, and to defend against the side-channel attacks of Section 7.8.
 
-\section{ISAs and the engineer's view}
-\TODO{Section prose.}
+\section{Digital logic refresher}\pathtag{standard}
 
-\section{Pipelining, hazards}
-\TODO{Section prose.}
+A computer is built from logic gates. A \engterm{logic gate} computes a Boolean function of its inputs: AND, OR, NOT, NAND, NOR, XOR. Gates combine into combinational circuits (output is a function of input alone) and into sequential circuits (output depends on input and stored state). Sequential circuits use \engterm{flip-flops}: storage elements whose state changes on the rising edge of a clock signal.
 
-\section{Caches and memory hierarchy}
-\TODO{Section prose.}
+A \engterm{register} is an array of flip-flops storing a fixed-width word. The processor's working state consists of registers (typically $16$ to $32$ general-purpose registers on a modern ISA) plus special-purpose registers (program counter, stack pointer, status flags) plus a microarchitectural state the program does not see directly (pipeline registers, branch-prediction tables, caches).
 
-\section{Branch prediction, speculation}
-\TODO{Section prose.}
+The standard combinational blocks: adders, multipliers, shifters, multiplexers, decoders. The standard sequential blocks: counters, shift registers, state machines, memories. The processor is a particular arrangement of these blocks driven by a clock.
 
-\section{SIMD, vector machines, GPUs}
-\TODO{Section prose.}
+\section{ISAs and the engineer's view}\pathtag{core}
 
-\section{Multicore, NUMA}
-\TODO{Section prose.}
+An \engterm{instruction set architecture} (ISA) is the contract between hardware and software: the set of instructions the processor executes, the register names and types, the memory model, the addressing modes, the exception and interrupt mechanisms. The ISA is what compilers target; the engineer who writes in a high-level language sees the ISA through the compiler.
 
-\section{Failure: Spectre, Meltdown, side channels}
-\TODO{Section prose.}
+\subsection{RISC versus CISC}
 
+The historical divide is between \engterm{reduced} instruction-set computers (RISC: ARM, MIPS, RISC-V, SPARC, POWER) and \engterm{complex} instruction-set computers (CISC: x86, x86-64, System/360). RISC favours many simple fixed-length instructions executed in one cycle each; CISC has fewer instructions of variable length, each potentially complex (e.g., string-copy in one instruction). The original engineering arguments favoured RISC for simpler pipelines; modern x86 implementations decode CISC instructions into RISC-like internal operations, blurring the distinction.
 
-\section{Project}
-\TODO{profile a tight loop; explain performance via cache behaviour}
+By 2026 the dominant ISAs are: x86-64 (Intel, AMD; servers, desktops, laptops); ARM AArch64 (Apple, Qualcomm, Amazon Graviton; mobile, increasingly servers); RISC-V (open-source ISA, growing in embedded and server markets). The engineer's choice of target ISA matters for cross-compilation, for performance counters, and for low-level optimisation; for high-level code, modern compilers hide most differences.
+
+\subsection{Memory model}
+
+The ISA specifies the memory model: the order in which loads and stores from different cores become visible. The standard models, from strongest to weakest:
+
+\textbf{Sequential consistency.} Every operation appears in some global order consistent with each thread's program order. Theoretically simple, practically expensive.
+
+\textbf{Total store order (TSO).} Each core's stores are ordered, but stores from different cores can be reordered. The x86 memory model.
+
+\textbf{Release consistency.} Synchronisation operations (acquire, release) impose ordering; other operations can be reordered. The ARM and RISC-V memory models.
+
+The weaker the model, the more reordering the hardware can do, the better the performance, and the more carefully the programmer must place memory barriers. C11, C++11, Java, and Go all specify memory models for their threading abstractions; the language model is typically stronger than the hardware model, with the compiler and runtime inserting barriers as needed.
+
+\subsection{The engineer's view of an instruction}
+
+A modern instruction is decoded, scheduled, executed, and retired by the processor. The decoder maps the architectural instruction to one or more internal $\mu$ops. The scheduler issues $\mu$ops to execution units as their operands become ready. The execution units compute the result. The retirement unit commits the result to the architectural state in program order.
+
+From the architectural-state view, the program executes in order. From the $\mu$op view, the program executes out of order, in parallel, across multiple execution units, with rollback on misprediction or fault. The two views must be consistent at every architecturally observable point. The mechanisms that make them consistent are at the centre of the side-channel attacks of Section 7.8.
+
+\section{Pipelining, hazards}\pathtag{core}
+
+A \engterm{pipeline} divides instruction execution into stages: fetch, decode, execute, memory-access, write-back. The pipeline overlaps the execution of multiple instructions: while instruction $I_1$ is in the execute stage, instruction $I_2$ is in decode, instruction $I_3$ is in fetch. The throughput is one instruction per clock (ideally), even though each instruction takes five cycles end-to-end.
+
+Modern pipelines are deeper (typically $12$ to $20$ stages) and wider (multiple instructions per cycle through superscalar execution). The deeper the pipeline, the higher the clock rate; the wider the pipeline, the higher the throughput.
+
+\subsection{Hazards}
+
+A \engterm{hazard} is a condition that prevents the next instruction from executing in the next cycle. Three classes:
+
+\textbf{Data hazard.} An instruction depends on the result of a still-in-flight instruction. The remedy is forwarding (the result is forwarded from the execution stage to the decode stage of the consumer, bypassing the register file) or stalling (the consumer waits).
+
+\textbf{Control hazard.} A branch instruction's outcome is unknown until execute, but fetch must speculatively fetch the next instruction. The remedy is branch prediction (Section 7.5).
+
+\textbf{Structural hazard.} Two instructions want the same execution resource at the same time. The remedy is duplication (multiple execution units) or scheduling (delay one instruction).
+
+\subsection{Out-of-order execution}
+
+Modern processors issue instructions out of program order to reduce the impact of hazards. The processor's reorder buffer tracks in-flight $\mu$ops; the scheduler issues any $\mu$op whose operands are ready; the retirement unit commits results in program order. From the architectural-state view, the program executes in order; internally, the processor is overlapping every instruction it can.
+
+The performance gain is large: a workload with frequent cache misses can keep the processor busy with other instructions while waiting for memory. The cost is complexity (much of a modern processor's silicon area is the out-of-order machinery) and a class of side-channel vulnerabilities (Section 7.8).
+
+\section{Caches and memory hierarchy}\pathtag{core}
+
+Section 4.7 introduced the memory hierarchy at the data-layout level. This section examines it at the architecture level.
+
+\subsection{The cost of a miss}
+
+A cache miss is the dominant performance concern of modern hardware. The numbers as of 2026, approximate:
+
+\begin{tabular}{lll}
+\toprule
+Level & Capacity & Latency \\
+\midrule
+L1 cache & 32-64 KB per core & 4 cycles ($1.3\,\si{\nano\second}$ at $3\,\si{\giga\hertz}$) \\
+L2 cache & 256 KB-1 MB per core & 12 cycles ($4\,\si{\nano\second}$) \\
+L3 cache (shared) & 8-64 MB & 40 cycles ($13\,\si{\nano\second}$) \\
+Main memory & GBs to TBs & 200 cycles ($67\,\si{\nano\second}$) \\
+NVMe SSD & TBs & $10\,\si{\micro\second}$ \\
+Spinning disk & TBs & $5\,\si{\milli\second}$ \\
+\bottomrule
+\end{tabular}
+
+A program that hits L1 cache runs at the processor's nominal throughput. A program that misses to main memory waits $200$ cycles per access; if it does no useful work during the wait, it runs at $0.5\%$ of nominal throughput.
+
+\subsection{Cache organisation}
+
+A cache holds fixed-size \engterm{lines} (typically 64 bytes). Each line stores a block of main memory; the cache's set-associative organisation determines which main-memory addresses can be cached in which lines. A $k$-way set-associative cache has $k$ slots per set; an address maps to a single set (selected by some bits of the address) and may live in any of the $k$ slots.
+
+\textbf{Direct-mapped} ($k=1$): each address has one possible slot. Simple, fast, but vulnerable to conflict misses (two hot addresses mapping to the same slot evict each other).
+
+\textbf{Fully associative}: any address can live in any slot. Maximum flexibility, expensive to implement (every lookup must search every slot).
+
+\textbf{Set-associative} ($k = 2, 4, 8, 16$): the working compromise. Modern L1 caches are typically $8$-way; L2 and L3 are $16$ or $32$-way.
+
+The cache's replacement policy decides which line to evict on a miss. The standard is approximate least-recently-used (LRU).
+
+\subsection{Coherence}
+
+In a multi-core system, each core has its own L1 and L2 caches. The L3 (and main memory) is shared. The cache-coherence protocol ensures that when one core writes a cache line, other cores' copies of the same line are invalidated.
+
+The standard protocol is MESI (Modified, Exclusive, Shared, Invalid), with variants MOESI, MESIF. Coherence is expensive: a write to a shared line generates invalidation traffic on the interconnect; modifying a line that another core just read causes a coherence miss on the second core's next access.
+
+The engineering consequence: shared mutable state across cores is expensive. The same algorithm parallelised by sharding (each core works on its own data) runs much faster than the same algorithm parallelised by sharing (multiple cores work on shared data). Chapter 11 returns to this with the distributed-systems view.
+
+\subsection{False sharing}
+
+\engterm{False sharing} occurs when two pieces of data, each accessed by a separate core, happen to live on the same cache line. The hardware sees the line as shared, with all the coherence traffic that implies; the software sees two separate variables. The remedy is cache-line padding: place hot variables on separate cache lines (typically by allocating them with $64$-byte alignment and at least $64$-byte spacing).
+
+\section{Branch prediction, speculation}\pathtag{standard}
+
+A modern pipeline's fetch stage runs $10$ to $20$ cycles ahead of the execute stage. Most instructions are sequential (the next instruction is at PC+4); branches are not. A branch's outcome is unknown until execute, but fetch must keep fetching. The processor's response is to predict the branch and speculatively fetch and execute the predicted path. If the prediction is right, the work is committed; if wrong, the work is squashed and the correct path is fetched.
+
+\subsection{Branch-prediction accuracy}
+
+Modern branch predictors are remarkably accurate: $95\%$ to $99\%$ correct on typical workloads. The standard mechanisms:
+
+\textbf{Two-level adaptive predictors.} A history of recent branch outcomes indexes a table of $2$-bit saturating counters. The counter's high bit predicts the next outcome.
+
+\textbf{TAGE (TAgged GEometric history length).} A modern design that combines predictions from multiple tables with different history lengths. The state of the art in branch prediction since approximately 2006.
+
+\textbf{Perceptron predictors.} A neural-network-style predictor using a linear combination of history bits. Used in AMD's Zen architecture.
+
+\subsection{Speculative execution}
+
+The processor speculatively executes instructions from the predicted path. If the prediction is right, the speculative work is committed; if wrong, the speculative work is discarded and the correct path begins. The cost of a mispredict is the pipeline depth in cycles: a $20$-stage pipeline costs $20$ cycles per mispredict.
+
+The speculation is invisible at the architectural-state level. From the program's perspective, only the correct path executes. From the microarchitectural state (cache contents, branch-predictor state, ports' busy state), the speculative work is observable. Section 7.8 returns to this.
+
+\section{SIMD, vector machines, GPUs}\pathtag{standard}
+
+\subsection{SIMD}
+
+\engterm{Single Instruction, Multiple Data} (SIMD) is the architectural pattern of applying one instruction to multiple data elements simultaneously. A SIMD ``vector'' instruction operates on, say, $8$ single-precision floats in parallel. The width of the vector is the SIMD width: $128$ bits (SSE, NEON; 4 floats), $256$ bits (AVX, AVX2; 8 floats), $512$ bits (AVX-512; 16 floats), arbitrary (ARM SVE, RISC-V V; runtime-determined).
+
+SIMD is the workhorse of high-performance numerical computation. Modern compilers auto-vectorise simple loops; the engineer writing performance-critical code may need to use intrinsics or hand-tuned assembly for the inner loops.
+
+\subsection{GPUs}
+
+A \engterm{graphics processing unit} (GPU) is a massively-parallel processor designed for embarrassingly-parallel workloads. A modern data-center GPU has $10\,000$ to $100\,000$ simple cores, each executing the same instruction across many threads ($32$-thread warps in NVIDIA hardware, $64$-thread wavefronts in AMD).
+
+The GPU's strength is throughput: $10$ to $100$ times the FLOPS of a CPU on workloads that fit its execution model. Its weakness is latency: any single thread is much slower than a CPU thread; the GPU achieves throughput by hiding latency through massive parallelism.
+
+The engineering question for using a GPU is whether the workload fits: many parallel independent (or trivially-coupled) operations, with a data-access pattern that maps to the GPU's memory hierarchy (high bandwidth, high latency). Machine learning (Chapters 17-18), scientific simulation, and graphics rendering all fit; many business workloads do not.
+
+\section{Multicore, NUMA}\pathtag{standard}
+
+\subsection{Multicore scaling}
+
+A modern server has $32$ to $128$ cores per socket, with multiple sockets. The maximum theoretical throughput is the per-core throughput times the core count; the actual throughput is bounded by Amdahl's law (the serial fraction limits the speed-up) and by memory bandwidth (shared L3 and memory channels).
+
+Amdahl's law: if a fraction $p$ of a workload is parallel and $(1-p)$ is serial, the maximum speed-up on $n$ cores is $1 / ((1-p) + p/n)$. For $p = 0.95$, the maximum speed-up is $20\times$ regardless of core count. The engineering implication: workloads with substantial serial fractions do not scale linearly with cores.
+
+\subsection{NUMA}
+
+\engterm{Non-uniform memory access} (NUMA) is the architectural pattern where main memory is partitioned among CPU sockets, with each socket having lower latency to its local memory than to remote memory. A two-socket system might see $80\,\si{\nano\second}$ to local memory and $150\,\si{\nano\second}$ to remote memory.
+
+NUMA is the working model of every multi-socket server. The engineering response: pin threads to cores, pin memory allocations to a specific NUMA node, partition workloads so that each thread operates primarily on its local node's memory. The Linux kernel's NUMA-aware scheduler does most of this automatically; production workloads at the edge of performance often need explicit \texttt{numactl} tuning.
+
+\section{Failure: Spectre, Meltdown, side channels}\pathtag{core}
+
+In January 2018 the Spectre and Meltdown vulnerabilities were disclosed publicly. The two attacks exploit speculative-execution microarchitectural state to leak data across security boundaries. Together they affected nearly every high-performance processor manufactured between 1995 and 2018, including all then-current Intel, AMD, ARM, and IBM POWER chips.
+
+\subsection{Meltdown}
+
+Meltdown \cite{paper:lipp-meltdown-2018} exploits Intel processors' deferred permission checks on out-of-order loads. The attack: from a user-space process, issue a load from a kernel address. The load is speculatively executed; the permission check arrives later. By the time the permission check fails and the speculative load is squashed, the loaded value has already been used to index a cache line in an attacker-controlled array. The attacker then probes the array; the timing of each probe reveals which line was cached; that line's index corresponds to the loaded byte's value.
+
+The attack reads any byte of kernel memory at approximately $500\,\si{\kilo\byte\per\second}$. With kernel memory containing user-process secrets via shared mappings, the attack reads any byte of any process's secret state on the same machine.
+
+The remediation is Kernel Page-Table Isolation (KPTI): give the kernel its own page tables, separate from user-space page tables. The attack cannot speculatively load what is not mapped. The cost is a TLB flush on every system call, slowing system-call-heavy workloads by $5\%$ to $30\%$.
+
+AMD and ARM chips were not vulnerable to the original Meltdown (their permission checks are not deferred in the same way), though later disclosures identified analogous attacks on some ARM chips.
+
+\subsection{Spectre}
+
+Spectre \cite{paper:kocher-spectre-2019} is a family of attacks exploiting branch prediction. The two original variants:
+
+\textbf{Spectre v1 (bounds-check bypass).} The attacker trains the branch predictor to predict that an array bounds check will succeed. The attacker then makes a request where the index is out of bounds; the speculative branch predicts in-bounds, the out-of-bounds load executes speculatively, and the loaded value indexes an attacker-controlled array. By the time the branch predictor learns the prediction was wrong and squashes the speculation, the cache state has been modified. The attacker probes the cache; the timing reveals the value of the out-of-bounds load.
+
+\textbf{Spectre v2 (branch-target injection).} The attacker pollutes the indirect-branch predictor. The victim's indirect branch is mispredicted to a target of the attacker's choosing; the speculative code at that target leaks data via the same cache-timing channel.
+
+The remediations include compiler-generated speculation barriers (after every bounds check, insert an LFENCE), retpolines (replace indirect branches with a construct the branch predictor cannot redirect), and microcode updates that selectively flush prediction state on privilege transitions. Each has performance cost; the cumulative cost across all Spectre and Meltdown mitigations is approximately $5\%$ to $30\%$ on typical workloads, more on system-call-heavy workloads.
+
+\subsection{The engineering lesson}
+
+The Spectre and Meltdown discoveries upended the engineering assumption that microarchitectural state is private to the hardware. For three decades the engineering community treated speculative execution as a performance optimisation invisible to software. The 2018 disclosures showed that the microarchitectural state is observable through timing side channels, and that any speculative computation that touches secret data leaks the secret.
+
+Since 2018 the disclosures have continued: Foreshadow (2018, attacking SGX enclaves), MDS (2019, microarchitectural data sampling), RIDL, Fallout, ZombieLoad, SWAPGS, CrossTalk, Hertzbleed (2022, leaking via frequency scaling), Downfall (2023, Intel AVX2 gather instruction), Inception (2023, AMD). Each is a refinement of the basic side-channel pattern. The engineering response has been incremental hardware fixes, microcode updates, and compiler changes, each at small performance cost.
+
+The deeper lesson is structural. Modern processors achieve their throughput by speculating on operations whose results may be discarded; the discarded operations leave observable traces in caches, in port-busy states, in power and timing. A complete defence requires either disabling speculation (with a performance cost of $5$ to $20\times$) or designing the speculation machinery to be side-channel-resistant (which the industry has been doing incrementally since 2018, with no end in sight).
+
+\begin{principle}[Microarchitecture is part of the security boundary]
+A processor's architectural state (registers, memory, control flow) is the engineering contract between hardware and software. The microarchitectural state (caches, predictors, port-busy states, frequency, temperature) is observable from software through timing. A security boundary that protects only the architectural state and ignores the microarchitectural state is incomplete. The engineering discipline since 2018 is to treat microarchitectural state as part of the security boundary and to design hardware, compilers, and operating systems with that boundary in mind.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Profile a tight loop; explain performance via cache behaviour]
+Write a tight loop that performs a simple computation (matrix multiplication, vector dot product, image convolution) on inputs of various sizes. Profile the loop using your platform's hardware-performance-counter interface (perf on Linux, Instruments on macOS, VTune on Intel) and explain the observed performance.
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement the chosen computation in a straightforward (correct, unoptimised) way. Measure throughput on inputs ranging from L1-cache-fitting to main-memory-fitting.
+  \item Identify the working set size at which performance changes. Correlate with the L1, L2, L3 cache sizes of your hardware.
+  \item Profile with cycle-level counters (cycles, instructions, branch-misses, cache-misses, page-faults). Compute the cycles-per-instruction (CPI) and the cache-miss rate. Identify the dominant bottleneck.
+  \item Apply one optimisation (loop tiling, SIMD intrinsics, struct-of-arrays layout) and re-profile. Document the speed-up and the explanation in terms of cache behaviour.
+  \item Repeat on a different microarchitecture if available (different CPU vendor, different generation). Compare and explain the differences.
+\end{enumerate}
+
+The deliverable is a short report (no more than six pages) containing the implementation, the profiling data, the optimisation, and the engineering explanation. The report must explicitly identify, for each measured throughput, whether the bottleneck is CPU-bound, memory-bandwidth-bound, or memory-latency-bound.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A processor has a $5$-stage pipeline with no hazards. Compute the throughput (instructions per cycle, IPC) in the steady state. Compute the throughput with one branch mispredict per $20$ instructions and a $5$-cycle mispredict penalty.
+\end{exercise}
+
+\begin{exercise}
+A workload has $80\%$ L1 hit rate, $19\%$ L2 hit rate, $1\%$ main-memory access. With L1 at $4$ cycles, L2 at $12$ cycles, memory at $200$ cycles, compute the average memory-access latency.
+\end{exercise}
+
+\begin{exercise}
+Compute the maximum theoretical speed-up on a workload that is $90\%$ parallel and $10\%$ serial, on $4$, $16$, $64$ cores.
+\end{exercise}
+
+\begin{exercise}
+A $256$-bit AVX2 instruction processes $8$ single-precision floats per cycle. Compute the peak FLOPS of a $3\,\si{\giga\hertz}$ core executing one AVX2 multiply-add per cycle.
+\end{exercise}
+
+\begin{exercise}
+A NUMA system has $80\,\si{\nano\second}$ local-memory latency and $150\,\si{\nano\second}$ remote-memory latency. A workload accesses memory $80\%$ locally, $20\%$ remotely. Compute the average access latency. Compute the latency if the workload accesses $50\%$ locally.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive Amdahl's law from the definition of speed-up. State the maximum speed-up as $n \to \infty$ in terms of the serial fraction.
+\end{exercise}
+
+\begin{exercise}
+Show that a $k$-way set-associative cache with LRU replacement and $n$ working-set lines fitting in $\lceil n/k \rceil$ sets has the same miss rate as a fully associative cache of the same total capacity. Identify the conditions under which the assumption holds.
+\end{exercise}
+
+\begin{exercise}
+Derive the time cost of a single false-sharing-induced coherence miss. Compare to a normal L1-hit access.
+\end{exercise}
+
+\begin{exercise}
+Show that branch-prediction accuracy of $p$ produces a pipeline-throughput cost of $(1-p) \cdot d$ where $d$ is the pipeline depth. Compute for $p = 0.99, d = 20$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the throughput of a workload that touches one $64$-byte cache line per instruction with no L1 hits. Express as instructions per second on a single core.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput of GPU-accelerated matrix multiplication for $4096 \times 4096$ single-precision matrices on a modern data-center GPU. Compare to a CPU implementation.
+\end{exercise}
+
+\begin{exercise}
+Estimate the performance cost of Spectre/Meltdown mitigations on a workload that is system-call-heavy versus compute-bound.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cache-line working set of a hash-table lookup at load factor $0.5$. Compare to a B-tree lookup at branching factor $32$.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a cache simulator (direct-mapped and set-associative) and trace a synthetic memory-access pattern. Identify the cache size at which the miss rate transitions from low to high.
+\end{exercise}
+
+\begin{exercise}
+Implement a branch-predictor simulator (two-bit saturating counter, two-level adaptive). Trace a real workload and report prediction accuracy.
+\end{exercise}
+
+\begin{exercise}
+Implement matrix multiplication with three variants: naive, loop-tiled, SIMD intrinsics. Benchmark on a $1024 \times 1024$ workload.
+\end{exercise}
+
+\begin{exercise}
+Implement a side-channel timing attack against a controlled secret (a simulated AES key in a sandbox). Demonstrate that cache-timing analysis reveals key bits.
+\end{exercise}
+
+\begin{exercise}
+Implement a NUMA-aware versus NUMA-naive parallel sum reduction. Benchmark on a multi-socket machine.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the memory-layout strategy for a high-frequency-trading order book. State your cache-line strategy, your NUMA strategy, and your concurrency model.
+\end{exercise}
+
+\begin{exercise}
+Design a data-parallel computation for the GPU. State the kernel signature, the memory layout, and the work distribution. Identify the bottleneck.
+\end{exercise}
+
+\begin{exercise}
+Design the mitigation strategy for a service handling untrusted user input on a Spectre-vulnerable processor. State your compiler flags, your code patterns, and the residual risk.
+\end{exercise}
+
+\begin{exercise}
+Design the cache-management strategy for a database whose working set is approximately twice physical memory. State your buffer-pool policy, your eviction policy, and your prefetching policy.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's service runs at $30\%$ of theoretical peak FLOPS on a high-end CPU. State three causes you would investigate and the metrics that would confirm each.
+\end{exercise}
+
+\begin{exercise}
+A team rewrites their hot loop in AVX-512 intrinsics and observes a $4\times$ speed-up on the developer's machine. In production the speed-up is $1.5\times$. Identify two causes.
+\end{exercise}
+
+\begin{exercise}
+The Spectre and Meltdown disclosures \cite{paper:kocher-spectre-2019,paper:lipp-meltdown-2018} were treated as crises in 2018. State what changed in the engineering consensus about microarchitectural side channels. Identify three production practices that did not exist before 2018.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a $32$-core x86 server and a $64$-core ARM server for a memory-bandwidth-bound workload. State the engineering considerations. What measurements would settle the choice?
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern compilers vectorise well; manual SIMD is no longer needed.'' Critique the argument. State the workloads where manual vectorisation still wins.
+\end{exercise}
+
+\begin{exercise}
+A team's database benchmark shows linear scaling to $16$ cores and sublinear scaling thereafter. State the engineering analyses you would run before concluding it is fundamentally Amdahl-limited.
+\end{exercise}
+
+\begin{exercise}
+The Mars Pathfinder priority-inversion case (Chapter 6) illustrates that hardware-level mechanisms (here, OS scheduling) interact with software design in unexpected ways. State an analogous case for cache behaviour: a software design choice whose performance depends on a microarchitectural detail the design did not account for.
+\end{exercise}
+
+\begin{exercise}
+A team uses cooperative multithreading on a single-core embedded processor. State the engineering implications of moving the same workload to a multicore embedded processor with cache coherence.
+\end{exercise}
+
+\begin{exercise}
+A team's microservice runs on a $32$-thread NUMA machine and uses Java with a single shared concurrent hash map for its working set. State the failure mode at high load and the architectural remedy.
+\end{exercise}
+
+\begin{exercise}
+A team uses speculation-resistant lookup constructs (\texttt{cmov} rather than branch) for security-critical code paths. State the performance cost of the choice and the security guarantee it provides.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between increasing clock frequency (more single-thread performance, higher power) and increasing core count (more aggregate throughput, complex parallelism). State the workload characteristics that drive each choice. What were the historical drivers of the move from frequency scaling to multicore around 2005?
+\end{exercise}
+
+\begin{exercise}
+A team writes code that depends on the strong x86 memory model and is moved to an ARM server. State three classes of bugs that may surface and the engineering remediations.
+\end{exercise}
+
+\begin{exercise}
+The L1, L2, L3 cache structure of modern processors imposes a $3$-level hierarchy on memory access. State why the level count has stayed at $3$ since approximately $2010$ rather than continuing to grow. What would a $4$-level cache buy the engineer and what would it cost?
+\end{exercise}

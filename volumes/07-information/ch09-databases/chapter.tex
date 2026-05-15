@@ -1,37 +1,379 @@
 \chapter{Databases}
 \label{vol07:ch09}
 
-\epigraph{}{}
+\epigraph{A database is an explicit, careful accumulation of facts that survive change, concurrent use, and the engineer's mistakes.}{anonymous database engineer}
 
-\chapmeta{Half-life: durable. Archetypes: balance (consistency), failure. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: balance (consistency), failure. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 9. Approx 100 pp.}
+A \engterm{database} is an organised collection of data managed by software that provides querying, modification, concurrency control, and durability. The engineering question of a database is not what facts to store; it is how to store them so that they survive change without losing meaning, support fast querying without losing facts to corruption, and serve many users concurrently without losing isolation. This chapter teaches the working model: the relational model and its SQL surface, indexes and query plans, transactions and ACID, the NoSQL alternatives, and the consistency-versus-availability balance that recurs throughout. The standard reference is Kleppmann \cite{text:kleppmann-ddia}; the classical textbook is Garcia-Molina, Ullman, and Widom \cite{text:garcia-molina-ullman-widom}.
 
-\section{Relational model}
-\TODO{Section prose.}
+\section{Relational model}\pathtag{core}
 
-\section{SQL engineering-first}
-\TODO{Section prose.}
+The relational model, introduced by Codd in 1970, represents data as a set of \engterm{relations}: tables with named columns and rows. Each row is a tuple of values, one per column. Each column has a type. The model is austere: there are no pointers, no nesting, no inheritance, no objects. The structure is a flat collection of tables, related by shared values rather than by physical references.
 
-\section{Indexes and query plans}
-\TODO{Section prose.}
+\subsection{Relations and keys}
 
-\section{Transactions, ACID, isolation levels}
-\TODO{Section prose.}
+A \engterm{primary key} is a column (or set of columns) whose value uniquely identifies a row. A \engterm{foreign key} is a column whose values must appear as a primary key in another (or the same) table. Foreign keys express relationships: a row in the orders table has a customer-id column whose value is the primary key of a row in the customers table.
 
-\section{NoSQL: key-value, document, columnar, graph}
-\TODO{Section prose.}
+The relational model's discipline is to express every relationship as a foreign key. The schema designer adds no special structure beyond tables with primary and foreign keys.
 
-\section{Replication and consensus preview}
-\TODO{Section prose.}
+\subsection{Normalisation}
 
-\section{Failure: silent data corruption, lost updates, isolation-level confusion}
-\TODO{Section prose.}
+Codd's \engterm{normal forms} are constraints on the schema that prevent certain classes of update anomalies. The standard progression:
 
+\textbf{1NF.} Each column holds atomic values (no lists, no nested records). Each row has the same columns.
 
-\section{Project}
-\TODO{design schema for a real domain; benchmark three query patterns}
+\textbf{2NF.} Every non-key column depends on the whole primary key, not on a part.
+
+\textbf{3NF.} Every non-key column depends only on the primary key, not transitively through another non-key column.
+
+\textbf{BCNF.} A stronger form of 3NF; rarely violated when 3NF holds.
+
+Higher normal forms (4NF, 5NF, 6NF) handle multi-valued dependencies and join dependencies; they are rarely load-bearing in production schemas.
+
+The engineering discipline is to normalise the schema to 3NF as a default, then to denormalise specific tables for performance when the workload demands it. Denormalisation trades update complexity (more places to update on each change) for read performance (fewer joins).
+
+\subsection{The relational algebra}
+
+The operations of the relational algebra are: select (filter rows), project (filter columns), join (combine tables on a predicate), union, intersection, difference, group-by-aggregate. These operations are the primitives of SQL; the SQL query optimiser (Section 9.3) translates SQL queries into combinations of these primitives.
+
+\section{SQL engineering-first}\pathtag{core}
+
+SQL is the standard query language for relational databases. The language has accumulated features since its 1974 introduction, but the working core is small.
+
+\subsection{The query forms}
+
+\textbf{SELECT-FROM-WHERE.} The basic query: select columns from a table, filter by a predicate.
+
+\begin{verbatim}
+SELECT name, age FROM customers WHERE city = 'Bucharest';
+\end{verbatim}
+
+\textbf{JOIN.} Combine tables. The standard forms are INNER JOIN (rows that match in both), LEFT/RIGHT/FULL OUTER JOIN (matched rows plus the unmatched on one or both sides).
+
+\begin{verbatim}
+SELECT c.name, o.total
+FROM customers c
+INNER JOIN orders o ON c.id = o.customer_id
+WHERE o.order_date >= '2026-01-01';
+\end{verbatim}
+
+\textbf{GROUP BY and aggregates.} Group rows by column values; aggregate within each group.
+
+\begin{verbatim}
+SELECT city, COUNT(*) AS n_customers, AVG(age) AS avg_age
+FROM customers
+GROUP BY city
+HAVING COUNT(*) > 100;
+\end{verbatim}
+
+\textbf{Subqueries and common table expressions (CTEs).} Queries can be nested; CTEs name the intermediate results for readability.
+
+\subsection{The engineering surface}
+
+A working engineer's SQL fluency covers: writing queries with multi-table joins; reading EXPLAIN output to understand query plans (Section 9.3); knowing when an index will help; knowing how to express common patterns (running totals, latest-per-group, gap-filling).
+
+The most common engineering mistakes in SQL: forgetting that NULL is not equal to anything (use IS NULL, not = NULL); writing a query that joins on a non-indexed column and runs $\oom{n^2}$; using a correlated subquery where a JOIN would be faster; using ORDER BY with LIMIT without an index on the order column.
+
+\subsection{Programmatic SQL and SQL injection}
+
+When SQL is constructed at runtime by an application, the application must defend against \engterm{SQL injection}: an attacker-controlled string is concatenated into the query, changing its semantics. The standard remedy is parameterised queries: the application sends the query template and the parameters separately, and the database engine handles the substitution safely.
+
+\begin{verbatim}
+# vulnerable: string concatenation
+cursor.execute(``SELECT * FROM users WHERE name = ''+ user_input + ``''')
+
+# safe: parameterised
+cursor.execute("SELECT * FROM users WHERE name = ?", (user_input,))
+\end{verbatim}
+
+The first form allows the attacker to terminate the string and append arbitrary SQL. The second sends the query template and the value separately; the database never confuses one for the other. The remedy has been known and standard since the 1990s; SQL injection nonetheless remains in the OWASP Top Ten in 2026 because the discipline is honoured in code reviews rather than enforced by the language. Chapter 12 returns to this with the security view.
+
+\section{Indexes and query plans}\pathtag{core}
+
+The database stores tables; the indexes are auxiliary structures that speed up queries. Without indexes, every query is a full table scan: $\oom{n}$ for an $n$-row table. With indexes, queries that match the index's structure run in $\oom{\log n)}$ (B-tree) or $\oom{1)}$ (hash index).
+
+\subsection{Index types}
+
+\textbf{B-tree index.} The standard. Supports equality and range queries. Used by every major RDBMS for the default index type.
+
+\textbf{Hash index.} Faster for equality queries; no range support. Used selectively (PostgreSQL's hash index, Oracle's hash cluster, key-value stores' primary structure).
+
+\textbf{Bitmap index.} A bit per row per distinct value. Compact for low-cardinality columns; expensive to update. Used in data warehouses.
+
+\textbf{Full-text index.} Tokenises and indexes text for substring search.
+
+\textbf{Spatial index (R-tree).} For geographic queries.
+
+\textbf{GIN, GiST indexes.} PostgreSQL's general-purpose extensible indexes.
+
+The engineering question is which indexes to create. Every index speeds up some queries and slows down every update. The discipline is to index the columns the workload actually queries, not every column on principle.
+
+\subsection{The query planner}
+
+The database receives a SQL query and produces a \engterm{query plan}: a tree of operations (scan, join, aggregate, sort) that compute the query's result. The planner chooses among possible plans by cost estimation: it has statistics about table sizes, value distributions, and index selectivities, and it estimates the cost of each plan.
+
+A query like
+\begin{verbatim}
+SELECT c.name, o.total FROM customers c JOIN orders o ON c.id = o.customer_id
+WHERE c.city = 'Bucharest';
+\end{verbatim}
+admits at least three plans: (1) full scan of customers, filter to Bucharest, for each match probe orders by customer\_id; (2) full scan of orders, for each row probe customers by id, filter to Bucharest at the end; (3) full scan of both, sort both, merge join. The planner estimates each plan's cost and picks the cheapest.
+
+A working engineer reads the EXPLAIN output for any query whose performance matters. The standard hints to look for: full table scans on large tables, unindexed joins, sort spills to disk, sequential scans where an index exists but is not used.
+
+\subsection{Statistics and the optimiser}
+
+The query planner relies on table statistics: row counts, column histograms, distinct-value estimates. When statistics are stale (the table has changed substantially since the last ANALYZE), the planner makes poor choices.
+
+The discipline of production database operation includes scheduled statistics refreshes. Automatic statistics maintenance is standard in modern RDBMS; manual ANALYZE remains useful after large data loads.
+
+\section{Transactions, ACID, isolation levels}\pathtag{core}
+
+A \engterm{transaction} is a sequence of operations treated as a single logical unit. Transactions provide the four ACID properties.
+
+\textbf{Atomicity.} A transaction completes entirely or not at all. A partial completion does not happen.
+
+\textbf{Consistency.} A transaction transforms the database from one valid state to another. The validity rules are application-defined (sums add up, balances are non-negative, foreign keys are satisfied).
+
+\textbf{Isolation.} Concurrent transactions are isolated from each other; each sees the database as if it were running alone, even when others are running concurrently.
+
+\textbf{Durability.} A committed transaction's changes survive crashes.
+
+The four properties together make the database the engineering substrate for fact-keeping in the presence of failure and concurrency.
+
+\subsection{Isolation levels}
+
+True isolation requires the database to serialise concurrent transactions, which is expensive. The SQL standard defines four \engterm{isolation levels}, each weaker than serialisable but with less overhead.
+
+\textbf{Read uncommitted.} A transaction can read another transaction's uncommitted writes (a \engterm{dirty read}). Almost never used.
+
+\textbf{Read committed.} A transaction reads only committed values, but two reads of the same row may return different values if another transaction commits in between (a \engterm{non-repeatable read}). The default in PostgreSQL, Oracle, SQL Server.
+
+\textbf{Repeatable read.} A transaction reads consistent values for any row it has read, but new rows can appear (a \engterm{phantom read}). The default in MySQL InnoDB.
+
+\textbf{Serializable.} The strongest. Transactions appear to execute in some serial order. Implemented either by pessimistic locking (the classical approach) or by snapshot isolation plus serialisable snapshot isolation (modern PostgreSQL).
+
+The choice of isolation level is an engineering trade-off. Higher isolation costs throughput. Lower isolation admits anomalies. The engineering discipline is to identify which anomalies the workload can tolerate and choose the weakest level that prevents the rest.
+
+\subsection{Multi-version concurrency control}
+
+Most modern RDBMS use \engterm{multi-version concurrency control} (MVCC): each row has multiple versions, each tagged with the transaction that wrote it; readers see a consistent snapshot without blocking writers. PostgreSQL, Oracle, SQL Server, MySQL InnoDB all use variants of MVCC.
+
+MVCC's working virtue is that readers do not block writers and writers do not block readers; the engineering cost is the storage for multiple versions and the maintenance overhead (VACUUM in PostgreSQL, undo logs in Oracle).
+
+\section{NoSQL: key-value, document, columnar, graph}\pathtag{standard}
+
+The relational model and SQL dominate fact storage in most production systems. The \engterm{NoSQL} family of databases relaxes one or more relational guarantees in exchange for performance or scalability.
+
+\textbf{Key-value stores.} A simple mapping from keys to values. Redis, Memcached, DynamoDB, etcd. Used for caches, sessions, configuration, leader election. The schema is trivial; the operations are GET, PUT, DELETE; the throughput can be millions of operations per second per node.
+
+\textbf{Document databases.} Store schemaless JSON-like documents. MongoDB, CouchDB, Firestore. Used for content management, user profiles, prototypes. The schema flexibility is the working virtue; the lack of schema enforcement is the working liability.
+
+\textbf{Columnar (wide-column) stores.} Cassandra, ScyllaDB, HBase, Bigtable. Store data column by column rather than row by row, optimising for analytic queries that scan a subset of columns. Used for time series, event logs, analytics.
+
+\textbf{Graph databases.} Neo4j, JanusGraph, Amazon Neptune. Store data as a property graph (nodes, edges, properties); queries traverse the graph. Used for social networks, recommendation systems, fraud detection.
+
+\textbf{Time-series databases.} InfluxDB, TimescaleDB, Prometheus, Druid. Optimised for write-heavy workloads of timestamped data and time-range queries. Used for monitoring, IoT, financial market data.
+
+\subsection{The CAP theorem}
+
+Brewer's CAP theorem (2000, proved by Gilbert and Lynch 2002) states that in the presence of a network partition, a distributed system cannot guarantee both \engterm{consistency} (every read sees the latest write) and \engterm{availability} (every request gets a response). The system must choose one. Most relational databases choose consistency under partition (the partitioned nodes become unavailable). Many NoSQL systems choose availability under partition (the partitioned nodes continue serving, accepting that their views may diverge).
+
+The CAP theorem is often misunderstood. It does not say a system must choose between C and A always; it says that during a network partition, the choice must be made. Chapter 11 returns to this with the distributed-systems view.
+
+\section{Replication and consensus preview}\pathtag{standard}
+
+A production database is rarely a single machine. The standard architectures:
+
+\textbf{Single-leader replication.} One node accepts writes; the writes are replicated asynchronously (or synchronously) to followers. Followers serve reads. Used by traditional RDBMS (PostgreSQL streaming replication, MySQL replication), by Kafka.
+
+\textbf{Multi-leader replication.} Multiple nodes accept writes; the writes are propagated bidirectionally. Conflict resolution is the working problem. Used in geographically distributed deployments.
+
+\textbf{Leaderless replication.} Every node accepts writes; clients write to a quorum and read from a quorum. Used by DynamoDB-style systems, Cassandra.
+
+\textbf{Consensus.} Multiple nodes agree on a single sequence of operations. Paxos, Raft are the standard protocols (Chapter 11). Used by etcd, Zookeeper, Consul, Spanner, FoundationDB.
+
+The consistency-availability trade-off plays out in the replication choice. Synchronous replication preserves consistency at the cost of write latency and availability under partition. Asynchronous replication preserves availability at the cost of data loss on failover.
+
+\section{Failure: silent data corruption, lost updates, isolation-level confusion}\pathtag{core}
+
+Three failure modes recur across database-mediated systems.
+
+\subsection{Silent data corruption}
+
+Storage hardware corrupts data at low but non-zero rates: a $4\,\si{\kibi\byte}$ disk block might be silently flipped at a rate of approximately $10^{-15}$ per byte transferred, or one bit per petabyte on a typical SSD. At petabyte scale this is hundreds of bits per day; at exabyte scale it is hundreds of thousands.
+
+The database's role is to detect corruption and refuse to serve corrupt data. The standard mechanisms: per-block checksums (PostgreSQL pg\_checksums, MySQL InnoDB checksums, SQL Server page checksums), end-to-end checksums (the application verifies the checksum on read), filesystems with copy-on-write and full-data checksums (ZFS, btrfs).
+
+The remediation against silent corruption is to checksum every layer, to scrub data periodically, and to keep multiple copies that can be reconciled. The Bairavasundaram et al.\ 2008 study of $1.5$ million disk drives at NetApp identified data-corruption events as rare but inevitable at fleet scale; the engineering response is to assume the corruption will happen and design for detection.
+
+\subsection{Lost updates}
+
+A \engterm{lost update} occurs when two concurrent transactions read a value, compute a new value, and write it back; one transaction's update is overwritten by the other. The classical example: two ATMs withdraw money from the same account simultaneously; both see the original balance, both subtract their withdrawal, both write the result; one withdrawal is lost.
+
+The standard remedies: \texttt{SELECT FOR UPDATE} (the database locks the rows the transaction will modify); compare-and-set (the update is conditional on the row's version not having changed); database-level optimistic locking. The engineering discipline is to identify which application operations have read-modify-write semantics on shared rows and apply one of the remedies.
+
+\subsection{Isolation-level confusion}
+
+The SQL standard defines isolation levels named for the anomalies they prevent (read committed, repeatable read, serializable). The names imply more than they deliver: ``repeatable read'' on most databases permits some phantom-read variants, and ``serializable'' has multiple implementations with different performance characteristics.
+
+The engineering consequence is that workloads built on assumptions about isolation behaviour break when migrated between databases (PostgreSQL repeatable read does not behave like MySQL repeatable read on key concurrency patterns; Oracle serialisable is snapshot isolation, which is weaker than what the SQL standard called serializable). Modern documentation (Adya, Lashka, et al.) explicitly describes isolation behaviour by the anomalies prevented rather than by the standard name.
+
+The remediation is to read the specific database's documentation on isolation, test the workload's concurrency under realistic conditions, and not trust the SQL-standard naming.
+
+\begin{principle}[The database is a distributed system even when it is one machine]
+A database serves multiple concurrent users with consistency and durability guarantees. Even on a single machine, the engineering problems of concurrency (lost updates, dirty reads), durability (writes that must survive crashes), and atomicity (multi-statement transactions) are present. The database industry has spent half a century solving these problems; the engineer who builds atop a database inherits the solutions but must understand them. The cost of not understanding is incidents whose root cause is the engineer's misuse of an isolation level or transaction boundary.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Design schema for a real domain; benchmark three query patterns]
+Choose a real domain you have data for: your music collection, your reading list, your home energy meter, your professional contacts. Design a relational schema in 3NF for the domain.
+
+\begin{enumerate}[leftmargin=*]
+  \item Document the schema: tables, columns, primary and foreign keys, indexes, the constraints (NOT NULL, UNIQUE, CHECK).
+  \item Load real data: at least $10^4$ rows in your largest table.
+  \item Identify three workload-realistic query patterns: a point lookup (find a specific record), a range query (records matching a criterion), an aggregation (counts or averages by group).
+  \item Benchmark each query without indexes. Identify the bottleneck.
+  \item Add indexes to support the queries. Benchmark again. Document the speed-up.
+  \item Use EXPLAIN to verify that the planner uses the indexes you added.
+\end{enumerate}
+
+The deliverable is the schema definition, the data load, the benchmarks, the query plans, and a short report (no more than five pages) explaining the design decisions.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Given tables customers(id, name, city) and orders(id, customer\_id, total), write a SQL query that returns the total revenue per city. State the relational-algebra equivalent.
+\end{exercise}
+
+\begin{exercise}
+Compute the time complexity of a JOIN on two tables of $n$ rows each: (a) without indexes, (b) with B-tree indexes on the join keys, (c) hash join.
+\end{exercise}
+
+\begin{exercise}
+Given a B-tree index on $n$ rows with branching factor $b$, compute the number of I/Os per point lookup.
+\end{exercise}
+
+\begin{exercise}
+Trace the execution of the classic lost-update scenario: two ATMs reading and writing the same account balance. State the resulting balance for various interleavings.
+\end{exercise}
+
+\begin{exercise}
+Convert a denormalised schema (orders with embedded customer name, address) to 3NF. State the resulting tables and foreign keys.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Prove that the relational algebra's join can be expressed as the composition of select and Cartesian product. Identify the engineering cost of the equivalence.
+\end{exercise}
+
+\begin{exercise}
+Show that read committed isolation prevents dirty reads but admits non-repeatable reads. Construct an example.
+\end{exercise}
+
+\begin{exercise}
+Show that MVCC implementations allow readers and writers to proceed without blocking. Identify the cost.
+\end{exercise}
+
+\begin{exercise}
+Derive the CAP theorem informally: under a network partition, a distributed system cannot maintain both consistency and availability.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the query plan cost difference between a full table scan and an index lookup on a $10^9$-row table.
+\end{exercise}
+
+\begin{exercise}
+Estimate the silent-corruption rate of a petabyte of SSD storage per year, assuming $10^{-15}$ bit-error rate.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput cost of synchronous replication on a multi-data-centre database with $50\,\si{\milli\second}$ inter-region latency.
+\end{exercise}
+
+\begin{exercise}
+Estimate the index-maintenance overhead of a heavily-indexed table on an insert-heavy workload (10 indexes, $10^4$ inserts per second).
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a small relational database in your favourite language. Support CREATE TABLE, INSERT, SELECT-WHERE, and B-tree indexes.
+\end{exercise}
+
+\begin{exercise}
+Implement a transaction manager with read-committed and repeatable-read isolation levels. Verify that each prevents the expected anomalies.
+\end{exercise}
+
+\begin{exercise}
+Reproduce the lost-update anomaly on a real database (PostgreSQL, MySQL, SQLite). Apply each of three remedies (SELECT FOR UPDATE, optimistic locking, serializable isolation) and verify each fixes the anomaly.
+\end{exercise}
+
+\begin{exercise}
+Implement a SQL injection attack against a vulnerable example application. Then apply parameterised queries and verify the attack no longer works.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the schema for a multi-tenant SaaS application where each tenant's data must be isolated. State the trade-offs between a tenant-id column on every table versus a schema-per-tenant approach.
+\end{exercise}
+
+\begin{exercise}
+Design the indexes for a workload of point lookups, range queries, and analytic aggregations on a $10^8$-row table. State the indexes and the workloads each serves.
+\end{exercise}
+
+\begin{exercise}
+Design the consistency strategy for a globally-distributed photo-sharing application: photo uploads, comments, likes, feeds. State which operations need strong consistency and which can tolerate eventual consistency.
+\end{exercise}
+
+\begin{exercise}
+Design the replication topology for a transactional database with a primary in Frankfurt and read replicas in five regional data centres. State the replication mode for each replica and the failover plan.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team chooses a NoSQL document database because the schema is ``flexible.'' Six months in, the team is implementing application-level schema validation. Critique the original choice. Identify the conditions under which document stores remain preferable.
+\end{exercise}
+
+\begin{exercise}
+A team uses default isolation level (read committed) and observes occasional double-charging of customers. State the engineering analysis and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team's production database experiences silent data corruption that goes undetected for weeks. State the engineering practices that would have caught it earlier.
+\end{exercise}
+
+\begin{exercise}
+A team is migrating from a single PostgreSQL primary to a distributed CockroachDB cluster for ``scale.'' State the engineering trade-offs. What workload characteristics would justify or contraindicate the migration?
+\end{exercise}
+
+\begin{exercise}
+A team uses an ORM that produces inefficient queries on certain workloads. State three engineering responses ranging from accepting the cost to bypassing the ORM.
+\end{exercise}
+
+\begin{exercise}
+A team enables full snapshot isolation as the default for ``safety.'' Profiling shows a $30\%$ throughput drop. Identify the engineering analysis to decide whether the safety is worth the cost.
+\end{exercise}
+
+\begin{exercise}
+A team relies on a NoSQL system's eventual-consistency guarantee. State three engineering practices that mitigate the user-facing consequences.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern hardware is fast enough to run any workload on a single relational database.'' Critique the argument. State the workloads where a single relational database remains the right answer.
+\end{exercise}
+
+\begin{exercise}
+A team's analytics workload runs slowly on the production OLTP database. State the engineering options (replicate to a separate OLAP database, use a columnar extension, materialised views) and the conditions under which each is preferable.
+\end{exercise}

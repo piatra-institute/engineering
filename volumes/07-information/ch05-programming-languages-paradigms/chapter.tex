@@ -1,37 +1,384 @@
 \chapter{Programming languages and paradigms}
 \label{vol07:ch05}
 
-\epigraph{}{}
+\epigraph{A language that doesn't affect the way you think about programming is not worth knowing.}{Alan Perlis, \emph{Epigrams on Programming}, 1982}
 
-\chapmeta{Half-life: durable. Archetypes: interface, failure. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: interface, failure. Exercise target: 35. Project track: simulation. Named cases: Therac-25, Ariane 5 Flight 501.}
 
 \noindent
-\TODO{Volume 7, Chapter 5. Approx 120 pp.}
+A programming language is the medium through which engineering intent becomes executable code. The choice of language shapes what the engineer can express easily and what only with effort, what kinds of errors are caught at compile time and what kinds remain latent until production, what abstractions exist as first-class concepts and what must be reimplemented in every program. This chapter teaches the working differences among the major paradigms, the trade-offs that drove the design of each, and the engineering consequences of choosing one for a given problem.
 
-\section{Imperative, functional, declarative paradigms}
-\TODO{Section prose.}
+The chapter does not survey languages. It surveys the design decisions that languages have made and the consequences of those decisions in production engineering. The reader who finishes this chapter and the standard text on programming-language pragmatics \cite{text:scott-pl-pragmatics} can read a new language's reference manual and place its design in context.
 
-\section{Type systems}
-\TODO{Section prose.}
+\section{Imperative, functional, declarative paradigms}\pathtag{core}
 
-\section{Memory management: manual, RAII, GC, ownership}
-\TODO{Section prose.}
+\subsection{The imperative paradigm}
 
-\section{Concurrency primitives at the language level}
-\TODO{Section prose.}
+An imperative program describes computation as a sequence of changes to mutable state. The classical form, dating to FORTRAN (1957) and inherited by C, C++, Java, Python, Go, Rust, and most working languages, presents computation as a stream of assignments, loops, conditionals, and side effects. The mental model is the von Neumann machine: a memory the program updates, a control flow the program directs.
 
-\section{Metaprogramming and macros}
-\TODO{Section prose.}
+Imperative programming's working virtue is its directness. The program does what it says. The machine's state at any point is the explicit state of the program's variables. Performance is straightforward to reason about because the program is close to the hardware.
 
-\section{Comparing C, Python, Rust, Lisp, Haskell engineering-first}
-\TODO{Section prose.}
+Its working liability is the same. Every assignment is a potential source of interaction with code the engineer did not intend. Every loop is a potential source of an off-by-one error. Every shared variable is a potential source of a race condition. The imperative paradigm puts the engineer in direct control and asks the engineer to be correct on every detail.
 
-\section{Failure: type errors, null-pointer dereferences, the undefined-behaviour cost}
-\TODO{Section prose.}
+\subsection{The functional paradigm}
 
+A functional program describes computation as the application of functions to values, with no mutable state. The classical form, dating to LISP (1958) and developed in ML, Miranda, Haskell, OCaml, Clojure, Erlang, and Scala, presents computation as composition of functions, each taking inputs and producing outputs without side effects.
 
-\section{Project}
-\TODO{implement a small interpreter in two languages; reflect on what each forced into the design}
+The working virtues are several. Without mutable state, there is nothing to share badly between threads (concurrency is dramatically simpler). Functions can be reasoned about as mathematical functions: the same input always produces the same output. Programs compose: a function that takes a function and returns a function is the standard control-flow abstraction.
+
+The working liabilities are also several. The performance model is less direct (allocations and garbage collection dominate where assignments would otherwise sit). The translation between functional code and the underlying mutable hardware is the work of an aggressive compiler, with the consequence that performance is harder to predict.
+
+Engineering languages in 2026 are mostly hybrid. Python, JavaScript, Java, C\#, Rust, and Swift all support first-class functions, closures, immutable values, and functional-style composition while retaining mutability as the default. Pure-functional languages (Haskell, PureScript, Elm) remain in production at a niche scale.
+
+\subsection{The declarative paradigm}
+
+A declarative program describes \emph{what} the result should be, leaving the \emph{how} to an engine. The canonical examples are SQL (Chapter 9), regular expressions, configuration languages (YAML, JSON, TOML), build systems (Make, Bazel, Cargo), and constraint solvers (MiniZinc, Z3, CPLEX).
+
+Declarative programming's virtue is brevity: a complex query in SQL is shorter and clearer than the equivalent imperative loop. Its liability is the gap between intent and execution: the SQL query runs as the database engine decides to run it, and the engineer must learn what the engine does (query plans, Chapter 9) to reason about performance.
+
+\subsection{Object-oriented programming as a cross-cutting style}
+
+The object-oriented style organises code around objects: bundles of state and methods, with inheritance and dynamic dispatch as the working mechanisms. The style is orthogonal to the paradigm: there are object-oriented imperative languages (Java, C++, Python, Smalltalk), object-oriented functional languages (Scala, OCaml), and object-oriented declarative subsets within larger languages.
+
+The engineering consensus by 2026 is that inheritance hierarchies are typically overused for code reuse and underused for behavioural subtyping; composition typically beats inheritance for code reuse; the value of object-oriented programming is in the abstraction of state and the polymorphism, not in the inheritance machinery.
+
+\section{Type systems}\pathtag{core}
+
+A \engterm{type system} is a discipline that classifies expressions by the kinds of values they compute and rejects programs whose classifications are inconsistent. Type systems are the engineer's first line of defence against the failures of Chapter 1: they enforce a (restricted, decidable) predicate logic on the program before the program ever runs.
+
+\subsection{Static versus dynamic}
+
+A \engterm{statically typed} language checks types at compile time: every expression has a type known before the program runs. A \engterm{dynamically typed} language checks types at run time: values carry their types with them, and operations check that the value's type is compatible.
+
+The engineering trade-off: static typing catches a class of errors before the program runs, at the cost of expressive friction (the engineer must satisfy the type checker, even when the engineer knows the program is correct). Dynamic typing offers expressive flexibility, at the cost of runtime cost and a class of errors that can survive testing.
+
+The industry trend since approximately $2010$ has been to add static typing to dynamic languages (TypeScript for JavaScript, mypy and pyright for Python, Sorbet for Ruby) rather than to choose one or the other absolutely. Gradual typing is the working compromise: type annotations are optional, checked when present, ignored when absent.
+
+\subsection{Strong versus weak}
+
+A \engterm{strong} type system enforces type distinctions consistently. A \engterm{weak} type system performs implicit conversions between types, sometimes in surprising directions. C is weakly typed in this sense (an integer can be silently converted to a pointer); Python is strongly typed (mixing strings and integers raises an error).
+
+\subsection{Major type-system features}
+
+\textbf{Algebraic data types.} Sum types (``either an integer or a string'') and product types (``a pair of an integer and a string''). Standard in functional languages, increasingly common in modern systems languages (Rust enums, Swift enums, TypeScript discriminated unions).
+
+\textbf{Parametric polymorphism (generics).} Functions and types parameterised by other types: \texttt{List<T>}, \texttt{HashMap<K, V>}. Standard in C++, Java, C\#, Rust, Swift, TypeScript, Haskell, OCaml, Scala.
+
+\textbf{Ad-hoc polymorphism (overloading, type classes).} The same name has different implementations depending on the types of the arguments. Operator overloading (\texttt{+} for both integers and strings) is the simplest case; Haskell type classes and Rust traits are the principled forms.
+
+\textbf{Subtyping.} A type $S$ is a subtype of $T$ if any expression of type $T$ can be replaced by an expression of type $S$. Standard in object-oriented languages. The Liskov substitution principle (1987) is the engineering rule for designing subtype relationships.
+
+\textbf{Dependent types.} Types that depend on values: a list of length $n$, a sorted-array proof. Standard in proof assistants (Coq, Lean, Agda); appearing in restricted forms in production languages (Idris, F$^*$, refinement types in Liquid Haskell).
+
+\textbf{Linear and affine types.} Types that constrain how often a value is used. Each value of an affine type is used at most once; each value of a linear type is used exactly once. The basis of Rust's ownership model (Section 5.3).
+
+\subsection{The engineering value of types}
+
+Industrial software's experience with type systems has settled into a working consensus. Types reduce a measurable fraction of defects (the cited figures vary, but order $5$ to $20\%$ of production bugs are catchable by an expressive static type system that a dynamic language permits). Types reduce refactoring cost (renaming a field, changing a signature, removing a method are mechanical operations with a working type checker). Types increase initial development cost (the engineer must satisfy the checker, including in cases where the engineer is confident the program is correct). The net is positive for codebases above approximately $10^4$ lines or with multiple contributors; the net for small scripts is approximately neutral.
+
+\section{Memory management: manual, RAII, GC, ownership}\pathtag{core}
+
+Memory management is the discipline of allocating and freeing memory. Every program does it; the language determines how explicitly the engineer must engage with it.
+
+\subsection{Manual management}
+
+C's malloc/free and C++'s new/delete put memory management in the engineer's hands. The engineer allocates with malloc; the engineer frees with free. Forgetting to free leaks memory; freeing twice corrupts the heap; using after free executes whatever code happens to occupy the freed region.
+
+Manual management has the lowest runtime cost (no garbage collector, no reference-counting overhead) and the highest cognitive cost. Industrial C codebases live with manual management through discipline (every allocation has a matching free; every owner is named; every transfer of ownership is documented), tooling (Valgrind, AddressSanitizer, MemorySanitizer), and a willingness to accept that some fraction of production bugs will be memory-management bugs.
+
+The CVE database (the canonical source of software vulnerability records) attributes approximately $70\%$ of memory-safety vulnerabilities in major open-source projects to manual memory management in C and C++. The figure has been stable across two decades of measurements from Microsoft, Google, and the open-source security community.
+
+\subsection{RAII (Resource Acquisition Is Initialization)}
+
+C++'s working response to manual management is RAII: bind every resource (memory, file, socket, lock) to the lifetime of an object on the stack. When the object goes out of scope, its destructor releases the resource. Combined with smart pointers (unique\_ptr, shared\_ptr), RAII removes most of the manual-management cognitive cost while preserving the runtime performance.
+
+RAII is the design pattern most consistently advocated in modern C++ (Bjarne Stroustrup, Herb Sutter). It is not language-enforced: the engineer who calls malloc directly bypasses RAII entirely. The discipline is honoured by code review and by static analysis.
+
+\subsection{Garbage collection}
+
+A \engterm{garbage collector} (GC) automatically frees memory that is no longer reachable from the program's roots. The engineer allocates; the engineer never explicitly frees. Java, C\#, JavaScript, Python, Ruby, Go, Scala, Erlang, Haskell, OCaml, and Lisp all have garbage collectors.
+
+The classical GC approaches:
+
+\textbf{Mark-and-sweep.} Traverse all reachable objects from roots; sweep the rest. Pause times proportional to live data size.
+
+\textbf{Reference counting.} Each object has a count; allocation increments, deallocation decrements; free when count hits zero. Cannot reclaim cycles without supplementary collection. Python's primary GC strategy.
+
+\textbf{Generational.} Most objects die young; collect young objects often, old objects rarely. Java's default, C\#'s default, V8's strategy.
+
+\textbf{Concurrent and incremental.} Run the collector alongside the application, bounding pause times. Go's collector since 1.5, modern Java's G1 and ZGC, .NET's concurrent server GC.
+
+GC's engineering virtue is correctness: use-after-free, double-free, and most memory leaks become impossible. Its liabilities are pause times (an application that allocates heavily can stall for hundreds of milliseconds on a major collection), memory overhead (typically $1.5\times$ to $2\times$ the live-data size), and unpredictability (the collector runs when it decides to, complicating real-time requirements).
+
+\subsection{Ownership (Rust)}
+
+Rust's ownership model is the type-system response to memory management. Every value has a single owner; when the owner goes out of scope, the value is dropped. Borrowing creates references that must not outlive their referent. The compiler checks ownership and borrowing statically; programs that violate the rules do not compile.
+
+The model captures most memory-management correctness as a type-system property, with no runtime cost. Rust programs neither leak (in the simple cases the model covers) nor exhibit use-after-free.
+
+The model is restrictive. Patterns that work easily in C with manual discipline (a graph with cyclic references, a linked list with arbitrary insertion) require explicit reference-counted smart pointers (\texttt{Rc}, \texttt{Arc}) or interior mutability (\texttt{RefCell}, \texttt{Mutex}). The engineer pays the cost of the type system in expressive friction; the language pays the engineer back in correctness guarantees.
+
+Rust's adoption since approximately $2018$ in security-critical infrastructure (Linux kernel modules, browsers, low-level system libraries) reflects the value of the model. The U.S.\ Cybersecurity and Infrastructure Security Agency's $2023$ guidance recommends memory-safe languages including Rust for new code in security-sensitive contexts.
+
+\section{Concurrency primitives at the language level}\pathtag{standard}
+
+Concurrency support is part of language design. The major models:
+
+\subsection{Threads with shared memory}
+
+The classical model: multiple threads share an address space; synchronisation primitives (locks, condition variables, atomic operations, memory barriers) coordinate access. Used by C/C++ pthreads, Java threads, Python threads (constrained by the Global Interpreter Lock in CPython), .NET threads, Rust threads.
+
+The model is expressive and the implementation is direct on most hardware. Its working liability is that the engineer must reason about every interleaving. A correct multi-threaded program of any complexity requires the engineer to be careful in every line that touches shared state.
+
+\subsection{Message passing}
+
+The Erlang and Go model: independent processes (Erlang) or goroutines (Go) communicate by sending messages on channels. No shared memory; no shared-state synchronisation; the only interaction between concurrent computations is the message protocol.
+
+The model is more restrictive and substantially simpler to reason about. Erlang's banking, telecommunications, and gaming production deployments demonstrate that the model scales to substantial systems. Go's adoption in cloud infrastructure (Kubernetes, Docker, etcd) demonstrates that the model is industrially practical.
+
+\subsection{Software transactional memory}
+
+The model: code blocks are transactions; the runtime tracks reads and writes; on conflict, transactions retry. Used in Haskell (STM monad), Clojure (refs), and parts of .NET. Engineering adoption has been limited because the performance overhead is substantial and the conflict-resolution behaviour is hard to reason about under high contention.
+
+\subsection{Async/await}
+
+The model: a function may suspend its execution at marked points, allowing the runtime to schedule other work; on resumption, the function continues. Used in C\# (since 5.0), Python (since 3.5), JavaScript (since 2017), Rust (since 1.39), Kotlin (coroutines), C++ (since 20).
+
+The async model is the modern default for I/O-bound concurrency in mainstream languages. Its working virtues are cheap concurrency (no thread-stack overhead) and explicit suspension points (it is clear in the code where context switches happen). Its working liabilities are colour-of-functions (async functions cannot be called from synchronous functions without explicit bridging) and the difficulty of debugging stack traces that cross await points.
+
+\section{Metaprogramming and macros}\pathtag{mastery}
+
+\engterm{Metaprogramming} is programming that generates programs. The forms vary widely.
+
+\textbf{Code generation.} A program (often a script) emits source code that is then compiled. Used in protocol-buffer compilers (Section 10), in serialisation library code, in build-time configuration.
+
+\textbf{Macros.} The language has a sub-language for expanding syntactic forms into other syntactic forms. Lisp's macros operate on the program's syntax tree (homoiconicity, since Lisp programs are Lisp data); Rust's procedural macros and declarative macros offer a constrained version of the same. C's preprocessor is a string-replacement macro language with all the working liabilities of string replacement.
+
+\textbf{Reflection.} A program inspects and modifies its own structure at runtime. Java reflection, Python's introspection, C\#'s reflection. Used by serialisation libraries, dependency injection containers, and test frameworks.
+
+\textbf{Compile-time evaluation.} Expressions evaluated at compile time. C++ \texttt{constexpr} and \texttt{consteval}, Zig's \texttt{comptime}, Rust's \texttt{const} functions, Haskell's template Haskell.
+
+\textbf{Eval.} A program at runtime takes a string and treats it as code. Python \texttt{eval}, JavaScript \texttt{eval}. The working engineering case for runtime eval is rare; the working engineering case against it is the same as the case for SQL injection (Chapter 9, Chapter 12).
+
+The engineering value of metaprogramming is the elimination of repetitive code. Its working liability is opacity: code generated by macros, generated by code, or evaluated at runtime is harder to read, harder to debug, and harder to verify than direct code. The discipline is to use metaprogramming where the alternative is substantial duplication, and to keep the generated code as readable as the hand-written equivalent.
+
+\section{Comparing C, Python, Rust, Lisp, Haskell engineering-first}\pathtag{standard}
+
+The five languages cover the engineering design space.
+
+\textbf{C} (1972). Imperative, statically typed (weakly), manual memory management, threads with shared memory. The lingua franca of systems programming. Runs everywhere, compiles to small binaries, has no runtime overhead. Its liabilities are memory safety (the $70\%$ of CVE memory-safety bugs), the lack of namespaces (every name is global), and a type system too weak to catch most engineering errors. Used today: operating-system kernels, embedded systems, low-level libraries (zlib, libxml2, OpenSSL), the language at the bottom of essentially every higher-level language.
+
+\textbf{Python} (1991). Imperative-with-functional, dynamically typed (gradually static via mypy/pyright), garbage-collected, threads with the GIL or async. Designed for readability; the most-used language in data science, scripting, machine learning, web back-ends, and education. Its liabilities are performance (the CPython implementation is $10$ to $100$ times slower than C for compute-heavy code, motivating numpy, Cython, and the PyPy implementation) and the GIL (single-core CPU-bound performance on multi-core machines, unless workarounds via subprocesses or async are used).
+
+\textbf{Rust} (2010). Imperative-with-functional, statically typed, ownership-based memory management, threads with shared memory and channels and async. Designed for systems programming with C-like performance and memory safety. Its working liabilities are the learning curve (the ownership model takes substantial time to internalise) and the compile time (slower than Go or Python, comparable to C++). Adopted in the Linux kernel, in Firefox, in Cloudflare's infrastructure, in AWS's Firecracker.
+
+\textbf{Lisp} (1958). Functional with first-class macros, dynamically typed, garbage-collected, syntax minimal. The historical research language; Common Lisp, Scheme, and Clojure are the production-grade descendants. Its working virtue is metaprogramming (the language is its own syntax tree, so macros are direct). Its working liability is the cultural mismatch with industrial software (the language remains niche after $68$ years, despite the demonstrable expressiveness).
+
+\textbf{Haskell} (1990). Purely functional, statically typed with type inference and type classes, lazy evaluation, garbage-collected. The standard reference for functional programming. Its working virtue is the type system (the compiler catches a wide class of errors that pass through other languages). Its working liabilities are the unfamiliarity (the imperative-to-functional transition is large) and the performance opacity (laziness can make memory and time costs hard to predict).
+
+The engineering choice among the five is workload-dependent. For systems software: Rust if new, C if interoperability-bound, C++ if RAII-and-template metaprogramming are needed. For data science and machine learning: Python with libraries written in C. For web back-ends: many choices (Python, Go, Java, Node.js, Rust, Ruby) work; the choice is team-dependent. For correctness-critical software: Haskell, Coq, or Lean for proof; Rust for memory safety. The right answer is rarely the language the engineer learned first.
+
+\section{Failure: type errors, null-pointer dereferences, the undefined-behaviour cost}\pathtag{core}
+
+The named failures in this section illustrate the engineering cost of language design choices. The choices are not abstract; they have killed people.
+
+\subsection{Therac-25: race conditions in an under-typed concurrent imperative program}
+
+The Therac-25 \cite{paper:leveson-turner1993}, named already in Chapter 1, was implemented in a custom PDP-11 assembly-language operating system. The race condition that produced the overdoses arose from a shared variable (the \texttt{Class3} flag) modified without locking by an interrupt handler. The variable was a single byte that wrapped on overflow; the check that consulted it interpreted ``non-zero'' as ``previous operation completed safely.''
+
+The language layer did not catch the race because PDP-11 assembly has no language-level concurrency abstractions. A language with a borrow checker (Rust) would have rejected the shared mutable access at compile time. A language with software transactional memory or message passing would have made the race impossible to construct. The choice of assembly language for the safety-critical software was an explicit engineering choice; the consequences were the deaths.
+
+\subsection{Ariane 5 Flight 501: implicit conversion and exception elision}
+
+The Ariane 5 case \cite{acc:ariane501-ifr}, named in Chapter 2, was implemented in Ada. The conversion from 64-bit float to 16-bit signed integer was explicit; the exception that would have been raised on overflow was elided in the code path because the original Ada code, verified for Ariane 4, asserted the precondition was met. Reusing the code on Ariane 5 did not re-verify the precondition.
+
+A modern language with sum types and exhaustive pattern matching would have made the implicit elision impossible: the conversion would return a \texttt{Result<i16, ConversionError>}, and the code consuming the result would have to handle both cases explicitly. The choice of language (Ada) was already among the more disciplined; the discipline could have been even stronger.
+
+\subsection{Null-pointer dereference}
+
+Tony Hoare introduced the null reference in ALGOL W in 1965 and described it in 2009 as ``my billion-dollar mistake.'' Null pointers in C, C++, Java, C\#, JavaScript, and most languages of their lineage allow any reference to be silently absent. A dereference of a null reference at runtime is undefined behaviour (C, C++), a NullPointerException (Java), a TypeError (JavaScript), or a NullReferenceException (C\#). In each case, the failure surfaces at runtime in a code path that the engineer thought was safe.
+
+The remediation is the option type: every potentially-absent value is wrapped in a type that the type checker enforces the caller to unwrap explicitly. Haskell's Maybe, Rust's Option, Swift's optionals, Scala's Option, Kotlin's nullable types. The remediation has been available in production languages since the 1990s and has been adopted into mainstream language design (Kotlin, Swift, TypeScript) only since approximately 2010. The cost of the half-century delay is too large to estimate.
+
+\subsection{Undefined behaviour in C and C++}
+
+The C and C++ standards define a long list of operations whose behaviour is \engterm{undefined}: the compiler is allowed to assume the operations do not occur, and may exploit that assumption to produce code that does anything if the assumption is violated. Examples: signed integer overflow, dereferencing a null pointer, accessing memory outside the bounds of an object, modifying a constant, calling a function with the wrong number of arguments, accessing the same memory location from multiple threads without synchronisation.
+
+The undefined-behaviour rules exist because they allow aggressive optimisation: the compiler can assume \texttt{i + 1 > i} for signed integers (relying on no overflow), can assume that two pointers do not alias (relying on no out-of-bounds access), can eliminate code paths that consult freed memory (relying on no use-after-free).
+
+The engineering cost is that programs in C and C++ that work fine on one compiler version may break on the next, that test runs that pass under low optimisation may fail under high optimisation, and that bugs latent in the program may surface as production crashes years after deployment. Modern undefined-behaviour sanitisers (UBSan, ASan) catch many cases at testing time; the remaining cases are the working bug surface of mature C/C++ software.
+
+\begin{principle}[Language choice is engineering, not preference]
+The language a system is built in determines what class of bug the system will exhibit at scale. A system in C will exhibit memory-safety bugs at the rate at which the engineering process fails to catch manual-memory-management errors. A system in Java will exhibit NullPointerExceptions at the rate at which the engineering process fails to handle absent values. A system in Rust will exhibit logic bugs but rarely memory-safety bugs. A system in a dynamic language will exhibit type-related runtime bugs at the rate at which the testing fails to cover the type space. The choice of language is an engineering decision that determines which class of bug the system will need to defend against; it is not a matter of taste.
+\end{principle}
+
+\section{Project}\pathtag{standard}
+
+\begin{project}[Implement a small interpreter in two languages]
+Implement an interpreter for a small arithmetic-with-variables language in two languages from different paradigms: one imperative (C, Python, Rust, Go), one functional (Haskell, OCaml, Clojure, Scala) or one statically typed (Rust, Haskell, OCaml, TypeScript) versus one dynamically typed (Python, JavaScript, Ruby, Clojure).
+
+The language must support: integer and floating-point literals, the four arithmetic operations, parentheses, variables (let-bound), and the evaluation of an expression to a value.
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement the interpreter in language A. Take note of the design decisions you make: how you represent the AST, how you implement the parser, how you handle errors.
+  \item Implement the interpreter in language B. Make the same design decisions where they translate; identify the decisions that did not translate and explain why.
+  \item Compare the two implementations on three dimensions: lines of code, peak memory usage, runtime on a benchmark expression of $10^6$ operations.
+  \item Identify three design forces that each language pushed your implementation toward, and three design forces it resisted.
+\end{enumerate}
+
+The deliverable is a short report (no more than six pages) with the two implementations, the comparison, and the analysis. The report must explicitly identify which language you would choose for a production-grade version of the interpreter and justify the choice.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+For each of the following programs, state whether the language is imperative, functional, declarative, or hybrid, and justify your answer.
+\end{exercise}
+
+\begin{exercise}
+A C program contains the statement \texttt{int x = 5 / 0;}. State what happens at compile time. State what happens at runtime. State what happens under \texttt{-O2} optimisation.
+\end{exercise}
+
+\begin{exercise}
+A Python program contains the line \texttt{x = ``5'' + 3}. State the result and the exception, if any.
+\end{exercise}
+
+\begin{exercise}
+A Java program reads from a HashMap with a null key. State the behaviour.
+\end{exercise}
+
+\begin{exercise}
+A Rust program tries to use a value after passing it to a function that takes ownership. State the compile-time error and the corrective change.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that a statically typed language with parametric polymorphism (generics) can express the type of a polymorphic map function: $\texttt{map} : (\alpha \to \beta) \times \texttt{List}\langle \alpha \rangle \to \texttt{List}\langle \beta \rangle$. Show that an untyped language cannot prevent passing a function whose argument type does not match the list elements.
+\end{exercise}
+
+\begin{exercise}
+Show that reference counting cannot reclaim cyclic data without a supplementary tracer. Construct a minimal cycle and trace the reference counts.
+\end{exercise}
+
+\begin{exercise}
+Show that Rust's borrow-checking rules (a mutable borrow and any other borrow cannot coexist) prevent data races at compile time. Construct an example that would race in C and identify what the Rust compiler rejects.
+\end{exercise}
+
+\begin{exercise}
+Derive the cost of a generational garbage collector's young-generation collection in terms of survival rate and allocation rate. State the conditions under which generational beats mark-and-sweep.
+\end{exercise}
+
+\begin{exercise}
+Show that a language without algebraic data types and exhaustive pattern matching forces error-handling discipline into convention rather than into the type system. Construct an example in C and the corresponding form in Rust or Haskell.
+\end{exercise}
+
+\begin{exercise}
+Show that an async/await runtime with cooperative scheduling cannot preempt CPU-bound code. Identify the conditions under which a single misbehaved async function blocks the whole runtime.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the maximum throughput of a Python program limited by the GIL on a workload of CPU-bound integer arithmetic, given $10^9$ operations per second per single core. Compare to the same workload in Rust.
+\end{exercise}
+
+\begin{exercise}
+Estimate the latency cost of a Java major GC pause for a heap of $32\,\si{\giga\byte}$ with $1\,\si{\giga\byte}$ of live data. Compare to a Go concurrent GC pause for the same configuration.
+\end{exercise}
+
+\begin{exercise}
+Estimate the productivity difference between writing a $10^4$-line program in Python versus C, assuming Python is approximately $5\times$ shorter and approximately $50\times$ slower. State the workloads where each wins.
+\end{exercise}
+
+\begin{exercise}
+Estimate the type-error catch rate of a strict static type checker for a $10^5$-line codebase migrating from dynamic to gradual typing. Use industry-reported figures (TypeScript at Airbnb, mypy at Dropbox) as anchors.
+\end{exercise}
+
+\begin{exercise}
+Estimate the production-incident reduction from migrating a security-critical service from C to Rust, given that approximately $70\%$ of CVE memory-safety vulnerabilities arise from manual-memory-management bugs in C and C++.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement bubble sort in C, Python, Rust, and one functional language of your choice. Benchmark the four implementations on $10^4$-element arrays. State the performance ratios and reason about their causes.
+\end{exercise}
+
+\begin{exercise}
+Implement a small interpreter for arithmetic expressions in a language with macros (Lisp, Rust, Scala) and one without (Java, Python). Identify which design decisions changed.
+\end{exercise}
+
+\begin{exercise}
+Implement a simple producer-consumer queue with shared-memory threads in Java and with channels in Go. Benchmark both on a high-throughput workload. Identify which is faster and which is easier to reason about.
+\end{exercise}
+
+\begin{exercise}
+Implement a reference-counted cycle (a doubly linked list with a back-pointer) in Rust using \texttt{Rc} and \texttt{Weak}. Identify the engineering cost of the workaround.
+\end{exercise}
+
+\begin{exercise}
+Implement the same algorithm in a statically and a dynamically typed language. Measure the number of bugs caught by the type checker in the first compared to the runtime errors in the second.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the type signatures for a banking transaction system in a statically typed language. Identify which invariants the type system can enforce (e.g., ``deposits are non-negative,'' ``transactions are atomic'') and which it cannot.
+\end{exercise}
+
+\begin{exercise}
+Design the concurrency model for a real-time data-ingestion service that must process $10^6$ events per second. Identify the language-level primitives and the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+Design a code-review checklist for catching null-pointer-dereference defects in a Java codebase. List five patterns and the remediation for each.
+\end{exercise}
+
+\begin{exercise}
+Design a memory-management strategy for a real-time control system with hard deadlines of $1\,\si{\milli\second}$. Identify the languages that can meet the deadline and the engineering patterns each requires.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team building a new web service is choosing between Go, Python, and Rust. State the engineering considerations. What information about the workload and the team would shift your recommendation?
+\end{exercise}
+
+\begin{exercise}
+A team has a $10^6$-line C++ codebase with a steady rate of memory-safety bugs in production. The proposal is to incrementally migrate critical components to Rust. Critique the proposal. What evidence would justify or contraindicate the migration?
+\end{exercise}
+
+\begin{exercise}
+The Therac-25 incidents \cite{paper:leveson-turner1993} were implemented in PDP-11 assembly without language-level concurrency abstractions. State three concrete changes a modern language (Rust, Go, Erlang) would have forced into the design that would have prevented the race conditions.
+\end{exercise}
+
+\begin{exercise}
+A team uses Python with type annotations and mypy strict mode. Compare the engineering value to (a) a statically typed language like Rust, (b) untyped Python without annotations. Identify the workload regime where each is preferred.
+\end{exercise}
+
+\begin{exercise}
+Tony Hoare called the null reference his ``billion-dollar mistake.'' Identify three engineering practices that have arisen since 1965 to mitigate the cost of null. State which practice you would advocate for a new codebase started in 2026.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that C should not be used for new systems software in 2026 because of memory-safety concerns. Critique the argument. State the workloads where C remains defensible and the workloads where it does not.
+\end{exercise}
+
+\begin{exercise}
+The Ariane 5 Flight 501 loss \cite{acc:ariane501-ifr} happened in Ada, one of the more disciplined production languages of its era. State why even disciplined languages do not eliminate engineering error, and what the engineering response must be regardless of language choice.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing whether to use a garbage collector or an ownership-based memory model for a soft-real-time service with $p99$ latency budget of $10\,\si{\milli\second}$. State the engineering considerations. What measurements would you require before deciding?
+\end{exercise}
+
+\begin{exercise}
+Functional programming with immutable values eliminates a class of concurrency bugs at the cost of additional allocation. Identify three workloads where the trade-off favours immutability and three where it favours mutation.
+\end{exercise}
+
+\begin{exercise}
+A team writes a domain-specific language as a set of macros in a host language. State three engineering consequences (positive and negative) of the choice versus implementing the DSL as a separate parser and interpreter.
+\end{exercise}

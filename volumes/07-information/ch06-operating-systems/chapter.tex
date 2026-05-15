@@ -1,40 +1,400 @@
 \chapter{Operating systems}
 \label{vol07:ch06}
 
-\epigraph{}{}
+\epigraph{An operating system is a collection of things that don't fit into a language.}{Daniel J. Bernstein, attributed}
 
-\chapmeta{Half-life: durable. Archetypes: control, scaling. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: control, scaling. Exercise target: 35. Project track: simulation. Named cases: Mars Pathfinder priority inversion.}
 
 \noindent
-\TODO{Volume 7, Chapter 6. Approx 110 pp.}
+An operating system is the layer of software that sits between application programs and the hardware they run on. It allocates resources, schedules execution, isolates programs from each other, mediates input and output, and provides the abstractions through which programs see the machine. The engineer who writes application software does not write to the hardware; the engineer writes to the operating system's interface, and the operating system writes to the hardware.
 
-\section{What an OS does}
-\TODO{Section prose.}
+This chapter teaches what an operating system does and why. The reader who finishes the chapter understands the standard abstractions (processes, threads, virtual memory, files, sockets), the scheduling and synchronisation problems that arise when these abstractions are used at scale, and the failure modes of each. The standard references are Tanenbaum and Bos \cite{text:tanenbaum-mos} and Silberschatz, Galvin, and Gagne \cite{text:silberschatz-galvin}.
 
-\section{Processes, threads, scheduling}
-\TODO{Section prose.}
+\section{What an OS does}\pathtag{core}
 
-\section{Memory: virtual memory, paging}
-\TODO{Section prose.}
+An operating system performs four classes of function.
 
-\section{Filesystems}
-\TODO{Section prose.}
+\textbf{Resource allocation.} The OS owns the hardware (CPU, memory, disk, network, devices) and hands it out to processes. The allocation decisions matter: a thrashing OS that gives a process too little memory or too little CPU time spends most of its cycles on overhead rather than on the process's work.
 
-\section{I/O, drivers, interrupts}
-\TODO{Section prose.}
+\textbf{Abstraction.} The OS presents the hardware as a set of simpler abstractions. A program writes to a file, not to a disk sector. A program reads from a socket, not from a network adapter. A program allocates memory, not pages of physical RAM. The abstractions hide details that would otherwise dominate the program's complexity.
 
-\section{Containers, virtualisation}
-\TODO{Section prose.}
+\textbf{Protection and isolation.} The OS prevents processes from interfering with each other and from interfering with the OS itself. Memory protection (one process cannot read another's memory without permission), file-system protection (one user cannot read another's files without permission), and CPU privilege levels (only the OS can execute certain instructions) all enforce isolation.
 
-\section{Real-time operating systems}
-\TODO{Section prose.}
+\textbf{Coordination.} The OS provides the mechanisms by which cooperating processes share state, send messages, and synchronise their work. Locks, semaphores, pipes, sockets, shared memory.
 
-\section{Failure: thrashing, priority inversion, deadlocks; Mars Pathfinder}
-\TODO{Section prose.}
+The four functions are intertwined. Memory protection enables the OS to allocate memory to processes without trusting them. Process abstraction enables protection at the process boundary. File-system abstraction enables protection at the file boundary. The architecture of an operating system is the architecture of these four functions working together.
 
+\section{Processes, threads, scheduling}\pathtag{core}
 
-\section{Project}
-\TODO{write a tiny scheduler simulator with three policies}
+\subsection{The process abstraction}
+
+A \engterm{process} is the OS's unit of execution. Each process has: its own virtual address space (memory it can read and write), its own open-file table (resources it can access), its own credentials (identity for the OS to enforce permissions against), and its own state (program counter, registers, scheduling priority). The process is the OS's standard isolation boundary; one process cannot read or write another process's memory, files, or registers without explicit permission.
+
+The standard mechanisms for creating processes: fork-and-exec on Unix-like systems (fork creates a copy of the calling process; exec replaces the copy's program with a new one) and CreateProcess on Windows. The Unix model's working virtue is uniformity (every process is fork-exec'd from another); its working liability is the cost of forking a large process (copy-on-write helps but does not eliminate the cost).
+
+\subsection{Threads}
+
+A \engterm{thread} is a unit of execution within a process. Multiple threads share the process's address space, open files, and credentials, but each has its own program counter, register state, and stack. Threads are cheaper to create and switch than processes (no address-space copy); they are also more error-prone because they share state.
+
+\textbf{Kernel threads versus user threads.} Kernel threads are scheduled by the OS; the OS knows about each thread and can preempt it. User threads (also called green threads, fibers, coroutines) are scheduled by a library or runtime in user space; the OS sees only the underlying kernel thread or process. User threads are much cheaper (tens of thousands per process) but cannot exploit multiple CPUs without an underlying kernel-thread pool, and they typically cannot be preempted (cooperative scheduling).
+
+Modern language runtimes use various combinations: Java's threads are kernel threads; Go's goroutines are user threads multiplexed across a small kernel-thread pool; Python's threads are kernel threads constrained by the Global Interpreter Lock; Erlang's processes are cheap user-thread-like scheduling units.
+
+\subsection{Scheduling policies}
+
+A \engterm{scheduler} decides which thread (or process) runs on each CPU at each moment. The main policies:
+
+\textbf{First-come, first-served (FCFS).} Threads run in arrival order. Simple, fair, but a long-running thread blocks the queue.
+
+\textbf{Shortest-job-first (SJF).} The shortest thread runs first. Minimises average waiting time. Cannot be implemented in pure form because job lengths are not known in advance.
+
+\textbf{Round-robin.} Each thread gets a fixed time quantum, then is preempted. Fair, simple. The quantum size is the trade-off: too small, and context-switch overhead dominates; too large, and short jobs wait behind long ones.
+
+\textbf{Priority scheduling.} Each thread has a priority; the scheduler runs the highest-priority runnable thread. Used in real-time systems and in the standard kernel schedulers. The failure mode is starvation (low-priority threads never run); the remedy is priority aging (the priority of a thread increases the longer it has waited).
+
+\textbf{Multilevel feedback queue.} Multiple ready queues at different priorities; threads are demoted from high priority to low priority based on CPU consumption. The classical Unix scheduler design.
+
+\textbf{Completely Fair Scheduler (CFS).} The Linux kernel's default since 2007. Tracks virtual runtime per task; runs the task with the least virtual runtime. Implemented over a red-black tree (Chapter 4).
+
+The engineering choice depends on the workload. Servers with many short requests want low average latency (variants of SJF). Real-time systems want bounded worst-case latency (priority with priority inheritance). Desktop systems want responsiveness for interactive tasks (priority bumps for I/O-bound tasks).
+
+\subsection{Context switching}
+
+A \engterm{context switch} is the operation of stopping one thread and starting another on the same CPU. The OS must save the stopped thread's register state, possibly flush translation lookaside buffers, possibly switch address spaces (if switching between processes), and restore the new thread's state.
+
+Modern context-switch costs are approximately $1$ to $10\,\si{\micro\second}$ on commodity hardware. A workload that triggers $10^5$ context switches per second loses $10$ to $100\,\si{\milli\second}$ of CPU time per second of wall clock to overhead alone. The discipline of high-throughput systems is to minimise context-switch frequency, typically by batching work and by using async I/O.
+
+\section{Memory: virtual memory, paging}\pathtag{core}
+
+\subsection{Virtual address spaces}
+
+Each process sees a private virtual address space, typically $2^{64}$ bytes in modern 64-bit systems (limited in practice to $2^{47}$ or $2^{48}$ by the CPU's MMU). The OS maps virtual addresses to physical addresses via a page table. The standard page size is $4\,\si{\kibi\byte}$, with $2\,\si{\mebi\byte}$ and $1\,\si{\gibi\byte}$ ``huge pages'' supported for performance.
+
+The page table is hierarchical: a four-level table on x86-64, indexed by successive bit groups of the virtual address. Each level fits in a page; each level is itself in memory. A naive address translation requires four memory accesses (one per level) plus the final access to the data.
+
+\textbf{The translation lookaside buffer (TLB)} caches recent translations, avoiding the four-level walk. A TLB hit takes one cycle; a TLB miss takes the four-level walk plus the data access. TLBs are small (typically $64$ entries for the L1 TLB) and the TLB-coverage problem (the amount of memory the TLB can translate without misses) is a constant concern for memory-intensive workloads. Huge pages enlarge TLB coverage at the cost of internal fragmentation.
+
+\subsection{Paging and the working set}
+
+Physical memory is finite. When a process touches a page that is not in physical memory, the OS handles a \engterm{page fault}: pause the process, load the page from disk (or from a zero-filled background), update the page table, resume the process. A page fault costs approximately $10\,\si{\micro\second}$ if the page is in the page cache and approximately $1\,\si{\milli\second}$ to $10\,\si{\milli\second}$ if it must be read from a spinning disk.
+
+The \engterm{working set} of a process is the set of pages it accesses over a recent time window. If the working set fits in physical memory, page faults are rare and performance is good. If the working set exceeds physical memory, the OS must evict pages to make room; the evicted pages are read back in soon after; the process spends most of its time paging in and out. This is \engterm{thrashing}.
+
+The OS's response is to refuse new work when total working sets exceed physical memory. The user's response is to add memory or to reduce the working-set size. The engineer's response is to design for memory locality (Chapter 4).
+
+\subsection{Memory protection and shared memory}
+
+Page table entries carry protection bits: readable, writable, executable, user-accessible. The OS uses these to enforce isolation: a process cannot write to a read-only page; a user process cannot execute code in a non-executable page; one process cannot access another's pages without explicit shared mapping.
+
+Shared memory is the mechanism by which processes can share pages explicitly. Two processes map the same physical pages into their respective address spaces; writes by one are visible to the other. Used for high-throughput inter-process communication (databases, web-server worker pools); used badly, it introduces the same race conditions as multi-threaded code (Section 6.2) without the abstraction support of thread-local storage.
+
+\section{Filesystems}\pathtag{standard}
+
+A filesystem organises persistent storage as a tree of files and directories with metadata (size, ownership, timestamps, permissions). The OS layer that implements the filesystem is one of the most complex in the kernel.
+
+\subsection{The standard abstractions}
+
+\textbf{File.} A named, sized, contents-bearing entity. Streams of bytes; the OS layer makes them appear contiguous even when stored in non-contiguous blocks on disk.
+
+\textbf{Directory.} A named entity containing files and other directories. The tree is the standard organisation.
+
+\textbf{Inode.} The on-disk structure that holds a file's metadata and the locations of its data blocks. Unix-like filesystems separate the name (in the directory) from the inode (in a flat table on disk).
+
+\textbf{Hard links and symbolic links.} A hard link is a directory entry that points to an inode (multiple names for the same file). A symbolic link is a special file whose contents are the path of another file.
+
+\subsection{Major filesystem designs}
+
+\textbf{Extent-based.} ext4 (Linux), NTFS (Windows), HFS+ (older macOS). Files are stored as runs of contiguous blocks (extents); the metadata holds the extent list.
+
+\textbf{Copy-on-write.} ZFS, btrfs, APFS. Modifications create new blocks rather than overwriting; the filesystem can be snapshotted instantaneously, and silent data corruption is detected by checksums.
+
+\textbf{Log-structured.} F2FS, NILFS. Writes are appended to a log; the filesystem is reconstructed from the log. Good for SSDs (which write in large erase blocks).
+
+\textbf{Distributed.} NFS, GPFS, Ceph, HDFS. The filesystem spans multiple machines, with consistency guarantees that vary from POSIX (NFS) to eventually consistent (HDFS).
+
+The engineering choice depends on the workload. A database typically prefers a filesystem with strong write ordering and no buffering (or manages its own buffering); a backup target prefers a filesystem with snapshots; a high-throughput log target prefers a log-structured filesystem.
+
+\subsection{Crash consistency}
+
+The OS's biggest filesystem problem is crash consistency: what state the filesystem is in after a power loss. The standard mechanisms:
+
+\textbf{Journaling.} Writes are first committed to a sequential journal; the journal is replayed on recovery. ext3, ext4, NTFS use journaling.
+
+\textbf{Soft updates.} Carefully order updates so that the on-disk state is always consistent. UFS2 on FreeBSD.
+
+\textbf{Copy-on-write.} New data is written to new blocks; the root pointer is atomically updated. ZFS, btrfs.
+
+A correctly implemented crash-consistency mechanism preserves the filesystem's integrity but does not preserve application-level invariants (a database that writes a transaction across multiple files must implement its own integrity above the filesystem's).
+
+\section{I/O, drivers, interrupts}\pathtag{standard}
+
+I/O is the OS's interface to external devices: disks, networks, keyboards, displays, sensors, accelerators. The fundamental mechanisms:
+
+\textbf{Memory-mapped I/O.} The device's registers are mapped into the CPU's physical address space; the CPU communicates by reading and writing those addresses.
+
+\textbf{Port-mapped I/O.} The CPU has special instructions for talking to device ports. Historically used on x86; less common in modern systems.
+
+\textbf{Direct memory access (DMA).} The device reads and writes main memory directly without involving the CPU. The CPU configures the DMA controller (where to read from, where to write to, how much); the controller does the work.
+
+\textbf{Interrupts.} When a device needs the CPU's attention, it raises an interrupt; the CPU stops its current work and runs an interrupt handler. Interrupts allow the OS to be event-driven rather than polling.
+
+\subsection{Drivers}
+
+A \engterm{device driver} is the OS code that talks to a specific class of device. The driver knows the device's register layout, the device's command protocol, and the device's quirks. The OS provides a uniform interface to the rest of the kernel; the driver implements that interface for its device.
+
+Drivers are the source of much of the OS's complexity and a substantial fraction of its bugs. Modern systems isolate drivers in various ways: user-space drivers (FUSE, libusb), microkernel architectures (Minix, seL4), driver verification (Microsoft's static driver verifier).
+
+\subsection{The I/O bottleneck}
+
+Modern hardware has many I/O channels: PCIe lanes, network interfaces, NVMe SSDs. A single NVMe SSD can deliver $7\,\si{\giga\byte\per\second}$ of throughput; a $100\,\si{\giga\bit\per\second}$ network can deliver $12\,\si{\giga\byte\per\second}$. Modern OS designs must move data at these rates without the per-byte CPU overhead that older designs assumed.
+
+The standard techniques: zero-copy I/O (the data moves directly from the device to the application's buffer without intermediate copies), io\_uring (Linux's modern async I/O interface), DPDK and SPDK (user-space drivers for network and storage, bypassing the kernel). Modern high-throughput services use these techniques routinely.
+
+\section{Containers, virtualisation}\pathtag{standard}
+
+\subsection{Virtualisation}
+
+A \engterm{virtual machine} runs a full operating system as a process under a host. The host's hypervisor (KVM, Xen, Hyper-V, VMware) presents to each guest the illusion of a real machine: virtual CPUs, virtual memory, virtual disks, virtual networks. The isolation between guests is strong because each guest is a separate OS.
+
+Virtualisation has approximate 2\% to 10\% performance overhead depending on workload. The overhead is justified for production deployments needing OS-level isolation (different kernels, different distributions) and for the IaaS cloud model.
+
+\subsection{Containers}
+
+A \engterm{container} runs an application with its own filesystem and process namespace under the host OS. The container shares the host's kernel but has its own view of the filesystem, processes, network, and users. Linux containers (Docker, Podman) use kernel namespaces and cgroups to provide isolation; the kernel is the same as the host's.
+
+Containers are cheaper than virtual machines (no separate kernel, no virtual hardware emulation) and faster to start (milliseconds rather than seconds). Their isolation is weaker (a kernel exploit in any container can compromise the host). The engineering choice is between VM-level isolation (slower, more secure) and container-level isolation (faster, less secure).
+
+\subsection{The container ecosystem}
+
+Modern cloud deployments are typically organised as containers orchestrated by Kubernetes or a similar system. The container is the unit of packaging; the orchestrator handles scheduling, scaling, replication, and recovery. Chapter 11 (distributed systems) returns to this.
+
+\section{Real-time operating systems}\pathtag{mastery}
+
+A \engterm{real-time operating system} (RTOS) guarantees bounded response time. A \engterm{hard real-time} system must meet every deadline; a \engterm{soft real-time} system may miss occasional deadlines but must keep the failure rate within a budget.
+
+Examples: VxWorks (the OS that flew Mars Pathfinder; aerospace and industrial control), QNX (automotive infotainment, medical devices, some industrial control), FreeRTOS (embedded systems, IoT), the real-time kernel patches for Linux (PREEMPT\_RT).
+
+The working differences between an RTOS and a general-purpose OS:
+
+\textbf{Priority-based preemption.} Every higher-priority task immediately preempts every lower-priority task. No fair-share scheduling.
+
+\textbf{Priority inheritance or ceiling protocols.} Mutexes raise the priority of their holder to prevent priority inversion (Section 6.8). Standard priority inheritance: the holder's priority is temporarily set to the maximum priority of any task waiting on the mutex. Priority ceiling: the holder's priority is set to the highest priority that could ever request the mutex.
+
+\textbf{Bounded interrupt latency.} The maximum time between an interrupt arriving and its handler beginning to execute is bounded and small (microseconds). The interrupt handlers themselves are short; longer work is deferred to dedicated tasks.
+
+\textbf{Memory management.} Often no paging (the page-fault latency is unbounded). Often static allocation (no malloc/free in the hot path).
+
+The engineering question for an RTOS choice is whether the system's deadlines are hard (any miss is a failure) or soft (a budget of missed deadlines is acceptable). Hard real-time systems require an RTOS; soft real-time systems often run acceptably on a general-purpose OS with careful tuning.
+
+\section{Failure: thrashing, priority inversion, deadlocks; Mars Pathfinder}\pathtag{core}
+
+Three failure modes recur across operating-system-mediated workloads.
+
+\subsection{Thrashing}
+
+When the total working set of all active processes exceeds physical memory, the OS spends most of its time paging in and out and little time on actual work. The system appears responsive at first (some forward progress); as the working set grows, throughput drops sharply; the system collapses into near-uselessness.
+
+The classical analysis (Denning, 1968) shows that throughput as a function of multiprogramming level has a sharp transition at the point where the total working set equals physical memory. The transition is so sharp that operating-system designs typically include explicit thrashing detection: when the page-fault rate exceeds a threshold, the OS reduces the multiprogramming level.
+
+Modern engineering observation: thrashing is increasingly rare on systems with abundant RAM, but the analogous problem of cache thrashing (working set exceeds cache size) is constant and produces order-of-magnitude performance variation in production code. The remedy is the same: reduce the working set, increase the cache, or accept the performance loss.
+
+\subsection{Deadlock}
+
+A \engterm{deadlock} occurs when a set of processes are each waiting for a resource held by another process in the set, with no possibility of progress. The standard Coffman conditions (1971) for deadlock are mutual exclusion (resources cannot be shared), hold and wait (a process holds resources while requesting more), no preemption (the OS cannot forcibly take resources from a process), and circular wait (a cycle in the resource-request graph).
+
+Removing any one condition prevents deadlock. The engineering responses:
+
+\textbf{Avoid hold-and-wait.} Acquire all needed resources at once; if any fails, release all. Common in database transactions.
+
+\textbf{Lock ordering.} Acquire locks in a globally fixed order. Prevents the circular wait condition. The standard discipline for code that holds multiple locks.
+
+\textbf{Deadlock detection.} Periodically construct the resource-request graph and check for cycles; on detection, abort one of the cyclic processes. Used in database systems for distributed transactions (Chapter 9).
+
+\textbf{Deadlock prevention by design.} Use lock-free or wait-free data structures where possible. Use message passing (Chapter 5) instead of shared memory and locks.
+
+\subsection{Priority inversion}
+
+A \engterm{priority inversion} occurs when a high-priority task is blocked by a low-priority task because of a shared resource. The classical case: low-priority task L holds a mutex; high-priority task H attempts to acquire the same mutex and blocks; medium-priority task M preempts L; H is effectively blocked by M, despite H having higher priority than M.
+
+The standard remedies, all from the Sha-Rajkumar-Lehoczky 1990 paper \cite{paper:sha-rajkumar-lehoczky-1990}:
+
+\textbf{Priority inheritance.} The holder of a mutex inherits the priority of the highest-priority task waiting on the mutex. While L holds the mutex with H waiting, L inherits H's priority, preempting M.
+
+\textbf{Priority ceiling.} Every mutex has a priority ceiling: the maximum priority of any task that could request it. When a task acquires a mutex, its priority is raised to the ceiling. The protocol both prevents priority inversion and prevents certain classes of deadlock.
+
+The Mars Pathfinder priority inversion incident \cite{paper:jones-pathfinder-1997} is the canonical case study. The lander's flight software ran on VxWorks; a low-priority weather-data task acquired an information-bus mutex; a medium-priority communications task preempted the weather task before it could release the mutex; a high-priority bus task attempted to acquire the mutex and blocked; a watchdog timer interpreted the blocked bus task as a software fault and reset the spacecraft. The JPL team diagnosed the failure remotely using VxWorks trace facilities, reproduced it on a ground-based hardware replica, and uploaded a configuration change enabling priority inheritance on the affected mutex \cite{web:reeves-pathfinder-1998}.
+
+The case illustrates two engineering disciplines beyond the immediate fix. First, in-flight debugging instrumentation was a design decision that paid off years after launch; without trace facilities, the diagnosis from millions of kilometres away would have been impossible. Second, the priority-inversion failure mode and its remedy were both in the published real-time-systems literature for seven years before Pathfinder launched. The Pathfinder team had access to the literature; the VxWorks configuration option was available; the option was not enabled. The case is now the standard reference for the gap between known engineering remedies and deployed engineering practice.
+
+\begin{principle}[OS abstractions are leaky at the failure boundary]
+The abstractions an operating system provides (process, thread, file, mutex) are reliable in normal operation and informative at the failure boundary. A program that thinks of a thread as a unit of execution without thinking of the OS's scheduling policy, of a mutex without thinking of priority inversion, of a file without thinking of crash consistency, of memory without thinking of paging is a program that will surprise its operator on the failure that brings the system down. The engineering discipline is to know the abstraction's working contract and to know what falls outside it.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Tiny scheduler simulator with three policies]
+Implement a discrete-event simulator for a single-CPU thread scheduler. The simulator should accept a workload specification (a list of threads, each with arrival time, total CPU requirement, and priority) and a scheduling policy, and produce a Gantt chart of execution plus summary statistics (average wait time, average turnaround time, throughput).
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement three policies: first-come-first-served, round-robin (with configurable quantum), and priority scheduling (with priority inheritance on shared mutexes).
+  \item Run each policy on three workloads: ten short interactive threads; one long CPU-bound thread plus ten short interactive; three threads with a shared mutex that would trigger priority inversion without priority inheritance.
+  \item For the third workload, run the priority-scheduling policy both with and without priority inheritance. Confirm that without priority inheritance, the medium-priority thread blocks the high-priority thread for the duration of the low-priority thread's mutex hold.
+  \item Add a watchdog timer to the simulator (modelling Mars Pathfinder's bus-task watchdog). Verify that the priority inversion triggers the watchdog when priority inheritance is off; verify that the watchdog does not fire with priority inheritance on.
+\end{enumerate}
+
+The deliverable is a short report (no more than six pages) containing the simulator code, the three workload runs, the priority-inversion experiment, and a one-paragraph engineering recommendation for the scheduling policy of an embedded controller with hard real-time deadlines.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+For a system with $10\,\si{\micro\second}$ context-switch overhead and a $10\,\si{\milli\second}$ round-robin quantum, compute the CPU efficiency. Recompute for a $100\,\si{\micro\second}$ quantum.
+\end{exercise}
+
+\begin{exercise}
+A process has a working set of $200\,\si{\mebi\byte}$ on a system with $128\,\si{\mebi\byte}$ free physical memory. Estimate the page-fault rate as a function of the working-set residency.
+\end{exercise}
+
+\begin{exercise}
+A four-level page table on x86-64 requires four memory accesses per translation. With a TLB hit rate of $99\%$ and $80\,\si{\nano\second}$ memory access, compute the average translation latency.
+\end{exercise}
+
+\begin{exercise}
+Trace the execution of the three-thread priority-inversion scenario from Section 6.8 without priority inheritance. Determine the time at which the watchdog (with a $5$-second timeout) fires.
+\end{exercise}
+
+\begin{exercise}
+Trace the same execution with priority inheritance. Determine whether the watchdog fires.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that priority inheritance prevents unbounded priority inversion: the duration of a high-priority task's blocking is bounded by the maximum critical-section length of any task with lower priority.
+\end{exercise}
+
+\begin{exercise}
+Show that the priority-ceiling protocol prevents deadlock in addition to priority inversion. Identify the proof structure.
+\end{exercise}
+
+\begin{exercise}
+Derive the conditions under which round-robin scheduling produces lower average turnaround time than first-come-first-served. State the conditions in terms of the workload's burst-length distribution.
+\end{exercise}
+
+\begin{exercise}
+Show that Denning's working-set model predicts a discontinuous throughput-versus-multiprogramming curve at the point where the total working set equals physical memory.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the throughput cost of a context switch on modern hardware (assume $5\,\si{\micro\second}$ per switch) for a workload that switches every $1\,\si{\milli\second}$, every $10\,\si{\milli\second}$, every $100\,\si{\milli\second}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the memory overhead of one million kernel threads (each with an $8\,\si{\mebi\byte}$ stack). Compare to one million user-space goroutines (each with a $4\,\si{\kibi\byte}$ initial stack).
+\end{exercise}
+
+\begin{exercise}
+Estimate the latency of a single I/O operation on an NVMe SSD ($10\,\si{\micro\second}$) versus a spinning disk ($5\,\si{\milli\second}$). Compute the implied IOPS limits.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost of a single kernel-to-user-mode crossing on modern hardware (a system call). Compare to the cost of a function call within the same address space.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a paging simulator with LRU, FIFO, and clock page-replacement policies. Run on the standard reference-string workloads. Identify which policy is best on which workload.
+\end{exercise}
+
+\begin{exercise}
+Implement a fork-exec wrapper in C and measure the cost of forking processes of various sizes (small, $100\,\si{\mebi\byte}$, $1\,\si{\gibi\byte}$). Verify the copy-on-write behaviour.
+\end{exercise}
+
+\begin{exercise}
+Implement a deadlock-detection algorithm using the resource-allocation-graph cycle test. Run on synthetic workloads with and without circular waits.
+\end{exercise}
+
+\begin{exercise}
+Implement a producer-consumer pattern using kernel threads and a shared bounded buffer with mutex and condition variables. Add deliberate priority inversions and observe the behaviour.
+\end{exercise}
+
+\begin{exercise}
+Implement a small filesystem in user space (using FUSE). Support files, directories, hard links. Verify crash consistency by killing the FUSE process mid-write.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the I/O scheduler for a high-throughput database that mixes random small reads with sequential large writes. State your queue structure and your dispatch policy.
+\end{exercise}
+
+\begin{exercise}
+Design the memory-management strategy for a JVM serving $10\,000$ concurrent users on $32\,\si{\gibi\byte}$ heap. State your GC choice and the configuration parameters.
+\end{exercise}
+
+\begin{exercise}
+Design a real-time scheduling policy for an industrial control system with five tasks at hard deadlines. State your policy, your priority assignments, and the priority-inheritance configuration.
+\end{exercise}
+
+\begin{exercise}
+Design the container-isolation strategy for a multi-tenant SaaS platform. State your isolation primitives, your trust model, and the threats your design defends against.
+\end{exercise}
+
+\begin{exercise}
+Design the filesystem layout for a write-intensive log-collection service that ingests $10^7$ events per second and retains them for thirty days. State your structure, your indexing, and your crash-recovery plan.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The Mars Pathfinder priority-inversion case \cite{paper:jones-pathfinder-1997} surfaced in production despite the priority-inheritance remedy being in the published literature for seven years. Identify three engineering practices that would have caught the configuration at design time.
+\end{exercise}
+
+\begin{exercise}
+A team builds a service in Go and observes occasional $50\,\si{\milli\second}$ latency spikes. Identify three OS-level causes you would investigate and the metrics that would confirm each.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between containers and virtual machines for a multi-tenant compute service. State the engineering considerations. What workload characteristics drive the choice?
+\end{exercise}
+
+\begin{exercise}
+A team migrates a soft-real-time service from a general-purpose Linux to a real-time-patched kernel. State the engineering trade-offs. What measurements would justify or contraindicate the migration?
+\end{exercise}
+
+\begin{exercise}
+The fork-and-exec pattern is criticised as expensive for large processes (the page-table copy at fork is $\oom{\text{address-space size}}$). State the historical context that produced the pattern and the modern alternatives (posix\_spawn, vfork). Identify which contexts each is appropriate for.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern hardware has enough RAM that thrashing is solved.'' Critique the argument. State the analogous problem at the cache level and the engineering consequence.
+\end{exercise}
+
+\begin{exercise}
+A team's production system experiences a deadlock every few weeks; the team's response is to add deadlock-detection-and-abort logic. Identify three alternatives and the conditions under which each is preferable.
+\end{exercise}
+
+\begin{exercise}
+A team disables priority inheritance on a real-time system to reduce scheduling-decision overhead. State the failure mode the team has reintroduced. Compare to the Mars Pathfinder configuration before the in-flight fix.
+\end{exercise}
+
+\begin{exercise}
+A team uses cgroups to limit a noisy-neighbour container's CPU consumption. Identify the failure modes this introduces (priority inversion across containers, scheduling pessimism) and the remediation for each.
+\end{exercise}
+
+\begin{exercise}
+A team relies on filesystem crash consistency (journaling) for the durability of their application's writes. Identify the gap between filesystem consistency and application-level transaction consistency. State what the team must add to close the gap.
+\end{exercise}
+
+\begin{exercise}
+A team profiles their service and finds that $30\%$ of CPU time is in kernel mode. State three causes you would investigate and what each would indicate about the design.
+\end{exercise}
+
+\begin{exercise}
+The classical Unix fork-and-exec model is universal in POSIX systems; Windows uses CreateProcess. State the engineering implications of each design choice and the workloads where each is preferable.
+\end{exercise}

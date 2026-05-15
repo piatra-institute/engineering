@@ -1,37 +1,303 @@
 \chapter{Information theory}
 \label{vol07:ch13}
 
-\epigraph{}{}
+\epigraph{Information is the resolution of uncertainty.}{Claude Shannon, \emph{A Mathematical Theory of Communication}, 1948}
 
-\chapmeta{Half-life: durable. Archetypes: balance, scaling. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: balance, scaling. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 13. Approx 100 pp.}
+Information theory, founded by Claude Shannon's 1948 paper \cite{paper:shannon1948}, is the mathematical theory of communication. It asks: how much information does a source produce, how much can a channel carry, and what is the engineering trade-off between bandwidth, signal-to-noise ratio, and error rate? The framework set the foundation of modern communications, compression, error-correction, statistical mechanics, machine learning, and a wide swath of engineering practice. The standard reference is Cover and Thomas \cite{text:cover-thomas}; for the engineering perspective, MacKay's \emph{Information Theory, Inference, and Learning Algorithms} \cite{gen:mackay2009} is unmatched.
 
-\section{Shannon entropy}
-\TODO{Section prose.}
+\section{Shannon entropy}\pathtag{core}
 
-\section{Source coding}
-\TODO{Section prose.}
+The \engterm{Shannon entropy} of a discrete random variable $X$ with probability distribution $p$ is
+\[
+\Hent(X) = -\sum_{x} p(x) \log_2 p(x).
+\]
+The units are bits. Entropy is zero when one outcome is certain ($p = 1$ for one $x$); maximised when the distribution is uniform.
 
-\section{Channel capacity}
-\TODO{Section prose.}
+\subsection{Interpretation}
 
-\section{Error-correcting codes}
-\TODO{Section prose.}
+The entropy is the average number of bits required to identify a sample from $X$. A fair coin has entropy $1$ bit (one bit suffices to encode heads or tails). A six-sided die has entropy $\log_2 6 \approx 2.585$ bits. A bias-$0.9$ coin has entropy $-0.9 \log_2 0.9 - 0.1 \log_2 0.1 \approx 0.469$ bits.
 
-\section{Mutual information and Kullback-Leibler divergence}
-\TODO{Section prose.}
+The choice of $\log_2$ gives bits; $\ln$ gives nats; $\log_{10}$ gives bans (also called dits or hartleys). Bits are the engineering default.
 
-\section{Information theory in physics, biology, ML}
-\TODO{Section prose.}
+\subsection{Joint, conditional, marginal entropies}
 
-\section{Failure: codes pushed beyond Shannon limit; AI claims violating information conservation}
-\TODO{Section prose.}
+For two random variables $X, Y$:
 
+\textbf{Joint entropy}: $\Hent(X, Y) = -\sum_{x,y} p(x,y) \log_2 p(x,y)$.
 
-\section{Project}
-\TODO{implement Huffman coding and a Reed-Solomon code; benchmark on real data}
+\textbf{Conditional entropy}: $\Hent(Y|X) = \Hent(X, Y) - \Hent(X)$.
+
+The chain rule: $\Hent(X, Y) = \Hent(X) + \Hent(Y|X) = \Hent(Y) + \Hent(X|Y)$.
+
+\textbf{Independent variables}: $\Hent(X, Y) = \Hent(X) + \Hent(Y)$ if and only if $X$ and $Y$ are independent.
+
+\section{Source coding}\pathtag{core}
+
+\engterm{Source coding} (also called data compression) is the engineering of representing a source's output in as few bits as possible.
+
+\subsection{The source coding theorem}
+
+Shannon's first theorem (1948): the minimum average code length for a source with entropy $\Hent$ is $\Hent$ bits per symbol. No code can compress below the entropy; many codes get arbitrarily close.
+
+\subsection{Lossless compression}
+
+\textbf{Huffman coding (1952).} Build a binary tree by repeatedly merging the two least-probable symbols. The resulting code is prefix-free and optimal up to the integer constraint (codes are whole numbers of bits). Average code length within $1$ bit of entropy.
+
+\textbf{Arithmetic coding.} Encodes the entire message as a single number in $[0, 1)$ whose precision corresponds to the cumulative probabilities. Approaches entropy arbitrarily closely. Used in modern compression (CABAC in H.264 video, PPM, bzip2).
+
+\textbf{LZ77, LZ78, LZW (Lempel-Ziv).} Dictionary-based: replace repeated substrings with references. Used in gzip, zip, PNG, GIF.
+
+\textbf{LZMA.} A modern Lempel-Ziv variant with range coding. The compression backend of 7-zip and xz.
+
+\textbf{Brotli.} A modern compression algorithm combining LZ77 with Huffman and context modelling. The compression backend of HTTP/2 \texttt{br} encoding.
+
+\textbf{Zstandard.} A modern compression algorithm by Facebook with high speed and good compression ratios. The compression backend of many modern services.
+
+\subsection{Lossy compression}
+
+Image, audio, and video compression typically use \engterm{lossy} techniques: they discard information judged to be perceptually insignificant. JPEG, MP3, H.264, H.265, AV1 are the canonical examples. The rate-distortion trade-off is the engineering question: how much distortion is acceptable for what rate?
+
+\section{Channel capacity}\pathtag{core}
+
+A \engterm{channel} carries symbols from sender to receiver, potentially corrupting them with noise. The \engterm{channel capacity} is the maximum information rate (bits per channel use) that can be transmitted with arbitrarily low error.
+
+\subsection{The noisy-channel coding theorem}
+
+Shannon's second theorem (1948): for any communication rate $R < C$ (where $C$ is the channel capacity) and any $\epsilon > 0$, there exists a code that transmits at rate $R$ with error probability at most $\epsilon$. For any rate $R > C$, no code can achieve arbitrarily low error.
+
+The theorem is one of the most consequential in engineering: it establishes the capacity as a fundamental limit and guarantees that the limit can be approached.
+
+\subsection{The Shannon-Hartley theorem}
+
+For a continuous-time channel with bandwidth $B$ and signal-to-noise ratio $\mathrm{SNR}$:
+\[
+C = B \log_2(1 + \mathrm{SNR}).
+\]
+The formula bounds the capacity of any analogue communication channel. Modern wireless communications design (WiFi, 4G, 5G) approaches the Shannon limit closely through coding and adaptive modulation.
+
+\section{Error-correcting codes}\pathtag{standard}
+
+An \engterm{error-correcting code} adds redundancy to a message so that errors introduced by the channel can be detected and corrected. The standard families:
+
+\textbf{Hamming codes (1950).} The first systematic error-correcting code. The (7, 4) Hamming code encodes 4 data bits as 7 transmitted bits; can correct any single-bit error.
+
+\textbf{Reed-Solomon codes.} Operate on symbols (typically bytes); correct up to $t$ errors in $n$ symbols using $2t$ redundancy symbols. Used in CDs, DVDs, QR codes, DSL, satellite communication. The mathematics is over finite fields (Galois fields).
+
+\textbf{BCH codes.} Generalised reed-Solomon-like codes; widely used in storage and communications.
+
+\textbf{Convolutional codes.} Encode a continuous stream by sliding a window; decoded with the Viterbi algorithm. Used in wireless and deep-space communication.
+
+\textbf{Turbo codes.} Concatenation of two convolutional codes with an interleaver; iterative decoding. Approached the Shannon limit in 1993 (Berrou-Glavieux-Thitimajshima).
+
+\textbf{LDPC codes.} Low-density parity-check codes (Gallager 1960, rediscovered 1996). Approach the Shannon limit; decoded by message-passing on a bipartite graph. Used in 802.11ax, 5G, DVB-S2, hard drives.
+
+\textbf{Polar codes.} Theoretically achieve channel capacity (Ar{\i}kan 2009). Used in 5G control channels.
+
+The engineering choice depends on the channel characteristics, the rate-distortion trade-off, and the available compute. Modern wireless typically uses LDPC for data channels and polar for control channels; storage typically uses BCH or LDPC.
+
+\section{Mutual information and Kullback-Leibler divergence}\pathtag{standard}
+
+\subsection{Mutual information}
+
+The \engterm{mutual information} of two random variables $X, Y$ is
+\[
+\Imut(X; Y) = \Hent(X) + \Hent(Y) - \Hent(X, Y) = \Hent(X) - \Hent(X|Y).
+\]
+Mutual information is zero when $X$ and $Y$ are independent and positive otherwise; it measures the reduction in uncertainty about one variable given knowledge of the other.
+
+The channel capacity is $C = \max_{p(x)} \Imut(X; Y)$ where $Y$ is the channel output given input $X$. The capacity is the supremum of the mutual information over all input distributions.
+
+\subsection{KL divergence}
+
+The \engterm{Kullback-Leibler divergence} (relative entropy) between two distributions $p, q$ on the same alphabet is
+\[
+\KL(p \| q) = \sum_x p(x) \log_2 \frac{p(x)}{q(x)}.
+\]
+KL divergence is non-negative (Gibbs's inequality), zero only when $p = q$, and is not symmetric.
+
+KL divergence quantifies the cost (in extra bits per symbol) of encoding data from $p$ using a code optimal for $q$. It is the workhorse of machine-learning theory (Chapter 17), where many loss functions reduce to KL divergence between predicted and true distributions.
+
+\section{Information theory in physics, biology, ML}\pathtag{mastery}
+
+\subsection{Statistical mechanics}
+
+Shannon's entropy formula is the same (up to constants) as Boltzmann's statistical-mechanics entropy: $S = k \ln W$, where $W$ is the number of microstates consistent with the macrostate. The deep correspondence (Jaynes 1957) is that the canonical distribution of statistical mechanics is the maximum-entropy distribution subject to energy constraint. Information theory and thermodynamics are two readings of the same mathematics.
+
+\subsection{Biology}
+
+The information content of a genome can be estimated by counting codon frequencies; protein-coding genes have entropy substantially below random. Biological information processing (sensory neurons, immune systems, gene-regulatory networks) is increasingly analysed in information-theoretic terms.
+
+\subsection{Machine learning}
+
+Cross-entropy is the standard classification loss in deep learning (Chapter 18). The KL divergence drives variational autoencoders, generative adversarial networks (the original formulation), and the rate-distortion theory of representation learning. Mutual information bounds appear in feature selection, in the information-bottleneck theory of deep learning, and in modern self-supervised learning.
+
+\section{Failure: codes pushed beyond Shannon limit; AI claims violating information conservation}\pathtag{core}
+
+\subsection{Codes pushed beyond the Shannon limit}
+
+Marketing claims of compression beyond the source's entropy or transmission beyond the channel capacity reappear regularly. The classical case: a company claims a compression ratio that, on average, would beat Shannon's source-coding theorem. The claim is always false (or the company is implicitly relying on prior knowledge of the input distribution that the compression algorithm benefits from).
+
+The engineering response is to verify against the source's entropy. A text source has approximately $1$ bit per character in English; a compressor claiming better than that is benchmarking against a different source or is wrong. A 4G wireless channel has a finite capacity bounded by the Shannon-Hartley formula; a claim of higher throughput must be using more bandwidth, more spatial diversity, or a different channel.
+
+\subsection{AI claims violating information conservation}
+
+A subtler claim is that a machine-learning model produces more information than its inputs contain. Strictly, this cannot happen: the mutual information between the model's output and an external truth is bounded by the mutual information between the model's inputs and that truth, plus the information the model's prior brings. A model that ``predicts the future'' from less information than the future requires is making predictions consistent with its training-data prior, not with new information.
+
+The discipline is to reason about where the information comes from. A weather-forecast model's prediction quality is bounded by the information in its inputs (current state) plus the information in its prior (laws of fluid dynamics, historical patterns). A language model's output is bounded by the information in its prompt plus the information compressed in its weights. Claims of capability that exceed these bounds are either overstating or mis-attributing.
+
+\begin{principle}[Information cannot be created from less information]
+The mutual information between an algorithm's output and any external quantity is bounded by the mutual information between the algorithm's input and that quantity. The bound applies to all algorithms (deterministic, randomised, machine-learned). The engineering discipline is to identify where information comes from and to suspect any claim of output that exceeds the input's information content.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement Huffman coding and a Reed-Solomon code; benchmark on real data]
+Implement two classical algorithms from information theory: Huffman coding for lossless compression, and a Reed-Solomon code for error correction.
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement Huffman encoding and decoding. Test on text, on binary data, on already-compressed data. For each, compute the compression ratio and compare to the source's entropy.
+  \item Implement a Reed-Solomon (255, 223) code (the same parameters as used in CD audio). Encode a message, introduce errors, decode. Verify that up to $16$ symbol errors are corrected.
+  \item Use Huffman on a long English text. Measure the actual compression ratio. Compare to the entropy estimate of $1$ bit per character.
+  \item Use the Reed-Solomon code on a noisy channel (simulate by flipping random bits). Plot the error rate before and after correction.
+  \item Discuss the engineering trade-offs: Huffman's optimality for known distributions vs.\ adaptive methods; Reed-Solomon's symbol-based correction vs.\ bit-based codes.
+\end{enumerate}
+
+The deliverable is the implementations, the benchmark plots, and a short report (no more than four pages).
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the entropy of a fair coin, a bias-$0.9$ coin, a fair six-sided die.
+\end{exercise}
+
+\begin{exercise}
+Compute the entropy of the distribution $p = (1/2, 1/4, 1/8, 1/8)$. Construct a Huffman code for it. Compute the average code length.
+\end{exercise}
+
+\begin{exercise}
+A binary symmetric channel has bit-error rate $p = 0.1$. Compute the channel capacity.
+\end{exercise}
+
+\begin{exercise}
+A continuous channel has bandwidth $1\,\si{\mega\hertz}$ and signal-to-noise ratio $20\,\si{\dB}$. Compute the Shannon-Hartley capacity.
+\end{exercise}
+
+\begin{exercise}
+Compute the mutual information of two coin flips of a fair coin where $Y = X$ (perfectly correlated). Compare to $Y$ independent of $X$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the source-coding theorem informally: the average code length is bounded below by the entropy.
+\end{exercise}
+
+\begin{exercise}
+Show that the entropy is maximised when the distribution is uniform, given a fixed number of outcomes.
+\end{exercise}
+
+\begin{exercise}
+Show that KL divergence is non-negative and is zero only when the distributions are equal.
+\end{exercise}
+
+\begin{exercise}
+Derive the chain rule for entropy: $\Hent(X, Y) = \Hent(X) + \Hent(Y|X)$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the entropy of English text per character. Compare to the entropy of random bytes.
+\end{exercise}
+
+\begin{exercise}
+Estimate the information capacity of a $100\,\si{\mega\bit\per\second}$ Ethernet link.
+\end{exercise}
+
+\begin{exercise}
+Estimate the redundancy a Reed-Solomon code adds for correcting up to $1\%$ symbol errors.
+\end{exercise}
+
+\begin{exercise}
+Estimate the entropy of a human-typed password of length $10$. Compare to a $10$-byte cryptographic random string.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement Shannon-Fano and Huffman codes and benchmark both on the same text.
+\end{exercise}
+
+\begin{exercise}
+Implement a binary symmetric channel simulator. Test the noisy-channel coding theorem by transmitting at various rates near and beyond capacity.
+\end{exercise}
+
+\begin{exercise}
+Implement an LZ77 compressor. Benchmark against gzip on the same input.
+\end{exercise}
+
+\begin{exercise}
+Implement a Hamming (7, 4) code. Inject single-bit errors and verify correction.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the compression strategy for a high-bandwidth logging service that produces $10^9$ events per day.
+\end{exercise}
+
+\begin{exercise}
+Design the error-correction scheme for a satellite-to-ground link with $1\%$ bit-error rate.
+\end{exercise}
+
+\begin{exercise}
+Design the encoding of a QR code that survives $30\%$ symbol erasure.
+\end{exercise}
+
+\begin{exercise}
+Design the compression strategy for an archival storage system that prioritises decompression speed over compression ratio.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A marketing claim states a compression ratio of $1000:1$ on arbitrary data. Critique the claim.
+\end{exercise}
+
+\begin{exercise}
+A team uses gzip to compress already-encrypted data. State the engineering implication.
+\end{exercise}
+
+\begin{exercise}
+A team's wireless service approaches the Shannon limit at high SNR. State the engineering options for increasing throughput further.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``modern bandwidth is so cheap that compression is not worth the CPU cost.'' Critique the argument. State the conditions under which compression remains valuable.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between LDPC and turbo codes for a 5G application. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A claim states a deep-learning model has ``learned'' patterns not in its training data. State how to interpret the claim in information-theoretic terms.
+\end{exercise}
+
+\begin{exercise}
+The Shannon-Hartley formula bounds analogue channel capacity. State three engineering responses when a service is bandwidth-bound at the Shannon limit.
+\end{exercise}
+
+\begin{exercise}
+A team's archival data is compressed with a proprietary algorithm. State the engineering risk and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team's data-pipeline budget is bounded by storage cost. State the trade-off between compression ratio (higher = less storage) and CPU cost (higher = more compute) and the conditions under which each is preferable.
+\end{exercise}

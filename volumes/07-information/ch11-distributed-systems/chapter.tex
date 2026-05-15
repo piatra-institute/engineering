@@ -1,40 +1,353 @@
 \chapter{Distributed systems}
 \label{vol07:ch11}
 
-\epigraph{}{}
+\epigraph{A distributed system is one in which the failure of a computer you didn't even know existed can render your own computer unusable.}{Leslie Lamport}
 
-\chapmeta{Half-life: medium-life. Archetypes: balance, control, failure. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: balance, control, failure. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 11. Approx 120 pp.}
+A \engterm{distributed system} is a system whose components run on multiple machines and communicate by message passing. The defining property is \engterm{partial failure}: any component can fail independently, and the rest must continue functioning. Distributed systems are everywhere in modern engineering: web services span thousands of machines, databases replicate across continents, cloud platforms coordinate millions of containers. They are also the source of the most difficult engineering failures: race conditions across nodes, network partitions, clock skew, consensus disagreements, split-brain scenarios.
 
-\section{Why distributed is hard: partial failure}
-\TODO{Section prose.}
+The standard reference is Kleppmann's \emph{Designing Data-Intensive Applications} \cite{text:kleppmann-ddia}. The deeper theoretical reference is Lynch's \emph{Distributed Algorithms} \cite{text:lynch-distributed}. This chapter teaches the working model: why distribution is hard, what consistency means, how nodes agree, and how systems fail.
 
-\section{The CAP theorem and its descendants}
-\TODO{Section prose.}
+\section{Why distributed is hard: partial failure}\pathtag{core}
 
-\section{Consistency models}
-\TODO{Section prose.}
+A single-machine program either runs or does not. A distributed program runs in pieces; any piece can fail; the surviving pieces must continue. The classical Fallacies of Distributed Computing (Peter Deutsch, 1994) name the assumptions distributed-system programmers routinely make and routinely violate:
 
-\section{Consensus: Paxos, Raft}
-\TODO{Section prose.}
+\begin{enumerate}[leftmargin=*]
+  \item The network is reliable.
+  \item Latency is zero.
+  \item Bandwidth is infinite.
+  \item The network is secure.
+  \item Topology does not change.
+  \item There is one administrator.
+  \item Transport cost is zero.
+  \item The network is homogeneous.
+\end{enumerate}
 
-\section{Replication, sharding}
-\TODO{Section prose.}
+Each fallacy is, in the long run, false. Networks lose packets. Latency varies. Bandwidth is bounded. Adversaries exist. Cables get cut, nodes get rebooted, ISPs change peering relationships. The engineering discipline of distributed systems is to design for the fallacies' violation.
 
-\section{Distributed transactions}
-\TODO{Section prose.}
+\subsection{The failure modes}
 
-\section{Microservices and service meshes}
-\TODO{Section prose.}
+A distributed system's failure modes go beyond the single-machine ones. Beyond crashes and bugs, the system must handle:
 
-\section{Failure: split-brain, Knight Capital, AWS S3 2017 outage}
-\TODO{Section prose.}
+\textbf{Network partitions.} A subset of nodes cannot communicate with another subset. Each subset believes the other has failed.
 
+\textbf{Message loss.} Packets sent are not received.
 
-\section{Project}
-\TODO{implement a simple Raft cluster; verify under partition}
+\textbf{Message reordering.} Packets sent in one order are received in another.
+
+\textbf{Message duplication.} A retransmitted packet arrives along with the original.
+
+\textbf{Asymmetric failure.} Node A can reach B; B cannot reach A. Caused by misconfigured firewalls, asymmetric routing, hardware faults.
+
+\textbf{Slow nodes.} A node is responding but slowly. Distinguishing ``slow'' from ``failed'' is the working source of cascading failure.
+
+\textbf{Byzantine failure.} A node produces wrong outputs (corrupted, hostile, or buggy). Standard reliability protocols assume crash failures (a failed node stops responding); Byzantine protocols (Section 12 for cryptographic resistance) handle arbitrary failures including malicious behaviour.
+
+\subsection{The end-to-end argument}
+
+The end-to-end argument (Saltzer, Reed, Clark, 1984) is the foundational design principle: properties that need end-to-end guarantees (reliability, ordering, integrity) cannot be provided exclusively by lower layers, because the failure modes of the lower layers are not visible at the layer where the guarantee is required. Reliability at the IP layer does not give reliability at the application layer; reliability at the TCP layer between two endpoints does not give reliability across multiple endpoints; reliability across multiple endpoints requires the application to handle the cases where the underlying mechanisms fail.
+
+The engineering implication: end-to-end guarantees are expensive. The temptation is to push them to lower layers and forget about them. The discipline is to recognise where the guarantee is required and to provide it there.
+
+\section{The CAP theorem and its descendants}\pathtag{core}
+
+Brewer's CAP theorem (2000, proved by Gilbert and Lynch 2002) is the most-cited result in distributed-systems literature. In its original form: in the presence of a network partition, a distributed system cannot provide both \engterm{consistency} (every read sees the latest write) and \engterm{availability} (every request gets a response). The system must choose one.
+
+The theorem is often misapplied. CAP does not say a system must always be either CP or AP. CAP says that during a partition, a CP system blocks requests until the partition heals (sacrifices availability) and an AP system answers requests with potentially stale or divergent data (sacrifices consistency). In normal (non-partitioned) operation, both kinds of system can be both consistent and available.
+
+\subsection{PACELC}
+
+Daniel Abadi's PACELC (2010) refines CAP: \emph{if partitioned (P)} the system trades availability (A) for consistency (C), \emph{else (E)} the system trades latency (L) for consistency (C). The latency trade-off applies in normal operation: strong consistency requires coordination, coordination requires round trips, round trips add latency. The CAP-AP-camp's choice of weak consistency buys lower latency in normal operation, not just availability under partition.
+
+\subsection{The engineering choice}
+
+The engineering choice between CP and AP depends on the workload:
+
+\textbf{CP (sacrifice availability under partition).} Financial transactions, inventory management, anything where stale data is incorrect. The classical relational databases (PostgreSQL, MySQL, Oracle) with synchronous replication. The consensus-based systems (etcd, Zookeeper, Consul).
+
+\textbf{AP (sacrifice consistency under partition).} Social media feeds, search indexes, caches, anything where slightly-stale data is acceptable. Cassandra, DynamoDB in default configuration, Riak.
+
+Most real systems are hybrid: the bulk of data is AP, while specific operations (financial transactions, user-account changes, configuration updates) are CP. The architectural skill is to identify which subsystem is which.
+
+\section{Consistency models}\pathtag{standard}
+
+CAP's ``consistency'' is one of many possible consistency models. The full hierarchy, from strongest to weakest:
+
+\textbf{Strict consistency.} Every read returns the value of the most recent write, in real time. Impossible to implement in a distributed system (no global clock).
+
+\textbf{Linearizability.} Every operation appears to take effect atomically at some point between its invocation and its response. The most useful strong consistency in practice. Implemented by consensus protocols.
+
+\textbf{Sequential consistency.} All operations appear in some sequential order consistent with the program order of each thread. Weaker than linearizability (no real-time requirement).
+
+\textbf{Snapshot isolation.} A transaction sees a consistent snapshot of the database; writes do not see writes from concurrent transactions. The default in many modern relational databases.
+
+\textbf{Causal consistency.} If operation A causally precedes operation B (A's result was visible to the process that issued B), every process sees A before B. Weaker than sequential.
+
+\textbf{Eventual consistency.} If no new writes are made, all replicas eventually converge to the same value. The weakest model still useful in practice.
+
+Each model is a trade-off between programmer-friendliness (stronger models are easier to reason about) and performance (stronger models require more coordination). The engineering question is: which is the weakest model your application can tolerate, and what does that buy you in performance?
+
+\section{Consensus: Paxos, Raft}\pathtag{standard}
+
+\engterm{Consensus} is the problem of getting multiple nodes to agree on a single value (or a single sequence of values). The problem is the building block of replicated state machines, distributed locks, leader election, configuration management.
+
+\subsection{The Paxos protocol}
+
+Lamport's Paxos (1989, published 1998) is the canonical consensus protocol. The protocol guarantees safety (agreement on a single value) in the presence of asynchrony and node crashes. The protocol has three roles: proposers (propose values), acceptors (vote on proposals), learners (learn the agreed value). The simplest variant (single-decree Paxos) uses two phases: prepare (the proposer gets a promise from a quorum of acceptors to ignore earlier proposals) and accept (the proposer proposes a value and receives acceptances from a quorum).
+
+Paxos has the reputation of being hard to understand. Lamport's 2001 paper ``Paxos Made Simple'' attempts to make it easier; the reputation persists.
+
+\subsection{Raft}
+
+Ongaro and Ousterhout's Raft (2014) was designed explicitly to be more understandable than Paxos. It provides the same guarantees with a different structure: leader election (one node is elected leader, others are followers), log replication (the leader appends to a log and replicates to followers), safety properties that ensure committed entries survive leader changes.
+
+Raft is the consensus protocol in etcd, Consul, CockroachDB, TiKV, and many other modern systems. Production-grade Raft implementations are still substantial code (thousands of lines), but the protocol's intent is clearer than Paxos.
+
+\subsection{Byzantine consensus}
+
+The classical Paxos and Raft handle crash failures (a failed node stops). Byzantine consensus handles arbitrary failures (a failed node produces wrong outputs). The classical Byzantine fault tolerance (BFT) protocols (Castro and Liskov 1999 PBFT) tolerate up to $f$ Byzantine failures in a system of $3f + 1$ nodes.
+
+Byzantine consensus is at the heart of blockchain consensus: Bitcoin's proof-of-work, Ethereum's proof-of-stake, the modern BFT protocols (Tendermint, HotStuff). The engineering cost is substantial: $3f + 1$ nodes plus cryptographic signatures on every message.
+
+\subsection{The FLP impossibility}
+
+Fischer, Lynch, and Paterson's 1985 impossibility result: in an asynchronous system with even one faulty process, no deterministic protocol can guarantee consensus. The result motivates the various assumptions consensus protocols make (partial synchrony, randomisation, eventual leader stability) to circumvent the impossibility.
+
+\section{Replication, sharding}\pathtag{standard}
+
+\subsection{Replication}
+
+\engterm{Replication} keeps copies of data on multiple nodes. The main models (also discussed in Chapter 9):
+
+\textbf{Single-leader (primary-backup).} One node accepts writes; followers replicate. Failover requires leader-election; data loss is possible if the leader has accepted writes not yet replicated.
+
+\textbf{Multi-leader.} Multiple nodes accept writes; writes are propagated. Conflict resolution is the working problem.
+
+\textbf{Leaderless (Dynamo-style).} Every node accepts writes; clients write to a quorum and read from a quorum. Anti-entropy mechanisms reconcile divergence.
+
+\textbf{Consensus-based.} The replicated state machine is built on consensus (Paxos, Raft). Every replica applies operations in the same order; the replicas are exactly consistent.
+
+\subsection{Sharding}
+
+\engterm{Sharding} (also called partitioning) splits the data across nodes. Each node holds a subset; the system routes queries to the right shard.
+
+\textbf{Hash-based sharding.} Partition by hash of the key. Even distribution; range queries are expensive (must query all shards).
+
+\textbf{Range-based sharding.} Partition by ranges of the key. Range queries are efficient; load can be uneven.
+
+\textbf{Directory-based sharding.} Explicit lookup table from key to shard. Maximum flexibility; the directory becomes a bottleneck or a separate problem to scale.
+
+\subsection{Resharding}
+
+When the shard count must change (more data, more nodes), the system must reshard. The naive approach (rehash everything) is very expensive. \engterm{Consistent hashing} (Karger et al.\ 1997) reduces the rehashing cost: when a shard is added or removed, only $1/N$ of the keys need to move. Modern systems (DynamoDB, Cassandra, Memcached at Facebook) use variants of consistent hashing.
+
+\section{Distributed transactions}\pathtag{standard}
+
+A \engterm{distributed transaction} spans multiple nodes; either all nodes commit the transaction or none do. The classical mechanism is \engterm{two-phase commit} (2PC):
+
+\textbf{Phase 1 (prepare).} The coordinator asks each participant to prepare. Each participant either votes yes (it has done the work and can commit) or no (it cannot commit).
+
+\textbf{Phase 2 (commit/abort).} If all participants voted yes, the coordinator orders commit. If any voted no, the coordinator orders abort.
+
+2PC has a fundamental problem: if the coordinator fails after some participants have voted but before sending the decision, the participants block indefinitely waiting for the coordinator to recover. The fix is three-phase commit (3PC), which adds an intermediate phase; 3PC has its own problems and is rarely used in practice.
+
+Modern distributed transactions are built on consensus (Spanner, FoundationDB, CockroachDB) or on relaxed consistency (saga pattern, where the transaction is decomposed into a sequence of locally-committed steps with compensating actions if any step fails).
+
+\section{Microservices and service meshes}\pathtag{standard}
+
+\subsection{Microservices}
+
+A \engterm{microservice} architecture decomposes an application into many small services, each running on its own infrastructure, each owning its own data, communicating over well-defined APIs. The architecture was popularised in the early 2010s (Netflix, Amazon, Spotify) and became the default for large-scale web applications.
+
+The working virtues: independent deployment (each service can be released on its own schedule), team autonomy (each team owns its service), technology heterogeneity (each service can use the best language for its job), fault isolation (a failure in one service does not necessarily bring down others).
+
+The working liabilities: operational complexity (many services to monitor, configure, secure), inter-service latency (every API call is a network call), distributed-systems failure modes (every interaction is subject to partial failure), debugging difficulty (a trace crosses many services), eventual consistency between services that share data.
+
+The 2020s engineering consensus has tempered the enthusiasm. Many organisations have found that microservices were over-applied; the right granularity is often coarser. The new term ``modular monolith'' names the design pattern of keeping the deployment simple while preserving internal modularity.
+
+\subsection{Service meshes}
+
+A \engterm{service mesh} is infrastructure that handles inter-service communication concerns: load balancing, retries, circuit breaking, observability, mutual TLS. Examples: Istio, Linkerd, Consul Connect. The mesh runs a sidecar proxy alongside each service; the service talks to its local sidecar; the sidecar handles routing and policy.
+
+Service meshes solve real problems (uniform observability, consistent retry policy, mTLS without per-service work) at substantial cost (additional latency, complex configuration, debugging difficulty). The engineering question is whether the benefit exceeds the cost for the specific deployment.
+
+\section{Failure: split-brain, Knight Capital, AWS S3 2017}\pathtag{core}
+
+\subsection{Split-brain}
+
+A \engterm{split-brain} occurs when a distributed system partitions and both partitions independently elect a leader. Each partition believes it is the surviving authority; each accepts writes. When the partition heals, the two divergent histories must be reconciled, often impossibly.
+
+The standard remedies: fencing (the new leader fences off the old leader's writes through external state, e.g., a quorum-write to a known-trusted node); the quorum rule (only the partition containing a quorum of nodes can accept writes); explicit leader-election protocols (Raft, Paxos) that prevent two leaders from being elected simultaneously.
+
+\subsection{Knight Capital, 1 August 2012}
+
+Knight Capital, a high-frequency trading firm, lost approximately \$$460$ million in $45$ minutes on $1$ August $2012$ due to a software-deployment failure. The firm had eight production servers running its trading code; a new deployment updated seven of them, but the eighth still ran an old code path that had been disabled by reusing a configuration flag for a new purpose. When the new feature activated, the eighth server interpreted the flag's new meaning under the old code: it began submitting orders without the cancellation logic the new code provided. Within $45$ minutes the runaway server had executed millions of orders before the operators could shut it down.
+
+The case is the canonical example of staged-deployment failure: the deployment was partial, the configuration system was overloaded with multiple meanings, and the monitoring did not detect the divergent behaviour fast enough. Volume X Chapter 5 returns to this in detail; the engineering lessons are familiar: separate configuration flags from operational meaning, ensure deployments are atomic across all nodes, monitor for behavioural divergence between expected and actual.
+
+\subsection{AWS S3 outage, 28 February 2017}
+
+The Amazon S3 service in the US-East-1 region went down on $28$ February $2017$ due to an operator command intended to remove a small set of servers; the command had a typo and removed a much larger set, including servers running the indexing subsystem that the rest of S3 depended on. The recovery required restarting subsystems in a specific order; some subsystems had not been fully restarted since the service's launch and the restart procedure had not been exercised at scale. The outage lasted approximately four hours and affected a large fraction of the modern web (many web services depend on S3 for static assets, logging, or backup).
+
+The case illustrates the operator-error pattern, the long-tail dependency on internal infrastructure (S3 itself was down, but so were the dashboards used to debug S3), and the gap between routine recovery procedures and rare actual recoveries. AWS published a post-mortem committing to several remediations: capacity limits on operator commands, automated recovery procedures, decoupling of operational dashboards from the services they monitor.
+
+\subsection{The shared mechanism}
+
+The three failures (split-brain, Knight Capital, AWS S3) share a structure: a distributed system in a state the designers had not adequately modelled, a single change that pushed the system into the unmodelled state, and a recovery that took longer than the system's failure budget allowed. The engineering response in each case is the same: model the failure mode, exercise the recovery procedure, monitor for the symptoms of divergence.
+
+\begin{principle}[Distributed systems fail in ways their designers did not model]
+A distributed system has more failure modes than its designers can enumerate. The discipline of operating distributed systems is to assume the unmodelled failures will happen and to design for detection, containment, and recovery rather than for prevention alone. The discipline is not paranoia; it is the recognition that the engineering substrate is itself a distributed system whose components can fail independently.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement a simple Raft cluster; verify under partition]
+Implement a small Raft consensus protocol in your favourite language. The implementation should support: leader election, log replication, basic state-machine application (a key-value store).
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement the leader-election timer and the request-vote RPC. Verify that a three-node cluster elects a leader on startup and on leader failure.
+  \item Implement the append-entries RPC and the log-replication state. Verify that committed entries survive leader changes.
+  \item Implement a simple key-value state machine on top of Raft. Submit puts and gets through the leader.
+  \item Simulate a network partition (deliver messages only within each subset). Verify that the subset without a quorum cannot make progress.
+  \item Heal the partition. Verify that the rejoined nodes catch up via log replication.
+  \item Implement basic membership change (adding a node). Verify it preserves safety.
+\end{enumerate}
+
+The deliverable is the implementation, the test harness, and a short report (no more than six pages) describing the design and the testing methodology. The report must explicitly identify which Raft safety properties your implementation enforces and which it relies on convention to enforce.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A five-node Raft cluster needs a quorum of three to commit. Compute the maximum number of node failures the cluster can tolerate.
+\end{exercise}
+
+\begin{exercise}
+A two-phase commit transaction has a coordinator and four participants. List all messages exchanged in a successful commit. List the messages in an abort.
+\end{exercise}
+
+\begin{exercise}
+A Dynamo-style quorum-based system has $N$ replicas, $W$ writes required to commit, $R$ reads required. State the consistency condition. Identify configurations that are strongly consistent.
+\end{exercise}
+
+\begin{exercise}
+A consistent-hash ring has $1024$ virtual nodes mapped to $16$ physical nodes. Compute the expected fraction of keys that move when one physical node is added.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show informally why $R + W > N$ is sufficient for strong consistency in quorum-based replication. State the assumption it requires.
+\end{exercise}
+
+\begin{exercise}
+Show that a single-leader replication scheme cannot tolerate $\lceil n/2 \rceil$ simultaneous failures without losing availability for writes.
+\end{exercise}
+
+\begin{exercise}
+Derive the FLP impossibility informally: in an asynchronous system, no deterministic protocol can guarantee consensus in the presence of a faulty process.
+\end{exercise}
+
+\begin{exercise}
+Show that two-phase commit blocks indefinitely if the coordinator fails after the prepare phase. State the engineering remediation.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the latency of a Raft commit for a three-node cluster with $1\,\si{\milli\second}$ inter-node latency.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput of a sharded write-heavy workload at $10^4$ shards on $1000$ nodes, given per-shard throughput of $10^4$ operations per second.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost of a global two-phase commit across three continents, given $200\,\si{\milli\second}$ inter-continental latency.
+\end{exercise}
+
+\begin{exercise}
+Estimate the failure rate of a three-node Raft cluster given individual-node MTBF of $1$ year.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a leader-election simulation with split-vote failures. Tune the election timeout.
+\end{exercise}
+
+\begin{exercise}
+Implement a partition test for your Raft implementation: simulate a network partition and verify safety.
+\end{exercise}
+
+\begin{exercise}
+Implement consistent hashing with virtual nodes. Verify that adding a node moves the expected fraction of keys.
+\end{exercise}
+
+\begin{exercise}
+Implement a saga pattern for a multi-service transaction. Verify that compensation runs when a step fails.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the consensus topology for a globally-distributed configuration service. State the replication strategy and the failure modes.
+\end{exercise}
+
+\begin{exercise}
+Design the failure-isolation strategy for a microservice architecture with $100$ services. State the circuit-breaker policy, the timeout strategy, the retry policy.
+\end{exercise}
+
+\begin{exercise}
+Design the recovery procedure for a Knight-Capital-style runaway-deployment failure. State the detection mechanism and the rollback strategy.
+\end{exercise}
+
+\begin{exercise}
+Design the data-sharding strategy for a multi-tenant SaaS application. State the partitioning scheme and the resharding plan.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The Knight Capital incident hinged on a configuration flag whose meaning had been silently repurposed. State three engineering practices that would have caught the discrepancy at deployment time.
+\end{exercise}
+
+\begin{exercise}
+The AWS S3 2017 outage cascaded because the dashboards used to debug S3 depended on S3. State the engineering principle this violates and how to avoid the violation in production deployments.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between consensus-based replication (etcd, CockroachDB) and leaderless replication (Cassandra). State the engineering trade-offs and the workload characteristics that drive the choice.
+\end{exercise}
+
+\begin{exercise}
+A team's microservice architecture has $300$ services and is experiencing high operational complexity. State the engineering options ranging from accepting the complexity to consolidating services.
+\end{exercise}
+
+\begin{exercise}
+A team uses eventual consistency for user-account balance and discovers that under high concurrency, a user can briefly see a negative balance. Identify the engineering analysis and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team's two-phase-commit-based system experiences occasional blocked transactions when the coordinator fails. State the engineering options.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``most engineering teams should not build distributed systems; they should buy them.'' Critique the argument. State the cases where building is preferred.
+\end{exercise}
+
+\begin{exercise}
+A team's service deploys a configuration change to one of three regions; the change works in the deployed region but breaks the cross-region replication. State the engineering analysis and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team uses Cassandra with eventual consistency and discovers that some user-facing read paths require strong consistency. State the engineering options ranging from per-query consistency tuning to migrating subsets of data to a strongly consistent store.
+\end{exercise}
+
+\begin{exercise}
+A team's Raft cluster regularly experiences leadership flips during high load. State three causes you would investigate.
+\end{exercise}

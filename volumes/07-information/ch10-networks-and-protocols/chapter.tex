@@ -1,40 +1,387 @@
 \chapter{Networks and protocols}
 \label{vol07:ch10}
 
-\epigraph{}{}
+\epigraph{The network is the computer.}{John Gage, Sun Microsystems, 1984}
 
-\chapmeta{Half-life: medium-life. Archetypes: transport, interface, failure. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: transport, interface, failure. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 10. Approx 110 pp.}
+A computer network is the engineering substrate that lets independently-built machines communicate. The Internet, the largest such network, links billions of devices through a layered protocol stack designed in the 1970s by people who could not have predicted what the network would become. The standard reference is Tanenbaum and Wetherall's \emph{Computer Networks} \cite{text:tanenbaum-networks}; the working modern reference is Peterson and Davie \cite{text:peterson-davie}.
 
-\section{Layered architecture}
-\TODO{Section prose.}
+This chapter teaches the working protocol stack: the OSI/Internet layered model, IP routing, the TCP/UDP/QUIC transport protocols, the DNS naming system, HTTP and TLS, and the BGP inter-domain routing on which the global Internet rests. The failure section names the recurrent operational pathologies of the modern network: BGP misconfigurations, DNS outages, head-of-line blocking.
 
-\section{Physical and link layer}
-\TODO{Section prose.}
+\section{Layered architecture}\pathtag{core}
 
-\section{IP routing}
-\TODO{Section prose.}
+The Internet's design organises networking into layers, each providing services to the layer above and using services from the layer below. The layered design's working virtue is that each layer can be implemented and evolved independently. The classical layers, with the working protocol at each:
 
-\section{TCP, UDP, QUIC}
-\TODO{Section prose.}
+\textbf{Layer 1: Physical.} Bits across a medium. Copper Ethernet, fiber optics, radio (Wi-Fi, cellular).
 
-\section{DNS}
-\TODO{Section prose.}
+\textbf{Layer 2: Link.} Frames across a local link. Ethernet, Wi-Fi (802.11), PPP, MAC addresses.
 
-\section{HTTP, TLS}
-\TODO{Section prose.}
+\textbf{Layer 3: Network.} Packets across an internet. IP (Internet Protocol), routing.
 
-\section{BGP and the inter-domain routing problem}
-\TODO{Section prose.}
+\textbf{Layer 4: Transport.} End-to-end byte streams or datagrams. TCP (Transmission Control Protocol), UDP (User Datagram Protocol), QUIC.
 
-\section{Failure: BGP misconfigurations, DNS outages, head-of-line blocking}
-\TODO{Section prose.}
+\textbf{Layer 7: Application.} Application protocols. HTTP, DNS, SMTP, SSH, gRPC.
 
+(The OSI seven-layer model adds Session and Presentation layers; in practice the Internet collapses these into the application layer.)
 
-\section{Project}
-\TODO{trace a HTTPS request packet by packet; document at each layer}
+Each layer's protocol adds a header to the data it receives from above. A web request travels from the application (HTTP), through transport (TCP), through network (IP), to the link (Ethernet), as a packet on the wire; the receiving stack strips each header in reverse to recover the original request.
+
+The layered model is a clean engineering abstraction that occasionally cracks at the seams. Performance optimisation often crosses layers (kernel-bypass networking, hardware offload of TCP). Security analyses must consider every layer (attackers exploit weak link-layer protocols, broken IP-level access controls, transport-layer downgrades, application-layer injection). The model is the working starting point; the engineer also knows where it leaks.
+
+\section{Physical and link layer}\pathtag{standard}
+
+\subsection{The physical layer}
+
+The physical layer carries bits over a medium. The dominant media in 2026:
+
+\textbf{Copper Ethernet (twisted pair).} 1 Gigabit (1000BASE-T), 2.5 Gigabit, 10 Gigabit. Distance limit approximately $100\,\si{\meter}$.
+
+\textbf{Fiber optics.} Single-mode (long distance) and multi-mode (short distance). 10 Gigabit, 25 Gigabit, 100 Gigabit, 400 Gigabit, 800 Gigabit (data centres, 2024-2026). Distance limits from kilometres to thousands of kilometres.
+
+\textbf{Wireless.} Wi-Fi (802.11n, 802.11ac, 802.11ax/Wi-Fi 6, 802.11be/Wi-Fi 7). Cellular (4G LTE, 5G, 6G in early deployment). Bluetooth, NFC, LoRa, ZigBee for shorter-range or lower-power applications.
+
+The physical layer's working virtue is engineering opacity: layer 2 and above are mostly indifferent to the physical medium. The working liability is that the medium's characteristics (bandwidth, latency, loss rate) bound everything above. A 5G link's $20\,\si{\milli\second}$ latency is the floor for any service the user accesses over that link.
+
+\subsection{The link layer}
+
+The link layer carries frames between adjacent machines on a local network. The dominant standards:
+
+\textbf{Ethernet (IEEE 802.3).} The standard wired link layer. Frames have a $14$-byte header (source and destination MAC, ethertype) and a $4$-byte CRC. Switching at layer 2 is fast and cheap; modern data-centre switches route packets in under a microsecond.
+
+\textbf{Wi-Fi (IEEE 802.11).} The standard wireless link layer. More complex than Ethernet due to medium access control (carrier-sense multiple access with collision avoidance), encryption (WPA2, WPA3), and roaming between access points.
+
+\subsection{Link-layer concerns}
+
+\textbf{MAC addresses.} Each network interface has a $48$-bit MAC address, theoretically globally unique (assigned in blocks to manufacturers). MAC addresses are link-layer; routers do not propagate them.
+
+\textbf{Switching.} A layer-2 switch learns which MAC addresses live on which port by observing source addresses; it forwards frames based on destination MAC. The result is local-network routing that does not require IP.
+
+\textbf{VLANs.} Virtual LANs partition a switched network into separate broadcast domains. Used for tenant isolation and security.
+
+\section{IP routing}\pathtag{core}
+
+The Internet Protocol (IP) carries packets across networks. The two major versions in 2026:
+
+\textbf{IPv4.} 32-bit addresses ($4.3 \times 10^9$ total, mostly exhausted by 2011). The historical dominant version. Most application traffic still uses IPv4.
+
+\textbf{IPv6.} 128-bit addresses ($3.4 \times 10^{38}$). Adopted slowly since the 1990s. By 2026, approximately $40\%$ of Internet traffic is over IPv6.
+
+\subsection{IP packet structure}
+
+An IP packet has a fixed header (20 bytes for IPv4, 40 bytes for IPv6) followed by a payload. The header carries source and destination addresses, a time-to-live (TTL) field, a protocol field naming the next layer (TCP, UDP, ICMP), and a checksum (IPv4 only). The payload is whatever the transport layer placed there.
+
+\subsection{Routing}
+
+A \engterm{router} forwards IP packets towards their destination. Each router has a routing table: a mapping from destination prefix to outgoing interface and next-hop. The forwarding decision is the longest-prefix match: find the most specific prefix in the table that matches the destination, forward to its next-hop.
+
+\textbf{Static routing.} The routing table is configured manually. Used in small networks and at network edges.
+
+\textbf{Dynamic routing.} Routers exchange reachability information using routing protocols. The two major classes:
+
+\textbf{Intra-domain (IGP).} OSPF, IS-IS, RIP. Used within an organisation's network. Converge in seconds.
+
+\textbf{Inter-domain (EGP).} BGP (Border Gateway Protocol). Used between autonomous systems on the public Internet. Convergence is slower (tens of seconds to minutes) and policy-driven (Section 10.7).
+
+\subsection{NAT}
+
+\engterm{Network address translation} (NAT) maps many private IP addresses (192.168.x.x, 10.x.x.x, 172.16-31.x.x) to one public IP. The classical use is a home or office router presenting many internal devices behind one ISP-allocated address. The working virtue is IPv4 address conservation; the working liability is that incoming connections must be explicitly forwarded.
+
+IPv6's larger address space removes the NAT requirement; many home networks in 2026 still use NAT even on IPv6 for security reasons (incoming connections are blocked by default).
+
+\section{TCP, UDP, QUIC}\pathtag{core}
+
+The transport layer offers two main models: TCP's reliable byte stream and UDP's unreliable datagram. QUIC, introduced around 2013 and standardised as RFC 9000 in 2021, is an evolution that runs over UDP and provides TCP-like reliability with additional features.
+
+\subsection{TCP}
+
+TCP provides a reliable, in-order, byte-stream connection between two endpoints. The protocol's working features:
+
+\textbf{Connection establishment.} A three-way handshake: client sends SYN, server responds SYN-ACK, client responds ACK. Each side agrees on initial sequence numbers and window sizes.
+
+\textbf{Reliable delivery.} Each byte is acknowledged. Lost packets are retransmitted.
+
+\textbf{Flow control.} The receiver advertises a window; the sender stays within it. Prevents the receiver from being overwhelmed.
+
+\textbf{Congestion control.} The sender estimates network capacity by observing acknowledgement rates and packet loss. The classical algorithm (Reno) ramps up the send rate until loss; modern algorithms (CUBIC, BBR) use more sophisticated state.
+
+\textbf{In-order delivery.} The receiver delivers bytes to the application in send order. Out-of-order packets are buffered until the gap is filled.
+
+The TCP's in-order delivery is the source of head-of-line blocking (Section 10.8): if one packet is lost, all subsequent packets in the stream are buffered (not delivered to the application) until the lost packet is retransmitted.
+
+\subsection{UDP}
+
+UDP provides unreliable, unordered datagram delivery. No handshake, no acknowledgement, no retransmission, no flow control, no congestion control. Each datagram is sent and either arrives or does not.
+
+UDP's working virtues are simplicity and low latency. Used by DNS (request-response, short), by real-time media (where lateness is worse than loss), and by application-layer protocols that build their own reliability on top.
+
+\subsection{QUIC}
+
+QUIC is a transport protocol designed to replace TCP+TLS for HTTPS traffic. It runs over UDP and provides: reliable in-order delivery within streams, but multiple independent streams (so head-of-line blocking is per-stream, not per-connection); built-in encryption (TLS 1.3 integrated into the handshake); fast connection establishment ($0$-RTT for resumed connections); connection migration (a connection survives a change in client IP, useful for mobile devices).
+
+QUIC is the transport for HTTP/3 (RFC 9114, 2022). By 2026, roughly $30\%$ of HTTPS traffic is QUIC.
+
+\section{DNS}\pathtag{standard}
+
+The Domain Name System maps human-readable names (\texttt{www.example.com}) to IP addresses. The system is a globally distributed, hierarchically delegated database with caching at every layer.
+
+\subsection{The hierarchy}
+
+The name space is a tree rooted at the root zone. The root zone delegates to top-level domains (TLDs): \texttt{.com}, \texttt{.org}, \texttt{.uk}, \texttt{.io}. Each TLD delegates to second-level domains; each second-level domain manages its own subdomains.
+
+\subsection{Resolution}
+
+A DNS query for \texttt{www.example.com} proceeds as: ask a recursive resolver; the resolver asks the root server for \texttt{.com}; ask the \texttt{.com} server for \texttt{example.com}; ask the \texttt{example.com} authority for \texttt{www.example.com}; receive the IP address. Caching at every layer means most queries are answered from cache without traversing the full chain.
+
+\subsection{DNS record types}
+
+\textbf{A, AAAA.} Address records (IPv4, IPv6).
+
+\textbf{CNAME.} Alias (one name points to another).
+
+\textbf{MX.} Mail-exchange records.
+
+\textbf{NS.} Name-server records.
+
+\textbf{TXT.} Free-form text. Used for SPF, DKIM, domain-verification challenges.
+
+\textbf{SRV.} Service location records.
+
+\subsection{DNS security}
+
+DNS is the lever that an attacker pulls to redirect traffic. Three classes of attack and remedy:
+
+\textbf{Cache poisoning.} Attackers inject false records into a resolver's cache. Remedy: DNSSEC, source-port randomisation, query-name randomisation.
+
+\textbf{Eavesdropping.} Queries reveal what sites a user is visiting. Remedy: DNS-over-HTTPS (DoH), DNS-over-TLS (DoT).
+
+\textbf{Account-takeover via expired domain.} A domain's registration lapses; an attacker registers it; the attacker now controls the domain's services. Remedy: registration monitoring, auto-renewal, registry-lock.
+
+\section{HTTP, TLS}\pathtag{core}
+
+HTTP (HyperText Transfer Protocol) is the application protocol of the web. TLS (Transport Layer Security) is the encryption layer that turns HTTP into HTTPS.
+
+\subsection{HTTP}
+
+HTTP is a request-response protocol. A client sends a request (method, URL, headers, optional body); the server responds (status code, headers, body). The methods: GET (retrieve), POST (submit data), PUT (replace), DELETE, HEAD, OPTIONS, PATCH.
+
+\textbf{HTTP/1.1 (1997).} One request per TCP connection, with persistent connections allowing multiple requests sequentially. Pipelining is in the spec but rarely used due to head-of-line blocking.
+
+\textbf{HTTP/2 (2015).} Multiple requests multiplexed over a single TCP connection. Header compression (HPACK). Server push (rarely used). Reduces page-load latency for sites with many resources.
+
+\textbf{HTTP/3 (2022).} HTTP/2's semantics over QUIC. Eliminates TCP's head-of-line blocking at the transport layer.
+
+\subsection{TLS}
+
+TLS (Transport Layer Security) provides confidentiality, integrity, and authentication for arbitrary byte streams. The dominant version in 2026 is TLS 1.3 (2018), which:
+
+\textbf{Authenticates the server.} The server presents a certificate signed by a trusted certificate authority. The client verifies the certificate's signature chain.
+
+\textbf{Establishes a session key.} Diffie-Hellman key exchange yields a shared secret without ever transmitting it.
+
+\textbf{Encrypts and authenticates the data.} AEAD ciphers (AES-GCM, ChaCha20-Poly1305) provide both encryption and integrity.
+
+Chapter 12 returns to the cryptographic details.
+
+\subsection{Certificate ecosystem}
+
+The TLS authentication rests on a chain of trust: the client trusts a small set of root certificate authorities; each CA signs intermediate CAs; each intermediate signs the server's certificate. Compromise of a CA compromises every certificate signed by that CA.
+
+The deployment in 2026 includes: Certificate Transparency (CT, RFC 6962), a public log of every issued certificate; OCSP and CRL revocation mechanisms; the ACME protocol (Let's Encrypt) that automates certificate issuance.
+
+\section{BGP and the inter-domain routing problem}\pathtag{standard}
+
+The public Internet consists of approximately $90\,000$ autonomous systems (AS) in 2026: ISPs, large enterprises, cloud providers, content-delivery networks. BGP is the protocol by which AS exchange reachability information.
+
+\subsection{Path-vector routing}
+
+BGP is a path-vector protocol: each AS advertises which prefixes it can reach and via which AS path. A receiving AS adds itself to the path and re-advertises. The receiver chooses among multiple paths based on local policy: shortest path, preferred provider, customer routes preferred over peer routes preferred over provider routes.
+
+\subsection{Policy and economics}
+
+BGP routing is dominated by inter-AS economics. A customer pays its provider for transit; the provider must carry the customer's traffic anywhere. Peering relationships exchange traffic at no cost between AS that find it mutually beneficial. The routing policy each AS configures reflects its commercial agreements.
+
+The economic structure produces routing decisions that are not what a shortest-path algorithm would choose. Traffic between two physically-close servers may route halfway around the world if the AS path requires it.
+
+\subsection{BGP fragility}
+
+BGP is brittle. A misconfiguration in one AS can affect global routing. The 2008 Pakistan Telecom YouTube hijack (a Pakistani ISP advertised a more-specific prefix for YouTube, briefly blackholing YouTube traffic globally), the 2017 Google traffic hijack (a Russian ISP briefly attracted Google traffic), the 2021 Facebook outage (a BGP misconfiguration removed Facebook's name servers from the global routing table, taking Facebook offline for six hours) are emblematic. The remediations under deployment in 2026: RPKI (route-origin authentication), BGPsec (path validation), MANRS (mutually agreed norms for routing security).
+
+\section{Failure: BGP misconfigurations, DNS outages, head-of-line blocking}\pathtag{core}
+
+Three classes of network failure recur.
+
+\subsection{BGP misconfigurations}
+
+A single AS's BGP misconfiguration can affect global routing. The pattern: an operator changes a configuration, the new configuration advertises prefixes the AS does not legitimately own (or fails to advertise prefixes the AS does own), and other AS's accept the bogus advertisements because BGP's trust model is mostly local.
+
+The 2021 Facebook outage is the canonical recent case. A routine configuration change disrupted communication between Facebook's data centres; the result was that Facebook's DNS servers (located within Facebook's network) withdrew their BGP route advertisements; without DNS, Facebook's services became unreachable; without internal connectivity, the engineers who could fix it could not log in remotely; the recovery required physical access to data-centre hardware.
+
+The engineering response is multi-layer: configuration validation before deployment, staged rollouts, automated rollback, separate management network for emergency access, ensuring that critical recovery infrastructure does not depend on the infrastructure being recovered.
+
+\subsection{DNS outages}
+
+DNS is the single point of failure for many services. A DNS outage makes the service unreachable even when the service itself is healthy.
+
+The 2016 Dyn outage (a DDoS attack on the managed-DNS provider Dyn took down Twitter, Reddit, Spotify, GitHub, Netflix, and many other major sites for several hours) and the recurrent CDN-DNS outages illustrate the pattern. The engineering response is to use multiple DNS providers, to set sensible TTLs (long enough that cached results survive short outages, short enough that emergency changes propagate quickly), and to monitor the resolution paths end-to-end.
+
+\subsection{Head-of-line blocking}
+
+TCP's in-order byte-stream model creates head-of-line blocking: if one packet is lost, all subsequent packets buffered at the receiver wait until the lost one is retransmitted, even if they belong to logically independent requests. For HTTP/1.1 over TCP, the blocking is per-request-pipeline; for HTTP/2 over TCP, multiple multiplexed streams share the TCP-level head-of-line; only HTTP/3 over QUIC eliminates the TCP-level blocking.
+
+The engineering response is to use the right transport for the workload: QUIC for multiplexed connections where streams should be independent; UDP for workloads where lateness is worse than loss; TCP for the cases where the head-of-line blocking is acceptable.
+
+\begin{principle}[Networks are best-effort by default]
+The Internet's design provides best-effort packet delivery. Reliability, ordering, encryption, authentication, and many other properties are constructed at higher layers on top of best-effort. The engineering discipline is to know which guarantees come from where in the stack, to know which layers can fail independently, and to design service-level objectives that account for the failure modes of every layer the service depends on.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Trace a HTTPS request packet by packet]
+Pick a small HTTPS service: a personal website, a friend's blog, a public API. Use \texttt{tcpdump}, \texttt{Wireshark}, or your operating system's equivalent to capture a complete HTTPS GET request and response.
+
+\begin{enumerate}[leftmargin=*]
+  \item Capture the entire exchange from the TCP handshake to the connection close. Save the capture to a file.
+  \item In the capture, identify: the three-way TCP handshake; the TLS handshake (ClientHello, ServerHello, certificate, key exchange, Finished messages); the encrypted HTTP request and response; the TCP teardown.
+  \item For each step, identify the source and destination IP and port. Verify that the TLS handshake's server certificate chains to a trusted root in your system's trust store.
+  \item Compute the wall-clock latency of each phase: DNS resolution, TCP handshake, TLS handshake, HTTP request-response. Identify the dominant cost.
+  \item Repeat the capture with HTTP/3 (over QUIC) if the target supports it. Compare the layer structure and the latency profile.
+\end{enumerate}
+
+The deliverable is the captures (annotated with the phase boundaries), the latency-decomposition diagram, and a short report (no more than four pages) explaining what each layer of the protocol stack did during the request.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A TCP connection has $50\,\si{\milli\second}$ round-trip latency and a $1\,\si{\mebi\byte\per\second}$ throughput goal. Compute the required TCP window size.
+\end{exercise}
+
+\begin{exercise}
+A DNS query for a never-before-resolved \texttt{www.example.com} requires queries to the root, \texttt{.com}, and \texttt{example.com}. Compute the total resolution latency given $20\,\si{\milli\second}$ to each server.
+\end{exercise}
+
+\begin{exercise}
+Compute the size of an IPv4 packet carrying $1448$ bytes of TCP payload (a standard MTU). Include all headers.
+\end{exercise}
+
+\begin{exercise}
+A BGP router holds $10^6$ routes. Compute the memory footprint of the routing table at $200$ bytes per route. Compare to typical router hardware.
+\end{exercise}
+
+\begin{exercise}
+A NAT router maintains a table of active connections, each entry $24$ bytes. Compute the table size for $10^4$ active connections and the cost of looking up a packet by 5-tuple in $\oom{1}$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the throughput of a TCP connection as a function of round-trip time, window size, and packet-loss rate. State the Mathis formula.
+\end{exercise}
+
+\begin{exercise}
+Show that head-of-line blocking in HTTP/2 over TCP cannot be avoided at the transport layer. State the remedy in HTTP/3 over QUIC.
+\end{exercise}
+
+\begin{exercise}
+Show that BGP's policy-driven routing can produce paths that are longer than the topological shortest path. Construct an example.
+\end{exercise}
+
+\begin{exercise}
+Derive the bandwidth-delay product as the upper bound on TCP throughput for a given window size.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the latency of a TCP connection from a typical home in Bucharest to a cloud server in Frankfurt. Account for physical-layer propagation, switching, and queueing.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost of a single TLS 1.3 handshake on a modern server (CPU, network round trips). Compare to the cost of the subsequent encrypted bulk data transfer.
+\end{exercise}
+
+\begin{exercise}
+Estimate the global propagation time of a BGP routing change across the Internet. Use measured BGP convergence times as your anchor.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput of a $10$-gigabit Ethernet link carrying $1500$-byte packets. Identify the per-packet overhead.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Use \texttt{tcpdump} or \texttt{Wireshark} to capture an HTTP request. Identify each packet's role.
+\end{exercise}
+
+\begin{exercise}
+Implement a simple UDP-based echo server in your favourite language. Benchmark its throughput.
+\end{exercise}
+
+\begin{exercise}
+Implement a small DNS resolver. Verify by resolving a few well-known names against a public resolver and comparing.
+\end{exercise}
+
+\begin{exercise}
+Use \texttt{traceroute} to identify the AS path from your machine to several public servers. Compare to a BGP looking glass.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the DNS strategy for a globally distributed service: TTLs, primary/secondary, multi-provider. State your failure modes.
+\end{exercise}
+
+\begin{exercise}
+Design the TLS configuration for a public service: protocol versions, cipher suites, certificate-pinning policy.
+\end{exercise}
+
+\begin{exercise}
+Design the routing strategy for an enterprise with offices in three continents. State your IGP and your BGP configuration.
+\end{exercise}
+
+\begin{exercise}
+Design the load-balancing strategy for a service with $10^4$ concurrent users. State your load-balancer placement, your health-check strategy, and your failure modes.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The 2021 Facebook outage was caused by a BGP misconfiguration that removed Facebook's DNS servers from the global routing table. State three engineering practices that would have prevented or shortened the outage.
+\end{exercise}
+
+\begin{exercise}
+A team observes occasional packet loss on a TCP connection to a customer; the connection's throughput degrades sharply. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A team is migrating from HTTP/1.1 to HTTP/3. State three benefits and three risks.
+\end{exercise}
+
+\begin{exercise}
+A team's service is vulnerable to a DNS-poisoning attack. State three remediations and the conditions under which each is appropriate.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``the Internet always finds a way around outages.'' Critique the claim. State the cases where it is true and the cases where it is not.
+\end{exercise}
+
+\begin{exercise}
+A team uses a single DNS provider for its public services. State the engineering case for switching to a multi-provider DNS strategy.
+\end{exercise}
+
+\begin{exercise}
+A team's service experiences intermittent latency spikes correlated with peering-relationship changes at upstream ISPs. Identify the engineering analysis and the response options.
+\end{exercise}
+
+\begin{exercise}
+A team relies on a managed-CDN provider for DNS, TLS termination, and caching. State three failure modes that come with the provider dependency and the engineering mitigations.
+\end{exercise}
+
+\begin{exercise}
+The shift from HTTP/2 to HTTP/3 moves transport responsibility from TCP (kernel-implemented) to QUIC (typically user-space). State the engineering consequences for performance, debugging, and operating-system upgrades.
+\end{exercise}

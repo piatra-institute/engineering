@@ -1,34 +1,380 @@
 \chapter{Number representations, arithmetic, precision}
 \label{vol07:ch02}
 
-\epigraph{}{}
+\epigraph{Computers are useless. They can only give you answers.}{Pablo Picasso, attributed}
 
-\chapmeta{Half-life: durable. Archetypes: failure, scaling. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: failure, scaling. Exercise target: 25. Project track: simulation. Named cases: Patriot missile system Dhahran, Ariane 5 Flight 501, Pentium FDIV bug.}
 
 \noindent
-\TODO{Volume 7, Chapter 2. Approx 80 pp.}
+A number, in the abstract, is a position on the real line. A number, in a computer, is a finite-bit string interpreted by a finite-bit arithmetic. The gap between the two is one of the working sources of engineering error. Volume I taught error and uncertainty as a property of measurement; this chapter teaches error and uncertainty as a property of representation. The machine cannot store $\pi$. The machine cannot store $0.1$. The machine cannot, in any finite representation, store every result of dividing two numbers it can store. What the machine \emph{can} do is store an approximation whose error is bounded, deterministic, and accountable. The engineer's discipline is to know that bound, propagate it through the computation, and decide before the calculation runs whether the bound is small enough for the purpose.
 
-\section{Integer representations}
-\TODO{Section prose.}
+The chapter takes integer representations first, floating-point second, fixed-point third. Numerical precision in practice and reproducibility close the technical content. The failure section names three accidents whose root cause is a representation defect: the Patriot missile timing drift at Dhahran (1991), the Ariane 5 conversion overflow (1996), and the Pentium FDIV bug (1994). Each is a case where the engineering team understood the representation but failed to enforce its bounds at an interface.
 
-\section{IEEE 754 floating-point}
-\TODO{Section prose.}
+\section{Integer representations}\pathtag{core}
 
-\section{Fixed-point arithmetic}
-\TODO{Section prose.}
+An integer in a computer is a fixed-width binary string. The width is most commonly $8$, $16$, $32$, or $64$ bits, with $128$-bit integers appearing in cryptographic, large-arithmetic, and high-precision financial code. The width determines what fits; the encoding determines how the bits are read.
 
-\section{Numerical precision in practice}
-\TODO{Section prose.}
+\subsection{Unsigned binary}
 
-\section{Reproducibility of floating-point computation}
-\TODO{Section prose.}
+An unsigned $n$-bit integer represents the values $0, 1, \ldots, 2^n - 1$ in standard binary positional notation. A 32-bit unsigned integer covers $[0, 4\,294\,967\,295] = [0, 2^{32} - 1]$; a 64-bit unsigned integer covers $[0, 2^{64} - 1] \approx [0, 1.84 \times 10^{19}]$. Addition, subtraction, and multiplication are performed mod $2^n$: a $32$-bit unsigned $0$xFFFFFFFF $+ 1$ wraps to $0$. Division and modulus are the usual integer operations; division by zero is an undefined operation (most CPUs raise a trap, most language runtimes raise an exception).
 
-\section{Failure: Patriot missile clock drift, Ariane 5 conversion, Pentium FDIV}
-\TODO{Section prose.}
+\subsection{Two's complement signed}
 
+The dominant signed-integer representation is \engterm{two's complement}. The high-order bit is interpreted as $-2^{n-1}$ rather than $+2^{n-1}$; the remaining bits keep their unsigned weights. An $n$-bit two's complement integer covers $[-2^{n-1}, 2^{n-1} - 1]$: a $32$-bit signed covers $[-2\,147\,483\,648, 2\,147\,483\,647]$. The range is asymmetric: there is one more negative number than positive.
 
-\section{Project}
-\TODO{reproduce the Patriot timing-error analysis from primary sources}
+Two's complement's working virtue is that the addition, subtraction, and multiplication circuits are identical to the unsigned circuits. The hardware ``does not know'' whether the operands are signed or unsigned; the interpretation is in the eye of the program. This is why processor instruction sets typically have one ADD instruction and two compare instructions (signed and unsigned); the multiplication likewise has signed and unsigned variants only for the high-order half of the result.
+
+\subsection{Other signed representations}
+
+Two earlier representations remain in narrow use.
+
+\textbf{Sign-magnitude.} A high-order sign bit followed by the magnitude in unsigned binary. Two representations of zero ($+0$ and $-0$). Used in IEEE 754 floating-point (Section 2.2). Rarely used for signed integers in modern hardware.
+
+\textbf{One's complement.} Negation is bit-inversion. Two representations of zero, addition requires end-around carry. Largely historical.
+
+The reader who programs in C, C++, Rust, Go, Java, or Python on any major platform encounters two's complement exclusively for signed integers.
+
+\subsection{Overflow}
+
+Integer overflow is the event where the result of an arithmetic operation would be outside the representable range. The behaviour on overflow is one of the working differences between languages.
+
+\textbf{Wrap-around (modular).} The result is taken modulo $2^n$. C's unsigned types wrap by definition; signed types wrap by hardware behaviour on common platforms but the C standard officially names it undefined behaviour. Rust's release builds wrap by default for primitive integer types; Rust's debug builds panic. Java's signed types wrap by language specification.
+
+\textbf{Saturation.} The result is clamped to the representable range. Used in digital signal processing, image processing, and many SIMD instruction sets. The result is biased but no large discontinuity occurs.
+
+\textbf{Exception.} The operation raises a trap or exception. Used in Python (Python's int is arbitrary-precision in practice; no overflow occurs), in Ada with explicit constraint checks, in C\# checked arithmetic blocks, and in Rust's checked\_add family.
+
+\textbf{Arbitrary precision.} The integer width expands as needed. Used in Python's int, in many functional languages (Haskell's Integer), and as an opt-in in many systems languages (Rust's BigInt, Java's BigInteger). Performance is logarithmic in the number's magnitude rather than constant.
+
+The engineering question is not which behaviour is right; each is right for some purpose. The question is what the program does, and whether the design accounts for the behaviour. A counter incremented by user input in a $32$-bit signed integer that wraps silently is a security defect (the wrap can take a positive value to a negative value, defeating a length check). A counter that saturates is sometimes correct (capping at MAX is fine if the semantics is ``at least MAX''). A counter that raises an exception is the safest default, at some performance cost. The case studies in the failure section will return to this.
+
+\begin{example}
+The Java standard library function \texttt{Math.abs(Integer.MIN\_VALUE)} returns \texttt{Integer.MIN\_VALUE}. The absolute value of $-2\,147\,483\,648$ is $2\,147\,483\,648$, which is not representable in a 32-bit signed integer. The wrap-around behaviour returns $-2\,147\,483\,648$. A program that uses \texttt{Math.abs} as part of a bounds-check on signed integer input has a quiet defect on that single value.
+\end{example}
+
+\section{IEEE 754 floating-point}\pathtag{core}
+
+Floating-point arithmetic is the standard representation for non-integer numerical computation in engineering. The IEEE 754 standard (originally 1985, revised 2008, current revision 2019 \cite{std:ieee754-2019}) defines binary and decimal formats, their semantics, and their exception handling.
+
+\subsection{Binary floating-point formats}
+
+A binary floating-point number has the form
+\[
+x = (-1)^s \cdot (1.f) \cdot 2^e
+\]
+where $s$ is the sign bit, $f$ is a fraction (also called the mantissa or significand), and $e$ is an exponent. The leading $1$ on the significand is implicit (\engterm{the hidden bit}), saving one bit of storage. Three formats dominate.
+
+\textbf{Single precision (binary32, ``float'').} $1$ sign bit, $8$ exponent bits (bias $127$, so $e \in [-126, 127]$), $23$ fraction bits. About $7$ decimal digits of significand precision. Range approximately $\pm 1.18 \times 10^{-38}$ to $\pm 3.4 \times 10^{38}$.
+
+\textbf{Double precision (binary64, ``double'').} $1$ sign bit, $11$ exponent bits (bias $1023$, $e \in [-1022, 1023]$), $52$ fraction bits. About $16$ decimal digits of significand precision. Range approximately $\pm 2.23 \times 10^{-308}$ to $\pm 1.80 \times 10^{308}$.
+
+\textbf{Half precision (binary16, ``half'').} $1$ sign bit, $5$ exponent bits, $10$ fraction bits. About $3$ decimal digits. Used in machine-learning training and storage.
+
+Single and double precision are the working tools of engineering computation. Double precision is the default for scientific software, with single precision reserved for embedded, graphics, and machine-learning training where memory and bandwidth dominate.
+
+\subsection{Special values}
+
+The exponent encodings $\text{all-zeros}$ and $\text{all-ones}$ are reserved for special values.
+
+\textbf{Signed zero.} $\pm 0$. Equal under $==$ in most languages, distinguishable by $1/x$ (which gives $\pm\infty$).
+
+\textbf{Subnormal numbers.} Exponent zero, fraction non-zero. The hidden bit is interpreted as zero rather than one, allowing representation of magnitudes smaller than the normal minimum, at reduced significand precision. The subnormal range fills the gap between the normal minimum and zero.
+
+\textbf{Infinity.} $\pm\infty$. Produced by overflow and by operations like $1/0$.
+
+\textbf{Not-a-Number (NaN).} The result of operations with no defined value: $0/0$, $\infty - \infty$, $\sqrt{-1}$. A NaN is unequal to every value including itself: \texttt{NaN == NaN} is false. The NaN-detection idiom is therefore \texttt{x != x}.
+
+\subsection{Rounding}
+
+A real number $x$ between two adjacent representable floating-point values $a$ and $b$ must be rounded. IEEE 754 defines several rounding modes; the default in most settings is \engterm{round to nearest, ties to even} (also called banker's rounding). The relative error of a single rounded operation is bounded by half the \engterm{machine epsilon}:
+\[
+\left| \mathrm{round}(x) - x \right| \leq \tfrac{1}{2} \cdot \mathrm{ulp}(\mathrm{round}(x)),
+\]
+where ulp is the unit in the last place. For binary64, the relative error from a single rounding is at most $2^{-53} \approx 1.1 \times 10^{-16}$; this is the engineering origin of ``$16$ digits of precision.''
+
+The other rounding modes (round towards zero, round towards $+\infty$, round towards $-\infty$, round to nearest ties away from zero) are used in specific contexts (interval arithmetic, financial regulation, rendering pipelines). They are available in most floating-point libraries; the default behaviour is the round-to-nearest-ties-to-even.
+
+\subsection{Operations and exceptions}
+
+The four basic operations (+, -, *, /) and the square root are required by IEEE 754 to be \engterm{correctly rounded}: the result is the floating-point number nearest to the true real-number result. This is a stronger guarantee than ``the operation is computed somehow.'' It means that comparing across IEEE-conforming platforms, the result of a single arithmetic operation is bit-exact reproducible.
+
+Five exceptions are defined: invalid operation (NaN production), division by zero, overflow (result too large), underflow (result too small, possibly producing a subnormal), inexact (result not representable, hence rounded). The default behaviour is to set a sticky flag and return the IEEE-defined value (NaN, infinity, the rounded result). Most languages do not enable trapping on these exceptions by default; the engineer wanting to trap must opt in explicitly (C's feenableexcept, Rust's debug-mode panic-on-overflow for integers, MATLAB's check options).
+
+\subsection{The non-associativity of floating-point addition}
+
+The single most surprising feature of floating-point arithmetic, for the engineer who has not encountered it before, is that the operations are not associative. The mathematical identity $(a + b) + c = a + (b + c)$ is false in floating-point for most $a, b, c$. The order in which a long sum is accumulated changes the result, sometimes substantially.
+
+\begin{example}
+Consider the sum $1.0 + 10^{20} + (-10^{20})$ in double precision.
+
+\textbf{Left to right.} $1.0 + 10^{20} = 10^{20}$ (the $1$ is below the representation threshold at exponent $66$). Then $10^{20} + (-10^{20}) = 0$. Final sum: $0$.
+
+\textbf{Reordered.} $10^{20} + (-10^{20}) = 0$. Then $1.0 + 0 = 1.0$. Final sum: $1$.
+
+The two results differ by an absolute value of $1$, in a sum whose magnitude was always less than $10^{20}$. The engineering implication is that ``$1$'' might be the answer; ``$0$'' might be the answer; both come from running the same arithmetic on the same hardware in different orders.
+\end{example}
+
+The non-associativity is consequential at scale. A long sum over a large dataset can produce different results on different machines, in different compiler versions, with different loop-unrolling and vector-instruction choices, even with bit-exact correctly-rounded primitives. The discipline of reproducible floating-point computation (Section 2.5) is the discipline of either fixing the summation order, choosing a summation algorithm with bounded error (Kahan summation, pairwise summation), or accepting that the answer is reproducible only within a stated tolerance.
+
+\subsection{Recommended reading}
+
+The working short reference is Goldberg's 1991 ``What every computer scientist should know about floating-point arithmetic'' \cite{text:goldberg1991-floating-point}. The working book is Overton \cite{text:overton-ieee754}. The deep treatment is Knuth Volume 2 \cite{text:knuth-taocp2}, Chapter 4 on Arithmetic.
+
+\begin{archetype}[Failure]
+Floating-point representation is the canonical example of an engineering technique whose bounds are well-defined but routinely violated by users who do not know the bounds exist. Every operation is correctly rounded; every error is bounded; every cumulative behaviour is in principle analysable. The failure mode is the engineer treating the floating-point number as the real number it approximates. Section 2.4 names the patterns; the failure section gives the consequences.
+\end{archetype}
+
+\section{Fixed-point arithmetic}\pathtag{standard}
+
+A \engterm{fixed-point} number is an integer interpreted with an implicit scale factor: $x = N \cdot 2^{-f}$ for some integer $N$ and a fixed fractional bit count $f$. The value $N$ is stored as a plain integer; the program ``remembers'' that the bottom $f$ bits represent the fractional part. Fixed-point is the working representation in embedded systems, digital signal processing, and any context where the deterministic timing and predictable precision of integer arithmetic are worth the loss of dynamic range.
+
+\subsection{Operations}
+
+\textbf{Addition and subtraction} are integer addition and subtraction; both operands must share the same $f$. Overflow is the usual integer overflow.
+
+\textbf{Multiplication} doubles the fractional bits: $(N_1 \cdot 2^{-f}) \cdot (N_2 \cdot 2^{-f}) = (N_1 \cdot N_2) \cdot 2^{-2f}$. The product must be rescaled by shifting right $f$ bits (with rounding if precision matters), at the cost of intermediate-result width: a $32 \times 32$ multiplication needs a $64$-bit intermediate.
+
+\textbf{Division} is integer division; the dividend must be scaled up before division: $(N_1 \cdot 2^{f}) / N_2$.
+
+\subsection{Format notation}
+
+Fixed-point formats are conventionally written as Q$m.n$: $m$ integer bits and $n$ fractional bits. A Q$1.15$ number has $1$ integer bit (which is the sign bit in signed Q-format) and $15$ fractional bits; it represents values in $[-1, 1 - 2^{-15}]$ with resolution $2^{-15} \approx 3 \times 10^{-5}$. Q$0.31$ represents $[-1, 1 - 2^{-31}]$ with resolution $\approx 5 \times 10^{-10}$. The notation varies; some references write Q$15$ for what we call Q$1.15$. The engineer working with a library or standard should check the convention before integrating.
+
+\subsection{Trade-off against floating-point}
+
+Fixed-point's advantages over floating-point: deterministic operation cost (no special-value handling), bit-exact reproducibility across platforms, no rounding-related non-associativity, lower hardware cost. Its disadvantages: limited dynamic range (the engineer must know in advance the magnitude range the application requires), no automatic precision adaptation, manual overflow management, manual rescaling at multiplication and division.
+
+The choice is application-driven. Digital filter design (Chapter 15) typically uses fixed-point on embedded targets because the operation cost is predictable and the input range is bounded. Numerical solvers for stiff ODEs (Volume II Chapter 7) typically use floating-point because the magnitude range cannot be bounded in advance.
+
+\section{Numerical precision in practice}\pathtag{core}
+
+The single most important rule of floating-point engineering is that the relative error of an arithmetic operation is bounded by machine epsilon; the absolute error of a sum is bounded by the relative error times the magnitude of the largest intermediate. The engineering question is which intermediates the computation passes through, and whether the error those intermediates carry is acceptable for the purpose.
+
+\subsection{The conditioning of an operation}
+
+An operation $f$ at input $x$ is \engterm{well-conditioned} if small relative perturbations in $x$ produce small relative perturbations in $f(x)$. The condition number measures the amplification: $\kappa = \left| x \cdot f'(x) / f(x) \right|$ for a differentiable scalar function. Well-conditioned operations carry their input error roughly unchanged; ill-conditioned operations amplify it.
+
+\textbf{Subtraction of near-equal numbers} is the canonical ill-conditioned operation. Compute $\sqrt{x + 1} - \sqrt{x}$ at $x = 10^{16}$ in double precision: each square root has $16$ digits of precision, the two square roots agree in the first $8$ digits, and the difference retains only $8$ digits. The relative error has been amplified by $10^8$. The engineering remedy is the algebraic rewrite $\sqrt{x + 1} - \sqrt{x} = 1 / (\sqrt{x + 1} + \sqrt{x})$, which converts the ill-conditioned subtraction to a well-conditioned sum.
+
+\textbf{Solving a linear system $A \vect{x} = \vect{b}$.} The condition number is $\kappa(A) = \norm{A} \cdot \norm{A\inv}$. A condition number of $10^k$ means roughly $k$ digits of precision lost in solving the system. A $10^{12}$-conditioned system in double precision retains $4$ digits of precision in the solution; a $10^{16}$-conditioned system retains none.
+
+\textbf{Evaluating a polynomial at a root.} The relative error in the value of a polynomial near a multiple root is amplified by the multiplicity. Root-finding by Newton's method near a multiple root therefore degrades.
+
+The discipline of \engterm{numerical analysis} (Volume II Chapter 16) is the discipline of identifying conditioning and choosing algorithms whose error is not amplified by it. Higham's \emph{Accuracy and Stability of Numerical Algorithms} (Volume II reading list) is the working reference.
+
+\subsection{Algorithmic stability}
+
+An algorithm is \engterm{numerically stable} if the error it accumulates is comparable to the unavoidable error of the conditioning of the problem; \engterm{numerically unstable} if it amplifies error beyond conditioning. The two are different. A stable algorithm on an ill-conditioned problem will still produce a result with substantial error; an unstable algorithm on a well-conditioned problem will produce a result with substantial error.
+
+The classical Gaussian elimination without pivoting is numerically unstable on systems whose leading pivots are small. Gaussian elimination with partial pivoting (the standard textbook algorithm) is numerically stable for almost all matrices. The Gram-Schmidt orthogonalisation, in its classical form, is numerically unstable; the modified Gram-Schmidt and the Householder-reflection formulation are stable.
+
+The engineer's working habit is to ask of any numerical routine: \emph{what is the algorithm's stability, and what is the problem's conditioning?} The two pieces together determine the precision of the result.
+
+\subsection{Worked example: Kahan summation}
+
+A naive summation of $n$ floating-point numbers accumulates error of magnitude approximately $n \cdot \epsilon_{\mathrm{mach}} \cdot \norm{\vect{x}}_1$, where $\epsilon_{\mathrm{mach}}$ is machine epsilon. For a sum of $10^9$ numbers in double precision, this is $10^9 \cdot 10^{-16} = 10^{-7}$ times the sum magnitude, which can be a problem.
+
+Kahan summation \cite{text:knuth-taocp2} carries a separate compensation term:
+
+\begin{verbatim}
+sum = 0.0
+c = 0.0  # running compensation
+for x in xs:
+    y = x - c
+    t = sum + y
+    c = (t - sum) - y
+    sum = t
+\end{verbatim}
+
+The compensation $c$ absorbs the rounding error of each addition into the next; the algorithm's accumulated error is bounded independently of $n$. The cost is four operations per element instead of one. For long sums or sums where precision matters (statistical moments, financial totals, Monte Carlo averages), Kahan summation is the working algorithm.
+
+\begin{estimation}
+\textbf{Question.} A weather-modelling program computes an air-mass average over a $10^7$-cell grid by summing the per-cell mass in double precision. Each cell mass is approximately $10^9\,\si{\kilogram}$ with variability $\pm 10\%$. The total is approximately $10^{16}\,\si{\kilogram}$. How many digits of precision can the engineer claim on the total?
+
+\textbf{Working.} Naive summation error: $n \cdot \epsilon_{\mathrm{mach}} \cdot \text{(largest intermediate)} \approx 10^7 \cdot 10^{-16} \cdot 10^{16} = 10^7$. Total approximately $10^{16}$. Relative error $\approx 10^{-9}$, so about $9$ digits of precision. Adequate for most engineering purposes. Kahan summation would extend this to roughly $15$ digits.
+
+\textbf{Implication.} The engineer who reports a total to $13$ significant digits without using Kahan summation is misrepresenting the precision. The engineer who reports it to $9$ digits is being honest about naive double precision. The engineer who needs $13$ digits should either use Kahan summation or change to a higher-precision representation.
+\end{estimation}
+
+\section{Reproducibility of floating-point computation}\pathtag{standard}
+
+A floating-point computation is \engterm{bit-reproducible} if running it on different hardware, different compilers, or different runs produces bit-identical results. Most floating-point computation is not bit-reproducible by default. The reasons are several.
+
+\textbf{Compiler reassociation.} Optimising compilers reorder floating-point sums for parallelism and vectorisation. Since floating-point addition is not associative (Section 2.2), reordering changes the result. The standard fix is to compile with strict-IEEE flags (\texttt{-fno-fast-math} in gcc/clang, \texttt{/fp:strict} in MSVC). Strict mode prevents the compiler from reordering and from using non-IEEE-conforming hardware instructions (such as the fused multiply-add instruction, which produces a more accurate result but a different bit pattern).
+
+\textbf{Hardware instruction selection.} Modern processors have multiple floating-point execution units. SIMD instructions (SSE, AVX, AVX-512, NEON, SVE) operate on $4$, $8$, or $16$ values per instruction with their own summation order. A loop compiled to scalar instructions and the same loop vectorised produce different bit patterns. Some hardware has higher internal precision (Intel's x87 used $80$-bit extended precision internally, with results truncated to $64$ bits on store; modern SSE/AVX use only the named width). The same code on the same input can produce different bit patterns on different microarchitectures.
+
+\textbf{Library transcendental functions.} The IEEE 754 standard requires correct rounding only for the four basic operations and square root. Transcendental functions (exp, log, sin, cos, tan, atan2, pow) are typically computed to within $1$ ulp by widely-deployed libraries (glibc libm, Intel's Short Vector Math Library, AMD's libm), but the implementations vary. Two correct libm implementations may produce different bit patterns for the same input.
+
+\textbf{Parallel reduction.} A sum performed in parallel across $k$ threads collects partial sums in an order that depends on thread scheduling. The result varies from run to run.
+
+The engineer who needs bit-reproducible results has two paths: enforce a strict computation order (single-threaded, strict-IEEE compilation, fixed library version) at the cost of performance, or accept reproducibility only within a stated tolerance and define the tolerance as part of the contract.
+
+A productive convention is to report results with explicit precision bounds. ``The simulation predicts a flow rate of $2.371 \pm 0.002\,\si{\liter\per\second}$'' is a reproducible claim; ``the simulation predicts a flow rate of $2.371\,486\,3$'' invites a reader to check the next-to-last digit, which is not reproducible.
+
+\section{Failure: Patriot missile clock drift, Ariane 5 conversion, Pentium FDIV}\pathtag{core}
+
+Three named accidents close the chapter. Each is a case where the engineering team knew the representation, knew the precision, and knew the formal limits, but did not enforce the limits at the interface where they mattered.
+
+\subsection{Patriot missile system, Dhahran, 25 February 1991}
+
+A Patriot missile battery defending Dhahran, Saudi Arabia, failed to intercept an incoming Iraqi Scud missile. The Scud struck a U.S.\ Army barracks, killing $28$ soldiers. The U.S.\ General Accounting Office investigation traced the failure to a timing-conversion error in the Patriot fire-control software \cite{acc:gao-patriot-1992}.
+
+The system measured time as an integer count of tenths of a second elapsed since boot. To use this in the targeting equations, the integer was multiplied by $1/10$ to obtain seconds, then by a velocity to obtain a position. The constant $1/10$ is not exactly representable in binary floating-point. The Patriot's $24$-bit fixed-point representation of $1/10$ had a small absolute error of approximately $10^{-7}$ seconds per tenth of a second, hence about $10^{-6}$ seconds of error per second of operation. The battery had been running continuously for approximately $100$ hours when the Scud was launched. The cumulative timing error was approximately $0.34$ seconds. Multiplied by a Scud velocity of approximately $1\,676\,\si{\meter\per\second}$, the positional error in the range-gate calculation was approximately $570\,\si{\meter}$, more than the size of the range gate. The incoming Scud was outside the range gate when the radar performed its tracking confirmation; the Patriot's fire-control system rejected the track as a false alarm and did not launch \cite{acc:gao-patriot-1992}.
+
+The engineering mechanism is the cumulative effect of a representation error multiplied by an integration time. The error in the $1/10$ representation was bounded and well-understood; the integration time was bounded and well-understood; the product was not bounded by the engineering process. The U.S.\ Army had issued a software update on $26$ February $1991$ (the day after the incident) that corrected the timing routine. The battery at Dhahran was running the version with the defect.
+
+The fix was straightforward: load the corrected software. The underlying engineering lesson is that representation-error analysis must include the operating-time envelope of the system. The Patriot was designed for $14$-hour patrol cycles between recalibration; it was deployed on a $100$-hour continuous-operation envelope, outside the envelope the representation was certified for. The implicit precondition of the timing arithmetic was ``the system has been running less than $14$ hours.'' The deployment violated the precondition.
+
+\subsection{Ariane 5 Flight 501, 4 June 1996}
+
+The Ariane 5 launch vehicle was destroyed approximately $40$ seconds after liftoff. The Inquiry Board chaired by Jacques-Louis Lions identified the cause as an unhandled software exception in the inertial reference system (SRI), triggered by a conversion of a $64$-bit floating-point value of a horizontal-velocity-related quantity (BH) to a $16$-bit signed integer \cite{acc:ariane501-ifr}.
+
+The BH variable's value exceeded the $16$-bit signed-integer range $[-32\,768, 32\,767]$. The conversion overflowed, raising an Ada operand-error exception. The exception was not caught (the surrounding code had been certified as ``cannot fail'' on Ariane 4 trajectories and the exception handler was elided). The SRI shut down. The backup SRI, running the same software with the same precondition, also shut down. With both SRI offline, the on-board computer interpreted diagnostic register output as flight data, commanded extreme nozzle deflections, and the vehicle broke up under aerodynamic loads. The self-destruct mechanism triggered shortly afterwards.
+
+The engineering mechanism has three layers. First, the conversion was not range-checked; the software was certified for an operand range that did not include the Ariane 5 trajectory. Second, the exception handling was elided on the basis that the operation could not fail \emph{on Ariane 4}; the certification did not carry the precondition. Third, the SRI continued to compute during a flight phase in which the alignment-system functionality was no longer required; the SRI was running because Ariane 4 had needed it to be. Each layer was the action of competent engineers operating under a precondition that held on the previous launcher and did not hold on the current one \cite{acc:ariane501-ifr}.
+
+The lesson is more general than the conversion. The Ariane 5 case is the canonical example of \emph{software reuse without re-verification of preconditions}. Volume X Chapter 5 returns to this case at greater depth; here, the lesson is that a representation choice (16-bit integer) carries an implicit precondition (the value fits in 16 bits) that must be checked when the operating envelope changes.
+
+\subsection{Pentium FDIV bug, 1994}
+
+The Pentium FDIV bug was a hardware defect in the floating-point division unit of Intel's Pentium processor, released in March 1993. The division unit implemented the Sweeney-Robertson-Tocher (SRT) radix-4 algorithm, which uses a lookup table of pre-computed quotient digits indexed by leading bits of the partial remainder and divisor. Five entries in the 1067-cell table were inadvertently zeroed during the table transfer to the silicon die. Operand pairs whose intermediate state hit one of these cells produced a quotient incorrect from the fifth significant decimal digit, a relative error of approximately $5 \times 10^{-5}$ \cite{paper:coe-tang-pratt-1995}.
+
+The bug was discovered in June 1994 by Thomas Nicely of Lynchburg College, who was computing reciprocal sums of twin primes for a number-theory project. Intel acknowledged the defect privately in October 1994 and offered conditional replacement; the bug became public through Internet newsgroups in November; Intel announced an unconditional replacement programme on $20$ December $1994$ at an eventual cost of approximately $475$ million US dollars.
+
+The engineering lesson is that an arithmetic operation can be defective in ways that are statistically rare on representative test inputs but reliably triggered by specific operand pairs. The probability of hitting the affected operand region on uniformly random inputs is approximately $1$ in $9$ billion, well below the noise level of any conventional test suite. The case is the canonical example of the limits of statistical testing for arithmetic correctness, and it drove substantial industrial investment in formal verification of arithmetic units over the following decade \cite{paper:edelman-1997}.
+
+The shared mechanism across all three cases is the same: a representation choice carries a precondition; the engineering team understood the precondition at design time; the deployment or reuse violated the precondition without anyone checking. The Patriot's $1/10$ representation was correct for $14$-hour operation; the Ariane 5's $16$-bit conversion was correct for the Ariane 4 envelope; the Pentium's SRT lookup table was correct on $1066$ of $1067$ entries. Each precondition was implicit; each violation was a quiet defect with consequences far larger than the representation error itself.
+
+\begin{principle}[Representation has a precondition]
+Every fixed-precision representation is correct only over a stated range of inputs. The range is a precondition. The discipline of numerical-software engineering is to state the precondition explicitly, to check it at the interface where the operand crosses from a producer to a consumer, and to fail the computation noisily when the precondition is violated.
+\end{principle}
+
+\section{Project}\pathtag{standard}
+
+\begin{project}[Reproduce the Patriot timing-error analysis from primary sources]
+Read the U.S.\ General Accounting Office report on the Patriot Dhahran incident \cite{acc:gao-patriot-1992} in full.
+
+\begin{enumerate}[leftmargin=*]
+  \item Identify the Patriot's binary representation of $1/10$. Compute the exact value the representation stores. Compute the absolute error of one tenth of a second. Compute the cumulative error after $100$ hours of continuous operation. Compare your result to the GAO report's figure.
+  \item Identify the Patriot's velocity assumption for the Scud. Compute the positional error in the range-gate calculation that follows from your cumulative-time error.
+  \item Identify the GAO report's recommendation for the software fix. Compare it to the corrected version the U.S.\ Army distributed on $26$ February $1991$.
+  \item Compute, for the same arithmetic, the cumulative error if the Patriot had been running for the design envelope of $14$ hours. Compare to the cumulative error at $100$ hours. State the precondition that the design met and the deployment violated.
+\end{enumerate}
+
+The deliverable is a $5$-$8$ page report containing the computations, the citation pin for every numerical claim from the GAO report, and a one-paragraph engineering conclusion about the role of fixed-point representation in safety-critical timing.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the two's complement representation of $-5$ in $8$-bit. Verify by adding $5$ to your result and observing that the wrap-around gives $0$ in $8$ bits.
+\end{exercise}
+
+\begin{exercise}
+Compute the result of $0$x7FFFFFFF $+ 1$ as a $32$-bit signed integer. As a $32$-bit unsigned integer. State what each language standard (C, Java, Rust, Python) does in each case.
+\end{exercise}
+
+\begin{exercise}
+Convert the decimal $0.1$ to its IEEE 754 binary64 representation. Identify the rounding error. Compute the result of $10 \times 0.1$ in binary64 and compare to $1.0$. Explain.
+\end{exercise}
+
+\begin{exercise}
+Compute the result of $(1.0 + 10^{-16}) - 1.0$ in binary64. Compute the result of $(1.0 + 10^{-17}) - 1.0$ in binary64. Explain the difference.
+\end{exercise}
+
+\begin{exercise}
+A Q$1.15$ fixed-point representation is used to multiply two values $0.5$ and $0.25$. State the bit patterns of the operands, the bit pattern of the (unrescaled) product, and the bit pattern of the rescaled product. State the resolution of the result.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the bound on the relative error of a single correctly-rounded floating-point operation in binary64. Show that the bound is $2^{-53}$.
+\end{exercise}
+
+\begin{exercise}
+Show that the IEEE 754 round-to-nearest-ties-to-even rule has no systematic bias on a stream of inputs with a smooth distribution. Compare to round-to-nearest-ties-away-from-zero.
+\end{exercise}
+
+\begin{exercise}
+Prove that subtraction of two floating-point numbers of the same sign, when one is much smaller than the other in magnitude, is correctly rounded but loses leading significant digits. Identify the relative-error-amplification factor.
+\end{exercise}
+
+\begin{exercise}
+Derive the condition number of the linear-system solve $A \vect{x} = \vect{b}$ in terms of $\norm{A}$ and $\norm{A\inv}$.
+\end{exercise}
+
+\begin{exercise}
+Show that the IEEE 754 fused multiply-add operation, computed as $\mathrm{round}(a \cdot b + c)$ with a single rounding, can produce a result that differs from $\mathrm{round}(\mathrm{round}(a \cdot b) + c)$. Identify a small example where the two differ.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate how long a continuous-running embedded controller can use a $24$-bit fixed-point representation of $1/10\,\si{\second}$ before the cumulative timing error exceeds $1\,\si{\milli\second}$. Compare to the $14$-hour design envelope of the Patriot.
+\end{exercise}
+
+\begin{exercise}
+Estimate the maximum magnitude of a single double-precision floating-point number that can be added to $1.0$ without producing $1.0$ exactly. (Hint: this is the smallest number larger than the machine epsilon at $1.0$.)
+\end{exercise}
+
+\begin{exercise}
+A financial system tracks balances as double-precision dollars. Estimate the cumulative rounding error in the total of all account balances of a bank with $10^7$ accounts, each averaging $10^4$ USD. How does the result change with Kahan summation?
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement Kahan summation and naive summation in a language of your choice. Sum the sequence $\{1.0, 10^{-16}, 10^{-16}, \ldots\}$ of $10^8$ entries. Compare the two results to the true sum $1 + 10^{8} \cdot 10^{-16} = 1.00000001$.
+\end{exercise}
+
+\begin{exercise}
+Reproduce the Pentium FDIV failure on a simulator: implement an SRT division with one cell zeroed and characterise the operand pairs that trigger the defect. Compare to the canonical test $4\,195\,835.0 / 3\,145\,727.0$.
+\end{exercise}
+
+\begin{exercise}
+Implement the cumulative-timing-error simulation of the Patriot system. Plot the positional error as a function of operating time. Identify the time at which the error exceeds the range-gate size of $\pm 137\,\si{\meter}$ (per the GAO report).
+\end{exercise}
+
+\begin{exercise}
+Implement a fixed-point representation of $\pi$ in Q$1.31$. Compute $\pi^2$ in fixed-point and compare to the double-precision result. Explain the difference in terms of representation precision.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a serialisation format for $32$-bit floating-point numbers that survives transmission over a network that may corrupt any single bit. State your format, the redundancy it adds, and the recovery procedure.
+\end{exercise}
+
+\begin{exercise}
+Design a fixed-point digital filter coefficient set for a low-pass filter with cutoff $1\,\si{\kilo\hertz}$ on a $48\,\si{\kilo\hertz}$ sample rate. State your precision target, your representation, and the expected error envelope.
+\end{exercise}
+
+\begin{exercise}
+Design a precondition check for the conversion from a $64$-bit float to a $16$-bit signed integer that would have caught the Ariane 5 SRI failure. State the precondition in a form a compiler or runtime could enforce.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The Patriot incident is sometimes described as ``a $0.34$-second timing error.'' Critique the framing. What is the actual engineering failure mode, and how does the framing obscure it?
+\end{exercise}
+
+\begin{exercise}
+The Ariane 5 Flight 501 case \cite{acc:ariane501-ifr} is sometimes argued to show that the reused inertial-reference-system code ``should have been written defensively.'' Critique this framing in light of the chapter's discussion of representation preconditions. What discipline would have caught the failure at the moment of reuse, regardless of code style?
+\end{exercise}
+
+\begin{exercise}
+The Pentium FDIV bug \cite{paper:coe-tang-pratt-1995} surfaced as a result of an academic researcher computing a quantity Intel's verification team had not anticipated. Identify the institutional lesson; compare to the post-1994 industrial investment in formal verification of arithmetic units.
+\end{exercise}
+
+\begin{exercise}
+The discipline of ``reporting results with explicit precision bounds'' (Section 2.5) is a Volume I habit. State at what step of a typical numerical-software-development workflow this discipline is most often dropped. Identify the consequence in a production engineering setting of your choice.
+\end{exercise}
+
+\begin{exercise}
+A team proposes to use single-precision (binary32) floating-point throughout a planetary climate model to save memory and double the effective grid size. State the engineering analysis you would do before agreeing. What variables would you check single precision against? What summation patterns would you audit?
+\end{exercise}

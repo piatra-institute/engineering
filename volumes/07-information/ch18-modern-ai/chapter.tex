@@ -1,40 +1,316 @@
 \chapter{Modern AI: deep learning, transformers, LLMs}
 \label{vol07:ch18}
 
-\epigraph{}{}
+\epigraph{The bitter lesson is that general methods that leverage computation are ultimately the most effective, and by a large margin.}{Richard Sutton, \emph{The Bitter Lesson}, 2019}
 
-\chapmeta{Half-life: fast-aging. Archetypes: scaling, optimisation, ethics, failure. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: fast-aging. Archetypes: scaling, optimisation, ethics, failure. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 18. Approx 110 pp.}
+Modern artificial intelligence is the product of three convergent forces over the period roughly 2012-2024: cheap parallel compute (GPUs scaled up), large datasets (the open web, then specialised corpora), and a small set of architectural innovations (notably the transformer). The combination produced systems that, on many narrow benchmarks, perform at or above human level on language, image, and increasingly multi-modal tasks. The engineering question of this chapter is what these systems are, what they actually do, what they can and cannot, and how to use them with the kind of honesty Chapter 17 named for classical machine learning.
 
-\section{Neural networks: from perceptron to MLP}
-\TODO{Section prose.}
+The chapter is tagged fast-aging. The architectures (transformers), the training paradigm (pre-train on web, fine-tune on instruction-following, align with human feedback), and the engineering practices (mixture-of-experts, retrieval augmentation, agentic loops) are the current paradigm; the specific models (GPT-4, GPT-5, Claude 3, Claude 4, Gemini 2, the open-weights families) are snapshots whose specific capabilities will be superseded. The standard reference for the foundations is Goodfellow, Bengio, and Courville \cite{text:goodfellow-deep-learning}.
 
-\section{Backpropagation}
-\TODO{Section prose.}
+\section{Neural networks: from perceptron to MLP}\pathtag{core}
 
-\section{Convolutional and recurrent architectures}
-\TODO{Section prose.}
+A \engterm{neural network} is a parameterised function built from simpler components called neurons. A neuron computes $y = \sigma(\vect{w}^T \vect{x} + b)$ where $\sigma$ is a non-linear activation function (sigmoid historically; ReLU, GeLU, SiLU in modern practice).
 
-\section{Attention and the transformer}
-\TODO{Section prose.}
+\textbf{Single-layer perceptron} (Rosenblatt, 1958). One layer of neurons; can represent linearly-separable functions only.
 
-\section{Pretraining, fine-tuning, RLHF}
-\TODO{Section prose.}
+\textbf{Multi-layer perceptron} (MLP). Two or more layers of neurons connected by trained weights. With sufficient hidden units, can approximate any continuous function (the universal approximation theorem, Hornik 1989). Trained by backpropagation (Section 18.2).
 
-\section{LLMs: capabilities and limits engineering-first}
-\TODO{Section prose.}
+The MLP was the dominant neural-network architecture from 1980s through 2000s; it remains useful for small structured-data problems but has been largely superseded by specialised architectures (CNN, transformer) for vision, language, and large-scale problems.
 
-\section{Multimodal models}
-\TODO{Section prose.}
+\section{Backpropagation}\pathtag{core}
 
-\section{Failure: hallucination, jailbreaks, distributional cliffs, evaluation games (current as of 2026)}
-\TODO{Section prose.}
+\engterm{Backpropagation} is the chain-rule-based algorithm for computing gradients of a neural network's loss with respect to its parameters. Forward pass: compute the network's output for an input. Backward pass: propagate the loss gradient from output to input, using the chain rule at each layer.
 
+The classical algorithm (Rumelhart, Hinton, Williams 1986) made training multi-layer networks practical for the first time. Modern automatic-differentiation systems (PyTorch's autograd, TensorFlow's gradient tape, JAX's grad) compute the gradients symbolically from the forward computation; the engineer specifies only the forward computation.
 
-\section{Project}
-\TODO{fine-tune a small open model on a domain task; evaluate properly}
+\subsection{Optimisers}
+
+Stochastic gradient descent (SGD) with momentum is the simplest training algorithm. Modern variants: Adam (Kingma-Ba 2014, the dominant default), AdamW (decoupled weight decay), Lion (Google 2023). The choice of optimiser is workload-dependent but matters less than other design decisions (learning rate, batch size, regularisation).
+
+\section{Convolutional and recurrent architectures}\pathtag{standard}
+
+\subsection{Convolutional neural networks}
+
+A \engterm{convolutional neural network} (CNN) applies convolutional filters (small weight kernels shared across spatial locations) followed by pooling. The architecture encodes the translation invariance of image data: a cat detector should fire at any image location where a cat appears.
+
+The breakthroughs: LeNet (LeCun 1998, digit recognition), AlexNet (Krizhevsky-Sutskever-Hinton 2012, ImageNet, the start of the deep-learning era), VGG (Simonyan-Zisserman 2014), ResNet (He-Zhang-Ren-Sun 2015, skip connections enable training of very deep networks).
+
+By 2026, CNNs have been substantially displaced by vision transformers (ViT, 2020) for general image tasks, though they remain dominant for high-throughput or low-resource applications.
+
+\subsection{Recurrent neural networks}
+
+A \engterm{recurrent neural network} (RNN) maintains an internal hidden state across sequence positions; each position's output depends on the input and the hidden state, which is updated for the next position. Used historically for sequence data (text, speech, time series).
+
+\textbf{LSTM, GRU.} Variants designed to address the vanishing-gradient problem of plain RNNs. LSTM (Hochreiter-Schmidhuber 1997) was the workhorse of sequence modelling until approximately 2017.
+
+The transformer (Section 18.4) has displaced RNNs in essentially all language and vision applications because it parallelises across sequence positions during training while RNNs are inherently sequential.
+
+\section{Attention and the transformer}\pathtag{core}
+
+The transformer (Vaswani et al.\ 2017) replaced recurrence with attention as the mechanism for processing sequences \cite{paper:vaswani-attention-2017}. The result was a more parallelisable architecture that scales to larger datasets and produces better performance per unit compute.
+
+\subsection{Attention}
+
+The \engterm{attention} operation computes a weighted sum of values, where the weights depend on the query and the keys:
+\[
+\text{Attention}(Q, K, V) = \text{softmax}\left(\frac{Q K^T}{\sqrt{d_k}}\right) V.
+\]
+Each query position attends to all key positions; the softmax produces normalised weights. The attention is the workhorse of the transformer.
+
+Multi-head attention runs several attention operations in parallel with different projection matrices and concatenates. This allows the model to attend to different relationships simultaneously.
+
+\subsection{The transformer architecture}
+
+A transformer block consists of: multi-head self-attention, a feed-forward network (typically two linear layers with a non-linearity), residual connections, layer normalisation. The full model is a stack of transformer blocks plus embedding layers at input and projection at output.
+
+\textbf{Encoder-only.} Used for understanding tasks (BERT, 2018). Input goes in; representation comes out.
+
+\textbf{Decoder-only.} Used for generation (GPT family, 2018-). Generates output token by token, conditioned on prior tokens.
+
+\textbf{Encoder-decoder.} Used for translation and summarisation (the original transformer, T5). Encoder represents input; decoder generates output conditioned on the encoded input.
+
+The decoder-only style has become the dominant architecture for the foundation models of 2026.
+
+\section{Pretraining, fine-tuning, RLHF}\pathtag{standard}
+
+\subsection{Pretraining}
+
+The dominant training paradigm: \engterm{pretrain} on a large unlabelled corpus (the web, in the case of LLMs) using a self-supervised objective (predict the next token, predict the masked token). The pretrained model learns representations that transfer to many downstream tasks.
+
+The scale of pretraining has grown exponentially: GPT-1 (2018, $10^8$ parameters), GPT-2 (2019, $10^9$), GPT-3 (2020, $10^{11}$), GPT-4 (2023, estimated $10^{12}$), GPT-5 (2025) and successors at similar or greater scale. Training compute has grown faster than Moore's law would predict, driven by aggressive hardware scaling and algorithmic improvements.
+
+\subsection{Scaling laws}
+
+\engterm{Scaling laws} describe how performance improves with compute, data, and parameter count. Kaplan et al.\ (2020) and the Chinchilla paper (Hoffmann et al.\ 2022) showed that loss decreases as a power law in compute, with specific exponents. The Chinchilla recommendation was approximately $20$ training tokens per parameter; many subsequent models trained on much more.
+
+The engineering implication: investing in training compute reliably produces capability improvements, but the returns are sublinear. Doubling compute typically reduces loss by a fixed fraction; doubling compute repeatedly is the only known path to substantial capability increase.
+
+\subsection{Fine-tuning}
+
+After pretraining, the model is \engterm{fine-tuned} on smaller task-specific data. The classical fine-tuning updates all parameters; modern \engterm{parameter-efficient fine-tuning} (LoRA, prefix tuning, adapters) updates only a small fraction of parameters, allowing many fine-tuned variants on the same base model.
+
+\subsection{RLHF and alignment training}
+
+\engterm{Reinforcement learning from human feedback} (RLHF, Christiano et al.\ 2017) fine-tunes the model to produce outputs that humans rate as good. The pipeline: collect human preferences between pairs of model outputs; train a reward model to predict the preferences; fine-tune the model with reinforcement learning to maximise the reward model's score.
+
+RLHF is the dominant alignment technique for LLMs. Variations: constitutional AI (Anthropic, 2022), direct preference optimisation (DPO, 2023). The technique reliably produces models that are more helpful and harmless on standard benchmarks; it does not necessarily produce models that are safer or more truthful in production.
+
+\section{LLMs: capabilities and limits engineering-first}\pathtag{core}
+
+\subsection{What LLMs are}
+
+A large language model is a decoder-only transformer trained on a large text corpus to predict the next token. The trained model is a probability distribution over token sequences. Generation samples from this distribution; conditioning on a prompt restricts the distribution; instruction-tuning makes the distribution favourable to certain kinds of prompts.
+
+The model has no persistent memory beyond its context window (typically $10^3$ to $10^6$ tokens in 2026). The model has no native access to external tools, web search, code execution, or anything outside its training data, unless explicitly wired up. The model's knowledge is frozen at the training-data cutoff.
+
+\subsection{What LLMs do well}
+
+\textbf{Text generation.} Coherent, grammatically correct text in many languages and styles.
+
+\textbf{Pattern completion.} Continuing structured documents, code, lists.
+
+\textbf{Translation.} Between languages, between formats, between registers.
+
+\textbf{Summarisation and rephrasing.} Of given content.
+
+\textbf{Code generation.} For well-specified tasks in well-represented languages.
+
+\textbf{Information retrieval (from training data).} Surface known facts from large bodies of text.
+
+\textbf{Reasoning on standard problems.} The capability has improved substantially with chain-of-thought prompting and the reasoning-trained models (o1, o3, GPT-5 series).
+
+\subsection{What LLMs do badly}
+
+\textbf{Reliable computation.} Arithmetic with large numbers, symbolic manipulation, formal proofs are not LLM strengths despite occasional success.
+
+\textbf{Knowledge of recent events.} Anything after the training cutoff is missing.
+
+\textbf{Distinction between training-data fact and confident hallucination.} The model produces both with similar tone.
+
+\textbf{Long-horizon planning.} Multi-step tasks with delayed rewards are still hard.
+
+\textbf{Tasks requiring true grounding.} Without explicit tools, the model has no access to current state of the world.
+
+\textbf{Calibrated uncertainty.} The model's confidence does not reliably correlate with its accuracy.
+
+\section{Multimodal models}\pathtag{standard}
+
+\engterm{Multimodal models} combine multiple input modalities: text, image, audio, video. The dominant 2026 paradigm: encode each modality with a modality-specific encoder, project into a shared embedding space, process with a transformer.
+
+\textbf{Image generation.} DALL-E (2021), Stable Diffusion (2022), Midjourney, the modern diffusion-based image models. By 2026, photorealistic image generation conditioned on text is routine.
+
+\textbf{Video generation.} Sora (2024), Veo, the modern video generators. By 2026, short videos can be generated from text descriptions with significant quality.
+
+\textbf{Speech.} Whisper (OpenAI, 2022), the modern speech-recognition and synthesis models.
+
+\textbf{Vision-language models.} GPT-4V, Claude with vision, Gemini. Accept images alongside text and produce text responses.
+
+The engineering question for multimodal applications is whether the model's training data covers the application's modality combination at sufficient quality. A model trained on web images may perform poorly on medical imaging, satellite data, or any specialised domain.
+
+\section{Failure: hallucination, jailbreaks, distributional cliffs, evaluation games}\pathtag{core}
+
+\subsection{Hallucination}
+
+The model produces plausible-sounding content that is factually wrong. The pattern is structural: the model has no representation of ``what I know'' versus ``what I am making up.'' Every output is sampled from the same probability distribution; the distribution favours fluent-sounding continuations whether or not they correspond to truth.
+
+The engineering response: retrieval-augmented generation (the model is given relevant documents in its context, instructed to ground its answer in them), tool use (the model can call a calculator, search engine, code interpreter), constrained decoding (output must satisfy a specified format or grammar), critic models (a second model evaluates the first model's output).
+
+\subsection{Jailbreaks}
+
+A \engterm{jailbreak} is a prompt that causes the model to behave in ways its training was supposed to prevent. The model's safety training is a strong default but not an absolute constraint; sufficiently creative prompts can bypass it.
+
+The engineering response: layered defences (input filters, output filters, multiple-pass evaluation, restricted model contexts), red-teaming (deliberately attempting to break the safety training to find weaknesses), continuous training on the discovered jailbreaks. The defence is partial; the attack surface is large.
+
+\subsection{Distributional cliffs}
+
+The model performs well on data similar to its training distribution and poorly on data that is genuinely out of distribution. The transition is sometimes sharp: a model that handles standard programming languages fluently may produce completely wrong code on an obscure DSL.
+
+The engineering response: evaluate on data the model has not seen, monitor production for distribution shift (the model's confidence drops, its outputs become more variable), maintain fallback paths to traditional systems when the model is out of distribution.
+
+\subsection{Evaluation gaming}
+
+The capabilities-versus-benchmarks gap. Models trained on benchmark-similar data perform well on the benchmarks; the performance does not necessarily transfer to production tasks the benchmark was supposed to predict.
+
+The 2010s and 2020s saw repeated waves of benchmarks becoming saturated as models trained to game them: ImageNet, GLUE, SuperGLUE, MMLU, GPQA. The engineering response is to use benchmarks as one signal among many, to evaluate continuously on novel tasks, to be sceptical of claims that ``model X achieves $90\%$ on benchmark Y.''
+
+\subsection{The ethics dimension}
+
+Modern AI raises ethics questions beyond the technical: who is harmed by an LLM that generates plausible misinformation, who is responsible for an autonomous-agent that takes a destructive action, whose data was used to train the model, whose labour was used to generate the human-feedback data. The engineering position in 2026 is that these questions matter and that the engineer's responsibilities include thinking about them. Volume XI's design ethics returns to this.
+
+\begin{principle}[A large language model is a probability distribution, not a knowledge base]
+An LLM samples from a learned probability distribution. The samples sound like the corpus it was trained on; they are not, in general, true. The engineering discipline is to treat LLM outputs as hypotheses to verify, not as facts to trust, and to wire the LLM into systems that ground its outputs in verifiable sources.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Fine-tune a small open model on a domain task]
+Use a small open-weight language model (Llama family, Mistral, Phi, or similar). Fine-tune it on a domain task you care about. Evaluate honestly.
+
+\begin{enumerate}[leftmargin=*]
+  \item Choose the base model and the task. Document the data: where it comes from, how much, how representative.
+  \item Set up the training pipeline. Choose parameter-efficient fine-tuning (LoRA recommended) for tractability.
+  \item Train. Document hyperparameters, training time, hardware.
+  \item Evaluate on a held-out test set. Report the metric.
+  \item Identify three classes of failure (where the model still gets it wrong). Categorise: knowledge gaps, distributional shift, calibration failures, reasoning failures.
+  \item Compare to the base model without fine-tuning. Document the improvement (or lack thereof).
+\end{enumerate}
+
+The deliverable is the implementation, the evaluation, and a short report (no more than six pages). The report must explicitly address: distribution shift, hallucination on the domain, the cost-benefit of fine-tuning versus retrieval augmentation.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A neural network has $1024$ inputs, three hidden layers of $512$ units each, and $10$ outputs. Compute the parameter count.
+\end{exercise}
+
+\begin{exercise}
+A transformer block has $h = 8$ heads, model dimension $d = 512$. Compute the attention and feed-forward parameter counts.
+\end{exercise}
+
+\begin{exercise}
+Compute the FLOPs for a single forward pass of a $10^9$-parameter decoder-only transformer on a sequence of length $1024$.
+\end{exercise}
+
+\begin{exercise}
+Compute the memory required to store the activations of a $10^{10}$-parameter model during training (assume FP16 precision and gradient checkpointing).
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the gradient of cross-entropy loss with respect to the logit of a softmax classifier.
+\end{exercise}
+
+\begin{exercise}
+Show that ReLU's gradient is well-defined except at zero. State why this is engineering-OK in practice.
+\end{exercise}
+
+\begin{exercise}
+Derive the attention mechanism from the perspective of soft database retrieval: queries select values via keys.
+\end{exercise}
+
+\begin{exercise}
+Show that scaling laws describe loss as a power law in compute. State the implications for further capability gains.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the cost of training a GPT-3-equivalent model in 2026: hardware, energy, time.
+\end{exercise}
+
+\begin{exercise}
+Estimate the inference cost of running a $10^{11}$-parameter model on a single H100 GPU.
+\end{exercise}
+
+\begin{exercise}
+Estimate the fraction of an LLM's training data that overlaps with a standard benchmark like MMLU.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a small MLP from scratch (forward and backward) in NumPy. Train on MNIST.
+\end{exercise}
+
+\begin{exercise}
+Implement attention from scratch. Verify against PyTorch's implementation.
+\end{exercise}
+
+\begin{exercise}
+Implement gradient checkpointing for a small transformer; measure the memory savings.
+\end{exercise}
+
+\begin{exercise}
+Fine-tune a small open model with LoRA. Document the parameter savings.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the inference-serving stack for a $10^{11}$-parameter LLM at $10^4$ requests per second.
+\end{exercise}
+
+\begin{exercise}
+Design the safety-evaluation pipeline for an LLM before public release.
+\end{exercise}
+
+\begin{exercise}
+Design a retrieval-augmented system for a domain knowledge base of $10^7$ documents.
+\end{exercise}
+
+\begin{exercise}
+Design the evaluation regimen for an LLM deployed in a customer-service application.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's LLM produces wrong answers $5\%$ of the time. The customer is willing to accept $1\%$. State three engineering options to close the gap.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between fine-tuning a base model and using retrieval-augmented generation. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that LLMs are not engineering tools because their outputs are non-deterministic. Critique the argument.
+\end{exercise}
+
+\begin{exercise}
+A team uses an LLM for a code-generation task and observes occasional security vulnerabilities in the generated code. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's LLM-based agent runs in an autonomous loop. State three classes of failure mode and the corresponding safeguards.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to use an LLM to make hiring recommendations. State the engineering, legal, and ethical considerations. State how to interpret a claim that ``LLMs have learned reasoning'' in information-theoretic terms (Chapter 13).
+\end{exercise}

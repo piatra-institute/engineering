@@ -25,6 +25,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | V | 1996 | [Ariane 5 Flight 501](ariane-501-1996.md) | `acc:ariane501-ifr` |
 | V | 1999 | [Mars Climate Orbiter](mars-climate-orbiter-1999.md) | `acc:nasa-mco-mib` |
 | V | 2003 | [Space Shuttle Columbia](columbia-2003.md) | `acc:caib-columbia` |
+| V | 1997 | [Mars Pathfinder priority inversion](mars-pathfinder-1997.md) | `paper:jones-pathfinder-1997` |
 | V | 2009 | [Air France Flight 447](air-france-447-2009.md) | `acc:bea-af447` |
 | V | 2013 | [Boeing 787 lithium-ion battery incidents](boeing-787-battery-2013.md) | `acc:ntsb-aar14-01-787-battery` |
 
@@ -62,17 +63,18 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | Status | Year | Name | Primary source |
 |---|---|---|---|
 | V | 1991 | [Patriot missile system, Dhahran](patriot-dhahran-1991.md) | `acc:gao-patriot-1992` |
+| V | 1994 | [Pentium FDIV bug](pentium-fdiv-1994.md) | `paper:coe-tang-pratt-1995` |
 | V | 2015 | [Volkswagen diesel emissions defeat device](volkswagen-diesel-defeat-2015.md) | `acc:epa-vw-nov-2015` |
 
 ## Counts
 
-- Aerospace: 9
+- Aerospace: 10
 - Civil: 3
 - Process: 3
 - Power: 2
 - Medical: 1
-- Software: 2
-- **Total: 20**
+- Software: 3
+- **Total: 22**
 
 ## Pending entries (~18-20)
 

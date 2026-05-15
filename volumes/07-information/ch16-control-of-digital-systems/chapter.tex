@@ -1,37 +1,282 @@
 \chapter{Control of digital systems}
 \label{vol07:ch16}
 
-\epigraph{}{}
+\epigraph{Control is the discipline of getting a system to do what one wants despite what it would otherwise do.}{anonymous control engineer}
 
-\chapmeta{Half-life: durable. Archetypes: control, transport, failure. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: control, transport, failure. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 16. Approx 100 pp.}
+Digital control is the implementation of feedback control in software rather than analogue electronics. The control engineer specifies a control law (a function from measured state and reference to control action); the digital implementation samples the state periodically, computes the action in software, and applies it through actuators. This chapter teaches the discrete-time control problem and the engineering challenges peculiar to digital implementation: sample-rate selection, real-time scheduling, networked control, and the security implications of putting a control loop on a network. Volume IX takes the broader control theory; this chapter is the digital-implementation bridge. The standard reference is \AA{}str{\"o}m and Wittenmark \cite{text:astrom-wittenmark}.
 
-\section{The discrete-time control problem}
-\TODO{Section prose.}
+\section{The discrete-time control problem}\pathtag{core}
 
-\section{$z$-transform}
-\TODO{Section prose.}
+A digital control loop operates in three steps repeated at a fixed sample period $T$:
 
-\section{Digital control law design}
-\TODO{Section prose.}
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Sample.} Read the plant's output $y[k]$ through sensors.
+  \item \textbf{Compute.} Apply the control law to produce the action $u[k]$.
+  \item \textbf{Actuate.} Output $u[k]$ to the plant through actuators.
+\end{enumerate}
 
-\section{Sample-rate selection and aliasing in control}
-\TODO{Section prose.}
+The plant runs in continuous time; the controller runs in discrete time. The boundary is the analogue-to-digital converter on the sensor and the digital-to-analogue converter on the actuator.
 
-\section{Real-time scheduling and jitter}
-\TODO{Section prose.}
+\subsection{Control objectives}
 
-\section{Networked control}
-\TODO{Section prose.}
+\textbf{Stability.} The closed-loop system's response to a bounded input remains bounded.
 
-\section{Failure: networked-control failures (industrial control system attacks, Stuxnet)}
-\TODO{Section prose.}
+\textbf{Tracking.} The plant output follows a reference signal.
 
+\textbf{Disturbance rejection.} The plant output is unaffected by external disturbances.
 
-\section{Project}
-\TODO{implement a digital PID; tune for a simulated plant}
+\textbf{Robustness.} The closed-loop properties survive variations in plant parameters.
+
+\textbf{Performance.} Settling time, overshoot, steady-state error meet specifications.
+
+\section{$z$-transform}\pathtag{standard}
+
+The $z$-transform is to discrete-time signals what the Laplace transform is to continuous-time. For a signal $x[n]$:
+\[
+X(z) = \sum_{n=0}^{\infty} x[n] z^{-n}.
+\]
+$z = e^{j\omega T}$ corresponds to a discrete-time sinusoid of frequency $\omega$ sampled at period $T$. The unit circle $|z| = 1$ is the discrete-time analogue of the imaginary axis.
+
+\subsection{Transfer functions}
+
+A discrete-time LTI system is characterised by its transfer function $G(z)$: a ratio of polynomials in $z^{-1}$. The system is stable if and only if all poles of $G(z)$ lie strictly inside the unit circle. The Bode plot of $G(e^{j\omega T})$ describes the frequency response.
+
+\subsection{Discretisation}
+
+A continuous-time controller $C(s)$ is converted to a discrete-time controller $C(z)$ by one of several methods:
+
+\textbf{Forward Euler}: $s \to (z - 1)/T$.
+
+\textbf{Backward Euler}: $s \to (z - 1)/(Tz)$.
+
+\textbf{Bilinear (Tustin)}: $s \to (2/T)(z - 1)/(z + 1)$. Preserves stability; standard for control discretisation.
+
+The choice of discretisation method matters for stability and for matching the original analogue controller's response. The Tustin method is the workhorse.
+
+\section{Digital control law design}\pathtag{core}
+
+\subsection{PID control}
+
+The proportional-integral-derivative (PID) controller is the workhorse of industrial control:
+\[
+u(t) = K_p e(t) + K_i \int_0^t e(\tau) d\tau + K_d \frac{de(t)}{dt}
+\]
+where $e(t) = r(t) - y(t)$ is the tracking error. The PID controller covers a substantial fraction of industrial applications.
+
+The digital PID:
+\[
+u[k] = K_p e[k] + K_i T \sum_{j=0}^{k} e[j] + K_d \frac{e[k] - e[k-1]}{T}.
+\]
+Engineering subtleties: integral windup (the integral accumulates while the output is saturated; the engineer must explicitly bound the integral term), derivative kick (the reference change introduces a large derivative; the engineer typically uses the derivative of the output rather than the error), sample-rate selection (must be fast enough for the dynamics).
+
+\textbf{Tuning.} Ziegler-Nichols, Cohen-Coon, and modern automatic-tuning methods (relay feedback, iterative learning) give starting values. Production tuning is empirical: adjust gains, observe response, iterate.
+
+\subsection{State-space control}
+
+For multivariable systems, state-space design replaces transfer functions with matrix-valued representations: $\vect{x}[k+1] = \mat{A} \vect{x}[k] + \mat{B} \vect{u}[k]$, $\vect{y}[k] = \mat{C} \vect{x}[k]$. The control law is a state feedback $\vect{u}[k] = -\mat{K} \vect{x}[k]$.
+
+The Kalman filter (Volume IX Chapter 6) estimates the state from noisy measurements. The linear-quadratic regulator (LQR) finds the optimal state-feedback gain. The combination (LQG control) is the workhorse of modern multivariable digital control.
+
+\subsection{Model predictive control}
+
+\engterm{Model predictive control} (MPC) solves an optimisation at each sample period: predict the plant's response to a sequence of future control actions, choose the sequence that minimises a cost subject to constraints, apply the first action, repeat at the next sample. MPC handles constraints (input saturation, output limits) gracefully; it is the standard for process control (chemical plants, refineries), automotive control, building HVAC.
+
+The engineering cost is computational: MPC requires solving a quadratic programme or non-linear programme each sample period. Sample rates of $10\,\si{\hertz}$ to $1\,\si{\kilo\hertz}$ are typical; higher rates require approximations.
+
+\section{Sample-rate selection and aliasing in control}\pathtag{core}
+
+The sample rate of a control loop must be fast enough to capture the dynamics of interest and slow enough to be implementable. The standard rule of thumb is $10$ to $20$ times the bandwidth of the closed-loop dynamics: a system with $1\,\si{\hertz}$ bandwidth samples at $10$ to $20\,\si{\hertz}$.
+
+\subsection{The Nyquist rule for control}
+
+Sampling at exactly the Nyquist rate is sufficient for signal reconstruction but is too slow for control: the loop's phase margin is degraded by the sampling delay. The engineering rule is to sample at $5$ to $20$ times the Nyquist rate of the dynamics, with $10\times$ being the typical compromise.
+
+\subsection{Aliasing in control}
+
+Disturbances above the Nyquist frequency alias to lower frequencies (Section 15.8). A high-frequency disturbance aliased to a low frequency can excite the closed-loop dynamics, producing poor control performance. The remedy is anti-aliasing filtering on every sensor, even in control applications.
+
+\section{Real-time scheduling and jitter}\pathtag{core}
+
+The control loop must execute at a deterministic rate. Variation in execution timing (\engterm{jitter}) degrades control performance.
+
+\subsection{The hard-real-time requirement}
+
+A control loop has a deadline: each iteration must complete before the next sample arrives. Missing the deadline can be catastrophic in high-bandwidth or safety-critical applications. The engineering response is a real-time operating system (Chapter 6) with priority-based preemption and bounded interrupt latency.
+
+\subsection{Jitter sources}
+
+\textbf{Scheduling jitter.} The OS scheduler does not run the control task at exactly the same time each period.
+
+\textbf{Communication jitter.} Sensor and actuator data arrive with variable delay over a network or bus.
+
+\textbf{Computation jitter.} The control law's execution time varies (cache misses, branch prediction, memory allocation).
+
+\textbf{Quantisation jitter.} The sensor's resolution limits the precision of state estimation.
+
+The standard remedy is to keep the control loop simple, run it at the highest priority, exclude it from caches that can cause variable hit rates, and account for the worst-case execution time in the loop's deadline budget.
+
+\section{Networked control}\pathtag{standard}
+
+A \engterm{networked control system} has the sensor, controller, and actuator separated by a network. The network introduces variable delay, packet loss, out-of-order delivery, and potentially adversarial behaviour.
+
+\subsection{Delays}
+
+A constant communication delay can be modelled into the controller design (Smith predictor). Variable delay is harder: the controller must adapt to the actual delay, often by buffering or by using consistent-delay protocols.
+
+\subsection{Time-triggered networks}
+
+Industrial networks for hard-real-time control: TTEthernet, EtherCAT, PROFINET IRT, CAN FD. These provide bounded delivery times for messages, allowing the control engineer to design with deterministic communication timing.
+
+\subsection{Security implications}
+
+A networked control system has all the security implications of any networked computer plus the consequence that an attacker can directly manipulate physical state. Chapter 12 named the security model; this chapter notes that the threat is amplified.
+
+\section{Failure: networked-control attacks (Stuxnet) and the discipline of real-time control}\pathtag{core}
+
+The 2010 Stuxnet worm targeted Iranian uranium-enrichment centrifuges. The malware exploited four Windows zero-day vulnerabilities to spread to industrial-control-system networks, then targeted Siemens S7 programmable logic controllers (PLCs) running centrifuge control. The attack subtly altered the centrifuge spin rates, causing accelerated wear that destroyed approximately $1000$ centrifuges over months, while presenting normal operating data to the human operators.
+
+The case is the canonical demonstration that networked control systems are subject to nation-state-grade cyber-physical attack. The engineering response since 2010 has included: air-gapping critical industrial networks (with all the operational cost that imposes), the development of industrial-control-system security standards (IEC 62443), monitoring for anomalous PLC behaviour, hardware-rooted attestation of PLC firmware.
+
+The broader engineering lesson is that the control loop is a part of the system that an attacker can directly weaponise. Volume X Chapter 5 returns to the Stuxnet case in detail; the chapter-level lesson is that real-time control design must include a threat model.
+
+\subsection{Other failure modes}
+
+Beyond cyber attacks, networked control systems fail in mundane ways. A WAN-connected control loop loses connectivity, hangs in an unsafe state, recovers with stale data. A wireless link experiences interference, dropping packets at exactly the wrong moment. A timing-critical loop is migrated to a virtual machine without considering the hypervisor's scheduling jitter. Each is an engineering failure of the same kind: the design assumed network properties that the deployed network did not provide.
+
+\begin{principle}[Control loops have real deadlines]
+A control loop's correctness depends on the loop executing within its deadline. Software running in a general-purpose operating system, on a shared network, in a multi-tenant cloud cannot, by default, meet hard deadlines. The engineering discipline of real-time control is to provide the deadline guarantees explicitly: real-time OS, deterministic networks, exclusive resources, conservative budgets.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement a digital PID; tune for a simulated plant]
+Implement a digital PID controller in your favourite language. Simulate a plant (a second-order linear system or a non-linear plant of your choice). Tune the controller and characterise its performance.
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement the plant as a discrete-time difference equation. Verify open-loop behaviour matches the expected transfer function.
+  \item Implement the digital PID with anti-windup and derivative on output.
+  \item Tune the controller with Ziegler-Nichols method. Verify closed-loop response: settling time, overshoot, steady-state error.
+  \item Add measurement noise. Tune the derivative term's low-pass filter.
+  \item Introduce sample-rate variation (jitter). Measure the degradation of closed-loop performance as jitter grows.
+  \item Compare the PID against a model-predictive controller for the same plant.
+\end{enumerate}
+
+The deliverable is the implementation, the simulation results, and a short report (no more than four pages) on the engineering trade-offs.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Compute the $z$-transform of the sequence $1, -1, 1, -1, \ldots$. Identify the poles.
+\end{exercise}
+
+\begin{exercise}
+For a continuous-time controller $C(s) = K/(s + a)$, compute the bilinear-transform discrete-time equivalent at sample period $T$.
+\end{exercise}
+
+\begin{exercise}
+For a PID controller with $K_p = 1$, $K_i = 0.1$, $K_d = 0.05$, $T = 0.01\,\si{\second}$, compute three iterations of the discrete-time controller for a step error of $1$.
+\end{exercise}
+
+\begin{exercise}
+A control loop must reject disturbances up to $20\,\si{\hertz}$. State the minimum sample rate.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that a discrete-time LTI system is stable if and only if all poles of its transfer function lie strictly inside the unit circle.
+\end{exercise}
+
+\begin{exercise}
+Derive the Smith predictor for constant-delay compensation in a feedback loop.
+\end{exercise}
+
+\begin{exercise}
+Show that a digital PID with infinite integral accumulation can produce arbitrarily large control actions even when bounded errors. Identify the anti-windup remedy.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between the discrete-time and continuous-time stability regions for the bilinear transform.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the maximum sample rate for a PID controller running on a modern microcontroller ($100\,\si{\mega\hertz}$ ARM Cortex-M4).
+\end{exercise}
+
+\begin{exercise}
+Estimate the impact of $1\,\si{\milli\second}$ scheduling jitter on a $100\,\si{\hertz}$ control loop's effectiveness.
+\end{exercise}
+
+\begin{exercise}
+Estimate the bandwidth of a typical Stuxnet-style attack: how much control-system data per second can be exfiltrated through an air-gap covert channel?
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a discrete-time simulation of a second-order plant. Drive it with a step input; verify the response.
+\end{exercise}
+
+\begin{exercise}
+Implement a digital PID; tune for the simulated plant using Ziegler-Nichols.
+\end{exercise}
+
+\begin{exercise}
+Implement a model-predictive controller for a constrained plant. Compare to a PID.
+\end{exercise}
+
+\begin{exercise}
+Simulate a networked control loop with variable network delay. Observe the degradation of performance.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the sample-rate and scheduling strategy for a hard-real-time motor controller running on an embedded RTOS.
+\end{exercise}
+
+\begin{exercise}
+Design the network architecture for an industrial automation system connecting $100$ PLCs.
+\end{exercise}
+
+\begin{exercise}
+Design the security strategy for a networked control system. State your threat model and the security mechanisms.
+\end{exercise}
+
+\begin{exercise}
+Design the fail-safe behaviour for a control loop that loses connectivity to the plant.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+The Stuxnet attack on Iranian centrifuges demonstrated that networked control systems are vulnerable to nation-state-grade attack. State three engineering practices that have changed in the industry since 2010.
+\end{exercise}
+
+\begin{exercise}
+A team is migrating a control application from a bare-metal RTOS to a containerised Linux. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's control loop produces oscillations under heavy CPU load. State three causes you would investigate.
+\end{exercise}
+
+\begin{exercise}
+A senior engineer argues that ``a PID is enough; no need for state-space or MPC.'' Critique the argument.
+\end{exercise}
+
+\begin{exercise}
+A team uses TCP for a control loop. Identify the failure modes and the appropriate transport.
+\end{exercise}
+
+\begin{exercise}
+A team's MPC implementation occasionally misses its deadline; the engineering response is to extend the deadline budget. Critique the response.
+\end{exercise}

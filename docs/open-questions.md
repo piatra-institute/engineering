@@ -20,11 +20,11 @@ What we need to settle: where each kind of content lives by default, what the sp
 
 This question becomes load-bearing if Phase 1 runs the Volume I production-density lane (figures, project artifacts, solutions, code, datasets all need a home). Without a settled answer, each chapter improvises and the answers diverge.
 
-### Q55. Per-chapter project track (98 chapters remaining)
+### Q55. Per-chapter project track (79 chapters remaining)
 
-Volumes I-V are settled chapter-by-chapter, plus Vol VI Ch 1-10, with project tracks recorded in each chapter's `\chapmeta`. The remaining 98 chapters (Vol VI Ch 11-13 plus all of Volumes VII-XII) still carry `Project track: TBD (physical, simulation, household, or hybrid)` in their `\chapmeta`. The dossier projects strongly imply tracks; the editorial work is to confirm and record per chapter.
+Volumes I-V are settled chapter-by-chapter, plus Vol VI Ch 1-10, plus all of Volume VII, with project tracks recorded in each chapter's `\chapmeta`. The remaining 79 chapters (Vol VI Ch 11-13 plus all of Volumes VIII-XII) still carry `Project track: TBD (physical, simulation, household, or hybrid)` in their `\chapmeta`. The dossier projects strongly imply tracks; the editorial work is to confirm and record per chapter.
 
-What we need to settle: who does this pass, and on what schedule. The cadence followed so far is one volume's worth of project tracks at a time as that volume comes into prose drafting, settled by the drafting agent itself; that cadence has held cleanly across five-and-a-half volumes and can be carried forward.
+What we need to settle: who does this pass, and on what schedule. The cadence followed so far is one volume's worth of project tracks at a time as that volume comes into prose drafting, settled by the drafting agent itself; that cadence has held cleanly across six-and-a-half volumes and can be carried forward.
 
 ### Q56. Named-cases registry. Settled 2026-04-29
 
@@ -34,7 +34,7 @@ Registry exists with 15 entries and the supporting machinery: schema (`docs/rese
 
 ### Q57. Page density vs. target
 
-Five-and-a-half volumes are now drafted at first-draft density, against the page targets in `landscape.md`. Per-volume spans (from `main.toc`):
+Six-and-a-half volumes are now drafted at first-draft density, against the page targets in `landscape.md`. Per-volume spans (from `main.toc`):
 
 | Volume | Drafted (first-draft pp) | Target (pp) | Ratio | Chapters drafted |
 | --- | --- | --- | --- | --- |
@@ -44,8 +44,9 @@ Five-and-a-half volumes are now drafted at first-draft density, against the page
 | IV Energy | 234 | ~1400 | 17% | 14 of 14 |
 | V Matter | 238 | ~1200 | 20% | 12 of 12 |
 | VI Life (partial) | 178 | ~1300 | 14% (extrapolated full Vol VI ~230pp, 18%) | 10 of 13 |
+| VII Information | 264 | ~1980 | 13% | 19 of 19 |
 
-The first-draft ratio stabilises in the 17-31% band across six volumes, with an average around 22%. Average per-chapter prose is ~22pp against varying targets.
+The first-draft ratio stabilises in the 13-31% band across seven volumes, with an average around 21%. Vol VII's lower ratio reflects the large chapter count (19) against ambitious per-chapter page budgets (80-120pp each).
 
 Two readings of the gap, neither obviously right:
 

@@ -1,40 +1,397 @@
 \chapter{Data structures}
 \label{vol07:ch04}
 
-\epigraph{}{}
+\epigraph{Bad programmers worry about the code. Good programmers worry about data structures and their relationships.}{Linus Torvalds}
 
-\chapmeta{Half-life: durable. Archetypes: scaling, optimisation. Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: scaling, optimisation. Exercise target: 40. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 4. Approx 110 pp.}
+A \engterm{data structure} is a way of organising data to make a chosen set of operations efficient. Every data structure is a trade-off. The array gives fast random access at the cost of slow insertion in the middle. The linked list gives fast insertion at the cost of slow random access. The hash table gives fast lookup at the cost of unordered iteration. The B-tree gives ordered access at the cost of multi-level indirection. There is no universally best data structure; there is the structure whose trade-offs match the workload.
 
-\section{Arrays, lists, stacks, queues}
-\TODO{Section prose.}
+This chapter teaches the working data structures of engineering software. The standard reference is Cormen et al.\ \cite{text:cormen-clrs}, Chapters 10 through 22. The pragmatic engineering reference is Kleppmann \cite{text:kleppmann-ddia} for storage-layer data structures and the textbook of the language standard library for in-memory choices.
 
-\section{Hash tables}
-\TODO{Section prose.}
+\section{Arrays, lists, stacks, queues}\pathtag{core}
 
-\section{Trees: BST, balanced trees, B-trees}
-\TODO{Section prose.}
+\subsection{Arrays}
 
-\section{Heaps, priority queues}
-\TODO{Section prose.}
+A \engterm{array} is a contiguous block of memory holding elements of a fixed type. Access by index is $\oom{1}$: the address of element $i$ is the base address plus $i$ times the element size. Append at the end is $\oom{1}$ amortised if the array is dynamically resized; insertion or deletion in the middle is $\oom{n}$ because all subsequent elements must move.
 
-\section{Graphs in memory}
-\TODO{Section prose.}
+The amortised analysis of dynamic-array append is a working example of amortised cost. Each resize doubles the capacity; the total work over $n$ appends is at most $1 + 2 + 4 + \ldots + n \leq 2n$, hence $\oom{1}$ amortised per append. The trade-off: occasional resizes take $\oom{n}$ time, which can cause latency spikes in time-critical systems.
 
-\section{Persistent and immutable structures}
-\TODO{Section prose.}
+The most underappreciated property of arrays is cache friendliness (Section 4.7). A contiguous array iterates over cache lines at the maximum rate the memory subsystem can deliver them. Most other data structures, however asymptotically efficient, lose factors of $10$ or more to the array on iteration-heavy workloads.
 
-\section{Cache-aware data layout}
-\TODO{Section prose.}
+\subsection{Linked lists}
 
-\section{Failure: hash collisions weaponised, structural sharing pitfalls}
-\TODO{Section prose.}
+A \engterm{singly linked list} consists of nodes, each holding an element and a pointer to the next. A \engterm{doubly linked list} adds a pointer to the previous node. Access by index is $\oom{n}$; insertion or deletion at a known node is $\oom{1}$ (singly linked: at the head only; doubly linked: anywhere).
 
+Linked lists were a workhorse data structure of the 1970s and 1980s, when memory was scarce and the cost of pointer chasing was hidden by simpler memory hierarchies. On modern hardware, linked lists are typically slower than arrays by an order of magnitude for iteration-heavy workloads, because each node access incurs a cache miss. Modern engineering practice reserves linked lists for cases where the structural sharing (the ability to splice and rejoin without copying) matters more than cache efficiency.
 
-\section{Project}
-\TODO{implement a B-tree; benchmark vs hash-map for range queries}
+\subsection{Stacks and queues}
+
+A \engterm{stack} (last-in, first-out) supports push, pop, and peek, all in $\oom{1}$. Stacks underpin recursion (the call stack), expression evaluation (the operand stack), and depth-first search.
+
+A \engterm{queue} (first-in, first-out) supports enqueue and dequeue, both in $\oom{1}$. Queues underpin breadth-first search, scheduler ready lists, message-passing buffers, and bounded-buffer concurrency patterns (Chapter 6, Chapter 11).
+
+Both stacks and queues can be implemented on top of either arrays or linked lists. Array-backed implementations (circular buffer for queues) are typically faster on modern hardware.
+
+\subsection{Deques}
+
+A \engterm{deque} (double-ended queue) supports push, pop, enqueue, and dequeue at both ends, all in amortised $\oom{1}$. Modern languages implement deques as resizable arrays of fixed-size chunks (the Python \texttt{collections.deque}, the C++ \texttt{std::deque}) or as growable contiguous arrays (the Rust \texttt{VecDeque}). Deques are the standard data structure for sliding-window algorithms.
+
+\section{Hash tables}\pathtag{core}
+
+A \engterm{hash table} maps keys to values. Lookup, insertion, and deletion are $\oom{1}$ expected time. The structure underlies dictionaries, sets, caches, indexes, environment lookups, symbol tables, and a large fraction of the in-memory state of typical software.
+
+\subsection{The basic mechanism}
+
+A hash table consists of an array of \engterm{buckets} and a \engterm{hash function} $h$ mapping keys to bucket indices. To insert $(k, v)$: compute $h(k) \bmod \text{bucket count}$, place $(k, v)$ in the resulting bucket. To look up $k$: hash, check the bucket. Two different keys may hash to the same bucket; the resulting \engterm{collisions} are resolved by one of several strategies.
+
+\textbf{Separate chaining.} Each bucket holds a linked list (or array) of entries. Collisions extend the list. Average lookup time is $\oom{1 + \alpha}$ where $\alpha$ is the load factor (number of entries divided by bucket count). Most modern implementations keep $\alpha < 1$ and re-hash to a larger table when the load factor crosses a threshold.
+
+\textbf{Open addressing.} Buckets hold single entries; collisions probe other buckets to find an empty one. Probing strategies include linear (try $i, i+1, i+2, \ldots$), quadratic (try $i, i+1, i+4, i+9, \ldots$), and double hashing (use a second hash function for the probe step). Open addressing achieves better cache locality than chaining; chaining handles high load factors more gracefully.
+
+\textbf{Cuckoo hashing.} Two hash functions, two tables. Each key lives at one of two locations; insertion evicts the existing occupant to its alternative, which may evict another, until a chain ends or a cycle is detected and a rehash is triggered. Worst-case $\oom{1}$ lookup; insertion is amortised $\oom{1}$.
+
+\textbf{Robin Hood hashing.} An open-addressing variant that minimises probe-sequence variance by swapping entries during insertion to favour the entry that has probed longest.
+
+\subsection{Choice of hash function}
+
+The hash function must be cheap (else lookup loses its $\oom{1}$ promise) and well-distributed (else many keys collide and the structure degrades). For string keys, the canonical choices are FNV-1a, MurmurHash, xxHash (high throughput), and the cryptographic hashes (SipHash, Blake3) when adversarial-resistance matters.
+
+\textbf{The adversarial-collision problem.} If an attacker can choose the keys, the attacker can choose keys that all hash to the same bucket. The hash table degrades to $\oom{n}$ per lookup, and inserting $n$ adversarial keys takes $\oom{n^2}$. This is a denial-of-service vector that has been exploited in production: the 2003 paper by Crosby and Wallach showed the attack against PHP, Perl, Python, Ruby, and Java's hashtable implementations. The remediation, deployed across most languages by 2012, is \engterm{randomised hashing}: the hash function takes a per-process or per-table random seed, so an attacker cannot precompute colliding keys without knowing the seed.
+
+The discipline: any hash table whose keys come from a partially-untrusted source must use either randomised hashing (the standard library default in modern Python, Ruby, Rust, Go, and Java) or a cryptographic hash (SipHash is the standard choice; HighwayHash is a faster modern alternative).
+
+\subsection{When hash tables are not the answer}
+
+A hash table is the wrong choice when iteration order matters, when range queries are needed, when keys do not have a fast hash (large objects with complex equality), when the working set is so small that constant factors swamp the asymptotic benefit, or when the iteration cost of cache-unfriendly bucket walks exceeds the asymptotic gain. The next section covers the structures that handle these cases.
+
+\section{Trees: BST, balanced trees, B-trees}\pathtag{core}
+
+A \engterm{binary search tree} (BST) is a binary tree in which the key at each node is greater than every key in its left subtree and less than every key in its right subtree. Lookup, insertion, and deletion are $\oom{\log n}$ on a balanced tree, $\oom{n}$ on a worst-case-skewed tree.
+
+\subsection{Self-balancing BSTs}
+
+A naively constructed BST can degenerate to a linked list (every node has only a right child). Self-balancing variants maintain a height bound of $\oom{\log n}$ on every operation.
+
+\textbf{AVL trees.} Strictly balanced (heights of sibling subtrees differ by at most $1$). Lookup and update slightly faster than red-black; modification slightly slower because of more frequent rebalancing.
+
+\textbf{Red-black trees.} Less strictly balanced (the longest path is at most twice the shortest). The standard map/set in C++ (\texttt{std::map}), Java (\texttt{TreeMap}), Linux's process scheduler (the CFS rb-tree).
+
+\textbf{Splay trees.} Self-adjusting: every operation moves the accessed node toward the root. Amortised $\oom{\log n}$. Good for workloads with locality (frequently-accessed keys end up near the root); bad for adversarial workloads.
+
+\textbf{Treaps.} Randomised BSTs that maintain heap-order on a per-node random priority. Expected $\oom{\log n}$. Simple to implement, well-distributed under reasonable assumptions.
+
+For in-memory data, the modern engineering default is the hash table when iteration order does not matter and a balanced BST (red-black or AVL) when it does. The differences among balanced BSTs are typically below noise level in production workloads.
+
+\subsection{B-trees and B+-trees}
+
+A \engterm{B-tree} is a generalisation of a balanced BST in which each node holds up to $b$ keys and has up to $b+1$ children. The branching factor $b$ is chosen to match the storage page size: a node fits in one disk page or one cache line, so each level of the tree corresponds to one I/O. A B-tree of depth $d$ supports $\oom{b^d}$ keys with $d$ I/Os per access.
+
+For a typical database with $b = 100$ and $10^9$ keys, the tree is $\lceil \log_{100} 10^9 \rceil = 5$ levels deep; a lookup is $5$ I/Os. With page-level caching of the top levels, only the bottom one or two levels need an actual disk read. This is the algorithmic foundation of database indexing (Chapter 9).
+
+\textbf{B+-trees} hold all data in the leaves and use internal nodes only as routers. The leaves are linked into a sequential chain, allowing fast in-order range scans. This is the standard structure for database secondary indexes.
+
+\textbf{Modern variants.} Log-structured merge trees (LSM-trees) trade write throughput against read throughput; used in LevelDB, RocksDB, Cassandra, BigTable. Fractal trees and B$^\epsilon$-trees trade memory for write batching.
+
+\subsection{Tries}
+
+A \engterm{trie} (or prefix tree) stores strings by representing common prefixes as shared paths from the root. Lookup is $\oom{|s|}$ where $|s|$ is the query string length, independent of the number of stored strings. Tries are the standard structure for autocomplete, IP routing tables (Chapter 10), spell checkers, and any structure that admits prefix queries.
+
+Modern tries are typically the compressed form: \engterm{radix trees} (PATRICIA tries) compress chains of single-child nodes into a single edge. Linux's IP routing implementation uses a compressed radix tree; the Java \texttt{TreeMap} replaced its red-black-tree internals with a radix tree for string keys in early implementations.
+
+\section{Heaps, priority queues}\pathtag{standard}
+
+A \engterm{priority queue} supports insertion of priority-tagged elements and extraction of the highest-priority element. The standard implementation is a \engterm{binary heap}: a complete binary tree (every level full except the last, which is left-justified) where each parent has higher priority than its children.
+
+A binary heap is typically stored as an array: the root is index $1$, the children of index $i$ are at $2i$ and $2i+1$, the parent of index $i$ is at $\lfloor i/2 \rfloor$. Insertion takes $\oom{\log n}$ (bubble up); extract-max takes $\oom{\log n}$ (replace root with last leaf, sift down).
+
+\textbf{Build-heap.} Building a heap from an unsorted array of $n$ elements is $\oom{n}$, not $\oom{n \log n}$ as a naive analysis suggests. The standard proof bounds the total bubbling cost by a geometric series.
+
+\textbf{Fibonacci heap.} Supports decrease-key in amortised $\oom{1}$, useful in Dijkstra (Chapter 3) and other graph algorithms. Constant factors are high; rarely used in production.
+
+\textbf{Pairing heap.} Simpler than Fibonacci, comparable empirical performance. The Linux kernel's IO scheduler uses pairing heaps.
+
+\textbf{Skew heap, leftist heap.} Mergeable heaps in $\oom{\log n}$ per merge.
+
+The choice among priority-queue implementations depends on whether the workload exercises decrease-key heavily (Fibonacci or pairing), merge heavily (skew, leftist, Fibonacci), or only insert/extract (binary). The default is the binary heap.
+
+\section{Graphs in memory}\pathtag{standard}
+
+Graphs are represented in memory in one of two ways (Section 3.5):
+
+\textbf{Adjacency matrix.} Suitable for dense graphs or for fast edge-existence queries.
+
+\textbf{Adjacency list.} Suitable for sparse graphs. The list per vertex is typically a dynamic array (for cache efficiency) or a hash set (for $\oom{1}$ edge-existence checks).
+
+\textbf{Edge list.} An array of edges. Useful for Kruskal's algorithm and for graphs that will be processed in edge-sorted order.
+
+\textbf{Compressed sparse row (CSR).} A more cache-friendly variant of the adjacency-list representation: a single array of all neighbours, with a per-vertex offset array. Standard for high-performance graph computations and for the GPU-backed graph libraries.
+
+The structural choice affects everything downstream. A path-following algorithm wants fast neighbour iteration (CSR or adjacency list). A reachability algorithm wants fast edge-existence checks (adjacency matrix or hash set per vertex). A dynamic graph (edges added/removed during execution) wants a representation that supports modification (hash set, linked-list adjacency).
+
+\section{Persistent and immutable structures}\pathtag{mastery}
+
+A data structure is \engterm{persistent} if previous versions remain available after an update. A \engterm{fully persistent} structure allows updates to any version; a \engterm{partially persistent} structure allows updates only to the latest. Persistent structures are the working substrate of functional programming and have re-entered mainstream engineering through immutable-state architectures (React's Redux, Erlang's process state, blockchain ledgers).
+
+\subsection{Path copying}
+
+The basic technique: when an update modifies a node, copy the node and every ancestor up to the root. Each update costs $\oom{\log n)}$ in a balanced tree; each version of the structure shares ancestors with previous versions, so the total memory is bounded.
+
+\textbf{Persistent vectors.} The Clojure persistent vector is a wide-branching trie (branching factor $32$). A vector of $10^9$ elements has depth $\lceil \log_{32} 10^9 \rceil = 6$; an update is $6$ copy steps, each of constant size.
+
+\textbf{Persistent hash maps.} The same trie technique with hash-based indexing (hash-array-mapped tries, HAMT). Used in Clojure, Scala, and modern functional libraries in OCaml, Haskell, and Rust.
+
+\subsection{Engineering trade-offs}
+
+Persistent structures are slower than mutable ones by a factor of $5$ to $10$ on benchmarks dominated by single-threaded updates. They are faster than mutable structures when concurrent readers are present (no locks needed: each reader sees an immutable snapshot). They are essential for time-travel debugging, undo/redo, and any workflow that needs to query historical state.
+
+The engineering question is the workload's read/write mix and concurrency profile. A single-writer, many-reader workload benefits substantially from persistent structures. A write-heavy, single-threaded workload typically does not.
+
+\section{Cache-aware data layout}\pathtag{core}
+
+A modern CPU's memory hierarchy has multiple levels: register, L1 cache (1-2 ns access, 32-64 KB), L2 cache (5-10 ns, 256 KB-1 MB), L3 cache (20-50 ns, 4-64 MB), main memory (80-150 ns), disk or SSD (50-500 $\mu$s for SSD, 5-15 ms for disk). The gap between L1 and main memory is $50$ to $150$ times. A program that hits L1 cache runs $100$ times faster than the same program missing to main memory.
+
+The implication is that the algorithm's cache behaviour can dominate its CPU-cycle behaviour. A theoretically inferior algorithm that fits in cache can outrun a theoretically superior algorithm that does not.
+
+\subsection{Cache-friendly data structures}
+
+\textbf{Arrays beat linked lists.} A linked list of $n$ elements visits $n$ cache lines, one per element. An array of the same data visits $\lceil n \cdot s / L \rceil$ cache lines where $s$ is element size and $L$ is the cache line size (typically $64$ bytes). For $s = 8$ (an integer), the array touches $1/8$ the cache lines.
+
+\textbf{B-trees beat binary trees.} A binary tree has $\log_2 n$ levels; a B-tree with branching factor matched to cache-line size has $\log_b n$ levels. For $b = 8$ (one cache line of $8$-byte keys) and $n = 10^6$, the B-tree has $7$ levels against the binary tree's $20$.
+
+\textbf{Struct-of-arrays beats array-of-structs.} A workload that iterates over one field of $n$ structs reads $n \cdot \text{(struct size)} / L$ cache lines under array-of-structs and $n \cdot \text{(field size)} / L$ under struct-of-arrays. The SIMD and GPU-friendly form is struct-of-arrays.
+
+\subsection{Prefetching}
+
+Modern CPUs prefetch contiguous memory: when the program accesses cache line $i$, the CPU speculatively loads cache lines $i+1, i+2, i+3, \ldots$. The discipline of cache-aware code is to arrange data so that sequential access exploits prefetching and to avoid pointer-chasing patterns that defeat it.
+
+\textbf{Indirect pointer chases.} A linked list, a hash table with chaining, or a tree with arbitrary node allocation defeats prefetching: each pointer dereference is a cache miss to a memory location the prefetcher could not predict.
+
+\textbf{Pool allocation.} A custom allocator that places related objects adjacently in memory restores some prefetching. Game engines, database storage layers, and high-frequency-trading systems pool-allocate heavily for this reason.
+
+\begin{archetype}[Scaling]
+Cache-aware data layout is the scaling archetype applied to memory: as the data size crosses a cache boundary, the dominant cost changes. A single-threaded algorithm that fits in L1 is bandwidth-bound at the register-to-cache rate. The same algorithm at L2 is bandwidth-bound at the cache-to-cache rate. At main memory, it is latency-bound at the memory-controller rate. The engineering question is which boundary the data crosses and what the working set is at each boundary.
+\end{archetype}
+
+\section{Failure: hash collisions weaponised, structural sharing pitfalls}\pathtag{core}
+
+Three failure modes recur across production systems built on the data structures above.
+
+\subsection{Hash-collision denial of service}
+
+The hash table is the most pervasive data structure in modern software. Its $\oom{1}$ expected-time guarantee is conditional on the hash function distributing keys roughly uniformly. An attacker who can choose the keys can force collisions and degrade the table to $\oom{n}$ per operation, $\oom{n^2}$ to build.
+
+Crosby and Wallach's 2003 paper documented the attack against PHP, Perl, Python, Ruby, and Java. The exploitation worked through HTTP POST parameters: an attacker submits a single form with $10\,000$ fields named to collide in the server's hash table. The server's request-handling code, on receiving the request, builds a hash map of the parameters and takes $\oom{n^2}$ time. A small number of such requests saturates the server.
+
+The deployed remediation was randomised hashing: every Python interpreter, Ruby interpreter, Java HashMap (with key insertion checking after $2011$), Go map, and Rust HashMap uses a hash function with a per-process random seed. An attacker who does not know the seed cannot precompute colliding keys.
+
+The pattern recurs. Any data structure whose performance is conditional on input distribution is exploitable if the input is attacker-controlled. The engineering discipline is to identify these structures, harden them with randomisation or with adversarial-resistant hash functions (SipHash), and to bound the worst-case behaviour through capacity limits at the request boundary.
+
+\subsection{Catastrophic memory amplification in persistent structures}
+
+Persistent data structures share structure between versions; their memory cost is, in principle, bounded by the unique-edits cost. A workload that retains many versions but edits each version distinctly can have memory growth that surprises the engineer who has not modelled it.
+
+The pattern: a long-running process retains a history of all configuration versions for time-travel debugging. Each version is a persistent map of $10^6$ entries. The engineer assumes (correctly) that each new version copies only the changed path (logarithmic-size copy in a HAMT). The engineer fails to model the case where each version changes a different entry. After $10^6$ versions, every node in the structure has been copied; the working memory is approximately $10^6 \times 10^6$ pointers, which exceeds the design memory budget. The system swaps and stalls.
+
+The remedy is to model the memory cost as a function of edit pattern, not as a function of structure size alone. Persistent structures save memory when edits share paths; they save no memory when edits are uniformly distributed across the structure.
+
+\subsection{Cache-unfriendly modern code on cache-bound hardware}
+
+The third failure is the most pervasive and the least discussed. A program is written in a high-level language with idiomatic data structures (linked lists, hash maps with chaining, trees with arbitrary allocation). The program is correct; the program passes all tests; the program is shipped. In production, the program runs $10$ to $100$ times slower than a hand-tuned alternative because every dereference is a cache miss.
+
+The fix is to rewrite the hot path with cache-aware structures (contiguous arrays, struct-of-arrays, pool allocation). The cost of the fix is large; the cost of not making it is the order-of-magnitude difference between cache hits and cache misses. Production-scale software in 2026 routinely leaves $10$x of performance on the table to keep the high-level idiomatic style. This is not a bug; it is a working trade-off the engineer must make explicitly, with the cache behaviour modelled rather than ignored.
+
+\begin{principle}[Data structure performance is workload-dependent]
+The asymptotic complexity of a data-structure operation is a property of the data structure and the input distribution. The wall-clock performance is a property of the data structure, the input distribution, the access pattern, and the memory hierarchy. The engineering discipline is to identify the workload and select the data structure for the workload, not for the data alone.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement a B-tree; benchmark vs hash-map for range queries]
+Implement a B-tree (or B+-tree) in a language of your choice, with the following operations: insert, lookup by key, range scan from key $k_1$ to key $k_2$.
+
+\begin{enumerate}[leftmargin=*]
+  \item Build a B-tree with branching factor $b = 16, 64, 256$ holding $10^5, 10^6, 10^7$ random keys. Build a hash map (your language's standard) on the same keys.
+  \item Benchmark point lookups: $10^5$ random keys against each structure at each size.
+  \item Benchmark range queries: $10^4$ ranges, each covering $10^3$ consecutive keys, against each structure.
+  \item Profile cache misses (with perf, dtrace, or your platform's equivalent) on each workload. Identify which structure is cache-bound and which is CPU-bound.
+  \item Repeat the experiment with adversarial keys for the hash map (keys constructed to collide in the hash function). Document the degradation.
+\end{enumerate}
+
+The deliverable is a short report (no more than six pages) containing the implementation, the benchmarks, and an engineering recommendation for two scenarios: a database secondary index, and an in-memory cache. The report must explicitly identify the workload characteristics that drive the recommendation.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Insert the sequence $[5, 3, 8, 1, 9, 2, 7, 4, 6]$ into an initially empty binary search tree. Draw the resulting tree.
+\end{exercise}
+
+\begin{exercise}
+Repeat the previous exercise into an AVL tree. Draw each rotation step.
+\end{exercise}
+
+\begin{exercise}
+Build a hash table of size $11$ with the keys $\{18, 26, 35, 9, 64, 47, 31, 73, 12\}$ using $h(k) = k \bmod 11$. Resolve collisions with linear probing.
+\end{exercise}
+
+\begin{exercise}
+Repeat the previous exercise with separate chaining.
+\end{exercise}
+
+\begin{exercise}
+Build a max-heap from the array $[4, 10, 3, 5, 1, 15, 7, 2]$ using the linear-time build-heap algorithm. Show each intermediate state.
+\end{exercise}
+
+\begin{exercise}
+Insert the strings ``cat'', ``car'', ``card'', ``care'', ``careful'' into an initially empty trie. Draw the trie.
+\end{exercise}
+
+\begin{exercise}
+Build a B-tree of branching factor $4$ from the keys $\{1, 2, 3, \ldots, 20\}$ inserted in order. Draw the tree.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Prove that dynamic-array append is amortised $\oom{1}$ when the array doubles in size on each resize. Compare to a resize policy that adds a constant $c$ each time; show that the latter is amortised $\oom{n}$.
+\end{exercise}
+
+\begin{exercise}
+Prove that the height of an AVL tree with $n$ nodes is at most $1.44 \log_2 n$.
+\end{exercise}
+
+\begin{exercise}
+Show that the linear-time build-heap algorithm runs in $\oom{n}$ rather than $\oom{n \log n}$ by bounding the total bubbling cost.
+\end{exercise}
+
+\begin{exercise}
+Prove that the expected number of probes in a successful lookup in a linearly probed hash table with load factor $\alpha$ is approximately $\tfrac{1}{2}(1 + 1/(1 - \alpha))$.
+\end{exercise}
+
+\begin{exercise}
+Show that a B-tree of branching factor $b$ holding $n$ keys has depth $\Theta(\log_b n)$.
+\end{exercise}
+
+\begin{exercise}
+Show that splay-tree operations are amortised $\oom{\log n}$, using the access lemma with the standard rank function $r(x) = \log_2(|T_x|)$.
+\end{exercise}
+
+\begin{exercise}
+Prove that cuckoo hashing with two hash functions and load factor $\alpha < 1/2$ achieves expected $\oom{1}$ insertion. State why the analysis breaks down above $1/2$.
+\end{exercise}
+
+\begin{exercise}
+Show that the von Neumann lower bound on iteration cost is $\Omega(n / L)$ for any data structure of $n$ entries iterated sequentially, where $L$ is the cache-line size. Compare to the actual cost of iteration over a linked list with arbitrary node placement.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the cache-miss cost of iterating over a doubly linked list of $10^6$ integers, compared to an array of the same size. Assume a $64$-byte cache line, $5\,\si{\nano\second}$ L1 access, and $80\,\si{\nano\second}$ memory access.
+\end{exercise}
+
+\begin{exercise}
+A database table has $10^9$ rows indexed by an 8-byte integer key. Estimate the number of I/Os per lookup with a B-tree index of branching factor $b = 100$ and a fully cached top three levels.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of hash collisions on a load factor of $0.75$ in a table with $10^6$ entries, assuming a well-distributed hash function. Compare to the worst case if all keys collide.
+\end{exercise}
+
+\begin{exercise}
+Estimate the memory cost of $10^6$ versions of a persistent hash-array-mapped trie with $10^6$ entries each, under two edit patterns: each version edits one entry; each version edits $10^3$ entries.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput of a hash-table lookup workload at $10^9$ keys per second on a single core with $1\,\si{\nano\second}$ L1 access and $80\,\si{\nano\second}$ memory latency, assuming a $90\%$ L1 hit rate. Estimate the same throughput at $50\%$ L1 hit rate.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time cost of a billion-element merge sort using an in-place merge versus the standard merge with $\oom{n}$ auxiliary buffer. Identify the trade-off in cache behaviour.
+\end{exercise}
+
+\begin{exercise}
+An adversarial-key denial-of-service attack against an unrandomised hash table at load factor $0.5$ degrades $n$ insertions from $\oom{n}$ to $\oom{n^2)}$. Estimate the request rate at which a service of $10^4$ requests per second per core becomes saturated. Compare to a randomised-hash baseline.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a separately chained hash table and a linearly probed open-addressing hash table in your language of choice. Benchmark both on workloads at load factors $0.5, 0.75, 0.9, 0.95$.
+\end{exercise}
+
+\begin{exercise}
+Implement an AVL tree and a red-black tree. Benchmark both on $10^6$ insertions and lookups; compare empirical performance.
+\end{exercise}
+
+\begin{exercise}
+Implement a hash-collision attack against your favourite language's default hash table. (Use only the deterministic hash function exposed pre-mitigation; modern interpreters with randomised hashing will not be vulnerable.) Document the degradation factor.
+\end{exercise}
+
+\begin{exercise}
+Implement a B-tree with branching factor $b$. Benchmark range queries against your language's standard ordered map for various $b$ and various range sizes.
+\end{exercise}
+
+\begin{exercise}
+Implement a persistent vector with path copying at branching factor $32$. Benchmark against a copy-on-write array vector. Identify the workloads where each wins.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the data structure for a real-time leaderboard: $10^7$ users with constantly updating scores, queries for top-$k$ and for the rank of a given user. State the asymptotic complexity of each operation.
+\end{exercise}
+
+\begin{exercise}
+Design the in-memory data structure for an IP routing table supporting longest-prefix match. State the time complexity of a lookup.
+\end{exercise}
+
+\begin{exercise}
+Design the data structure for an LRU (least-recently-used) cache supporting get and put in $\oom{1}$. Identify the components and the operations on each.
+\end{exercise}
+
+\begin{exercise}
+Design the storage format for a time-series database holding $10^{10}$ data points per day, queried by time range and tag filters. State the structure of the index and the layout of the on-disk pages.
+\end{exercise}
+
+\begin{exercise}
+Design the data structure for a multi-version concurrency control (MVCC) row store: each row has a history of versions accessible by transaction timestamp. State the read and write paths.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team builds an in-memory event store using a hash table keyed on a string concatenated from user-controlled fields. Identify the failure mode and the remediation.
+\end{exercise}
+
+\begin{exercise}
+A team replaces an in-memory adjacency-list graph with a custom CSR representation for performance. Identify three workloads where the change helps and one where it hurts.
+\end{exercise}
+
+\begin{exercise}
+A team builds an immutable-state architecture using persistent maps, expecting structural sharing to bound memory cost. Identify the edit pattern under which the expectation fails.
+\end{exercise}
+
+\begin{exercise}
+A team chooses a red-black tree over a hash map for the configuration registry of a high-throughput service. Critique the choice. Identify the workload pattern that would justify it.
+\end{exercise}
+
+\begin{exercise}
+A code reviewer suggests replacing a Python list (resizable array) with a deque for an algorithm that needs to remove from both ends. State the conditions under which the change is right, and the conditions under which it is overkill.
+\end{exercise}
+
+\begin{exercise}
+A B-tree implementation has been in production for ten years with branching factor $b = 64$. The team migrates from spinning disks to NVMe SSDs. State the performance implications and any reason to revisit the branching-factor choice.
+\end{exercise}
+
+\begin{exercise}
+A standard-library hash map in 2026 supplies cryptographic hashing (SipHash) by default; an alternative library supplies xxHash with three to five times the throughput. State the workloads where the trade-off favours each.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing the in-memory representation for a sparse matrix with $10^9$ non-zero entries arising from a finite-element mesh. State the structures you would compare and the workload characteristics that drive the choice.
+\end{exercise}

@@ -1,34 +1,421 @@
 \chapter{Logic, sets, formal languages}
 \label{vol07:ch01}
 
-\epigraph{}{}
+\epigraph{The criterion of truth is that it works even if nobody is prepared to acknowledge it.}{Ludwig Wittgenstein}
 
-\chapmeta{Half-life: durable. Archetypes: balance, scaling. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: balance, scaling. Exercise target: 30. Project track: simulation. Named cases: Mars Climate Orbiter, Therac-25, Ariane 5.}
 
 \noindent
-\TODO{Volume 7, Chapter 1. Approx 80 pp.}
+Logic is the engineering of meaning. A specification, a requirement, a contract, an interface, a test, a proof: each is a structure that promises something will be true under some conditions. The engineer who cannot say precisely what was promised, under what conditions, cannot say whether the promise was kept. This chapter teaches the formal apparatus that makes precision possible at the scale where natural language begins to fail: propositional and predicate logic, the set-theoretic vocabulary in which the formulas live, the formal grammars by which structured language is recognised, and the computability theory that names what the apparatus can and cannot decide.
 
-\section{Propositional and predicate logic}
-\TODO{Section prose.}
+The chapter is foundational in a literal sense. Volume II Chapter 17 introduced discrete mathematics including a working pass over propositional and first-order logic; we revisit that ground here with the engineer's question in front of us, not the mathematician's. The mathematician asks: which formulas are valid in every model? The engineer asks: which requirements have I stated unambiguously enough that two reasonable readers will agree on whether the system meets them? The chapter is half foundational mathematics and half engineering discipline; the failure section names the cost of the latter.
 
-\section{Sets, relations, functions}
-\TODO{Section prose.}
+\section{Propositional and predicate logic}\pathtag{core}
 
-\section{Formal languages and grammars}
-\TODO{Section prose.}
+A \engterm{proposition} is a declarative sentence that is either true or false. ``The pressure is below \SI{40}{\bar}'' is a proposition. ``Reduce the pressure'' is not. The first names a state of the world; the second names an action. Engineering specifications are made of the first kind; engineering procedures are made of the second. The chapter is concerned with the first.
 
-\section{Computability: Turing machines, the halting problem}
-\TODO{Section prose.}
+Propositional logic studies how propositions combine. The atomic propositions are denoted by letters $p, q, r$; the combining operators are
+\[
+\lnot p \quad \text{(not $p$)}, \quad
+p \wedge q \quad \text{($p$ and $q$)}, \quad
+p \vee q \quad \text{($p$ or $q$)}, \quad
+p \to q \quad \text{($p$ implies $q$)}, \quad
+p \leftrightarrow q \quad \text{($p$ iff $q$)}.
+\]
+The truth of a compound proposition is determined by the truth of its parts, through the standard truth tables. The discipline matters because engineering language hides ambiguities the operators expose. In ordinary English, ``or'' is sometimes inclusive (``the alarm sounds if the temperature exceeds \SI{60}{\degreeCelsius} or the door is open'') and sometimes exclusive (``you may have the soup or the salad''). The operator $\vee$ is always the inclusive one; the exclusive case requires $(p \vee q) \wedge \lnot(p \wedge q)$, often written $p \oplus q$. A requirement document that uses the English word ``or'' without specifying which one has admitted ambiguity into the design.
 
-\section{Logic in engineering: requirements as predicates}
-\TODO{Section prose.}
+The most subtle of the operators is implication. The convention $p \to q$ is true unless $p$ is true and $q$ is false. The case where $p$ is false makes $p \to q$ trivially true regardless of $q$; this is the \engterm{vacuous truth}. Engineering specifications are often dense with vacuous truths. A requirement ``if the power is on, the controller shall sample at \SI{100}{\hertz}'' makes no claim about a powered-off controller. A test that runs only on powered-off controllers cannot fail this requirement. A reviewer who notices this and demands that the requirement also constrain the powered-off case is doing the work of logic.
 
-\section{Failure: ambiguous specifications and their cost}
-\TODO{Section prose.}
+\begin{principle}[Specification as proposition]
+An engineering requirement is a proposition (or a parameterised family of propositions) whose intended meaning is: \emph{the system shall be such that this proposition is true under the stated conditions}. Two readers who disagree on whether the proposition is true on a given test record disagree on a fact about the language, not about the system.
+\end{principle}
 
+Propositional logic is not enough for serious engineering language. Most requirements concern not a fixed set of named propositions but a class of objects: ``every sensor reading shall be timestamped to within \SI{10}{\milli\second} of its arrival,'' ``for all critical alerts, an operator acknowledgement shall be logged.'' These claims quantify over objects. They live in \engterm{predicate logic}, also called first-order logic.
 
-\section{Project}
-\TODO{formalise three engineering requirements as logical predicates}
+A \engterm{predicate} is a proposition with one or more free variables. ``$x$ is a critical alert'' has free variable $x$ and becomes a proposition only when $x$ is bound, either by substitution (``alert $42$ is a critical alert'') or by a quantifier (``every alert is a critical alert,'' ``some alert is a critical alert''). The universal quantifier $\forall x.\, P(x)$ asserts $P$ holds of every $x$; the existential quantifier $\exists x.\, P(x)$ asserts $P$ holds of at least one $x$. Predicate logic also supplies functions ($f(x, y)$), constants ($0, 1, \mathrm{startup\_time}$), and equality.
+
+The discipline of writing requirements as predicate formulas was given its modern form by Frege in 1879 \cite{hist:frege1879} and is now standard across formal-methods practice, model checking, and contract-driven development. The form we use throughout this chapter is the one that working engineers can read at speed. We do not develop the metatheory of first-order logic (soundness, completeness, compactness) at the level a logician would; \cite{text:sipser} covers that material at the right depth for a reader who wants more.
+
+\begin{example}
+The English requirement ``the alarm shall sound within five seconds of any pressure reading above \SI{40}{\bar}'' becomes
+\[
+\forall t.\, \big( P(t) > 40 \,\text{bar} \big) \to \big( \exists s \in [t, t + 5\,\text{s}].\, \mathrm{Alarm}(s) \big).
+\]
+Two readers will agree on whether this requirement was met on a given test trace by checking, for each time $t$ at which the pressure was above \SI{40}{\bar}, whether the alarm sounded somewhere in the next five seconds. The reading is mechanical.
+\end{example}
+
+\subsection{Common pitfalls in predicate-logic specifications}
+
+Three patterns trip working engineers writing requirements.
+
+\textbf{Quantifier order.} The formula $\forall x.\, \exists y.\, R(x, y)$ asserts ``for every $x$ there is some $y$.'' The formula $\exists y.\, \forall x.\, R(x, y)$ asserts ``there is some $y$ that works for every $x$.'' The two are not equivalent and are routinely confused. A specification that says ``every operator shall have access to a supervisor'' allows distinct operators to have distinct supervisors; a specification that says ``a supervisor shall have access to every operator'' demands a single supervisor good for all operators.
+
+\textbf{Implicit existential closure.} An engineering specification with a free variable left implicit is ambiguous between universal and existential reading. ``The system shall log $x$ for every database write'' admits two readings depending on what $x$ binds to. Working specifications resolve this by introducing the variable with its quantifier before use.
+
+\textbf{Negation and quantifier interaction.} The negation of $\forall x.\, P(x)$ is $\exists x.\, \lnot P(x)$, not $\forall x.\, \lnot P(x)$. The negation of ``every test passes'' is ``some test fails,'' not ``every test fails.'' The second is far stronger than the first.
+
+\begin{archetype}[Balance]
+Propositional logic asks: when do the truth-conditions of a compound formula balance against the truth-conditions of its parts? The connectives are exactly the balancing operations: $\wedge$ requires both, $\vee$ requires at least one, $\to$ allows the antecedent to be false but penalises a true antecedent with a false consequent. The whole of formal-logic engineering is the discipline of getting these balances right at the requirement-document scale.
+\end{archetype}
+
+\section{Sets, relations, functions}\pathtag{core}
+
+The objects predicate logic quantifies over live in some \engterm{domain of discourse}. The domain may be a set of states, a set of physical components, a set of timestamps, a set of permitted user actions. The discipline of saying clearly what the domain is, and what relations and functions are available on it, is set theory. The working engineer's set theory is the naive one of \cite{text:halmos-naive-sets}: axioms named, paradoxes avoided, no measure-theoretic depth.
+
+A \engterm{set} is an unordered collection of distinct elements. We write $\{a, b, c\}$ for the set containing $a, b, c$; $\emptyset$ for the empty set; $x \in S$ for ``$x$ is an element of $S$''; $S \subseteq T$ for ``$S$ is a subset of $T$.'' The standard operations are union ($S \cup T$), intersection ($S \cap T$), set difference ($S \setminus T$), and complement (relative to a fixed domain, $\overline{S}$).
+
+The two operations that turn out to be load-bearing for engineering are \engterm{Cartesian product} and \engterm{power set}. The Cartesian product $S \times T$ is the set of ordered pairs $(s, t)$ with $s \in S, t \in T$. The power set $\mathcal{P}(S)$ is the set of all subsets of $S$. If $|S| = n$ is finite, then $|\mathcal{P}(S)| = 2^n$. The exponential growth is the engineer's first encounter with intractability inside set theory: the set of subsets of even a modest set is impractically large to enumerate. Chapter 3 returns to this.
+
+A \engterm{relation} on $S$ and $T$ is a subset $R \subseteq S \times T$. We write $s\, R\, t$ for $(s, t) \in R$. A relation is \engterm{functional} if for each $s \in S$ there is at most one $t \in T$ with $s\, R\, t$, and \engterm{total} if for each $s \in S$ there is at least one such $t$. A \engterm{function} $f: S \to T$ is a total functional relation; we write $f(s)$ for the unique $t$ with $s\, f\, t$.
+
+Functions are the engineer's standard model of a deterministic computation: input in, output out, same input gives same output. Many software systems do not behave like functions; they have state, they have side effects, they have non-deterministic concurrency. The discipline of identifying the parts of a system that are functional, the parts that are stateful, and the parts that are non-deterministic is one of the cleaner ways to break a software design into reviewable pieces. Chapters 5 and 11 return to this.
+
+\subsection{Relations the engineer uses constantly}
+
+\textbf{Equivalence relations.} A relation $R$ on $S$ is an equivalence relation if it is reflexive ($s\, R\, s$ for all $s$), symmetric ($s\, R\, t \Rightarrow t\, R\, s$), and transitive ($s\, R\, t$ and $t\, R\, u$ imply $s\, R\, u$). Equivalence relations partition $S$ into disjoint \engterm{equivalence classes}. Examples: ``$x$ and $y$ are on the same network segment,'' ``transaction $a$ and transaction $b$ have the same commit timestamp,'' ``record $r$ and record $r'$ are the same up to floating-point round-off in the third decimal.''
+
+\textbf{Partial orders.} A relation $\leq$ on $S$ is a partial order if it is reflexive, antisymmetric ($s \leq t$ and $t \leq s$ imply $s = t$), and transitive. The classical examples are numeric ordering, set inclusion ($\subseteq$ on $\mathcal{P}(S)$), and ``depends on'' relations between software components. Partial orders are how the engineer organises the structure of a system whose elements are not all comparable to one another.
+
+\textbf{Total orders.} A relation is a total order if it is a partial order in which every pair is comparable: $s \leq t$ or $t \leq s$ for every $s, t$. The natural numbers under $\leq$ are totally ordered; the power set under $\subseteq$ is not. A total order is what makes sorting possible (Chapter 3).
+
+\textbf{Injections, surjections, bijections.} A function $f: S \to T$ is injective if distinct elements of $S$ map to distinct elements of $T$; surjective if every element of $T$ is hit; bijective if both. Bijections are the formal vocabulary of ``two representations are the same up to renaming.'' Cantor's diagonal argument, which we meet in the computability section, uses injection and surjection at its core.
+
+\begin{example}
+Consider a database with a primary key. The mapping ``primary key $\to$ row'' is a function (each key has at most one row). It is injective because primary keys are unique. It is surjective onto the set of present rows because every row has a key. Hence it is a bijection between the present primary keys and the present rows. The bijection is what makes ``lookup by primary key'' a well-defined operation.
+\end{example}
+
+\subsection{Cardinality}
+
+The size $|S|$ of a finite set is the number of its elements. For infinite sets, $|S| = |T|$ means there is a bijection $S \to T$. A set is \engterm{countable} if there is a bijection with the natural numbers $\N$; otherwise it is \engterm{uncountable}.
+
+Cantor proved that for every set $S$, $|S| < |\mathcal{P}(S)|$. In particular $|\N| < |\mathcal{P}(\N)|$, so the set of all subsets of the natural numbers is uncountable, as is the set of real numbers $\R$. The engineering consequence is structural: the set of all possible \emph{specifications} of finite length over a finite alphabet is countable, but the set of all functions $\N \to \{0, 1\}$ is uncountable. There are more functions than specifications. Section 1.4 returns to this with computability.
+
+\begin{estimation}
+\textbf{Question.} A finite alphabet has $26$ letters and $10$ digits. How many distinct programs of length at most $1000$ characters can be written in this alphabet?
+
+\textbf{Working.} The count is $\sum_{k=0}^{1000} 36^k$. The largest term dominates: $36^{1000} = (36^{1000})$. Take logarithms: $\log_{10} 36 \approx 1.556$, so $36^{1000} \approx 10^{1556}$. Order of magnitude $10^{1556}$.
+
+\textbf{Implication.} The number of distinct programs of length at most $1000$ characters is astronomical, but it is finite, and in particular countable. The number of distinct mathematical functions $\N \to \{0,1\}$ is uncountable. There exist mathematical functions that no program of any length expresses.
+\end{estimation}
+
+\section{Formal languages and grammars}\pathtag{standard}
+
+A \engterm{formal language} is a set of strings over a finite alphabet $\Sigma$. The strings are finite sequences of symbols from $\Sigma$; the language is the set of strings the engineer designates as ``well-formed.'' The discipline of saying which strings are in a language, and which are not, is the discipline of writing programming-language syntax, network-protocol formats, configuration-file schemas, and the working notation that lives at every machine-readable interface.
+
+The set of all finite strings over $\Sigma$ is denoted $\Sigma^*$. A language $L$ is any subset $L \subseteq \Sigma^*$. The interesting questions are: which languages can be described \emph{finitely} (since $\Sigma^*$ itself is countably infinite for any non-empty $\Sigma$), and which can be recognised \emph{algorithmically}.
+
+Chomsky's 1956 paper \cite{hist:chomsky1956} introduced a four-level hierarchy of formal languages classified by the kind of grammar that generates them. The hierarchy turned out to coincide with a hierarchy of computational devices that recognise the languages. From most restrictive to least:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textbf{Regular languages.} Generated by regular grammars; recognised by finite-state machines. The languages an engineer can match with a regular expression. Examples: identifiers in a programming language (``a letter followed by letters or digits''), integer literals, IPv4 addresses written in dotted-decimal form, the set of valid hex colour codes.
+  \item \textbf{Context-free languages.} Generated by context-free grammars; recognised by pushdown automata. The languages that have a notion of nested structure, where the recogniser must keep a stack of recently-opened contexts. Examples: arithmetic expressions with balanced parentheses, the body of a JSON document, the syntactic structure of most programming languages.
+  \item \textbf{Context-sensitive languages.} Generated by context-sensitive grammars; recognised by linear-bounded automata. More expressive than context-free, less than recursively enumerable. Used to describe languages where local choices depend on a bounded context.
+  \item \textbf{Recursively enumerable languages.} Generated by unrestricted grammars; recognised by Turing machines. The class of languages a Turing machine can semi-decide: if a string is in the language, the machine eventually accepts; if not, the machine may loop forever.
+\end{enumerate}
+
+The two layers that recur in engineering are the regular and the context-free.
+
+\subsection{Regular expressions and finite-state machines}
+
+A \engterm{regular expression} over an alphabet $\Sigma$ is built from the empty language $\emptyset$, the empty string $\varepsilon$, atomic symbols from $\Sigma$, and three operators: concatenation ($ab$ matches $a$ followed by $b$), alternation ($a | b$ matches either), and Kleene star ($a^*$ matches zero or more copies of $a$). Modern regex flavours (POSIX, PCRE) add many features (character classes, anchors, backreferences, lookahead). The features beyond the three core operators take the matcher \emph{out} of regular-language territory and into worst-case exponential behaviour, a fact that recurs in production incidents we examine in Volume X.
+
+A \engterm{finite-state machine} (also called a finite automaton) is a tuple $(Q, \Sigma, \delta, q_0, F)$ where $Q$ is a finite set of states, $\Sigma$ is the input alphabet, $\delta: Q \times \Sigma \to Q$ is the transition function, $q_0$ is the start state, and $F \subseteq Q$ is the set of accepting states. The machine reads its input one symbol at a time, taking transitions, and accepts the input if the run ends in an accepting state.
+
+Kleene's theorem (1956) establishes that the languages described by regular expressions are exactly the languages recognised by finite-state machines. The result is foundational because it tells the engineer that two apparently different formal devices, one declarative (regular expressions) and one operational (state machines), define the same class of languages.
+
+\textbf{Engineering uses.} Finite-state machines describe protocols (TCP connection state, USB device state), user-interface modes, parser-tokenisation patterns, validation rules in form fields, and the simpler classes of compiler lexer. A state machine drawn on paper is often the cleanest specification of a small protocol; it is also the cleanest implementation if the state count is small and bounded.
+
+\begin{example}
+A simple thermostat with three states (heating, idle, cooling) and two sensor events (temperature crosses the upper threshold, temperature crosses the lower threshold) has the transitions:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+State & Event & Next state \\
+\midrule
+idle    & temperature $>$ upper & cooling \\
+idle    & temperature $<$ lower & heating \\
+heating & temperature $>$ upper & cooling \\
+heating & temperature $<$ lower & heating \\
+cooling & temperature $>$ upper & cooling \\
+cooling & temperature $<$ lower & heating \\
+\bottomrule
+\end{tabular}
+\end{center}
+The careful reader will notice that the table specifies a transition from \emph{every} state on \emph{every} event. The table that does not specify all transitions has an implicit ``no change,'' which is the source of half the surprises in production state-machine code.
+\end{example}
+
+\subsection{Context-free grammars}
+
+A \engterm{context-free grammar} (CFG) is a tuple $(V, \Sigma, R, S)$ where $V$ is a set of non-terminal symbols, $\Sigma$ is the alphabet of terminals, $R$ is a set of production rules of the form $A \to \alpha$ with $A \in V$ and $\alpha \in (V \cup \Sigma)^*$, and $S \in V$ is the start symbol. The language $L(G)$ is the set of strings of terminals derivable from $S$ by repeated rule application.
+
+A grammar for arithmetic expressions over a single digit, with addition and parentheses:
+\begin{align*}
+E &\to E + E \mid (E) \mid D \\
+D &\to 0 \mid 1 \mid 2 \mid \ldots \mid 9
+\end{align*}
+The grammar generates strings like $1 + 2$, $(3 + 4) + 5$, $((1 + 2) + (3 + 4))$. The grammar is also \engterm{ambiguous}: the string $1 + 2 + 3$ has two distinct parse trees, one corresponding to $(1 + 2) + 3$ and the other to $1 + (2 + 3)$. For commutative operators the ambiguity is harmless; for non-commutative ones it is the source of working compiler bugs. Disambiguating a grammar (typically by enforcing precedence and associativity through additional non-terminals) is the discipline of language design.
+
+CFGs are recognised by pushdown automata; the standard parser-generator tools (yacc/bison, ANTLR, modern parser combinators) consume a CFG (often a restricted form such as LALR(1) or LL(*)) and emit a recogniser. Modern programming language syntax is typically described by a CFG augmented with semantic-action attachments; Chapter 8 returns to this with full machinery.
+
+\begin{archetype}[Scaling]
+Regular languages scale linearly in the input: a finite-state machine takes $\oom{n}$ time on input of length $n$. Context-free languages scale at least quadratically in the worst case for general grammars, linearly for the restricted classes used in practice. Context-sensitive languages can require exponential time. The engineer's choice of formal-language class is, in part, a choice of how the input-size cost scales.
+\end{archetype}
+
+\section{Computability: Turing machines, the halting problem}\pathtag{standard}
+
+Section 1.2 noted that the set of programs of any finite length over a finite alphabet is countable, while the set of functions $\N \to \{0, 1\}$ is uncountable. By a simple cardinality argument, most functions are not computable by any program. Computability theory makes this concrete: it names a precise model of computation and identifies functions that no program in any reasonable model can compute.
+
+The precise model that became canonical is the \engterm{Turing machine}, introduced by Turing in 1936 \cite{paper:turing1936}. A Turing machine is a finite-state controller equipped with an unbounded tape and a read/write head that moves left or right. The transition function specifies, given the current state and the symbol under the head, what to write, which direction to move, and what state to enter. The machine halts when it enters a designated halting state.
+
+The Turing machine is one of several formal definitions of computation given in the 1930s. Alonzo Church's lambda calculus \cite{hist:church1936} is another; Kurt Gödel's general recursive functions, the equational systems of Kleene, and the production systems of Post are others. All these definitions turned out to compute exactly the same class of functions on the natural numbers. The empirical observation that every reasonable formal model of mechanical computation defines the same class is the \engterm{Church-Turing thesis}: the intuitive notion of ``a function computable by a mechanical procedure'' is captured by the formal class of \engterm{Turing-computable functions}.
+
+The Church-Turing thesis is a thesis, not a theorem. It cannot be proved because the intuitive notion on one side is not formal. The thesis is supported by the empirical convergence of the formal models and by the empirical fact that, after ninety years, no one has produced a procedure for which the thesis fails.
+
+\subsection{The halting problem}
+
+The most consequential result of Turing's 1936 paper is the undecidability of the \engterm{halting problem}: there is no Turing machine that, given as input the description of an arbitrary Turing machine $M$ and an input $x$, decides whether $M$ halts on $x$.
+
+The proof is a diagonal argument. Suppose for contradiction that a halting decider $H$ exists. Construct a machine $D$ that, on input the description $\langle M \rangle$ of a Turing machine, simulates $H$ on the pair $(\langle M \rangle, \langle M \rangle)$, and then: if $H$ says ``halts,'' enters an infinite loop; if $H$ says ``does not halt,'' halts immediately. Now run $D$ on its own description $\langle D \rangle$. By construction, $D$ halts on $\langle D \rangle$ if and only if $D$ does not halt on $\langle D \rangle$. Contradiction.
+
+The argument is short and the conclusion is structural. There is no algorithm that, in full generality, decides whether an arbitrary program will terminate. The result generalises to Rice's theorem: any non-trivial semantic property of programs is undecidable. ``Does this program ever return $0$?'' ``Does this program ever access an invalid memory location?'' ``Does this program leak any of its input?'' Each is undecidable in full generality.
+
+\subsection{The engineering consequence}
+
+The halting problem and Rice's theorem are not abstract limitations. They have direct engineering consequences. No program-analysis tool can be both \emph{sound} (never reports a property when the property does not hold) and \emph{complete} (always reports the property when it holds). Static analysers, type checkers, and compilers must therefore choose: be sound and reject some valid programs (the type-checker route), or be complete and admit some invalid programs (the dynamic-analysis route), or be neither (much of the static-analysis tooling in production today).
+
+The engineer's response is not to give up on program analysis. It is to identify the restricted classes of programs and properties for which decidability is recovered. A program with bounded loops and no recursion can have its termination decided. A type system can be designed for decidable inference. A model-checker can verify finite-state systems exactly. The art is to write the parts of the system where the decidability matters in the restricted languages where it holds.
+
+\begin{mastery}
+A useful refinement of the Church-Turing thesis is the \engterm{extended Church-Turing thesis}, which asserts that every reasonable model of mechanical computation can simulate every other with at most polynomial slowdown. This is the foundation of complexity theory's ability to talk about classes like $\mathsf{P}$ and $\mathsf{NP}$ without specifying the machine model. Quantum computing (Chapter 14) is the first model that may violate the extended thesis: the conjecture is that some problems quantum machines decide in polynomial time require exponential time on classical machines. The extended thesis has therefore moved from ``settled empirical fact'' to ``open conjecture conditional on quantum-hardware realisation.''
+\end{mastery}
+
+\section{Logic in engineering: requirements as predicates}\pathtag{core}
+
+The engineering use of the apparatus above is to write requirements in a form precise enough that two reviewers will agree on whether a given system meets them. The vocabulary is predicate logic with first-order quantifiers, the domain is the set of execution traces of the system, and the predicates are properties of states and events.
+
+A standard form, used across formal-methods practice including \cite{text:leveson-safeware}, is to write requirements as triples:
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Trigger.} A condition $\phi(t)$ that holds at time $t$.
+  \item \textbf{Response.} A predicate $\psi(s)$ that the system must make true at some time $s$ related to $t$.
+  \item \textbf{Timing.} A temporal relation between $t$ and $s$ (within five seconds, before the next sample, at the next event of some kind).
+\end{itemize}
+
+The composite reads: at every time $t$ where the trigger holds, the response must hold at some time $s$ within the specified timing window. In formal-logic terms:
+\[
+\forall t.\, \phi(t) \to \exists s \in [t, t + \Delta].\, \psi(s).
+\]
+
+\subsection{Two engineering modes of requirement failure}
+
+A requirement can fail to specify what the engineer intended in two ways.
+
+\textbf{Underspecification.} The requirement does not constrain enough cases. The thermostat example (Section 1.3) showed an underspecified transition table: cases where the table did not say what to do became cases where the implementation chose. Engineering specifications that say ``the system shall behave reasonably under failure conditions'' are underspecified in the same way; ``reasonably'' is not a predicate.
+
+\textbf{Overspecification.} The requirement constrains the implementation more tightly than the engineer intended, removing legitimate design freedom. A requirement that says ``the controller shall sample at \SI{100}{\hertz}'' forecloses adaptive sampling. A requirement that says ``the database shall use B-tree indexes'' forecloses hash indexes. The engineering discipline is to constrain the externally observable behaviour and leave the implementation free.
+
+The boundary between under- and overspecification is the boundary between a requirement and an implementation. A requirement names what the system shall do; an implementation names how. Working specifications keep the two layers separate.
+
+\subsection{The contract pattern}
+
+A standard pattern for the simpler engineering specifications is the \engterm{contract}: each operation is specified by a precondition (what must be true at entry), a postcondition (what shall be true at exit), and a frame (what the operation does not change). The pattern was made explicit by Hoare in 1969 and is the foundation of contract-driven design in Eiffel, the design-by-contract style in modern Python and Rust, and the precondition/postcondition specifications in Verilog and SystemVerilog.
+
+A contract for an integer-division operation:
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Precondition.} $d \neq 0$.
+  \item \textbf{Postcondition.} The returned $(q, r)$ satisfies $n = q \cdot d + r$ with $0 \leq r < |d|$.
+  \item \textbf{Frame.} No global state is modified.
+\end{itemize}
+
+The contract is a proposition; it can be tested by running the operation and checking the postcondition under varying precondition-satisfying inputs. Tests that pass under the contract are evidence; tests that fail are counterexamples.
+
+\subsection{Tools for predicate specifications}
+
+Three classes of tool put predicate-logic specifications to use.
+
+\textbf{Type systems.} A type signature is a (decidable, restricted) predicate. A function of type $\mathtt{int} \to \mathtt{int}$ promises to return an integer given an integer. More expressive type systems (dependent types, refinement types) push deeper into the predicate-logic territory.
+
+\textbf{Model checkers.} A model checker (NuSMV, TLA+, Spin) takes a finite-state model of a system and a temporal-logic specification and decides whether the model satisfies the specification by exhaustively exploring the state space.
+
+\textbf{Theorem provers.} An interactive proof assistant (Coq, Lean, Isabelle) lets the engineer state and prove arbitrary predicate-logic theorems about a system. The proof, once mechanically checked, is evidence at a higher standard than testing or model checking, at a higher cost.
+
+The cost-evidence trade-off is real. Type systems are cheap and weak; theorem provers are expensive and strong; model checkers and refinement-types sit between. The engineering discipline is to choose the right tool for the safety-critical core and let the rest of the system be tested empirically.
+
+\section{Failure: ambiguous specifications and their cost}\pathtag{core}
+
+A specification is ambiguous when two reasonable readers can disagree on whether a given system meets it. Ambiguity is the first and most pervasive failure mode of engineering language, and most of the canonical software-engineering accidents have an ambiguity at their core. The cases below are drawn from the named-cases registry and are treated at full depth in Volume X. The point here is to see the ambiguity itself.
+
+\textbf{Mars Climate Orbiter, 1999.} The spacecraft was destroyed during Mars orbital insertion because ground software at Lockheed Martin produced impulse data in pound-force seconds while the navigation software at Jet Propulsion Laboratory required newton seconds \cite{acc:nasa-mco-mib}. The interface specification document was explicit about the units: metric. The specification was unambiguous as a string of English; the ambiguity lived in \emph{who would enforce} the unit, what would happen if the units were wrong, and where in the data flow a check would catch a mismatch. The system had a clear written requirement and no operationalisation of it. Volume I Chapter 2 treats the units side; the logic side is that the requirement was a proposition about the data, but the implementation lacked a predicate $\mathrm{units}(\mathrm{file}) = \mathrm{metric}$ that any program enforced at the handoff.
+
+\textbf{Therac-25, 1985-1987.} The Therac-25 radiation-therapy machine delivered massive overdoses to six patients between 1985 and 1987, killing at least three \cite{paper:leveson-turner1993}. The mechanism was a race condition: a software variable named \texttt{Class3} was incremented on every entry to a particular routine; when the variable overflowed from $255$ back to $0$, a downstream check that ``the variable is non-zero, so the previous operation completed safely'' falsely returned ``safe.'' The race was triggered when an experienced operator typed a parameter sequence faster than the system designers had anticipated. The specification did not say what should happen when the operator types faster than the documented input rate. It also did not say what \texttt{Class3} represented, what its valid range was, or what should happen at overflow. The ambiguity was at three levels: timing, semantics, and arithmetic overflow. Each was logged in Leveson's investigation \cite{paper:leveson-turner1993} as a specification gap, not as a programmer error. The pattern is the canonical example of underspecified concurrent behaviour.
+
+\textbf{Ariane 5 Flight 501, 1996.} The Ariane 5 launch vehicle was destroyed forty seconds after liftoff because an inertial reference-system software module, inherited from the Ariane 4, attempted to convert a 64-bit floating-point horizontal-velocity value into a 16-bit signed integer. On Ariane 4, the value never exceeded the 16-bit range, so no exception was possible. On Ariane 5, the value did exceed the range, the conversion threw, the exception was not caught, and the inertial reference system shut down. The inertial reference system was not in use during the flight phase at which the failure occurred; it was running because the Ariane 4 had needed it to be \cite{acc:ariane501-ifr}. The specification of the inertial-reference-system module was a proposition about Ariane 4. The proposition was true. When the module was reused in Ariane 5, the specification was not reproved. The ambiguity was: what was the precondition under which the proposition held? It held on the Ariane 4 trajectory profile. It did not hold on Ariane 5's.
+
+\textbf{The shared mechanism.} Each of the three was a case where a proposition was true in the intended scope and false outside it, and the engineering process lacked the predicate that named the scope. The fix in each case was the same: write the precondition explicitly, check it at the interface, fail the build (or the run, or the launch) when the precondition is not met.
+
+\begin{principle}[Specifications need scope predicates]
+A specification has the form ``under conditions $\phi$, the system shall ensure $\psi$.'' The scope $\phi$ is part of the specification. When the scope is implicit (``on Ariane 4 trajectories,'' ``while the operator types at human speed,'' ``with metric units''), the specification is ambiguous, and the implementation can be correct relative to one reading of the scope and catastrophic relative to another. The engineering discipline is to name $\phi$ explicitly and to write a check that fails when $\phi$ is violated.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Formalise three engineering requirements as logical predicates]
+Pick three engineering requirements from any source you have access to: a product manual, a published standards document, a software-system specification, a research-paper protocol, an internal document from your own work. Choose three that initially read as clear.
+
+For each requirement, do the following.
+
+\begin{enumerate}[leftmargin=*]
+  \item State the requirement as a first-order predicate-logic formula. Identify the domain of discourse, the predicates and functions you use, and the quantifier structure.
+  \item Identify at least one ambiguity in the original natural-language statement that your formalisation forced you to resolve. State both possible readings.
+  \item Identify the scope predicate $\phi$: the conditions under which the requirement is intended to hold. State $\phi$ explicitly. State the failure mode if $\phi$ is silently violated.
+  \item Identify a test that would falsify the formal statement of the requirement. Describe the test in enough detail that another engineer could implement it.
+\end{enumerate}
+
+The deliverable is a single short document (no more than four pages) containing the three formalisations and the four items per formalisation. The document is the input to a peer review: have a second engineer read the document and the original requirements, and check whether the formal statement matches the engineer's understanding of the natural-language statement. The disagreements, if any, are the chapter's lesson.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Construct truth tables for the following expressions and identify which are tautologies (true in every interpretation), contradictions (false in every interpretation), or contingent.
+\begin{enumerate*}[label=(\alph*)]
+\item $(p \to q) \leftrightarrow (\lnot q \to \lnot p)$
+\item $p \wedge \lnot p$
+\item $(p \vee q) \to (p \wedge q)$
+\item $(p \to q) \vee (q \to p)$
+\item $((p \to q) \wedge (q \to r)) \to (p \to r)$
+\end{enumerate*}
+\end{exercise}
+
+\begin{exercise}
+Use the laws of propositional logic (De Morgan's laws, distributivity, associativity) to simplify the expression $\lnot((p \vee q) \wedge \lnot(p \wedge q))$.
+\end{exercise}
+
+\begin{exercise}
+Write the negation of each of the following predicate-logic statements, simplifying so that negation is applied only to atomic predicates.
+\begin{enumerate*}[label=(\alph*)]
+\item $\forall x.\, \exists y.\, P(x, y)$
+\item $\exists x.\, \forall y.\, (P(x) \to Q(y))$
+\item $\forall x.\, (P(x) \wedge \exists y.\, Q(x, y))$
+\end{enumerate*}
+\end{exercise}
+
+\begin{exercise}
+Compute $|\mathcal{P}(\mathcal{P}(\{0, 1\}))|$. Show your working.
+\end{exercise}
+
+\begin{exercise}
+Let $S = \{a, b, c\}$ and $T = \{1, 2\}$. Enumerate all functions $f: S \to T$. How many are there? How many of these are injective? How many are surjective?
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Prove from first principles that the union operation on sets is associative: $(A \cup B) \cup C = A \cup (B \cup C)$.
+\end{exercise}
+
+\begin{exercise}
+Prove that if $f: S \to T$ and $g: T \to U$ are both injective, then $g \circ f: S \to U$ is injective. Prove the analogous statement for surjective functions.
+\end{exercise}
+
+\begin{exercise}
+Show that the relation ``has the same remainder modulo $n$'' on $\Z$ is an equivalence relation, for any $n \geq 1$.
+\end{exercise}
+
+\begin{exercise}
+Construct a finite-state machine that accepts exactly the binary strings of even length. Construct one that accepts exactly the binary strings divisible by $3$ when read most-significant-bit first.
+\end{exercise}
+
+\begin{exercise}
+Write a context-free grammar for arithmetic expressions over the symbols $0, 1, +, *$, with parentheses, in a form that disambiguates $1 + 1 * 1$ to mean $1 + (1 * 1)$. Verify by deriving the parse tree.
+\end{exercise}
+
+\begin{exercise}
+Prove that the language $\{0^n 1^n : n \geq 0\}$ is not regular. (Hint: use the pumping lemma for regular languages.)
+\end{exercise}
+
+\begin{exercise}
+Sketch the diagonal argument showing that the halting problem is undecidable. State carefully where the construction would fail if Turing machines were not allowed to inspect their own descriptions.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the number of distinct truth-table entries that a propositional formula with $20$ atomic variables defines. How long would a brute-force satisfiability checker take if a single truth-table row took $1\,\si{\micro\second}$?
+\end{exercise}
+
+\begin{exercise}
+A regular expression engine that supports backreferences can match the language $\{w w : w \in \{a, b\}^*\}$. Estimate the worst-case running time, in big-O notation, of a naive regex engine on a string of length $n$ that nearly matches but is not in the language.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of lines of formal specification (in a language like TLA+) you would need to specify the externally observable behaviour of a TCP connection from open to close, including the standard congestion-control behaviour. Compare to the RFC 793 page count.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a propositional-logic satisfiability checker by exhaustive truth-table evaluation. Test it on the formulas from Exercise 1.1. Measure how the running time grows with the number of variables; plot the result on log-linear axes.
+\end{exercise}
+
+\begin{exercise}
+Implement the thermostat finite-state machine from Section 1.3. Simulate it under a stream of temperature events. Add an explicit ``no change'' transition for every case the table does not specify; observe what changes in the trace.
+\end{exercise}
+
+\begin{exercise}
+Implement a recursive-descent parser for the arithmetic-expression grammar of Exercise 1.10. Pass the parser the string $1 + 2 + 3$ and observe which parse tree the parser produces. What does the choice say about the grammar's associativity?
+\end{exercise}
+
+\begin{exercise}
+Implement a small Turing-machine simulator. Use it to run the canonical example: a machine that decides whether a unary input has even length. Add a halting check after $N$ steps; what does the result tell you about the halting problem in practice?
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a regular expression for the standard form of an IPv4 address (four dotted decimal numbers, each between $0$ and $255$). State explicitly what your expression accepts that is not a valid IPv4 address, and what it rejects that is.
+\end{exercise}
+
+\begin{exercise}
+Design a finite-state machine for the validation logic of a credit-card form field. The field must accept exactly $16$ digits, optionally grouped in fours by spaces or hyphens. State your alphabet, states, transitions, and accepting states explicitly. How does your design behave on the empty input? On an input of $17$ digits?
+\end{exercise}
+
+\begin{exercise}
+Design a context-free grammar for a simple configuration-file format with nested sections, key-value pairs, and comments. Choose the syntax. Provide a sample input and its parse tree.
+\end{exercise}
+
+\begin{exercise}
+Design a predicate-logic specification for a simple alarm system: the alarm shall sound within $5\,\si{\second}$ if either the pressure exceeds $40\,\text{bar}$ or the temperature exceeds $\SI{60}{\degreeCelsius}$ for more than $2\,\si{\second}$, and shall not sound otherwise. State your domain of discourse, predicates, functions, and the formula. Identify at least one ambiguity in the natural-language statement that your formalisation forced you to resolve.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+Read a published software-engineering requirements document of your choice (at least 20 pages). Identify three places where the natural-language requirement is ambiguous in a way that would survive ordinary review. For each, write the formal predicate-logic statement under each reading.
+\end{exercise}
+
+\begin{exercise}
+The Mars Climate Orbiter loss \cite{acc:nasa-mco-mib} hinged on a specification whose written form was unambiguous but whose enforcement was not. Restate the interface specification as a predicate-logic formula. Identify the predicate that would have caught the error if it had been mechanically checked at the data-handoff point.
+\end{exercise}
+
+\begin{exercise}
+The Therac-25 incidents \cite{paper:leveson-turner1993} are often described as ``software bugs.'' Argue, with reference to the specification level rather than the implementation level, that they are more accurately described as specification ambiguities. What predicate would have been needed to disambiguate the concurrent-operator-input case?
+\end{exercise}
+
+\begin{exercise}
+The halting problem's undecidability is sometimes invoked to argue that ``software cannot be proven correct.'' Critique this argument. Identify what the halting problem actually rules out, and what it leaves open.
+\end{exercise}
+
+\begin{exercise}
+The Church-Turing thesis is supported by empirical convergence of formal computational models. Identify what kind of evidence would falsify the thesis if it were ever found. Compare the epistemic status of the Church-Turing thesis to the status of the second law of thermodynamics (Volume IV Chapter 1).
+\end{exercise}
+
+\begin{exercise}
+Consider the choice between a type system (decidable, restricted, cheap), a model checker (decidable on finite-state abstractions, mid-cost), and a theorem prover (full predicate logic, expensive). For each of the following situations, name the tool you would choose and justify the choice: \begin{enumerate*}[label=(\alph*)] \item a payment-processing service; \item a hobby data-visualisation script; \item an aircraft autopilot; \item a research prototype that will be discarded next month. \end{enumerate*}
+\end{exercise}
+
+\begin{exercise}
+The Ariane 5 Flight 501 loss \cite{acc:ariane501-ifr} is sometimes characterised as a problem of code reuse. Restate the failure in terms of specification scope. What was the implicit scope predicate of the inertial-reference-system software on Ariane 4, and why did it not hold on Ariane 5? What would explicit scope-predicate discipline have required at the moment of reuse?
+\end{exercise}

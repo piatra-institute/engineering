@@ -1,37 +1,319 @@
 \chapter{Compilers and interpreters}
 \label{vol07:ch08}
 
-\epigraph{}{}
+\epigraph{A compiler is a programme that translates an executable form into another executable form, hopefully an easier one to execute.}{anonymous, paraphrased from Aho, Lam, Sethi, Ullman}
 
-\chapmeta{Half-life: durable. Archetypes: interface, optimisation. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: interface, optimisation. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 7, Chapter 8. Approx 100 pp.}
+A \engterm{compiler} translates a program in a source language to a program in a target language. The classical case translates a high-level language to machine code; modern cases translate JavaScript to native code (V8, SpiderMonkey), C++ to LLVM IR to machine code, Python to bytecode to JIT-compiled native (PyPy), one query language to another (SQL planner). An \engterm{interpreter} executes a source-language program directly without producing a target-language program; the two are not opposites but ends of a spectrum (modern systems mix both, dispatching to interpreter for cold code and to compiler for hot code).
 
-\section{Lexing and parsing}
-\TODO{Section prose.}
+This chapter teaches the working structure of a compiler: lexing, parsing, abstract syntax trees, type checking, code generation, optimisation. The standard reference is Aho, Lam, Sethi, and Ullman's ``Dragon Book'' \cite{text:aho-dragon}.
 
-\section{ASTs and intermediate representations}
-\TODO{Section prose.}
+\section{Lexing and parsing}\pathtag{core}
 
-\section{Type checking and analysis}
-\TODO{Section prose.}
+The first stage of compilation turns a source-code string into a sequence of tokens (lexing) and then into a tree structure that captures syntactic structure (parsing).
 
-\section{Code generation and optimisation passes}
-\TODO{Section prose.}
+\subsection{Lexing}
 
-\section{Just-in-time compilation}
-\TODO{Section prose.}
+A \engterm{lexer} (also called a tokeniser or scanner) reads the source-code string and produces a stream of tokens. Each token is a logical unit: a keyword (\texttt{if}, \texttt{while}), an identifier, a literal (number, string), a punctuation mark, an operator. The lexer discards whitespace and comments (in most languages); some languages (Python, Haskell) make whitespace significant.
 
-\section{The compiler as design tool: DSLs}
-\TODO{Section prose.}
+Lexers are typically implemented as finite-state machines (Chapter 1) generated from regular-expression descriptions of each token class. Lex, flex, and re2c are the classical lexer generators; modern compilers often hand-write the lexer for performance and for better error messages.
 
-\section{Failure: undefined-behaviour optimisations, ICEs, generated-code bugs}
-\TODO{Section prose.}
+\subsection{Parsing}
 
+A \engterm{parser} takes the token stream and produces a tree: the parse tree (every grammar production is a node) or the more compact abstract syntax tree (only the semantically meaningful nodes are retained). Parsing is the recognition of strings by a context-free grammar (Chapter 1).
 
-\section{Project}
-\TODO{implement a small compiler for a tiny arithmetic language; emit working assembly}
+The standard parsing techniques:
+
+\textbf{Top-down (recursive descent).} The parser starts from the start symbol and tries productions until one matches. LL(1) grammars (one token of look-ahead) parse cleanly with recursive descent. Modern parser combinators (Parsec, nom) and hand-written compilers favour this style.
+
+\textbf{Bottom-up (shift-reduce, LR, LALR).} The parser shifts tokens onto a stack and reduces the stack when a grammar production matches. LR(1) grammars parse with $\oom{n}$ complexity using a generated table. Yacc, Bison, ANTLR (modern) use variants of LR or LL(*).
+
+\textbf{Packrat parsing.} A memoising recursive-descent parser. $\oom{n}$ time, $\oom{n)}$ space. Used for parsing expression grammars (PEGs).
+
+\textbf{Earley parser.} Handles arbitrary context-free grammars in $\oom{n^3)}$ worst case, $\oom{n^2)}$ for unambiguous grammars, $\oom{n)}$ for LR-parseable grammars. Used for parsing natural language and ambiguous grammars.
+
+The choice for industrial compilers is recursive descent with operator-precedence handling for expressions; the choice for parser-generator-based systems is LALR (bison) or LL(*) (ANTLR). Modern compilers (Rust's rustc, Go's gc, V8) almost universally use hand-written recursive descent.
+
+\subsection{Error recovery}
+
+A working compiler does not stop at the first syntax error; it reports the error and continues parsing to find subsequent errors. Error recovery strategies include panic-mode (skip tokens until a synchronisation point), phrase-level (insert or delete tokens to make the parse continue), and error-productions (extend the grammar with rules for common mistakes).
+
+Industrial compilers in 2026 (rustc, the Roslyn C\# compiler, Swift) are notable for the quality of their error messages: each error includes the source location, the expected and actual tokens, a likely fix, and often a clickable link to documentation. The discipline of good error messages is engineering effort, not luck.
+
+\section{ASTs and intermediate representations}\pathtag{core}
+
+\subsection{Abstract syntax trees}
+
+An \engterm{abstract syntax tree} (AST) is a tree representation of the source program with the syntactic noise (parentheses, semicolons) removed and the semantic structure preserved. Each node represents a language construct (an expression, a statement, a declaration); the children represent its sub-constructs.
+
+The AST is the working representation for most compiler analysis. Type checking traverses the AST; name resolution traverses it; the first pass of code generation traverses it. The transformations that follow typically lower the AST into an intermediate representation closer to the machine.
+
+\subsection{Intermediate representations}
+
+An \engterm{intermediate representation} (IR) is the data structure on which the bulk of compiler analysis and optimisation operates. The IR is typically lower-level than the AST (closer to machine instructions) but higher-level than the target machine code (target-independent or partially so).
+
+The major styles:
+
+\textbf{Three-address code.} Each instruction has the form $a = b\ \texttt{op}\ c$. Variables are temporaries (typically infinite in number); the IR is then lowered to a register-allocated form. Used by classical optimising compilers.
+
+\textbf{Static single-assignment (SSA).} A three-address-code refinement where each variable is assigned exactly once. The remaining assignments are statically determined by control flow. SSA makes data-flow analysis much simpler; almost every modern compiler uses SSA in some form. LLVM IR is SSA-based.
+
+\textbf{Continuation-passing style (CPS).} A functional-language IR where every function takes a continuation argument representing what to do next. Used by some Scheme and ML compilers.
+
+\textbf{Bytecode.} A linear instruction sequence for a virtual machine. Java bytecode for the JVM, .NET IL for the CLR, Python bytecode for the CPython interpreter, WebAssembly for the modern web.
+
+LLVM \cite{paper:lattner-adve-llvm-2004} is the dominant industrial IR. LLVM provides an SSA-based IR, a wide range of optimisation passes, and code generators for many target architectures. Modern Rust, Swift, Julia, and many others compile to LLVM IR and let LLVM produce the machine code.
+
+\section{Type checking and analysis}\pathtag{standard}
+
+The type-checking phase verifies that the program's types are consistent. For a strongly typed language with explicit annotations, type checking is essentially mechanical: walk the AST, verify that each expression's type matches the context's expected type.
+
+\subsection{Type inference}
+
+Many modern languages (Haskell, OCaml, Rust, Scala, modern C++ with \texttt{auto}, modern TypeScript) support type inference: the compiler deduces types from usage. The classical algorithm is Hindley-Milner (1969-1978), which infers the most general types of expressions in a let-polymorphic functional language. Its time complexity is theoretically exponential but is essentially linear in practice.
+
+Rust's borrow checker is a type-system extension to Hindley-Milner that tracks ownership and lifetimes. The checker rejects programs that would violate memory safety; the rejection is at type-check time, before code generation.
+
+\subsection{Data-flow analysis}
+
+\engterm{Data-flow analysis} computes properties of every program point: which variables are live, which expressions are available, which definitions reach a use. The analyses are the foundation of optimisation passes (Section 8.4).
+
+\textbf{Live-variable analysis.} A variable is live at point $p$ if there is a path from $p$ to a use of the variable that does not redefine it. Used by register allocation: a non-live variable's register can be reused.
+
+\textbf{Available-expression analysis.} An expression $e$ is available at point $p$ if every path from the program start to $p$ contains a computation of $e$ that is not subsequently invalidated. Used by common subexpression elimination.
+
+\textbf{Reaching definitions.} The set of definitions of a variable that may reach a use without intervening redefinition. Used by constant propagation and dead-code elimination.
+
+The analyses are typically formulated as iterative computations over the control-flow graph, with the iteration converging in $\oom{n)}$ for well-behaved analyses. SSA-based IRs make many of the analyses trivial.
+
+\section{Code generation and optimisation passes}\pathtag{standard}
+
+The code-generation phase produces target-machine instructions from the optimised IR. The two major sub-phases:
+
+\textbf{Instruction selection.} Choose target instructions for IR operations. A simple selector emits one instruction per IR operation; an optimising selector chooses sequences of instructions that match patterns in the IR. The standard algorithms are tree-pattern matching (BURG) and dynamic-programming-based selection.
+
+\textbf{Register allocation.} Map the IR's infinite virtual registers to the target's finite physical registers. The classical formulation is graph colouring (each variable is a node; an edge connects variables that are simultaneously live; colour the graph with $k$ colours for $k$ registers). When no $k$-colouring exists, the allocator spills variables to memory.
+
+\subsection{Major optimisation passes}
+
+Production compilers run dozens or hundreds of optimisation passes. The classical core:
+
+\textbf{Constant folding.} Compute constant expressions at compile time. $3 + 4$ becomes $7$.
+
+\textbf{Dead-code elimination.} Remove computations whose results are not used.
+
+\textbf{Common subexpression elimination.} Replace repeated computations with reuse of the first.
+
+\textbf{Loop-invariant code motion.} Move computations out of loops where they do not depend on the loop variable.
+
+\textbf{Strength reduction.} Replace expensive operations with cheaper ones. $x \cdot 2$ becomes $x \ll 1$ (or vice-versa, depending on target).
+
+\textbf{Inlining.} Replace a function call with the function's body. Trade code size for execution speed.
+
+\textbf{Tail-call optimisation.} A function call in tail position is replaced by a jump, avoiding a stack frame.
+
+\textbf{Loop unrolling.} Replicate a loop body $k$ times and reduce iteration count by $k$. Reduces loop overhead at the cost of code size.
+
+\textbf{Vectorisation.} Recognise loops whose iterations are independent and emit SIMD instructions (Chapter 7).
+
+The total compile-time cost of optimisation is substantial: rustc compiles in seconds for small projects but minutes for large ones, with the bulk of the time in LLVM's optimisation passes. The trade-off is compile-time-versus-runtime; release builds optimise aggressively at high compile-time cost, debug builds skip most optimisations for fast iteration.
+
+\subsection{Profile-guided optimisation}
+
+\engterm{Profile-guided optimisation} (PGO) collects runtime profiles from a representative execution of the program, then re-compiles with the profile as additional input. The compiler can then optimise hot paths more aggressively, place hot code together for cache locality, and inline based on actual call frequencies rather than heuristics. PGO produces $5\%$ to $20\%$ speed-ups on typical workloads; production C++ compilers (clang, GCC, MSVC) and the Java JIT all support some form of PGO.
+
+\section{Just-in-time compilation}\pathtag{standard}
+
+\engterm{Just-in-time} (JIT) compilation translates the program to machine code at runtime rather than at build time. The benefit: the JIT compiler can specialise based on observed runtime behaviour (actual types of variables, actual branch outcomes, actual call targets). The cost: compilation happens during execution and counts against the program's wall-clock runtime.
+
+\subsection{JIT design patterns}
+
+\textbf{Tiered compilation.} Run the program in an interpreter or simple JIT initially. Detect hot code (functions or loops executed many times). Recompile hot code at higher optimisation levels. Java HotSpot, V8, LuaJIT all use this pattern.
+
+\textbf{On-stack replacement.} Replace an interpreting frame with a compiled frame while the function is still executing. The classical example: a long-running loop is detected as hot, the JIT compiles a specialised version, and the JIT switches to the compiled code mid-loop.
+
+\textbf{Speculative optimisation.} Make assumptions about types or values, generate aggressive code under the assumptions, and deoptimise (fall back to the interpreter) if the assumptions are violated. The standard pattern for JavaScript JITs.
+
+\subsection{Tracing JITs}
+
+A \engterm{tracing JIT} records execution traces of hot paths and compiles each trace as a linear sequence of operations with guards on branches. The classical examples: PyPy, LuaJIT, Mozilla's TraceMonkey. The approach can be very fast on regular workloads (dense numerical loops in Python under PyPy run within 2x of C); it can be very slow on irregular workloads where guards fail often.
+
+\section{The compiler as design tool: DSLs}\pathtag{standard}
+
+A \engterm{domain-specific language} (DSL) is a programming language designed for a narrow domain. SQL is a DSL for database queries. Regular expressions are a DSL for pattern matching. The shell is a DSL for orchestrating processes. The build files of Make, Cargo, Gradle are DSLs for build orchestration.
+
+A compiler is the engineering machinery for designing DSLs. The DSL designer specifies the syntax, the type system, the semantics; the DSL compiler implements them. The DSL user gets a notation tailored to the domain, with the discipline of a static type system and the speed of compiled execution.
+
+\subsection{Embedded DSLs}
+
+An \engterm{embedded DSL} (eDSL) is a DSL implemented as a library in a host language. The host language's parser parses the eDSL; the host's type system enforces the eDSL's discipline. SQL ORMs (SQLAlchemy in Python, Diesel in Rust) are eDSLs; LINQ in C\# is an eDSL; Haskell's parser-combinator libraries are eDSLs.
+
+Embedded DSLs reuse the host's tooling (editor, debugger, package manager) and avoid the cost of a separate compiler. They are constrained by the host's syntax and semantics: Haskell's type system makes some eDSLs elegant; Java's verbosity makes the same eDSLs painful.
+
+\subsection{Compiler-driven engineering}
+
+The compiler-as-tool view encourages an engineering approach: identify a recurring problem in your domain, design a small language to express its solutions, build a compiler for the language. The cost is the compiler effort; the payoff is that future problems in the domain are expressed in the right notation. The discipline is to keep the language small (large DSLs slide toward general-purpose languages with their full cost) and to design the compiler to fail fast on misuse.
+
+\section{Failure: undefined-behaviour optimisations, ICEs, generated-code bugs}\pathtag{core}
+
+Compiler-driven failure has three working modes.
+
+\subsection{Undefined-behaviour optimisations}
+
+C and C++ have a long list of undefined behaviours (Chapter 5). Modern optimising compilers exploit them aggressively: the compiler assumes the undefined behaviour does not occur and removes any code that would only execute if the undefined behaviour did occur.
+
+The classical case: a null-pointer dereference followed by a null-pointer check. The C standard says that dereferencing a null pointer is undefined; the compiler assumes the dereference does not occur; the compiler removes the subsequent null-pointer check as redundant. The program then proceeds without the safety check the programmer intended. This pattern is the source of CVE-2009-1897 (the Linux kernel exploit) and many subsequent vulnerabilities.
+
+The engineering response is twofold. First, write code that does not exhibit undefined behaviour: avoid signed-integer overflow, avoid out-of-bounds access, avoid uninitialised variables. Second, use sanitisers (UBSan, ASan, MSan) during testing to catch undefined behaviour. Third, where possible, prefer languages whose specifications do not have a long list of undefined behaviours (Rust, Ada, Java).
+
+\subsection{Internal compiler errors}
+
+An \engterm{internal compiler error} (ICE) is a crash or assertion failure in the compiler itself. ICEs are bugs in the compiler; they should be reported to the compiler vendor.
+
+ICEs are more common in optimising compilers (where the optimisation passes interact in complex ways) than in straightforward interpreters. The historical record: GCC, clang, rustc, and the JIT compilers all ship with hundreds to thousands of known ICEs at any time. The engineering response is to keep the compiler updated and to report new ICEs with minimal reproducers.
+
+\subsection{Generated-code bugs}
+
+A compiler can produce incorrect code: the source program is correct, the optimisations are well-known, but the result violates the source program's semantics. The classical case is the optimiser making an incorrect assumption about aliasing, type-punning, or memory-ordering, and producing a faster but wrong program.
+
+The CompCert project (Xavier Leroy and collaborators, 2006-) is a formally verified C compiler: the optimisation passes are proven correct against a formal C semantics. CompCert is the only widely-known production-grade compiler with this guarantee. Most production compilers are not formally verified; they are tested empirically and trusted on that basis.
+
+\textbf{Differential testing.} A robust technique for finding compiler bugs: compile the same program with two compilers (or two versions of the same compiler with different optimisation flags), run both, and compare outputs. Discrepancies indicate a bug in at least one. Yang, Chen, Eide, and Regehr's CSmith tool (2011) generated random C programs and found hundreds of bugs in GCC, clang, and other production compilers via differential testing.
+
+\begin{principle}[The compiler is part of the toolchain]
+A correct program in a high-level language depends on a correct compiler. Compiler bugs, undefined-behaviour exploitations, and generated-code bugs are part of the engineering toolchain the source program runs on. The discipline of robust engineering software includes the discipline of choosing the toolchain (which compiler version, which optimisation flags, which sanitisers in test), and of verifying the toolchain's behaviour on the workloads that matter. ``It is the compiler's fault'' is not, in production, a sufficient remediation.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Implement a small compiler for an arithmetic language]
+Implement a compiler for a small language: integer literals, the four arithmetic operations, parenthesised expressions, named variables with let-binding. The compiler should produce working assembly for your platform (x86-64 or ARM AArch64).
+
+\begin{enumerate}[leftmargin=*]
+  \item Implement the lexer as a finite-state machine. Test on a representative set of inputs including error cases.
+  \item Implement the parser as a recursive-descent parser with operator precedence for the arithmetic operators. Test on a representative set of inputs including ambiguous and erroneous cases.
+  \item Implement a type checker. The language has only integers; the type checker should reject programs that misuse variables (use before definition, multiple definitions, etc.).
+  \item Implement code generation: emit assembly that, when assembled and run, produces the program's result.
+  \item Add one optimisation pass: constant folding. Verify that the optimised output produces the same result.
+  \item Document the compiler's design decisions and any trade-offs you made.
+\end{enumerate}
+
+The deliverable is the compiler source code, a small test suite, and a short report (no more than four pages) on the design decisions. The report must explicitly identify the parts of the compiler that are most sensitive to error and the techniques you used to defend against them.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Tokenise the C expression \texttt{x = (a + b) * c} by hand. List each token with its class and source position.
+\end{exercise}
+
+\begin{exercise}
+Parse the same expression with a recursive-descent parser. Draw the resulting AST.
+\end{exercise}
+
+\begin{exercise}
+For the grammar $E \to E + E \mid E * E \mid (E) \mid \text{num}$, identify the ambiguity and show two distinct parse trees for $1 + 2 * 3$.
+\end{exercise}
+
+\begin{exercise}
+Convert the expression \texttt{x = a + b * c} to three-address code. List the instructions.
+\end{exercise}
+
+\begin{exercise}
+Convert the same expression to SSA form. List the assignments.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Show that LL(1) parseable grammars are a strict subset of LR(1) parseable grammars. Construct a grammar in LR(1) but not LL(1).
+\end{exercise}
+
+\begin{exercise}
+Derive the cost of register allocation as graph colouring with $k$ colours. Identify the conditions under which graph colouring is NP-hard.
+\end{exercise}
+
+\begin{exercise}
+Show that loop-invariant code motion is safe: moving an expression out of a loop does not change the program's behaviour if the expression has no side effects and its operands are loop-invariant.
+\end{exercise}
+
+\begin{exercise}
+Derive the engineering value of SSA form for data-flow analysis. State at least two data-flow analyses that become substantially simpler in SSA.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the compile-time cost of a $10^5$-line C++ codebase compiled with -O3 versus -O0. Use measured times from a production compiler (clang or GCC) as your anchor.
+\end{exercise}
+
+\begin{exercise}
+Estimate the runtime speed-up from inlining a small function called $10^6$ times per second, assuming a call/return cost of $10$ cycles and a function body of $30$ cycles.
+\end{exercise}
+
+\begin{exercise}
+Estimate the runtime speed-up from JIT-driven type specialisation in JavaScript versus the same program in interpreted Python.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a hand-written recursive-descent parser for a small arithmetic language with operator precedence. Add error recovery and test on adversarial inputs.
+\end{exercise}
+
+\begin{exercise}
+Implement a simple AST interpreter in your favourite language. Benchmark on a hot loop. Then implement a bytecode compiler and bytecode interpreter for the same language; benchmark the same loop. Document the speed-up.
+\end{exercise}
+
+\begin{exercise}
+Implement constant folding as an AST-walk optimisation pass. Verify correctness on a set of test cases.
+\end{exercise}
+
+\begin{exercise}
+Use a compiler-fuzzing tool (CSmith for C, alphasmith for various) to find a discrepancy between two compilers or two optimisation levels. Document the program and the divergence.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a small domain-specific language for describing build dependencies. State your syntax, your semantic model, and the operations the language supports.
+\end{exercise}
+
+\begin{exercise}
+Design the intermediate representation for a compiler targeting a vector processor (SIMD-style). Identify the operations that map naturally to vector instructions and those that do not.
+\end{exercise}
+
+\begin{exercise}
+Design a JIT compiler architecture for a dynamic language. State the tiers, the trigger for re-compilation, and the deoptimisation mechanism.
+\end{exercise}
+
+\begin{exercise}
+Design an error-message strategy for your toy compiler's type checker. List five common error patterns and the message your compiler would emit for each.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team observes that their service compiled with GCC and run on AMD hardware behaves differently than the same source compiled with clang and run on Intel hardware. State three causes you would investigate.
+\end{exercise}
+
+\begin{exercise}
+A team discovers that a release-build binary fails on a corner case that the debug build handles correctly. State the most likely cause and the engineering remediation.
+\end{exercise}
+
+\begin{exercise}
+The CompCert project produces a formally verified C compiler at substantial engineering cost. State the workloads where the cost is justified and those where standard testing-and-trust suffices.
+\end{exercise}
+
+\begin{exercise}
+A team's JavaScript-heavy service experiences periodic pauses when the JIT deoptimises a hot function. Identify three engineering responses ranging from accepting the pauses to migrating to a different runtime.
+\end{exercise}
+
+\begin{exercise}
+A team is considering writing their entire infrastructure in a domain-specific language. State the engineering trade-offs. What evidence would justify or contraindicate the choice?
+\end{exercise}
+
