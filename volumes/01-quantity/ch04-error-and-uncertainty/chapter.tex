@@ -51,6 +51,13 @@ share the offset, plus correction or adjustment. The discipline
 that prevents systematic error from being mistaken for random error
 is the separation of the two in the uncertainty budget.
 
+\input{volumes/01-quantity/ch04-error-and-uncertainty/figures/fig-random-vs-systematic.tex}
+
+\Cref{fig:vol01:ch04:random-vs-systematic} contrasts the two
+patterns. The discipline of separating them in the budget pays off
+because the mitigation strategies are different and the
+arithmetical limits on reducing each are different.
+
 \subsection{Mechanisms}
 
 The mechanism matters because it tells us which corrective action has
@@ -402,6 +409,14 @@ canonical formulation \cite{std:jcgm-101}; we will use it
 operationally in chapter 8 when we cover statistics for engineers
 and again in chapter 9 when we cover estimation as a discipline.
 
+\input{volumes/01-quantity/ch04-error-and-uncertainty/figures/fig-mc-vs-linear.tex}
+
+\Cref{fig:vol01:ch04:mc-vs-linear} shows the comparison for the
+pendulum $g$-measurement of section 4.3. With Gaussian inputs and
+sub-percent relative uncertainties, the empirical Monte Carlo
+distribution and the linear-propagation Gaussian agree. The
+reference implementation is \texttt{code/pendulum\_mc.py}.
+
 \begin{mastery}
 The choice between linear propagation and Monte Carlo is an
 engineering judgment. Linear propagation is fast, exposes the
@@ -453,6 +468,15 @@ The CLT requires:
 When all three conditions hold, the CLT applies and the Gaussian
 approximation is good. When one fails, the empirical distribution
 of the sum will deviate from Gaussian; the reader should check.
+
+\input{volumes/01-quantity/ch04-error-and-uncertainty/figures/fig-clt-convergence.tex}
+
+\Cref{fig:vol01:ch04:clt-convergence} sketches the convergence of
+the sample-mean distribution as sample size grows. A reference
+simulation for a uniform parent is in \texttt{code/clt\_uniform.py};
+for a heavy-tailed Cauchy parent, \texttt{code/cauchy\_mean.py}
+shows the CLT failure mode in which no value of $n$ produces a
+Gaussian sample mean.
 
 \subsection{Sample size and the t-distribution}
 
@@ -664,6 +688,40 @@ in $10^{8}$, current as of 2026 \cite{web:nist-kibble-balance}. A
 reader specifying a measurement should know which side of the
 current metrology frontier the requirement occupies.
 
+\input{volumes/01-quantity/ch04-error-and-uncertainty/figures/fig-cost-of-precision.tex}
+
+\Cref{fig:vol01:ch04:cost-of-precision} sketches the three regions.
+Cost-of-precision data for an exemplar laboratory mass measurement
+appears in the second estimation block below.
+
+\begin{estimation}
+\textbf{Question.} A laboratory currently measures a mass to a
+relative standard uncertainty of $10^{-4}$ at a cost of
+\$500 per measurement (analyst time, instrument depreciation,
+calibration-standard amortisation). The required precision for a
+new product launch is $10^{-5}$. Estimate the cost per measurement
+at the new target, assuming half the uncertainty floor is random
+and half systematic.
+
+\textbf{Estimate.} The random component currently contributes
+$1/\sqrt{2} \times 10^{-4} \approx 7 \times 10^{-5}$ standard
+uncertainty. Reducing it tenfold by averaging requires $100\times$
+more measurements per reported value, so analyst time scales by
+$100$: an additional \$50,000 per reported result if averaging
+were enough. But the systematic component, also $7 \times 10^{-5}$,
+does not reduce by averaging at all. Reaching $10^{-5}$ total
+requires reducing the systematic component to a few parts in
+$10^{6}$, which means a higher-grade reference standard
+(typically \$10,000 to \$100,000 acquisition cost, amortised over
+hundreds to thousands of measurements), tighter environmental
+control (\$5,000 to \$50,000 for an enclosure plus monitoring),
+and analyst training (one-time \$5,000 to \$20,000). Per-
+measurement cost at the new target is plausibly \$5,000 to
+\$20,000: ten- to forty-fold the original cost, not the tenfold
+the precision change might naively suggest. The cost-of-precision
+curve is steeply rising in this region.
+\end{estimation}
+
 \subsection{Engineering economics}
 
 The optimum precision is the precision at which the marginal cost
@@ -693,26 +751,103 @@ has entered the uncertainty budget.
 \subsection{The Hubble auxiliary-test override}
 
 The Hubble Space Telescope launched in April 1990 with a primary
-mirror figured to the wrong shape. The NASA Optical Systems Board of
-Investigation traced the failure to the reflective null corrector
-used during polishing: a field lens was mispositioned by about
-$1.3 \,\si{\milli\meter}$ along the optical axis, and the resulting
-mirror figure error was about $2 \,\si{\micro\meter}$ at the outer
-edge \cite{acc:nasa-hubble-optical-systems-1990}. Auxiliary optical
-tests, including an inverse null corrector and a second null
-corrector, showed clear indications of the problem, but the
-fabrication process treated the reflective null corrector as
-authoritative.
+mirror figured to the wrong shape. Within weeks of first light,
+the focused image of a point source showed a halo of scattered
+light rather than the diffraction-limited Airy disk the optical
+design called for. The NASA Optical Systems Board of Investigation
+(OSBI), convened in June 1990 under Lew Allen, reported in
+November 1990 with a fault tree that traced the figure error
+through fabrication and quality assurance to a single
+mechanical-positioning error in the test fixture
+\cite{acc:nasa-hubble-optical-systems-1990}. This chapter revisits
+the case for one specific lesson: the treatment of disagreement
+between independent measurements.
 
-For this chapter, the uncertainty lesson is the treatment of
-disagreement. A measurement system with independent cross-checks
-that disagree should not report an uncertainty based only on the
-preferred instrument. The report should either widen the uncertainty
-to account for the disagreement or document why the auxiliary tests
-are inapplicable. The OSBI record supports the narrower statement
-that Hubble's process discounted the auxiliary evidence under cost
-and schedule pressure; it does not by itself give us a complete
-published uncertainty budget for the mirror.
+\paragraph{Technical mechanism.}
+The primary mirror was figured to the prescribed conic constant
+through an iterative grind-and-test cycle. The test instrument
+that drove the figure was a reflective null corrector (RNC), an
+optical assembly designed to convert the mirror's intended
+hyperboloidal figure into a null fringe pattern when illuminated
+by an interferometer; the deviation from null measured the figure
+error. The RNC contained a field lens whose axial position was
+set by spacing rods between two reference surfaces. During
+assembly, a metering rod was inverted and the end face used as
+the reference was at the wrong axial location: the field lens
+was positioned about $1.3 \,\si{\milli\meter}$ from its design
+location \cite{acc:nasa-hubble-optical-systems-1990}. The RNC
+therefore measured deviation from the wrong target shape. The
+mirror was polished to null against the RNC's faulty reference,
+producing a hyperboloid with a conic constant differing from
+specification by $1.0\,\%$ and an edge-to-centre figure error of
+about $2 \,\si{\micro\meter}$ peak-to-valley.
+
+A working RNC would have given a clean null at the correct figure.
+The faulty RNC gave a clean null at a wrong figure. The error was
+not random; it was a fixed offset between the measurement
+instrument's effective reference and the design reference. Type B
+information that should have characterised this offset (the
+manufacturing certificate for the metering rod, the assembly
+record showing rod orientation) was either not propagated or not
+incorporated into the figure uncertainty.
+
+The mirror system was tested by two additional instruments before
+launch: a refractive null corrector that used a different optical
+principle, and an inverse null corrector that placed a calibrated
+test surface in the optical path so the assembly could be checked
+against a known reference. Both instruments indicated discrepancies
+from the RNC reading. The refractive corrector's reading
+differed by an amount consistent with the eventual on-orbit
+figure error.
+
+\paragraph{Organisational context.}
+The optical metrology was performed at the contractor's plant
+under cost and schedule pressure during the early-1980s
+fabrication. The contract paid for completion to the RNC's null
+and gave no incentive to invest additional time in cross-check
+investigations. When the auxiliary instruments disagreed with the
+RNC, the responsible engineering organisation classified the
+auxiliary readings as instrument problems (the refractive
+corrector was deemed less stable; the inverse corrector's
+calibration was questioned) and treated the RNC as authoritative.
+No analysis was conducted that would have used the disagreement
+itself as a measurement signal: a quantity that three instruments
+each measure with different mechanisms but agree on closely is
+well-known; a quantity that one instrument reads with a small
+stated uncertainty but two others disagree with by more than the
+stated uncertainty is under-characterised. The reported uncertainty
+on the mirror figure relied on the RNC alone.
+
+Subsequent OSBI testimony established that some of the cross-check
+disagreement was visible during fabrication but did not propagate
+to the figure quality decision. The Board explicitly identified
+the absence of an independent end-to-end optical test of the
+mirror as a precipitating condition; a single hour on a flat-
+mirror or autocollimation test against an external reference
+would have revealed the error before launch
+\cite{acc:nasa-hubble-optical-systems-1990}.
+
+\paragraph{Lesson for uncertainty.}
+A measurement system whose primary instrument reads a quantity to
+small stated uncertainty, while two independent cross-check
+instruments disagree by more than that uncertainty, is not a
+measurement system reporting honestly. The engineering response
+to such disagreement is one of three: (i) repeat each measurement
+to rule out single-instrument artefact; (ii) identify a third
+independent measurement that breaks the tie; (iii) widen the
+reported uncertainty to a band that encompasses all three
+readings until the cause of disagreement is identified and
+corrected. The Hubble process took none of these paths; it
+treated the preferred instrument as authoritative and the
+disagreement as noise.
+
+The lesson generalises beyond optics. Whenever an uncertainty
+budget rests on a single dominant instrument and other
+instruments disagree, the discipline is to widen the band, not
+to narrow the source. The cost of recovering Hubble's design
+performance through the 1993 COSTAR servicing mission was
+approximately \$700 million; an additional optical cross-check
+during fabrication would have cost a small fraction of that.
 
 The Hubble case is recorded in the named-cases registry at
 \repopath{docs/research/accidents/hubble-primary-mirror-1990.md}.
@@ -883,6 +1018,17 @@ specification is at $k = 2$ and the underlying distributions are
 Gaussian.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The reading-proportional term is $0.0005 \times 5.32 \,\si{\volt} =
+2.66 \,\si{\milli\volt}$. The last-digit term is
+$10 \,\si{\milli\volt}$. Summed as expanded uncertainties at $k = 2$
+the total is $12.66 \,\si{\milli\volt}$. Dividing by $k = 2$ gives
+the standard uncertainty $u \approx 6.3 \,\si{\milli\volt}$. (A
+stricter analysis treats the two contributions as independent and
+combines them in quadrature at the standard level: $u =
+\sqrt{(2.66/2)^{2} + (10/2)^{2}} \approx 5.2 \,\si{\milli\volt}$.
+Report the convention used.)
+
 \begin{exercise}
 Two thermometers read the same room temperature: thermometer A
 reads $21.4 \,\si{\degreeCelsius}$ with $u_{A} = 0.2 \,\si{\degreeCelsius}$,
@@ -891,6 +1037,16 @@ thermometer B reads $21.7 \,\si{\degreeCelsius}$ with $u_{B} = 0.3
 uncertainty, assuming the two readings are independent.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Weight by inverse variance: $w_{A} = 1/0.04 = 25$,
+$w_{B} = 1/0.09 \approx 11.1$. The weighted mean is
+$(25 \times 21.4 + 11.1 \times 21.7)/(25 + 11.1) = (535.0 + 240.9)/
+36.1 \approx 21.50 \,\si{\degreeCelsius}$. The standard uncertainty
+of the weighted mean is $1/\sqrt{w_{A} + w_{B}} = 1/\sqrt{36.1}
+\approx 0.17 \,\si{\degreeCelsius}$. Note that $u_{w}$ is smaller
+than either input's uncertainty, as expected when independent
+information is combined.
+
 \begin{exercise}
 A length is measured as $L = 1.250 \,\si{\meter}$ with a maximum-
 error specification of $\pm 0.002 \,\si{\meter}$ and no stated
@@ -898,12 +1054,33 @@ distribution. Treat the error as uniformly distributed on
 $[-0.002, 0.002] \,\si{\meter}$ and compute the standard uncertainty.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+For a uniform distribution on $[-a, +a]$, the standard deviation is
+$a/\sqrt{3}$. With $a = 0.002 \,\si{\meter}$, the standard
+uncertainty is $u(L) = 0.002/\sqrt{3} \approx 0.00115 \,\si{\meter}
+= 1.15 \,\si{\milli\meter}$. The naive treatment that takes
+$0.002 \,\si{\meter}$ as a standard uncertainty overstates the
+uncertainty by a factor of $\sqrt{3} \approx 1.73$; the naive
+treatment that takes $0.002 \,\si{\meter}$ as the half-width of a
+$k = 2$ Gaussian expanded uncertainty (so $u = 0.001 \,\si{\meter}$)
+understates by a small but non-negligible amount.
+
 \begin{exercise}
 A rectangle has measured side lengths $a = 12.5 \,\si{\centi\meter}
 \pm 0.1 \,\si{\centi\meter}$ and $b = 8.3 \,\si{\centi\meter} \pm
 0.1 \,\si{\centi\meter}$ (both at $k = 1$). Compute the area and
 its standard uncertainty.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The area is $A = ab = 12.5 \times 8.3 = 103.75 \,\si{\centi\meter
+\squared}$. The relative uncertainties are $u(a)/a = 0.008$ and
+$u(b)/b = 0.012$. By the product rule, $(u(A)/A)^{2} =
+0.008^{2} + 0.012^{2} = 6.4 \times 10^{-5} + 1.44 \times 10^{-4}
+= 2.08 \times 10^{-4}$, so $u(A)/A \approx 0.0144$ and $u(A)
+\approx 1.5 \,\si{\centi\meter\squared}$. Report
+$A = 104 \pm 2 \,\si{\centi\meter\squared}$ (rounded with the
+uncertainty determining the last significant figure).
 
 \begin{exercise}
 A current $I = 2.0 \,\si{\ampere} \pm 0.05 \,\si{\ampere}$ flows
@@ -913,6 +1090,17 @@ two measurements are uncorrelated. Identify which input contributes
 more to the power's uncertainty.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$P = I^{2}R = 4 \times 100 = 400 \,\si{\watt}$. By the
+product-of-powers rule with exponents $+2$ on $I$ and $+1$ on $R$:
+$(u(P)/P)^{2} = 4 (u(I)/I)^{2} + 1 (u(R)/R)^{2} =
+4 \times 0.025^{2} + 0.01^{2} = 0.0025 + 0.0001 = 0.0026$. So
+$u(P)/P \approx 0.051$ and $u(P) \approx 20 \,\si{\watt}$. The
+current dominates: its relative-uncertainty contribution
+$0.0025$ is twenty-five times the resistance's $0.0001$, because
+the exponent-squared factor of $4$ amplifies $I$'s already-larger
+relative uncertainty.
+
 \begin{exercise}
 A measurement has a value of $9.876 \,\si{\meter\per\second\squared}$
 with a standard uncertainty of $0.043 \,\si{\meter\per\second
@@ -920,6 +1108,16 @@ with a standard uncertainty of $0.043 \,\si{\meter\per\second
 $\pm$ form, (b) the parenthesis form, with both rounded to
 appropriate decimal places.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Expanded uncertainty: $U = k \cdot u = 2 \times 0.043 = 0.086 \,\si
+{\meter\per\second\squared}$. Round the uncertainty to two
+significant figures because the leading digit is small (the rule
+of section 4.5.2): $U = 0.09 \,\si{\meter\per\second\squared}$.
+Round the value to the same decimal place. (a) $\pm$ form:
+$g = 9.88 \pm 0.09 \,\si{\meter\per\second\squared} \;(k = 2)$.
+(b) Parenthesis form: $g = 9.88(9) \,\si{\meter\per\second\squared}
+\;(k = 2)$. State the coverage factor in either case.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -930,6 +1128,19 @@ uncorrelated. State the conditions under which the derivation is
 valid (linearity, independence, finite variance) and identify the
 case in which the formula understates the combined uncertainty.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Apply the sum rule pairwise. Define $w = a x_{1} + b x_{2}$; then
+$u^{2}(w) = a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2})$. Now
+$y = w + c x_{3}$ with $w$ and $x_{3}$ independent, so
+$u^{2}(y) = u^{2}(w) + c^{2} u^{2}(x_{3}) = a^{2} u^{2}(x_{1}) +
+b^{2} u^{2}(x_{2}) + c^{2} u^{2}(x_{3})$. Validity conditions: (i)
+linearity of $y$ in the inputs (the rule is exact here, since $y$
+is linear); (ii) pairwise independence of the three inputs (no
+covariance terms); (iii) finite variance of each input. The formula
+understates the combined uncertainty when any pair of inputs is
+positively correlated; then a $+2ab\,u(x_{1},x_{2})$ term must be
+added for each such pair.
 
 \begin{exercise}
 Show that, in the small-error limit, the relative uncertainty of a
@@ -943,6 +1154,21 @@ when $x$ and $y$ are uncorrelated. Identify a domain in which this
 formula systematically underestimates the uncertainty.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Write $x = x_{0}(1 + \epsilon_{x})$ and $y = y_{0}(1 + \epsilon_{y})$
+with $\epsilon_{x}, \epsilon_{y}$ small. Then
+$z = x_{0} y_{0}(1 + \epsilon_{x})(1 + \epsilon_{y}) = z_{0}(1 +
+\epsilon_{x} + \epsilon_{y} + \epsilon_{x}\epsilon_{y})$. Dropping
+the second-order term, $\epsilon_{z} \approx \epsilon_{x} +
+\epsilon_{y}$, so $u^{2}(\epsilon_{z}) = u^{2}(\epsilon_{x}) +
+u^{2}(\epsilon_{y})$ under independence, which is the claimed
+relative-uncertainty formula. Underestimates appear when (i) the
+relative uncertainties are not small (the dropped
+$\epsilon_{x}\epsilon_{y}$ term contributes), (ii) $x$ and $y$ are
+positively correlated (the missing covariance adds), or (iii) the
+distributions are heavy-tailed so that the variance does not
+represent typical fluctuations.
+
 \begin{exercise}
 Derive the propagation rule for $z = x + y$ when $x$ and $y$ have
 correlation coefficient $\rho$. State the result, and identify the
@@ -950,12 +1176,41 @@ case in which the uncertainty of $z$ is smaller than either $u(x)$
 or $u(y)$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\Var(z) = \Var(x) + \Var(y) + 2 \Cov(x, y) = u^{2}(x) + u^{2}(y)
++ 2 \rho u(x) u(y)$. The sum-rule special case is
+$\rho = 0$. For $z = x - y$ the cross-term flips sign. Now consider
+when $u(z) < \min(u(x), u(y))$: this never happens for $z = x + y$
+because each variance term and the cross-term (when $\rho \geq 0$)
+are non-negative. For $z = x - y$ with $\rho = +1$ and
+$u(x) = u(y)$, however, $u(z) = 0$: the correlated component
+cancels completely. The exercise question is a probe of the sign
+convention; in the sum case, no choice of $\rho$ reduces $u(z)$
+below the larger of $u(x), u(y)$ unless $\rho < 0$ and the inputs
+are of similar magnitude.
+
 \begin{exercise}
 For a quantity $y = f(x)$ with $x$ uniformly distributed on
 $[a, b]$, derive the standard uncertainty of $y$ assuming $f$ is
 linear over the interval. Compare to the result for $x$ Gaussian
 with the same standard deviation.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$f(x) = c_{0} + c_{1} x$. The variance scales as
+$\Var(y) = c_{1}^{2} \Var(x)$, regardless of the distribution of
+$x$. For $x$ uniform on $[a, b]$, $\Var(x) = (b - a)^{2}/12$, so
+$u(y) = |c_{1}|(b-a)/(2\sqrt{3})$. For $x$ Gaussian with the same
+standard deviation $\sigma_{x} = (b-a)/(2\sqrt{3})$, $u(y) =
+|c_{1}|\sigma_{x}$ is identical. The first-order propagation is
+distribution-blind. The distinction matters only for the
+distribution \emph{shape} of $y$: uniform input gives a uniform $y$
+distribution under linear $f$, while Gaussian input gives Gaussian
+$y$. The coverage interval that contains $95\%$ of $y$ is wider
+for the Gaussian (about $\pm 1.96 \sigma_{y}$) than for the uniform
+(about $\pm 1.65 \sigma_{y}$, the $95\%$ half-width of a uniform
+distribution); the standard uncertainty does not capture that
+difference.
 
 \begin{exercise}
 Show that the standard uncertainty of the mean of $n$ independent
@@ -965,6 +1220,21 @@ which every pair of measurements has the same correlation
 coefficient $\rho$. Derive the standard uncertainty of the mean and
 state why positive correlation reduces the benefit of averaging.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+For independent inputs, $\bar{x} = (1/n)\sum x_{i}$ has variance
+$\Var(\bar{x}) = (1/n^{2})\sum \Var(x_{i}) = \sigma^{2}/n$, so
+$u(\bar{x}) = \sigma/\sqrt{n}$. For equicorrelated inputs with
+common correlation $\rho$, $\Var(\bar{x}) = (1/n^{2})[n\sigma^{2}
++ n(n-1)\rho\sigma^{2}] = (\sigma^{2}/n)[1 + (n-1)\rho]$. As
+$n \to \infty$ the standard uncertainty of the mean approaches
+$\sigma\sqrt{\rho}$ rather than zero. Even a small positive $\rho$
+sets a floor: $\rho = 0.01$ gives a long-$n$ limit of
+$0.1\sigma$, which means averaging beyond a few hundred
+measurements yields no further reduction. The mechanism is that
+correlation injects a shared common-mode error that all readings
+record together, and averaging cannot suppress what every reading
+records identically.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -978,6 +1248,18 @@ the measurement you would perform to replace these assumed values
 with data.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Combine in quadrature: $u(\theta) = \sqrt{(10^{-3})^{2} +
+(10^{-4})^{2}} \approx 10^{-3} \,\si{\radian}$. The bias dominates
+by an order of magnitude; even averaging a hundred readings
+($\sigma/\sqrt{100}$) leaves the random component at $10^{-5}$,
+far below the systematic floor. To replace the assumed bias, place
+the phone against a precision surface plate or a calibrated wedge
+at known angles ($0^{\circ}, 30^{\circ}, 45^{\circ}, 60^{\circ},
+90^{\circ}$) and record the indication; the mean deviation across
+the angles is the bias estimate, the standard deviation across
+repeated readings at one angle is the random component.
+
 \begin{exercise}
 Estimate how many independent voltage measurements would be required
 to reduce a standard uncertainty of $10 \,\si{\milli\volt}$ to
@@ -985,6 +1267,20 @@ $1 \,\si{\milli\volt}$, assuming the dominant uncertainty is
 random with no systematic component. Then estimate the same
 required count when half the uncertainty is systematic.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Pure-random case: $\sigma/\sqrt{n} = 1$, so
+$n = (\sigma/u_{\text{target}})^{2} = (10/1)^{2} = 100$
+measurements. Half-systematic case: split as
+$u^{2} = u_{r}^{2} + u_{s}^{2}$ with $u_{r}^{2} = u_{s}^{2} =
+50 \,\si{\milli\volt\squared}$, so $u_{r} = u_{s} = \sqrt{50}
+\approx 7.07 \,\si{\milli\volt}$. The systematic component
+$u_{s}$ does not average out. The combined uncertainty after
+averaging $n$ readings is $\sqrt{50/n + 50}$. To reach
+$1 \,\si{\milli\volt}$ requires $50/n + 50 \leq 1$, which is
+impossible (the systematic floor alone is seven times the
+target). The lesson: systematic-uncertainty reduction requires
+recalibration or method change, not more averaging.
 
 \begin{exercise}
 Estimate the standard uncertainty of the mean height of a
@@ -994,12 +1290,38 @@ the assumptions about between-individual variability versus
 within-individual measurement uncertainty.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The total per-measurement variability has two parts: the
+measurement uncertainty ($0.5 \,\si{\centi\meter}$) and the
+between-individual standard deviation in adult height, which for
+a representative population is approximately
+$7 \,\si{\centi\meter}$. The combined per-measurement standard
+deviation is $\sqrt{0.5^{2} + 7^{2}} \approx 7.0 \,\si{\centi
+\meter}$ (the measurement contribution is negligible). The
+standard uncertainty of the mean of $30$ measurements is
+$7.0/\sqrt{30} \approx 1.3 \,\si{\centi\meter}$. Note: this is the
+uncertainty of the mean of the \emph{sampled} group, not the
+population mean; sampling bias (who shows up to be measured) sets
+a floor that more measurements cannot reduce.
+
 \begin{exercise}
 Estimate the height of the tallest building you can see from the
 window of your home or workplace, with an explicit error bar
 derived from your own assumptions about distance and angular
 size. Compare your error bar to the published reference height.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Example calculation for a building $200 \,\si{\meter}$ away
+subtending $\theta \approx 25^{\circ} = 0.44 \,\si{\radian}$ at
+the eye. With $u(d) \approx 20 \,\si{\meter}$ (10\% from
+map-eyeballing) and $u(\theta) \approx 0.03 \,\si{\radian}$ (6\%
+from hand-rule estimation), the height $h = d \tan\theta$ gives
+$h \approx 93 \,\si{\meter}$ with relative uncertainty
+$\sqrt{0.10^{2} + 0.06^{2}} \approx 0.12$, so $u(h) \approx
+11 \,\si{\meter}$. The reader's specific numbers will differ; the
+discipline is to declare both contributions explicitly and propagate
+them, not to report a single point estimate.
 
 \begin{exercise}
 Estimate the relative uncertainty in a stopwatch-timed measurement
@@ -1008,6 +1330,20 @@ $\sim 0.2 \,\si{\second}$. State the conditions under which the
 reaction-time uncertainty is the dominant component of the
 period's uncertainty.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+A reaction-time uncertainty enters twice (start and stop), so
+$u(T_{\text{measured}}) \approx \sqrt{2} \times 0.2 \approx
+0.28 \,\si{\second}$. For a single-period measurement of a
+$T \approx 2 \,\si{\second}$ pendulum, this gives relative
+uncertainty $\sim 14\%$, dominated by reaction time. To reduce it,
+time $N$ periods at once and divide: timing $20$ periods gives
+$T_{\text{total}} = 40 \,\si{\second}$ with the same
+$0.28 \,\si{\second}$ uncertainty, for a per-period uncertainty
+of $0.014 \,\si{\second}$ or $0.7\%$. Reaction time dominates
+when (i) only one or a few periods are timed and (ii) no
+electronic gate (photogate, smartphone microphone trigger)
+replaces the human start-stop.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1020,6 +1356,18 @@ $\sqrt{2}$. Then repeat with $\rho = 0.5$ and $\rho = -0.5$
 correlation between $x$ and $y$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Independent case yields empirical $\sigma_{z} \approx 1.414$,
+within about $1\%$ of $\sqrt{2}$ at $N = 10^{4}$. For $\rho =
+0.5$ the analytical result is $\sqrt{1 + 1 + 2 \times 0.5}
+= \sqrt{3} \approx 1.732$. For $\rho = -0.5$, $\sqrt{1 + 1 - 1}
+= 1$. To simulate correlated normals, draw $(x, y)$ from a
+bivariate normal with covariance matrix $\Sigma = [[1, \rho],
+[\rho, 1]]$; in practice, generate $u, v$ independent
+$\mathcal{N}(0,1)$ and form $x = u$, $y = \rho u + \sqrt{1 -
+\rho^{2}} v$. Reference implementation in
+\texttt{code/correlated\_sum.py}.
+
 \begin{exercise}
 Simulate $10^{4}$ independent measurements of a quantity drawn from
 a uniform distribution on $[-1, 1]$. Estimate the empirical
@@ -1029,6 +1377,18 @@ central limit theorem. Identify the value of $n$ at which the
 sample mean's distribution becomes visually indistinguishable from
 Gaussian.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The variance of the uniform distribution on $[-1, 1]$ is
+$\sigma^{2} = 4/12 = 1/3$. The CLT predicts the mean of $n$
+samples is approximately $\mathcal{N}(0, 1/(3n))$. The
+flat-topped uniform shape transitions to bell-shaped quickly:
+at $n = 5$ the histogram is already close to Gaussian; by
+$n = 10$ the residual visible difference is in the tails (the
+uniform is hard-bounded, so the mean cannot exceed $1$ even at
+small $n$). For the well-behaved uniform parent, $n \approx 10$
+suffices for visual Gaussianity. Reference implementation in
+\texttt{code/clt\_uniform.py}.
 
 \begin{exercise}
 Implement a Monte Carlo propagation per JCGM 101 for the pendulum
@@ -1040,6 +1400,19 @@ Comment on whether the linear approximation is appropriate for this
 problem.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Draw $10^{5}$ samples of $L \sim \mathcal{N}(1.000, 0.001^{2})$
+and $T \sim \mathcal{N}(2.007, 0.005^{2})$, compute
+$g = 4\pi^{2} L/T^{2}$ for each, and take the empirical standard
+deviation. The result is approximately
+$0.049 \,\si{\meter\per\second\squared}$, within $2\%$ of the
+linear-propagation prediction. The empirical distribution is
+symmetric and Gaussian-shaped because the input
+relative uncertainties are small (well below $1\%$) so the
+linear approximation is excellent. Reference implementation in
+\texttt{code/pendulum\_mc.py}; the comparison plot is in
+\texttt{figures/fig-mc-vs-linear.tex}.
+
 \begin{exercise}
 Simulate the distribution of the sample mean of $n = 5$ samples
 drawn from a Cauchy distribution. Plot the empirical distribution
@@ -1047,6 +1420,20 @@ of the sample mean for $1000$ trials and identify the failure of
 the central limit theorem. Comment on what averaging more samples
 would, and would not, accomplish.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The sample mean of $n$ Cauchy variables is itself Cauchy with the
+same scale parameter; averaging does not reduce the spread. The
+empirical histogram shows a sharp peak near zero plus extreme
+outliers reaching $\pm 100$ or more. Increasing $n$ to $1000$
+makes no difference: the distribution of the mean remains Cauchy.
+What averaging \emph{cannot} accomplish: variance reduction. What
+it \emph{can} accomplish: a more reliable median (the median of
+Cauchy samples does converge under sample-size increases) and a
+sense of the parent distribution's scale. The takeaway is that
+robust estimators (median, trimmed mean) replace the arithmetic
+mean when the parent has heavy tails. Reference implementation in
+\texttt{code/cauchy\_mean.py}.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1060,6 +1447,22 @@ the number of measurements per sampled unit, and the procedure for
 separating between-unit variability from measurement repeatability.
 \end{exercise}
 
+\paragraph{Discussion.}
+Required $u(\bar{m}) = 0.25 \,\si{\gram}$. A balance with
+calibration uncertainty $\leq 0.1 \,\si{\gram}$ is suitable;
+calibrate against a known mass before and after the campaign and
+record the drift. Sample at least $30$ units (a defensible
+representative sample of $100$); measure each unit $3$ times in
+random order. The mean of the per-unit means is the population
+mean estimate. A one-way analysis of variance separates the
+between-unit variance from the within-unit (repeatability)
+variance. The standard uncertainty of the population mean is
+$\sqrt{s_{\text{between}}^{2}/n_{\text{units}} +
+s_{\text{within}}^{2}/(n_{\text{units}} \cdot n_{\text{rep}})
++ u_{\text{calibration}}^{2}}$. A rubric expects: target
+$u(\bar{m})$, separate between/within decomposition, calibration
+budget item, randomisation of measurement order.
+
 \begin{exercise}
 Design an uncertainty budget for a household refrigerator
 temperature measurement with target expanded uncertainty
@@ -1069,6 +1472,27 @@ location, time-of-day variation, defrost cycle, and door opening,
 with an estimated standard uncertainty contribution. Combine the
 contributions and identify which component dominates.
 \end{exercise}
+
+\paragraph{Discussion.}
+A representative budget at target $u = 0.25 \,\si{\degreeCelsius}$:
+thermometer calibration $0.1 \,\si{\degreeCelsius}$
+(certificate), sensor resolution $0.06 \,\si{\degreeCelsius}$
+($0.1/\sqrt{3}$ for digital quantisation at $0.1 \,\si
+{\degreeCelsius}$ resolution), spatial gradient inside the
+refrigerator $0.5 \,\si{\degreeCelsius}$ (top shelf vs door
+bin), time-of-day variation $0.3 \,\si{\degreeCelsius}$
+(cooling-cycle oscillation), defrost transient
+$0.4 \,\si{\degreeCelsius}$ (mitigate by sampling outside the
+defrost window), door-opening events $0.5 \,\si{\degreeCelsius}$
+(mitigate by sampling at consistent times). Combined in quadrature:
+$\sqrt{0.1^{2} + 0.06^{2} + 0.5^{2} + 0.3^{2} + 0.4^{2} + 0.5^{2}}
+\approx 0.9 \,\si{\degreeCelsius}$. Spatial gradient and door-
+opening dominate. The target $u = 0.25 \,\si{\degreeCelsius}$ is
+not achievable without specifying location and time relative to
+the defrost and opening cycles; redefine the measurand as
+``temperature at the middle shelf centre, sampled in the steady
+state between defrost cycles, with the door unopened for
+$\geq 1$ hour'' to make the target achievable.
 
 \begin{exercise}
 Design a comparison protocol for a clinical-laboratory measurement
@@ -1080,6 +1504,26 @@ establish whether the two methods agree within their combined
 uncertainty, and what investigation follows when they disagree.
 \end{exercise}
 
+\paragraph{Discussion.}
+Protocol: measure a representative panel of $\geq 40$ patient
+specimens spanning the clinical range ($2$ to $25 \,\si{\milli
+\mol\per\liter}$) by both methods within a short time window
+(same blood draw, same day). For each specimen compute the
+difference $\Delta = m_{1} - m_{2}$ and its combined standard
+uncertainty $u(\Delta) = \sqrt{u_{1}^{2} + u_{2}^{2}}$. The
+methods agree at the specimen level if
+$|\Delta| \leq 2 u(\Delta)$; at the cohort level, plot Bland-
+Altman differences and confirm the mean bias is within the
+acceptance criterion across the clinical range. When two methods
+disagree, the investigation lane is: (i) re-measure the disagreeing
+specimens to rule out single-sample artefacts; (ii) check
+calibration of both methods against a certified reference material;
+(iii) test for matrix effects (interferents such as haemolysis,
+lipaemia); (iv) examine the time difference between the two
+methods' measurements for analyte degradation. Cite the GUM for
+the combined-uncertainty framework
+\cite{std:iso-iec-guide98}.
+
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
 
 \begin{exercise}
@@ -1088,6 +1532,19 @@ A laboratory reports a measurement of $5.32 \pm 0.001 \,\si
 0.05\,\%$ of reading. State whether the reported uncertainty is
 plausible, and identify the most likely error in the report.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The manufacturer-rated accuracy is $0.0005 \times 5.32 \approx
+2.7 \,\si{\milli\volt}$, which alone gives a standard uncertainty
+of around $1.3 \,\si{\milli\volt}$ assuming $k = 2$. The reported
+$1 \,\si{\milli\volt}$ is below the manufacturer-rated component
+before adding repeatability, environmental, or sampling
+contributions. Likely errors: (i) the reporter used only the
+last-digit resolution as the uncertainty, ignoring the
+accuracy-spec contribution; (ii) the reporter used the standard
+deviation of the mean of many readings without including the
+systematic accuracy contribution; (iii) the reporter applied the
+wrong coverage factor. Request the uncertainty budget.
 
 \begin{exercise}
 A pressure measurement gives $P = 100 \,\si{\kilo\pascal}$ with
@@ -1099,6 +1556,20 @@ uncertainty. If not, propose three plausible mechanisms for the
 disagreement.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Difference $\Delta = 2 \,\si{\kilo\pascal}$. Combined standard
+uncertainty $u(\Delta) = \sqrt{0.5^{2} + 0.4^{2}} \approx
+0.64 \,\si{\kilo\pascal}$. The normalised difference is
+$|\Delta|/u(\Delta) \approx 3.1$, well outside the $2\sigma$
+band. The measurements are inconsistent at the $k = 2$ level.
+Plausible mechanisms: (i) one method has a calibration offset
+not captured in its stated $u$; (ii) the two methods measured
+different physical quantities (one absolute, one gauge; one with
+and one without a temperature correction); (iii) the
+manufacturer-stated $u$ understated the systematic component for
+one or both instruments. Investigation: cross-check both
+instruments against a reference standard at known pressure.
+
 \begin{exercise}
 A spreadsheet computes $y = (x_{1} + x_{2}) / x_{3}$ from inputs
 with stated uncertainties $u_{1}, u_{2}, u_{3}$. The spreadsheet
@@ -1107,6 +1578,18 @@ divided by $x_{3}$. Identify the error and write the correct
 propagation formula.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Two errors: (i) the spreadsheet linearly sums uncertainties
+instead of combining them in quadrature, which always overstates;
+(ii) the spreadsheet treats $u_{3}/x_{3}$ additively instead of
+through the product-of-powers rule for division. Correct formula:
+let $s = x_{1} + x_{2}$; then $u^{2}(s) = u_{1}^{2} + u_{2}^{2}$.
+Now $y = s/x_{3}$, so $(u(y)/y)^{2} = (u(s)/s)^{2} +
+(u_{3}/x_{3})^{2}$, giving $u(y) = |y|\sqrt{(u(s)/s)^{2} +
+(u_{3}/x_{3})^{2}}$. The spreadsheet's formula overstates the
+uncertainty by up to a factor of $\sqrt{3}$ in the worst case
+and miscalculates the $x_{3}$ contribution structurally.
+
 \begin{exercise}
 A torque-wrench specification claims $\pm 4\%$ at $k = 1$. The
 manufacturer tests the wrench against a reference and the
@@ -1114,6 +1597,19 @@ measurements scatter at $\pm 4\%$ at $k = 2$. State whether the
 wrench meets its specification and what additional information
 the user needs to make the comparison.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The spec is $4\%$ at $k = 1$, so the standard uncertainty must be
+$\leq 4\%$. The test reports $\pm 4\%$ at $k = 2$, so the
+measured standard uncertainty is $2\%$. The wrench passes the
+specification with room to spare. Additional information needed:
+(i) the distribution underlying the test data (the $k$ conversion
+assumes a Gaussian shape); (ii) whether the test included any
+systematic offset between wrench and reference, or only random
+scatter; (iii) whether the $\pm 4\%$ in the spec includes both
+calibration drift over the recalibration interval and
+operator-dependent reading error, or only the wrench's intrinsic
+accuracy.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1126,6 +1622,29 @@ have been if the auxiliary-test results had been incorporated.
 Cite the OSBI report \cite{acc:nasa-hubble-optical-systems-1990}.
 \end{exercise}
 
+\paragraph{Discussion.}
+A rubric expects the argument to address: (i) the difference
+between the reflective null corrector reading and the auxiliary
+inverse-null and refractive-null readings was sizable; the
+discrepancy was a measurement signal, not noise. (ii) When
+independent measurement methods disagree by more than their
+individually-reported uncertainties, the engineering response is
+to widen the reported uncertainty to encompass the disagreement,
+or to identify which method is wrong by an independent third
+measurement, or to halt fabrication until the cause of the
+disagreement is identified. (iii) The OSBI traced the
+$1.3 \,\si{\milli\meter}$ misposition through to a $2 \,\si
+{\micro\meter}$ edge figure error; with auxiliary-test
+incorporation the reported figure uncertainty would have been
+multiple wavelengths of light, not the diffraction-limited figure
+the project assumed. (iv) The institutional failure was treating
+the reflective null corrector as authoritative because of cost
+and schedule pressure, not because of an evidence-based
+preference. Cite the OSBI report directly. Strong responses
+distinguish between the technical question (what should the
+uncertainty have been?) and the organisational question (why was
+the smaller uncertainty reported anyway?).
+
 \begin{exercise}
 A polling firm reports a $\pm 3\%$ margin of error on a poll of
 $1{,}000$ respondents and concludes that two candidates are
@@ -1135,6 +1654,30 @@ the poll's uncertainty, and identify at least three systematic
 sources that the margin does not include.
 \end{exercise}
 
+\paragraph{Discussion.}
+The $\pm 3\%$ margin of error is the sampling-only component:
+$1/\sqrt{1000} \approx 3.2\%$, which is the standard error for
+a proportion near $0.5$ at $k = 2$. Systematic sources the margin
+omits include: (i) non-response bias (those who answer differ
+systematically from those who do not); (ii) coverage bias (whom
+the sampling frame can reach: landline, mobile, web, mailing
+list, social media); (iii) question wording and order effects;
+(iv) weighting and post-stratification choices; (v) likely-voter
+modelling assumptions for election polls; (vi) social-desirability
+bias on sensitive items; (vii) sample frame currency. Each of
+these can shift the reported proportion by several percentage
+points. Empirical studies of polling error in elections show
+total error commonly exceeds the sampling margin by a factor of
+two to three. The ``statistically tied'' conclusion is correct
+only under the assumption that the sampling component is the
+total uncertainty; under realistic assumptions about systematic
+sources, the report should widen the comparison band before
+declaring a tie. The framework parallels the GUM's Type A
+versus Type B distinction: the margin of error is the Type A
+component computed from the sample, and the omitted systematic
+sources are the Type B components that the report did not
+evaluate.
+
 \begin{exercise}
 A regulatory agency reports a cost-benefit analysis with a single
 point estimate of net benefit of $\$1.2$ billion. The underlying
@@ -1143,6 +1686,25 @@ what the single point estimate communicates that the range does
 not, and identify the discipline that would prevent the
 single-estimate report.
 \end{exercise}
+
+\paragraph{Discussion.}
+The single point estimate communicates false precision: a
+decision-maker reading $\$1.2$ billion may treat the number as
+known to a few percent, when the underlying analysis admits
+factor-of-two variation. The range $\$0.4$ to $\$2.1$ billion
+implies that under unfavourable but plausible assumptions the
+net benefit could be only a third of the headline; the regulator
+needs that information to decide whether to defer, modify, or
+phase the regulation. The discipline that prevents the
+single-estimate report is the requirement to report central
+estimate \emph{and} interval together: $\$1.2 \,[\$0.4, \$2.1]$
+billion at a stated confidence level, with a sensitivity table
+showing which input assumptions drive the lower and upper bounds.
+US OMB Circular A-4 (2003, updated 2023) requires precisely this
+structure for major federal rulemakings; many agency reports
+still collapse the range to a point for press release. A reviewer
+in this lane should always ask: what does the interval look
+like, and where is the sensitivity table?
 
 \subsection*{Judgment}\pathtag{standard}
 
@@ -1154,6 +1716,21 @@ to interpret the result, and proposes a minimum acceptable form
 for the report.
 \end{exercise}
 
+\paragraph{Discussion.}
+A rubric expects: respectful tone (the colleague is presumed to
+have measured carefully, not been careless); concrete request for
+the standard or expanded uncertainty, the coverage factor, the
+instrument and its calibration date, the number of replicate
+readings or the single-reading basis, and the environmental
+conditions; a proposed minimum form such as $5.32 \pm 0.05 \,\si
+{\volt}$ at $k = 2$ with stated coverage; a closing offer to
+help compute the uncertainty budget if the colleague has the
+underlying data but has not yet derived the figure. Avoid: blame,
+gatekeeping, or framing the request as criticism of the
+colleague's competence. The discipline here is the
+working-engineer practice of not using under-specified numbers in
+decisions.
+
 \begin{exercise}
 A startup is preparing a regulatory submission and the regulator
 expects a $\pm 5\%$ uncertainty on a key measurement. The startup's
@@ -1163,12 +1740,52 @@ $\pm 5\%$ would be a discipline failure even if it satisfies the
 regulator, and what the startup's options are.
 \end{exercise}
 
+\paragraph{Discussion.}
+The startup should report what the data supports. Narrowing the
+uncertainty to satisfy the regulator is a discipline failure for
+three reasons: (i) the reported figure becomes a misrepresentation
+of the measurement evidence, the same failure mode that the
+Volkswagen defeat-device case carried at regulatory scale; (ii)
+post-submission re-measurement or independent verification will
+expose the discrepancy, with consequences ranging from rejected
+submission to fraud findings; (iii) the regulatory $\pm 5\%$
+expectation is usually a derived requirement based on the
+intended use; if the data cannot meet it, the underlying decision
+must be reconsidered, not the reported number. The startup's
+options are: (a) collect additional data through more replicate
+measurements, a more accurate instrument, or a better-controlled
+procedure to reach $\pm 5\%$ honestly (cost and schedule
+implications); (b) submit at $\pm 8\%$ with a transparent
+uncertainty budget and a request to defer the submission or to
+relax the requirement; (c) re-scope the application so the $\pm
+8\%$ figure is sufficient for the regulator's purpose. The
+discipline-preserving paths are (a) and (c), with (b) preserving
+honesty even if the regulator's response is unfavourable.
+
 \begin{exercise}
 Argue, in one paragraph, whether engineering training should
 emphasise random or systematic error reduction. Take a position
 and defend it with a specific example from your own experience or
 a documented case.
 \end{exercise}
+
+\paragraph{Discussion.}
+Either position is defensible if argued with a concrete case.
+A defensible answer: emphasise systematic-error training, because
+random-error reduction is procedurally simple (average more) and
+arithmetically capped by the same $1/\sqrt{n}$ law every reader
+will encounter, while systematic-error identification is harder,
+requires understanding the instrument and procedure, and is the
+mechanism behind most public engineering failures (Mars Climate
+Orbiter unit error, Hubble null-corrector misposition, Therac-25
+race condition, Boeing MCAS sensor logic). The opposite position
+is also defensible: random-error training equips the working
+engineer to read laboratory data without confusion, since
+systematic errors are rarer in routine work and need a teacher's
+help to identify. A weak answer chooses ``both equally'' without
+distinguishing teaching emphases. Strong answers cite a specific
+case from the named-cases registry or from the reader's
+experience.
 
 \begin{exercise}
 A data sheet states `accuracy: $\pm 0.8\%$ of reading' with no
@@ -1180,6 +1797,21 @@ uncertainties and state which assumption a conservative engineer
 would use absent further information.
 \end{exercise}
 
+\paragraph{Discussion.}
+Reading $R$, accuracy half-width $a = 0.008 R$. (i) Rectangular:
+$u = a/\sqrt{3} \approx 0.00462 R$. (ii) Gaussian at $k = 2$:
+$u = a/2 = 0.004 R$. (iii) Unresolved: record the spec verbatim
+and add a note that manufacturer clarification is required
+before propagation. The two computed standard uncertainties
+differ by about $15\%$. A conservative engineer uses the
+rectangular assumption absent further information: it is the GUM
+default for a single bounded specification with no distribution
+stated \cite{std:iso-iec-guide98} and is the larger of the two
+plausible interpretations. The most defensible practice combines
+both: report the rectangular interpretation as the budget entry,
+attach the data sheet excerpt, and flag the resolution as an
+open item.
+
 \begin{exercise}
 Run a Monte Carlo propagation for $y = x_{1} - x_{2}$ with equal
 standard uncertainties and correlations $\rho = 0$, $0.5$, $0.9$,
@@ -1189,3 +1821,17 @@ $u_{c}^{2}(y) = u^{2}(x_{1}) + u^{2}(x_{2}) - 2\rho u(x_{1})
 u(x_{2})$, and explain why common-mode cancellation depends on
 positive correlation between the two readings.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+With $u(x_{1}) = u(x_{2}) = 1$, the formula gives:
+$\rho = 0$: $u(y) = \sqrt{2} \approx 1.41$;
+$\rho = 0.5$: $u(y) = 1$;
+$\rho = 0.9$: $u(y) \approx 0.45$;
+$\rho = 0.99$: $u(y) \approx 0.14$. Monte Carlo with $10^{5}$
+samples reproduces these within $1\%$. The mechanism: positive
+correlation means $x_{1}$ and $x_{2}$ fluctuate together (when
+$x_{1}$ is above its mean, $x_{2}$ tends to be above its mean
+too). The shared fluctuation cancels in the difference; only the
+uncorrelated residual contributes to $u(y)$. Negative correlation
+would amplify the difference instead. Reference implementation in
+\texttt{code/common\_mode.py}.

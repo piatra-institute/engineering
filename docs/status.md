@@ -56,8 +56,8 @@ Previous phases:
 | Vol I chapters at Stage 5 | 9 of 9 |
 | Vols II-XII chapters at Stage 4 | 162 awaiting review |
 | Chapters at Stage 1 | 3 |
-| `main.pdf` page count (last build) | 3020 |
-| Volume I page span | pp 1-220 (~220pp; target ~720) |
+| `main.pdf` page count (last build) | 3032 |
+| Volume I page span | pp 1-232 (~232pp; target ~720) |
 | Volume II page span | pp 221-710 (~490pp; target ~1800) |
 | Volume III page span | pp 711-984 (~274pp; target ~1300) |
 | Volume IV page span | pp 985-1218 (~234pp; target ~1400) |
