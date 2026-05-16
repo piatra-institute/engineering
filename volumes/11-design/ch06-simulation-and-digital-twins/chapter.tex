@@ -1,40 +1,317 @@
 \chapter{Simulation and digital twins}
 \label{vol11:ch06}
 
-\epigraph{}{}
+\epigraph{The simulation is a hypothesis about the system's behaviour; the system in operation is the evidence the hypothesis is tested against.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: uncertainty, scaling. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: uncertainty, scaling. Exercise target: 25. Project track: hybrid.}
 
 \noindent
-\TODO{Volume 11, Chapter 6. Approx 110 pp.}
+Simulation is the discipline of computing the behaviour of an engineering system before that system exists, or of computing aspects of its behaviour that cannot be measured directly even when the system does exist. Modern engineering relies heavily on simulation: structural FEA at design stage; computational fluid dynamics for aerodynamics and hydraulics; circuit simulation for electronics; multi-physics coupling for systems whose behaviour is the joint product of multiple domains; digital twins for systems whose operating state is monitored and modelled in real time. This chapter develops what simulation is, what makes it reliable, what its limits are, and what the failure modes look like when simulation is trusted beyond its actual reliability.
 
-\section{Simulation as design tool}
-\TODO{Section prose.}
+\section{Simulation as design tool}\pathtag{core}
 
-\section{Verification of simulation}
-\TODO{Section prose.}
+A simulation is a computational implementation of a model of the design's behaviour. The model embodies the engineer's hypothesis about how the design will behave under specified conditions; the simulation produces predictions that the engineer evaluates against requirements or against alternative designs.
 
-\section{Validation against measurement}
-\TODO{Section prose.}
+The functions simulation serves in design:
 
-\section{Uncertainty quantification in simulation}
-\TODO{Section prose.}
+\textbf{Performance prediction.} The simulation predicts the design's quantitative performance: structural deflection under load; thermal temperature distribution; aerodynamic drag; circuit signal integrity; control-loop transient response. The prediction informs design decisions before physical prototypes are available.
 
-\section{Multi-physics coupling}
-\TODO{Section prose.}
+\textbf{Design-space exploration.} The simulation is run across the design's parameter space; the parameter-to-performance relationship is mapped; the engineer identifies the parameter regions that produce the best performance. Modern optimisation tools couple simulation with optimisation algorithms (genetic; gradient; surrogate-model-based) to automate the exploration at scale.
 
-\section{Digital twins}
-\TODO{Section prose.}
+\textbf{Sensitivity analysis.} The simulation is run with parameters varied around the nominal; the sensitivity of performance to each parameter is identified. The most sensitive parameters become the focus of tolerance allocation (Chapter 5) and of additional verification.
 
-\section{The cost and limit of simulation}
-\TODO{Section prose.}
+\textbf{Failure-mode exploration.} The simulation is run under off-nominal conditions that physical testing would not safely permit: extreme environments; degraded states; rare-event sequences. The simulation identifies the failure modes and their conditions; the design is modified to reduce or eliminate the modes.
 
-\section{Failure: simulations that fooled their builders}
-\TODO{Section prose.}
+\textbf{Validation of analytical reasoning.} The engineer's hand calculations and analytical reasoning produce predictions; the simulation confirms or refutes them. The combination is more reliable than either alone: the hand calculation catches simulation errors (boundary condition mistakes; mesh quality issues; unit errors); the simulation catches analytical-reasoning errors (simplifying assumptions that did not hold; geometric features that were neglected).
 
+\textbf{Communication.} The simulation's visualisations communicate the design's behaviour to non-specialist audiences: management; clients; regulators; the broader engineering team. The visualisations are not the substantive engineering work but they are a substantial fraction of how the work is presented and evaluated.
 
-\section{Project}
-\TODO{build a small simulation of a previous project; compare to measured data; report properly}
+The cost of simulation has fallen substantially with computational capability; computational engineering that was infeasible in the 1980s is routine in the 2020s. The lower cost has expanded simulation's role but has not changed the fundamentals: the simulation is as good as the model it embodies; the model is as good as the engineer's understanding of the design's behaviour; the simulation is one input to design decisions, not the decision itself.
+
+\begin{principle}[Simulation is a hypothesis]
+A simulation is a hypothesis about the design's behaviour, encoded in computational form. The hypothesis must be verified (the simulation is computing what the model says) and validated (the model is an adequate description of the actual system). Simulations that are not verified produce internally-consistent results that may have no relationship to reality; simulations that are not validated produce results that are consistent with their model but may misrepresent the system.
+\end{principle}
+
+\section{Verification of simulation}\pathtag{core}
+
+Verification asks: "Are we solving the equations right?" The simulation embodies a mathematical model; the implementation translates the model into code; the code runs on hardware that has its own numerical behaviour. Verification confirms that the code's output is what the mathematical model would predict.
+
+The verification activities:
+
+\textbf{Code verification.} The simulation code is tested against problems for which the exact solution is known. The "method of manufactured solutions" constructs problems whose solutions are known by construction; the simulation is run on the constructed problem; the simulation's output is compared to the known solution. Deviation indicates a code error; convergence confirms (to the level of the test problems) that the code is implementing the equations correctly.
+
+\textbf{Mesh convergence.} Discretised simulations (FEA; CFD; finite-volume; finite-difference) compute approximate solutions whose accuracy depends on the mesh density. The mesh-convergence study runs the simulation at multiple mesh resolutions and tracks the solution quantities; convergence to a stable value as the mesh refines confirms that the discretisation is not the dominant error source. Failure to converge indicates that the mesh is inadequate, that the underlying model has singularities, or that the implementation has bugs.
+
+\textbf{Time-step convergence.} Time-stepping simulations (transient analyses) have analogous convergence requirements. The time-step convergence study runs the simulation at multiple time steps; convergence confirms that the temporal discretisation is adequate.
+
+\textbf{Conservation checks.} The simulation should respect the underlying conservation laws (mass; momentum; energy; charge). The simulation outputs are checked for conservation; violations indicate code errors or model inadequacies.
+
+\textbf{Symmetry checks.} A symmetric problem should produce a symmetric solution. Asymmetric output from a symmetric problem indicates an error in geometry, boundary conditions, or implementation.
+
+\textbf{Independent reproduction.} An independent analyst with the same model produces the same result. Disagreement indicates that one of the analyses has an error; reproducibility is a foundational discipline in computational science.
+
+The verification activities are not optional. A simulation that has not been verified is a simulation whose code may or may not be solving the equations the analyst thinks it is. The cost of verification is real (the analyst's time; computational resources for convergence studies); the cost of unverified simulation is the design's exposure to silent computational errors.
+
+\section{Validation against measurement}\pathtag{core}
+
+Validation asks: "Are we solving the right equations?" The model embodies assumptions about which physics are included and which are simplified or omitted; validation confirms that the model is an adequate description of the actual system's behaviour.
+
+The validation activities:
+
+\textbf{Benchmark comparison.} The simulation is run on problems for which experimental measurements are available; the simulation's predictions are compared to the measurements. Agreement within the measurement and modelling uncertainties confirms the model's adequacy for problems in the benchmark's class. Disagreement indicates that the model is missing physics relevant to the problem class or that the implementation has issues the verification did not catch.
+
+\textbf{Validation across operating envelopes.} The benchmark problems should cover the operating envelope the design will encounter. Validation at a single operating point does not establish the model's adequacy at other points. The discipline includes validation across the envelope's edges, where the model's simplifications are most likely to be violated.
+
+\textbf{Validation by independent measurement.} The validation evidence is independent of the modelling team: independent laboratories conduct the measurements; independent analysts conduct the comparisons. The independence resists the confirmation-bias pattern that internal validation can produce.
+
+\textbf{Validation of model assumptions individually.} The model embodies multiple assumptions (constitutive material model; boundary conditions; coupling between physics; numerical schemes); each can be validated individually where measurements support it. Aggregate model validation can mask compensating errors; individual-assumption validation surfaces specific inadequacies.
+
+\textbf{Uncertainty in validation.} The measurements have uncertainty; the model has uncertainty; the comparison is between two uncertain quantities. The validation conclusion is "the model agrees with the measurements within their combined uncertainty" rather than "the model is correct." The discipline includes characterising both uncertainties and being honest about their magnitudes.
+
+\textbf{Validation maintenance.} The model is used over time; the design evolves; the model's validation evidence ages. Periodic re-validation against new measurements is part of the discipline; models that have not been re-validated since the original development may have drifted from the actual system without anyone noticing.
+
+The Verification and Validation (V\&V) framework is codified in ASME V\&V 10 (computational solid mechanics) and ASME V\&V 20 (computational fluid dynamics and heat transfer); the framework distinguishes the two activities and specifies the evidence each requires. Modern engineering organisations with significant computational capability have V\&V programs that produce the evidence; the regulatory frameworks (FAA, NRC, FDA for medical-device software) require V\&V evidence for safety-critical simulations.
+
+\section{Uncertainty quantification in simulation}\pathtag{core}
+
+A simulation produces a number (or many numbers); the number has uncertainty arising from multiple sources. The discipline of uncertainty quantification (UQ) characterises the uncertainty so the simulation's output is reported with its uncertainty bounds rather than as a deterministic value.
+
+The sources of uncertainty:
+
+\textbf{Input uncertainty.} The simulation's inputs (material properties; loads; boundary conditions; geometry) are not exactly known. Material properties have manufacturing variation; loads have operational variation; boundary conditions have idealisation error. The input uncertainty propagates through the simulation to produce output uncertainty.
+
+\textbf{Model uncertainty.} The model embodies simplifications (linear elasticity; isotropic materials; rigid boundaries; idealised geometry). The simplifications produce model error; the error is hard to characterise quantitatively without validation evidence. Model uncertainty is often the dominant uncertainty source for complex simulations.
+
+\textbf{Numerical uncertainty.} The discretisation, the convergence tolerances, the round-off errors produce numerical uncertainty. Convergence studies bound the discretisation contribution; tolerance settings bound the convergence contribution; round-off is usually negligible for well-conditioned problems but matters for stiff or ill-conditioned problems.
+
+\textbf{Implementation uncertainty.} The code has bugs the verification has not surfaced. The uncertainty is hard to bound; the discipline of incremental verification (adding test cases as the code is developed) reduces but does not eliminate the contribution.
+
+The UQ techniques:
+
+\textbf{Monte Carlo sampling.} The simulation is run many times with inputs drawn from the input uncertainty distributions; the output distribution is the propagated uncertainty. The technique is robust (it does not require linearisation) but expensive (it requires many simulation runs); modern surrogate-modelling techniques reduce the cost by approximating the expensive simulation with cheap surrogates.
+
+\textbf{Polynomial chaos expansion.} The simulation's response to input uncertainty is approximated as a polynomial expansion in the uncertain inputs; the polynomial is computed from a structured sampling. The technique is efficient when the response is smooth in the inputs; it breaks down for discontinuous or highly nonlinear responses.
+
+\textbf{Sensitivity analysis.} The output's sensitivity to each input is computed (analytically or numerically); the sensitivities identify the inputs whose uncertainty dominates the output uncertainty. The dominant inputs become the focus of additional characterisation; the non-dominant inputs can be treated approximately.
+
+\textbf{Interval analysis.} The uncertainty is expressed as intervals rather than distributions; the output interval is computed using interval arithmetic. The technique is conservative (it produces wider bounds than probabilistic methods) but does not require distributional assumptions.
+
+\textbf{Bayesian calibration.} The simulation's parameters are calibrated against measurements using Bayesian inference; the posterior parameter distributions reflect the measurements' information; the calibrated simulation's predictions have associated uncertainty bounds.
+
+The discipline of reporting UQ is to communicate the uncertainty alongside the simulation's central value. A simulation that produces "$120 \pm 25\,\text{MPa}$" with characterised uncertainty is substantively more useful than a simulation that produces "$120\,\text{MPa}$" with implicit precision; the user of the simulation can make decisions appropriate to the actual epistemic state.
+
+\section{Multi-physics coupling}\pathtag{standard}
+
+Many engineering systems' behaviour arises from the coupling of multiple physical domains. The structural deflection of a wing affects its aerodynamic loading, which affects its structural deflection (aeroelastic coupling, Volume IV Chapter 4). The temperature distribution in an electronic device affects its electrical behaviour, which affects its power dissipation, which affects its temperature distribution (thermal-electrical coupling). The piston in a combustion engine experiences mechanical, thermal, and chemical processes that interact.
+
+Multi-physics simulation addresses these coupled problems:
+
+\textbf{Strong coupling.} The physics are solved simultaneously; the equations for all domains are assembled into a single system and solved jointly. The technique is the most rigorous and the most expensive; the discretisation, the numerical methods, and the boundary conditions must be compatible across domains.
+
+\textbf{Loose coupling.} The physics are solved separately and exchange information at coupling steps. The structural solver computes deflection given the aerodynamic load; the aerodynamic solver computes load given the deflection; the exchange continues until convergence. The technique is more flexible (different solvers for different domains; established single-physics codes can be coupled) but less rigorous (the coupling iteration may not converge, or may converge to spurious solutions for stiff coupling).
+
+\textbf{One-way coupling.} One physics affects another but not vice versa. The thermal expansion of a structure can be modelled as one-way (the thermal solution affects the structure but the structure's deformation does not significantly affect the temperature distribution). The technique is fastest and is appropriate when the coupling is weak in one direction.
+
+\textbf{Reduced-order modelling.} Complex multi-physics simulations can be approximated by reduced-order models that capture the dominant coupling behaviours at much lower computational cost. The reduced-order models are useful for design exploration, real-time control, and digital-twin applications.
+
+The discipline of multi-physics simulation includes:
+
+\textbf{Validating each physics individually first.} Before coupling, each single-physics model should be validated against single-physics measurements; coupled simulations whose individual components are not validated produce compounded uncertainty.
+
+\textbf{Checking coupling convergence.} The loose-coupling iteration must converge; the convergence criteria and the iteration count are documented; non-convergent simulations are diagnosed before their results are trusted.
+
+\textbf{Energy conservation across coupling.} The coupling should respect energy conservation across the coupled domains; energy that is created or destroyed at the coupling indicates a coupling implementation error.
+
+\textbf{Identifying the dominant coupling.} For systems with multiple coupling pairs, the dominant coupling (the one whose strength is largest) deserves the most analytical attention. The discipline of identifying dominance allows the analysis effort to be allocated where it matters.
+
+\section{Digital twins}\pathtag{standard}
+
+A digital twin is a computational model of a specific operating instance of a design, kept current with operational data from the instance and used for monitoring, prediction, and optimisation. The concept emerged in aerospace (NASA's mirrored systems for spacecraft operations; the term "digital twin" was popularised in the 2000s) and has spread to manufacturing, energy, civil infrastructure, and healthcare.
+
+The components of a digital twin:
+
+\textbf{Physical asset.} The specific instance of the design (a specific aircraft engine; a specific power generator; a specific industrial plant; a specific patient). The asset is instrumented with sensors that measure its operating state.
+
+\textbf{Data pipeline.} The sensor data are transmitted from the asset to the digital twin's computational environment; the pipeline includes the network, the storage, the data-quality processing, the alignment with the simulation's model variables.
+
+\textbf{Model.} The computational model of the asset's behaviour; the model is the digital twin's predictive engine. The model may be physics-based (FEA; CFD; system dynamics), data-driven (machine-learning models trained on operational data), or hybrid.
+
+\textbf{State estimation.} The model is kept current with the asset's actual state through state estimation: the sensor data are used to update the model's internal state, so the model's predictions reflect the asset's current condition rather than its as-designed condition. Modern techniques include Kalman filtering, ensemble methods, particle filters.
+
+\textbf{Predictions.} The current model is used to predict the asset's near-future behaviour: when will the asset require maintenance; how will it respond to a load change; what is the optimal operating set point. The predictions feed operational decisions.
+
+\textbf{Feedback to operations.} The digital twin's predictions are integrated into the asset's operation: recommended set points; predicted failures; optimised maintenance schedules. The feedback closes the loop between the model and the operation.
+
+\textbf{Lifecycle history.} The digital twin accumulates a history of the asset's operation: load history; degradation trajectories; maintenance events. The history feeds reliability analysis, design improvement for future generations, and forensic analysis if the asset fails.
+
+The digital twin's value depends on the fidelity of the model and the quality of the operational data. Models that are too simple produce predictions that diverge from the asset's actual behaviour; models that are too complex are expensive to maintain and may overfit operational noise. The data must be reliable, timely, and comprehensive enough to support the model's update; sparse or noisy data limits what the digital twin can know.
+
+The cost of a digital twin is substantial: the asset's instrumentation; the data infrastructure; the model development and maintenance; the integration with operations. The value depends on the asset's stakes: high-value assets (commercial aircraft; large industrial plants; major infrastructure) often justify digital-twin investment; lower-value assets typically do not. The discipline of digital-twin engineering is the discipline of matching the digital twin's complexity to the asset's value.
+
+\section{The cost and limit of simulation}\pathtag{standard}
+
+Simulation has limits. The disciplined engineer knows the limits and reports them.
+
+\textbf{Computational cost.} High-fidelity simulations take time and computational resources. A complex CFD simulation may run for days; a coupled FEA-CFD simulation for weeks. The cost limits the number of design points that can be evaluated and the speed of design iteration. The discipline of reduced-order modelling, surrogate models, and structured exploration of the design space addresses the cost but does not eliminate it.
+
+\textbf{Modelling cost.} Developing and validating a simulation model is itself expensive: domain expertise, software licensing, validation experiments, documentation. The investment is recovered only if the model is used substantively across multiple design problems; one-off simulations rarely justify the modelling investment.
+
+\textbf{Behaviour outside the model's scope.} The model represents the design's behaviour within the domain it was developed for; behaviour outside that domain (extreme conditions; unmodelled physics; off-design operation) is not captured. The simulation may produce numerical output for inputs outside its scope, but the output is unreliable.
+
+\textbf{Model degradation as the design evolves.} A simulation model developed for one design becomes outdated as the design changes; maintaining the model requires ongoing investment. Models that fall out of step with the design are misleading; the discipline includes deciding which simulations are worth maintaining and which should be retired.
+
+\textbf{User error in application.} The simulation tool is operated by humans; setup errors (boundary conditions; material properties; mesh quality; convergence settings) produce wrong answers that may look right. The discipline of training, of peer review, of independent verification addresses the user-error contribution.
+
+\textbf{The simulation is not the system.} The simulation is a model; the system is the actual artefact. Even a well-validated simulation can be exceeded by the system's actual behaviour under conditions the validation did not cover. Physical prototyping (Chapter 7) and physical testing (Chapter 8) remain necessary; the simulation's role is to extend, complement, and de-risk the physical activities, not to replace them.
+
+The economics of simulation versus physical testing are problem-specific. Simulation is cheap per scenario for problems where the model is mature and physical testing is expensive (aerodynamic optimisation; crash simulation of vehicles; structural certification of large aircraft components); physical testing is cheap per scenario for problems where the model is immature or where physical testing is fast and cheap (electronic circuit prototyping; chemical formulation; user-interface validation). The discipline of design includes the discipline of allocating effort between simulation and physical testing based on the cost-benefit per design problem.
+
+\section{Failure: simulations that fooled their builders}\pathtag{core}
+
+The failures of simulation in engineering practice are documented; they have characteristic patterns.
+
+\textbf{Verification gap.} The simulation produces output; the verification was incomplete; the code has bugs that the verification did not catch. The simulation's output may be confidently reported as correct when it is actually wrong. The remediation is the verification discipline of Section 2; the cost is the verification investment that engineers under schedule pressure are tempted to skip.
+
+\textbf{Validation gap.} The model is implemented correctly but does not adequately represent the system; the simulation produces results that are internally consistent but diverge from the system's actual behaviour. The simulation may match limited validation data while failing for operating conditions the validation did not cover. The remediation is validation across the actual operating envelope; the cost is the validation evidence collection.
+
+\textbf{Boundary-condition error.} The simulation's results are sensitive to the boundary conditions; small errors in the boundary conditions produce substantial errors in the output. The Hubble Space Telescope optical-correction work (Volume X Chapter 12) included extensive simulation of the corrective optics; the corrective optics succeeded; the original primary-mirror manufacturing error was not caught by simulation because the boundary condition at the mirror surface was set against a mis-calibrated reference.
+
+\textbf{Material model inadequacy.} The simulation assumes a material model (linear elastic; J2 plasticity; constitutive law for the specific material) that the actual material's behaviour does not match. The simulation produces output that matches the assumed material but diverges from the actual behaviour. The remediation is material characterisation against the relevant loading conditions; the cost is the material-test investment.
+
+\textbf{Confirmation-driven analysis.} The analyst conducts the simulation with an expected answer in mind; results that do not match the expectation are debugged until they do; the debugging shapes the model to match the expectation rather than the system. The pattern is the simulation analogue of the experimental confirmation-bias pattern; the remediation is structured analysis with independent review.
+
+\textbf{Over-precision.} The simulation produces numerical output with many significant figures; the output is reported as if the precision were meaningful; design decisions are made on the basis of precision that the simulation's uncertainty does not support. The discipline of uncertainty quantification (Section 4) is the structural response; the cultural response is the engineering norm against reporting more precision than is warranted.
+
+\textbf{Validation against the wrong reality.} The simulation is validated against measurements from a system that differs from the design (a previous-generation system; a scaled prototype; a different operating regime); the validation is taken to confirm the simulation for the actual design; the differences between the validation case and the design produce errors that the validation did not catch.
+
+The Mars Climate Orbiter failure (Volume X Chapter 5) is partly a simulation-trust failure: the navigation simulations operated on data that included the units-conversion error; the simulations produced predicted trajectories that the engineering team trusted; the trajectories were wrong because the input data were wrong; the simulation was not the failure but it was the channel through which the failure propagated to the operational decisions.
+
+The Boeing 737 MAX MCAS case (Volume X Chapter 8) includes simulation that did not adequately represent the system: the safety assessment's simulations of MCAS failure modes did not capture the pilot population's actual response under the failure conditions; the simulation results were consistent with the safety assessment but diverged from the system's actual safety performance.
+
+\begin{archetype}[uncertainty]
+Simulation is the uncertainty archetype's working tool. The simulation embodies the engineer's hypothesis about the design's behaviour; the verification confirms the hypothesis is implemented correctly; the validation confirms the hypothesis is correct; the uncertainty quantification characterises what is not known. The discipline of simulation is the discipline of being explicit about uncertainty rather than hiding it behind numerical precision.
+\end{archetype}
+
+\begin{principle}[Verify, validate, quantify uncertainty]
+A simulation that has been verified, validated, and accompanied by uncertainty quantification is a substantive engineering tool. A simulation that lacks any of the three is a number generator whose relationship to the design's actual behaviour is unknown. The discipline is to do all three before the simulation's output influences design decisions.
+\end{principle}
+
+\begin{project}[Simulation versus measurement]
+Take one project from the reader's earlier work in this book (a circuit; a mechanism; a structure; a controlled process) and build a simulation that predicts a specific quantity (e.g., the steady-state output of the circuit; the natural frequency of the mechanism; the deflection of the structure; the response time of the control loop). Then measure the same quantity on the physical implementation. Report: the model and its assumptions; the verification activities performed; the validation comparison; the discrepancy between simulation and measurement; the sources of the discrepancy. Deliverable: a 5-page document with the simulation description, the measurement description, the comparison, and the lessons.
+
+\textbf{Hazard.} The exercise often reveals that the simulation and measurement disagree by more than the analyst predicted. The lesson is the discipline of attributing the discrepancy: is it the model's adequacy, the measurement's accuracy, the analyst's setup, the system's variability? The discipline of attribution is the substantive learning from the exercise.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A Monte Carlo uncertainty propagation requires $N$ simulation runs to estimate the output standard deviation to within $\pm 10\%$ at 95\% confidence. The simulation takes 30 minutes per run on the available computational resources. Compute $N$ (using the rule that estimating $\sigma$ to $\pm 10\%$ requires approximately 200 samples) and the total compute time.
+\end{exercise}
+
+\begin{exercise}
+A mesh-convergence study runs an FEA at element sizes 10, 5, 2.5, 1.25 mm; the computed maximum stress is 100, 108, 113, 115 MPa. Compute the Richardson-extrapolated infinite-mesh stress (linear extrapolation in $h$ as $h \to 0$) and the implied discretisation error at the finest mesh.
+\end{exercise}
+
+\begin{exercise}
+A digital twin updates its model parameters using ensemble Kalman filtering with $N = 50$ ensemble members and observations at 1-minute intervals. Each update requires running the model forward for the ensemble and computing the Kalman update. If each model run takes 5 seconds, compute the per-update time and identify whether real-time updating is feasible.
+\end{exercise}
+
+\begin{exercise}
+A coupled thermal-structural simulation has iteration convergence rate of 0.7 per coupling cycle. Compute the number of coupling cycles required for the residual to decrease by a factor of $10^{-4}$.
+\end{exercise}
+
+\begin{exercise}
+The cost of a high-fidelity CFD run is approximately \$5{,}000 (compute time plus analyst time). The cost of a physical wind-tunnel run is approximately \$50{,}000. For a design exploration of 100 candidate geometries, compute the total cost of the two approaches and discuss when each is preferred.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Richardson-extrapolation formula for second-order-accurate discretisations: if the discretised solution is $f(h) = f_{\text{exact}} + \alpha h^2 + O(h^4)$, derive the extrapolation that combines results at two mesh sizes to estimate $f_{\text{exact}}$.
+\end{exercise}
+
+\begin{exercise}
+Derive the propagation of input uncertainty through a linear simulation: if the output is $y = f(x)$ with linearisation $y \approx f(x_0) + \nabla f \cdot (x - x_0)$, derive the relationship between the input covariance and the output variance. Identify the conditions under which the linearisation is valid.
+\end{exercise}
+
+\begin{exercise}
+For a polynomial-chaos expansion of order $p$ in $d$ uncertain dimensions, derive the number of terms in the expansion. Discuss the scaling with $p$ and $d$ and the implications for the technique's applicability to high-dimensional uncertainty.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the computational resources (CPU-hours; storage) for a complete CFD design study of a new commercial-aircraft wing: 50 geometry variants; 20 flight conditions per variant; mesh of $10^7$ cells; transient solution. Compare to the resources of a major HPC facility.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost of developing and validating a high-fidelity multi-physics simulation tool for a specific application domain (e.g., automotive crash simulation; nuclear reactor thermal-hydraulics; semiconductor device modelling). Identify the dominant cost categories and the conditions under which the investment is justified.
+\end{exercise}
+
+\begin{exercise}
+Estimate the fraction of engineering design effort, in a typical modern engineering organisation, that involves simulation versus other activities (requirements; concept generation; detailed design; prototyping; testing). Compare across industries (aerospace; automotive; consumer electronics; civil infrastructure).
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a simple uncertainty propagation: a function $y = x_1^2 + 3 x_2 - x_1 x_3$ with inputs $x_i$ each independent normal with mean 1 and standard deviation 0.1. Use Monte Carlo to estimate the output mean and standard deviation; compare to the linearised analytical result.
+\end{exercise}
+
+\begin{exercise}
+Implement a mesh-convergence study for a 1D Poisson equation $-u''(x) = f(x)$ with simple boundary conditions. Solve at multiple mesh sizes, compute the error against the exact solution, and verify second-order convergence.
+\end{exercise}
+
+\begin{exercise}
+Implement a Kalman filter for a simple 1D state-estimation problem (e.g., a moving object with noisy position measurements). Generate synthetic measurements with known true trajectory; demonstrate that the filter converges to the truth.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a verification plan for a new FEA implementation (e.g., a custom element type the analyst is developing). Specify the test problems, the comparison standards, the acceptance criteria, and the documentation deliverables.
+\end{exercise}
+
+\begin{exercise}
+Design a validation plan for a multi-physics simulation of a thermal-electrical system (e.g., a high-power electronic device). Specify the validation measurements, the comparison metrics, the acceptance criteria, and the conditions under which the validation conclusion would be revised.
+\end{exercise}
+
+\begin{exercise}
+Design a digital-twin architecture for a wind-turbine fleet. Specify the asset instrumentation, the data pipeline, the model architecture, the state-estimation approach, and the integration with operations.
+\end{exercise}
+
+\begin{exercise}
+Design an uncertainty-quantification approach for a structural FEA used in aerospace certification. Specify the uncertainty sources, the propagation method, the reporting format, and the integration with the certification documentation.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{mastery}
+
+\begin{exercise}
+Argue: in domains where simulation is mature (e.g., commercial-aircraft aerodynamics; semiconductor device modelling), physical testing can be substantially replaced by simulation. Argue the opposite. Identify what determines which view is correct for a given design problem.
+\end{exercise}
+
+\begin{exercise}
+Discuss the failure of simulation in the Mars Climate Orbiter case \cite{acc:nasa-mco-mib}. The simulations operated correctly on the input data; the input data were wrong. Identify the institutional and technical mechanisms that would have caught the input error before the simulations produced misleading predictions.
+\end{exercise}
+
+\begin{exercise}
+Argue: the increasing capability of machine-learning surrogate models will substantially replace physics-based simulation in the next decade. Argue the opposite: physics-based simulation will remain dominant for design-critical applications because of its interpretability and extrapolation capability. Identify the empirical evidence that bears on the dispute.
+\end{exercise}
+
+\begin{exercise}
+A simulation is reported to give a result with $\pm 0.1\%$ precision based on its convergence behaviour. The validation evidence supports an accuracy of $\pm 10\%$ against measurement. Discuss the engineer's obligation to report the larger uncertainty rather than the smaller precision, and the institutional structures that support honest uncertainty reporting.
+\end{exercise}
+
+\begin{exercise}
+A digital twin's predictions are used to guide operational decisions for a high-value asset. The twin's model has drifted from the asset's actual behaviour because of unmodelled degradation; the twin's predictions are increasingly inaccurate. Discuss the engineer's obligations regarding (a) detecting the drift, (b) communicating the drift to operations, (c) updating the model. Identify the institutional structures that support each.
+\end{exercise}
+
+\begin{exercise}
+Simulate the polynomial-chaos expansion for a simple function of two normal random variables: $y = x_1 + x_2 + 0.5 x_1 x_2$ with each $x_i \sim N(0,1)$. Compute the first three Hermite-polynomial coefficients and compare the polynomial-chaos prediction to Monte Carlo estimates of the output mean and variance.
+\end{exercise}
+
+\begin{exercise}
+A design team's simulation of a flight-control system fails to predict an instability mode that subsequent flight test reveals. Discuss the diagnostic procedure: what verification activities should be revisited; what validation activities; what model assumptions should be questioned. Identify the institutional response that prevents the failure from recurring on the next design.
+\end{exercise}

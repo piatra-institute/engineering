@@ -1,40 +1,345 @@
 \chapter{Detailed design and analysis}
 \label{vol11:ch05}
 
-\epigraph{}{}
+\epigraph{Detail is where the analyses meet the manufacture; the gap between the two is where the failure lives.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: balance, optimisation. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: balance, optimisation. Exercise target: 25. Project track: hybrid.}
 
 \noindent
-\TODO{Volume 11, Chapter 5. Approx 100 pp.}
+Detailed design is the stage at which the selected concept is developed to the level the manufacturer can act on: dimensions, materials, tolerances, interfaces, components specified with the precision required for the design to be built. The stage absorbs the largest fraction of the design effort in most projects; it is where most of the engineering work happens. This chapter develops the discipline: the move from concept to detail, the tolerance budgets that keep parts compatible, the analyses that confirm the design meets its requirements, the rules of thumb that condense decades of experience, the boundary between calculation and judgment, the documentation that makes the design persistent, and the failure modes that detailed-design discipline addresses.
 
-\section{From concept to detail}
-\TODO{Section prose.}
+\section{From concept to detail}\pathtag{core}
 
-\section{Tolerance budgets}
-\TODO{Section prose.}
+The transition from concept to detail is a transition in commitment: the concept's design space narrows to the specific dimensions, materials, and configurations the detailed design specifies. The narrowing is necessary; the design must be buildable, and buildable designs are specific. The narrowing is also dangerous: each commitment forecloses alternatives, and commitments made on incomplete analysis produce designs that have to be revisited.
 
-\section{Stress analysis at design depth revisited}
-\TODO{Section prose.}
+The detailed design process develops the concept in parallel along multiple dimensions:
 
-\section{Thermal, electromagnetic, fluid, control analysis}
-\TODO{Section prose.}
+\textbf{Geometry.} The shape, size, and spatial arrangement of every part. The geometry is specified through engineering drawings, CAD models, and (where appropriate) sketches with annotation. The level of geometric specification matches the manufacturing requirements: dimensions and tolerances for machined parts; tolerances for additively-manufactured parts; mating-surface specifications for assemblies; aesthetic-surface specifications for visible exterior surfaces.
 
-\section{Design rules of thumb across disciplines}
-\TODO{Section prose.}
+\textbf{Materials.} The material of every part. The specification includes the alloy or grade, the heat treatment or other processing, the surface treatment, the certification level (the documentation the manufacturer must provide). Materials selection draws on Volume II's materials knowledge; the detailed design commits to specific selections.
 
-\section{Engineering judgment: when calculation ends and judgment begins}
-\TODO{Section prose.}
+\textbf{Components.} The off-the-shelf and custom components that the design uses. Bearings, fasteners, electrical connectors, integrated circuits, sensors, actuators. The specification identifies each component by manufacturer and part number; the design's compatibility with the component's specifications is part of the analysis.
 
-\section{Documentation as part of design}
-\TODO{Section prose.}
+\textbf{Interfaces.} The connections between the design's subsystems and between the design and the external world. Mechanical interfaces (mating geometry, fits, fastener patterns); electrical interfaces (voltage, current, protocol, connector); thermal interfaces (heat transfer paths, thermal envelope); informational interfaces (data formats, protocols, latency). Interface specifications are the contracts between subsystems.
 
-\section{Failure: detailed design that hid load paths from the analyst}
-\TODO{Section prose.}
+\textbf{Processes.} The manufacturing or construction processes by which the design will be realised. Casting, machining, additive manufacturing, assembly, welding, painting, electronic assembly, software integration. The processes are specified to the level the manufacturer needs to plan and execute them.
 
+\textbf{Tolerances.} The acceptable variation around the specified nominal values. Tolerances are specified for dimensions, surface finish, material properties, assembly fit, functional behaviour. The tolerance specification is the contract about precision; under-specified tolerances produce variation that violates assembly or function; over-specified tolerances raise manufacturing cost without engineering justification.
 
-\section{Project}
-\TODO{take one of the reader's previous Volume III-VIII projects and produce a full detailed-design pack}
+The development is iterative across these dimensions. A geometry decision constrains the material options; the material choice constrains the manufacturing process; the process determines the achievable tolerances; the tolerances constrain the geometry. The detailed design progresses through cycles of mutual adjustment until the dimensions are consistent.
+
+The discipline at this stage includes:
+
+\textbf{Maintaining the requirements link.} Every detailed-design decision is traceable to the requirements (Chapter 2) it serves. The traceability allows the design to be audited against the requirements and allows requirements changes to flow through the detailed design.
+
+\textbf{Recording assumptions.} Detailed design depends on assumptions (operating conditions; user behaviour; environmental factors). The assumptions are recorded so subsequent verification (Chapter 8) can address them and so service experience can update them.
+
+\textbf{Versioning and change control.} Detailed design produces many revisions; the version history is preserved; changes after a baseline are governed by change control. The discipline preserves the design's auditability and supports the regulatory and certification work (Chapter 9).
+
+\textbf{Cross-discipline coordination.} Detailed design typically involves multiple engineering disciplines (mechanical, electrical, software, manufacturing, quality, safety, certification). The coordination is part of the design work; interfaces between disciplines are negotiated through interface control documents.
+
+\begin{principle}[Detail commits the design]
+Each detailed-design decision narrows the design space. The discipline of detailed design is the discipline of making the commitments in an order that resolves the binding constraints first, of recording the rationale for each commitment so it can be audited, and of preserving the option to revise commitments when downstream analysis reveals their consequences.
+\end{principle}
+
+\section{Tolerance budgets}\pathtag{core}
+
+Every dimension, every property, every parameter is specified with a nominal value and an acceptable variation. The variation is the tolerance; the budget is the engineer's allocation of variation across the contributing parts and processes such that the assembled design still functions.
+
+The tolerance budget for an assembly:
+
+\[
+\sigma_{\text{assembly}}^2 = \sum_i \sigma_i^2
+\]
+
+(for independent variation in each contributing part; the root-sum-square form). The assembly's total variation is the quadrature sum of the parts' variations; the engineer's task is to allocate $\sigma_i$ values that produce an acceptable $\sigma_{\text{assembly}}$ at manufacturable cost.
+
+The trade-offs:
+
+\textbf{Tight tolerances per part are expensive.} The cost of holding a tolerance scales approximately exponentially with the inverse of the tolerance: a $\pm 0.1\,\text{mm}$ tolerance is much more expensive than a $\pm 0.5\,\text{mm}$ tolerance; a $\pm 0.01\,\text{mm}$ tolerance requires precision machining and process control that ordinary parts do not.
+
+\textbf{Loose tolerances accumulate.} The assembly's total variation is the quadrature sum; loose tolerances on many parts can produce an assembly variation exceeding the functional requirement.
+
+\textbf{Allocation matters.} For a given assembly tolerance budget, the cost-optimal allocation concentrates tighter tolerances on parts that are easier to hold tight (rotational symmetry; geometric simplicity; standard processes) and loosens tolerances on parts where tightness is expensive (complex geometry; non-standard processes).
+
+The tolerance-budget process:
+
+\textbf{Step 1: Identify the critical-to-function dimensions.} For each functional requirement, identify the dimensions whose variation affects the requirement. For a shaft-and-bearing assembly with a sliding-fit requirement, the critical dimensions are the shaft diameter, the bearing inner diameter, and their concentricity.
+
+\textbf{Step 2: Establish the functional tolerance.} The total acceptable variation in the critical dimension is determined by the functional requirement. For the sliding-fit example, the maximum acceptable clearance variation is set by the function (e.g., $\pm 20\,\mu\text{m}$ around a nominal $50\,\mu\text{m}$ clearance).
+
+\textbf{Step 3: Allocate the tolerance across contributors.} The functional tolerance is allocated across the contributing dimensions according to a cost-optimisation. The allocation may use equal-tolerance (each contributor gets the same value), proportional (allocated by manufacturing cost gradient), or optimised (formal cost minimisation across all contributors).
+
+\textbf{Step 4: Verify the allocation is manufacturable.} Each allocated tolerance is checked against the manufacturing process's capability ($C_p$ or $C_{pk}$ index). Tolerances that exceed the process's capability require process change or tolerance loosening.
+
+\textbf{Step 5: Document the budget.} The tolerance budget is recorded as part of the design documentation; the allocations and the manufacturing-capability assumptions are auditable.
+
+The tolerance budget connects detailed design to manufacturing: the budget's allocations specify what the manufacturer must hold, and the manufacturer's process capability determines what budgets are realistic. Designs that specify tolerances without consulting manufacturing capability produce designs that cannot be built; designs that consult manufacturing capability produce designs that can be built at known cost.
+
+\textbf{Worst-case versus statistical tolerance analysis.} The two analytical traditions differ in their assumptions. Worst-case analysis sums the maximum deviations linearly; the resulting assembly tolerance is the sum of individual tolerances. The technique is conservative (the assembly will always work) but produces tolerances that are tighter than necessary and consequently more expensive. Statistical analysis treats tolerances as standard deviations and computes the root-sum-square; the resulting assembly tolerance allows a defined defect rate (typically a small fraction of assemblies will exceed the tolerance). The technique requires process-capability evidence to justify the statistical assumptions; it is the dominant practice in mature manufacturing organisations.
+
+\section{Stress analysis at design depth revisited}\pathtag{core}
+
+The structural analyses introduced in Volume III (force) and developed across Volumes IV, V, and VIII are revisited at the detailed-design stage as the analyses that verify the design's structural adequacy. The stage's analyses are more detailed than the conceptual-stage estimates; they use the design's actual geometry, materials, and loading.
+
+The dominant techniques:
+
+\textbf{Closed-form analysis.} For geometries and loadings that admit closed-form solution (uniform beams; cantilever beams; pressure vessels of standard shape; bolted joints with standard preloads), the closed-form formulas from the engineering handbooks (Roark's Formulas for Stress and Strain; Shigley; Norton) provide direct calculation. The technique is fast and transparent; the results are bounded by the assumptions of the formulas.
+
+\textbf{Finite-element analysis (FEA).} For geometries that exceed the closed-form catalogue, FEA discretises the design into elements (typically tetrahedra or hexahedra for solids; shells for thin walls; beams for slender members) and solves the discretised problem numerically. Modern FEA tools (ANSYS, Abaqus, Nastran, COMSOL, the open-source alternatives) handle linear and nonlinear stress, vibration, buckling, contact, plasticity, fracture, fatigue. The technique's accuracy depends on the mesh quality, the boundary conditions, and the material model; the analyst's discipline includes mesh convergence studies and validation against closed-form or experimental benchmarks.
+
+\textbf{Hand calculations as sanity check.} Even when FEA is the principal analysis tool, hand calculations on simplified versions of the geometry are used as sanity checks: a quick beam-bending calculation to confirm the FEA's order-of-magnitude is right; a quick stiffness calculation to confirm the FEA's deflection is reasonable. Hand calculations catch FEA errors (boundary condition errors; element selection errors; unit errors) that would otherwise propagate through subsequent analyses.
+
+\textbf{Margin assessment.} For each stress location and each loading condition, the analysis computes a margin of safety: the actual stress versus the allowable stress; the actual deflection versus the allowable deflection; the actual fatigue life versus the required life. The margins are documented; the design's robustness is the lowest margin across loadings and locations.
+
+\textbf{Sensitivity analysis.} The analysis sweeps the design's parameters (dimensions, material properties, loads) to identify the parameters to which the design is most sensitive. The sensitive parameters become the focus of tolerance allocation and of additional verification.
+
+The detailed-design stage uses these analyses to verify that the selected concept, developed to detail, meets the structural requirements. The analyses also produce the documentation that the certification process (Chapter 9) requires.
+
+\section{Thermal, electromagnetic, fluid, control analysis}\pathtag{standard}
+
+Detailed design depends on analyses across the physical domains:
+
+\textbf{Thermal analysis.} Heat generation, heat transfer, temperature distribution, thermal expansion, thermal stress. The analysis confirms the design operates within its temperature envelope, that thermal expansion does not compromise tolerances or interfaces, and that the cooling provisions are adequate. The tools range from hand calculations (steady-state conduction; convective heat transfer estimates) to finite-element thermal analysis to computational fluid dynamics for forced-convection systems.
+
+\textbf{Electromagnetic analysis.} For electrical and electronic designs: voltage drop; current distribution; inductance; capacitance; impedance; EMI emission and susceptibility; signal integrity at high frequencies. The tools include circuit simulators (SPICE), electromagnetic-field solvers (HFSS, CST), and EMC analysis tools.
+
+\textbf{Fluid analysis.} For systems with fluid flow: pressure drop, flow distribution, mixing, separation, two-phase behaviour. The tools include lumped-element analysis (pipe-and-fitting catalogues; pump curves) and computational fluid dynamics (Fluent, OpenFOAM, the various open-source CFD codes).
+
+\textbf{Control analysis.} For systems with control loops: stability, response time, disturbance rejection, robustness to parameter variation. The tools include Bode, Nyquist, root-locus analysis (Volume IX Chapter 6 developed these); time-domain simulation; modern model-predictive-control design tools.
+
+\textbf{Reliability analysis.} For the design's overall reliability: failure modes and effects analysis (FMEA); fault tree analysis; reliability block diagrams; statistical reliability prediction. The analyses identify the design's failure modes (Volume X) and quantify the design's reliability against the requirements.
+
+\textbf{Safety analysis.} For safety-critical designs: hazard identification; risk assessment; safety-instrumented-function analysis; STAMP-style control-structure analysis. The analyses confirm the design meets its safety requirements.
+
+Each analysis has its own tools, its own conventions, its own validation requirements. The detailed-design stage typically engages multiple analysts (each specialising in one or two domains); the integration of the analyses is the substantive design work.
+
+\section{Design rules of thumb across disciplines}\pathtag{standard}
+
+Engineering practice has accumulated extensive rules of thumb across disciplines. The rules condense decades of experience; they are not derivations but heuristics that have proven reliable in their domains.
+
+A representative sample:
+
+\textbf{Mechanical design.} Length-to-diameter ratios for shafts in bending should not exceed 20:1 without rigorous deflection analysis. Bolt preload should be approximately 75\% of proof load for reused fasteners. Fillet radii at stress concentrations should be at least 0.1 times the smaller adjoining dimension. Bearing L10 life should be at least 5,000 hours for industrial machinery and 20,000+ hours for aerospace applications.
+
+\textbf{Electrical design.} Current density in PCB traces should not exceed approximately $20\,\text{A/mm}^2$ for 10$\,\degC$ temperature rise. Decoupling capacitor placement should be within 5 mm of the IC power pin for high-frequency designs. Resistor tolerance should be at least one order of magnitude tighter than the circuit's sensitivity to the resistance variation. Power-supply derating: design for 50-70\% of the rated power for continuous operation.
+
+\textbf{Thermal design.} Heat sinks should have at least 5$\,\degC$ thermal margin between operating temperature and the maximum-rated temperature. Convective heat transfer coefficients for natural convection are in the range 5-25 $\text{W/(m}^2\text{K)}$; forced convection 25-250; boiling 2,500-25,000. Conduction through a typical aluminium plate has thermal conductivity 200 $\text{W/(m K)}$; through plastic typically 0.2-0.5.
+
+\textbf{Software design.} Function or method length should be small enough to fit on one screen (typically under 50 lines). Cyclomatic complexity should be under 10 for routine code, under 20 for unavoidably complex code, with refactoring above. Test coverage of safety-critical code should be near 100\% statement coverage and near 90\% branch coverage. Defect-density target for new code in mature processes is under 1 defect per 1000 lines of code.
+
+\textbf{Structural design.} Steel beams in flexure: $L/d \leq 25$ for stable proportions; deflection limit $L/360$ for floor beams; $L/240$ for roof beams. Reinforced concrete: minimum reinforcement ratio 0.2\% for shrinkage and temperature; concrete cover at least 25 mm for interior exposure, 50 mm for exterior. Soil bearing capacity: vary by site, but factor of safety typically 3 against bearing failure.
+
+\textbf{Fluid design.} Pipe flow: laminar below $Re \approx 2300$; turbulent above $\approx 4000$. Reasonable pipe velocities: $1-3$ m/s for liquid; $10-30$ m/s for gas (avoiding noise and erosion). Pressure-drop allowance: 10\% of the pump's developed head for piping losses; 30\% for fittings if numerous.
+
+\textbf{Aerospace.} Margins of safety: typically 0.5 for structural ultimate load; 0.0 for limit load; 1.5 for pressure vessels. Weight allocation: structural weight typically 25-35\% of empty weight; propulsion 15-25\%; systems 15-25\%; furnishings 10-15\%. Loiter time targets and fuel-fraction calculations follow the Breguet range equation.
+
+\textbf{Civil engineering.} Concrete slab thickness: span/30 for one-way simply supported; span/45 for continuous; span/35 for cantilever. Steel column slenderness ratio under 200 for compression members. Lateral drift in tall buildings: under H/500 typical, under H/400 for slender buildings.
+
+The rules of thumb work when the problem fits the rule's domain; they fail when the problem is at the rule's boundary or outside it. The discipline of using rules of thumb is the discipline of knowing the rule's domain and recognising when the problem is or is not within it. The engineer who applies rules of thumb without knowing their derivation produces designs that are sometimes adequate; the engineer who knows the derivation and recognises when the rule does not apply produces designs that handle the boundary cases.
+
+The rules of thumb are typically codified in the major engineering handbooks (Marks' Standard Handbook for Mechanical Engineers; Standard Handbook for Electrical Engineers; AISC Steel Construction Manual; ACI 318; the various ASME codes; the SAE handbooks; the IEEE standards). The handbooks are reference works the practicing engineer keeps within reach.
+
+\section{Engineering judgment: when calculation ends and judgment begins}\pathtag{core}
+
+Detailed design is partly calculation and partly judgment. The boundary between them is not sharp; it shifts with the problem, the available tools, and the engineer's experience. The discipline includes the discipline of recognising where calculation ends and where judgment begins.
+
+Calculation ends when:
+
+\textbf{The input data have substantial uncertainty.} The calculation produces a precise number, but the inputs are uncertain at $\pm 30\%$; the precise number is misleading. The engineer's judgment is required to bound the answer in light of the input uncertainty.
+
+\textbf{The model assumptions are violated.} The calculation assumes uniform material properties, but the design's material is non-uniform; the calculation assumes static loading, but the design's loading is dynamic. The engineer judges whether the violations are consequential and whether to use a different model or to bound the answer.
+
+\textbf{Multiple plausible models give different answers.} The closed-form formula gives one answer; the FEA gives a different answer. The engineer judges which to trust under the specific conditions, often by additional analysis or by experiment.
+
+\textbf{The decision depends on factors the calculation does not capture.} The structural calculation says the design has adequate margin; the experienced engineer knows that the loading the calculation assumed underestimates the actual service loading. The engineer's judgment integrates information the calculation does not contain.
+
+\textbf{The calculation is too expensive to perform.} A full nonlinear dynamic analysis would take weeks; the schedule does not allow it. The engineer judges based on simplified analysis plus accumulated experience.
+
+\textbf{The calculation has not yet been done.} An emergency engineering decision is required before the analysis can be completed. The engineer judges based on what is known; the calculation, when completed, may confirm or revise the judgment.
+
+The role of judgment in design is substantive and unavoidable. Engineers who pretend judgment is not required produce designs that match their calculations but do not match service; engineers who acknowledge and exercise judgment competently produce designs that work under conditions the calculations did not fully characterise.
+
+The discipline of judgment includes:
+
+\textbf{Calibration.} The engineer's judgment should be calibrated against outcomes: predictions made should be tracked against actuals; over-confidence or under-confidence should be corrected. The discipline is rare but valuable.
+
+\textbf{Articulation.} The judgment should be articulated, not just exercised. The engineer who says "I think this margin is adequate" without explaining why offers no basis for review; the engineer who explains "this margin is adequate because of factors A, B, C" offers a basis for the team and the reviewers to evaluate.
+
+\textbf{Documentation.} Important judgments are documented in the design record: the assumption that justified a margin; the simplification that justified a model selection; the engineering reasoning that supplemented a calculation. The documentation supports subsequent review and forensic analysis if the design's behaviour is later questioned.
+
+\textbf{Conservatism under uncertainty.} When the engineer's judgment is exercised under substantial uncertainty, the appropriate posture is conservatism: design margins should be larger; commitment should be staged; reversibility should be preserved. The conservatism trades efficiency for robustness; the trade is usually appropriate at the boundaries where judgment dominates.
+
+\textbf{Peer challenge.} The engineer's judgment is improved by peer review. A second engineer's perspective surfaces assumptions the first engineer made without recognising they were assumptions; the dialogue improves the eventual decision.
+
+\begin{archetype}[balance]
+Detailed design is the balance archetype's working stage. The engineer balances tolerance tightness against manufacturing cost; analysis depth against schedule; calculation precision against input uncertainty; margin generosity against design efficiency. The balance is not in any single calculation; it is in the design's pattern of commitments across the dimensions.
+\end{archetype}
+
+\section{Documentation as part of design}\pathtag{standard}
+
+The detailed design's documentation is part of the design. The drawings, the bills of materials, the analyses, the calculations, the assumption logs, the change records, the verification records, the certification packages are the design's persistent form. The artefact is built from the documentation; the artefact's service history is interpreted against the documentation; the artefact's eventual disposal is governed by the documentation.
+
+The documentation categories:
+
+\textbf{Engineering drawings.} The drawings specify the geometry, the dimensions, the tolerances, the materials, the manufacturing notes for each part and assembly. The drawing standards (ASME Y14.5 for the US; ISO 1101 for Europe and most of the rest of the world; the various national standards) govern the drawing conventions. Modern practice often uses model-based definition (the CAD model is the authoritative source; the drawing is derived from it); the discipline is unchanged but the medium differs.
+
+\textbf{Bills of materials.} The BOM lists every component and material in the design, with quantities, manufacturer part numbers, specifications. The BOM is the basis for procurement, for cost accounting, for service-parts planning.
+
+\textbf{Analyses and calculations.} The analyses that support the design (stress, thermal, electrical, fluid, control, safety) are documented as part of the design package. The documentation includes the inputs (loads, boundary conditions), the assumptions, the methods, the results, and the conclusions.
+
+\textbf{Test plans and results.} The verification plan specifies what tests will be performed against which requirements; the test results document the outcomes. The plan and results are part of the certification package.
+
+\textbf{Manufacturing documentation.} Process plans, work instructions, quality plans, inspection procedures. The manufacturing documentation translates the design into actionable instructions for production.
+
+\textbf{Service documentation.} Operating manuals, maintenance manuals, parts catalogues, troubleshooting guides. The service documentation supports the design's deployment and ongoing use.
+
+\textbf{Design record.} The history of design decisions, the rationale for each, the alternatives considered, the analyses that supported the decisions, the changes from baseline. The design record is the design's history; it supports subsequent forensic analysis, regulatory inquiry, and design evolution.
+
+The discipline of documentation is the discipline of completeness, currency, and accessibility. Documentation that is incomplete leaves gaps; documentation that is out of date misleads; documentation that is inaccessible (in a proprietary format; behind organisational barriers; lost over time) cannot be used. The investment in documentation discipline is paid back over the design's lifecycle; the cost of poor documentation is reliably higher than the cost of producing good documentation in the first place.
+
+\section{Failure: detailed design that hid load paths from the analyst}\pathtag{core}
+
+A characteristic failure mode in detailed design is the design whose actual load paths differ from the analyst's model. The analyst computed the design against a model of how loads would flow; the actual design routes loads differently; the design fails in service at locations the analysis did not stress.
+
+The mechanisms:
+
+\textbf{Hidden load paths.} A load path that the design supports but the analyst did not include in the model. A bolted connection that the analyst treated as pinned actually transmits substantial moment because the bolts are torqued tightly enough to develop friction; the moment loads parts the analyst did not consider; the parts fail. The Hyatt Regency walkway collapse (Volume X Chapter 4, in the buckling/instabilities chapter; in this volume's context, an instance of the failure mode) included an analysis-versus-as-built discrepancy in the rod-and-nut suspension that doubled the load on a critical connection.
+
+\textbf{Stress concentrations not modelled.} The geometric features that produce stress concentrations (sharp internal corners; tight fillets; holes near edges; sudden cross-section changes) were not adequately modelled in the analysis; the actual stress at the feature exceeds the analysis prediction; the part fails at the feature. The discipline of detailed FEA includes the discipline of mesh refinement at stress concentrations.
+
+\textbf{Vibration modes not analysed.} The static analysis was adequate; the design has vibration modes that were not analysed; in service, the design encounters excitation near a vibration mode and fails from fatigue. The Comet failure (Volume X Chapter 2) and the Tacoma Narrows failure (Volume X Chapter 4) both have this character: the static analyses were adequate; the dynamic analyses were not.
+
+\textbf{Multi-axis loading not analysed.} The analysis considered loading along the primary axis; the design experiences loading off-axis; the off-axis loading exceeds the design's capacity in that direction. The remediation is multi-axis analysis from the outset, with envelope conditions that cover all expected loading directions.
+
+\textbf{Thermal loading not coupled with structural.} The structural analysis assumed isothermal conditions; the design operates with thermal gradients; the thermal-induced stresses combine with the mechanical stresses to exceed the design's capacity. The remediation is coupled thermal-structural analysis; modern FEA tools support the coupling but the analyst must request it.
+
+\textbf{Assembly residual stresses ignored.} The analysis considered the operating loads; the design has residual stresses from manufacturing (welding; bolt preload; thermal processing) that the analysis did not include; the combination of residual and operating stresses produces failure the operating-only analysis predicted would not occur. The discipline is to characterise residual stresses (through measurement, simulation of the manufacturing process, or conservative assumption) and include them in the design verification.
+
+\textbf{Service degradation not modelled.} The analysis considered as-new conditions; the design degrades in service (corrosion, fatigue, wear, creep); the degraded design fails at conditions the as-new analysis would not predict. The discipline is to consider the design's end-of-service-life condition rather than only its new condition.
+
+The detailed-design discipline addresses these failure modes through analysis discipline, peer review, design margin, and the calibrated use of judgment when the analysis is incomplete. The cost of detailed-design discipline is real (analysis effort, schedule time, reviewer attention); the cost of inadequate discipline is the failure mode the discipline addresses.
+
+\begin{principle}[Match the model to the design]
+A detailed-design analysis is as good as the model the analyst used. The discipline includes the discipline of verifying that the model captures the design's actual structure, the actual loading conditions, the actual environmental conditions, and the actual degradation processes. Designs that fail in service often fail at locations or under conditions the analysis did not address; the failure is partly the failure of the model-to-design match.
+\end{principle}
+
+\begin{project}[Detailed-design pack for one prior project]
+Select one of the reader's previous projects from Volumes III through VIII (a mechanism, a structure, an electronic system, a control loop, a software component) and produce a full detailed-design pack. The pack includes: engineering drawings or CAD-derived geometry specifications with tolerances; bill of materials; structural/thermal/electrical analyses appropriate to the project; tolerance budget for at least one assembly; verification plan with at least one test specification; design rationale document covering at least three substantive decisions; assumption log. Deliverable: the design pack (typically 20-50 pages depending on the project's complexity), with a one-page self-review against the discipline of this chapter.
+
+\textbf{Hazard.} The exercise reveals the gap between sketch-level engineering and detailed-design engineering. The substance of the chapter is in closing the gap; the deliverable's value is the closing-the-gap discipline rather than the final document's polish.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+An assembly has 5 contributing dimensions with tolerances $\pm 0.1, \pm 0.15, \pm 0.05, \pm 0.2, \pm 0.08\,\text{mm}$ (3$\sigma$). Compute the worst-case assembly tolerance (linear sum) and the statistical assembly tolerance (root-sum-square). Compute the ratio.
+\end{exercise}
+
+\begin{exercise}
+A bolted joint has bolt preload $F_p = 50\,\text{kN}$ and applies friction-induced moment to an adjacent part. With friction coefficient 0.15 and bolt-circle diameter 80 mm, compute the moment the friction can transmit. Discuss whether a structural analysis that treats the joint as a frictionless pin is conservative or non-conservative.
+\end{exercise}
+
+\begin{exercise}
+A heat sink dissipates 20 W with a thermal resistance of $5\,\degC/\text{W}$ to ambient at $25\,\degC$. Compute the steady-state device temperature. With a maximum-rated temperature of $125\,\degC$, compute the thermal margin in degrees and as a percentage of the available temperature range.
+\end{exercise}
+
+\begin{exercise}
+A shaft of diameter $d$ in bending has a stress concentration factor $K_t = 2.5$ at a fillet. The nominal bending stress is $80\,\text{MPa}$. Compute the actual peak stress at the fillet. With material yield strength $300\,\text{MPa}$, compute the margin of safety.
+\end{exercise}
+
+\begin{exercise}
+A PCB trace carries $5\,\text{A}$ at a copper thickness of $1\,\text{oz}$ ($\approx 35\,\mu\text{m}$). Using the IPC-2221 formula or the engineering rule of thumb ($20\,\text{A/mm}^2$ for $10\,\degC$ rise), compute the minimum trace width.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the root-sum-square tolerance formula from the central limit theorem assumption that individual tolerances are independent and approximately normal. Identify the conditions under which the assumption is approximately valid and the conditions under which worst-case (linear sum) becomes more appropriate.
+\end{exercise}
+
+\begin{exercise}
+Derive the optimal tolerance allocation across $N$ contributing dimensions to minimise total manufacturing cost subject to a fixed assembly tolerance constraint, given each dimension's cost is $c_i / t_i$ where $t_i$ is the tolerance and $c_i$ is a per-dimension cost coefficient.
+\end{exercise}
+
+\begin{exercise}
+Derive the stress concentration factor for a circular hole in a uniformly-stressed infinite plate (Kirsch's solution gives $K_t = 3$ at the hole edge for uniaxial stress). Identify the conditions under which the infinite-plate approximation is appropriate for finite plates.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the engineering-hours required for a complete detailed-design pack for a mid-complexity mechanical product (e.g., a household appliance) versus a simple-complexity product (e.g., a hand tool). Discuss the cost-per-page in the design documentation.
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost premium for holding $\pm 0.01\,\text{mm}$ tolerance versus $\pm 0.1\,\text{mm}$ versus $\pm 1\,\text{mm}$ on a typical machined feature. Identify the manufacturing-process implications of each tolerance class.
+\end{exercise}
+
+\begin{exercise}
+Estimate the fraction of detailed-design effort in a typical project allocated to analysis (FEA, thermal, electrical, etc.) versus geometry definition (CAD modelling and drawings) versus documentation (BOMs, reports, manuals).
+\end{exercise}
+
+\begin{exercise}
+Estimate the cost of an engineering-drawing error (a dimension mistake; a tolerance mistake; a material-specification mistake) detected at: design review; manufacturing prototype; production; field deployment. Compare the cost ratios.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a Monte Carlo tolerance simulation: 1000 assemblies built with tolerances drawn from normal distributions for each contributing dimension; compute the fraction of assemblies that fail an assembly-tolerance specification. Compare to the analytical prediction from the root-sum-square formula.
+\end{exercise}
+
+\begin{exercise}
+Simulate a sensitivity analysis: a designed quantity (e.g., natural frequency of a beam) depends on multiple parameters; sweep each parameter through $\pm 10\%$ of its nominal value; identify the parameters to which the designed quantity is most sensitive.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a tolerance budget for an assembly with: a 50 mm sliding fit; 3 contributing parts; a target clearance of $50 \pm 20\,\mu\text{m}$. Allocate tolerances across the parts assuming cost is proportional to the inverse of the tolerance.
+\end{exercise}
+
+\begin{exercise}
+Design an analysis plan for a structural component subject to thermal, mechanical, and vibrational loading. Specify the analyses required, the sequencing, the validation against benchmarks, and the documentation deliverables.
+\end{exercise}
+
+\begin{exercise}
+Design a documentation package template for a detailed-design release. Specify the required documents, their content, their cross-references, and their version-control approach.
+\end{exercise}
+
+\begin{exercise}
+Design a peer-review checklist for a detailed-design analysis (FEA stress analysis as a specific example). Include questions about model fidelity, boundary conditions, mesh quality, material properties, validation, and interpretation of results.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{mastery}
+
+\begin{exercise}
+Argue: the discipline of explicit assumption documentation in detailed design is essential to forensic analysis after service failure. Identify the institutional barriers to the discipline and the structures that support it.
+\end{exercise}
+
+\begin{exercise}
+Discuss the role of engineering rules of thumb. Argue: rules of thumb are essential heuristics that capture decades of experience compactly. Argue the opposite: rules of thumb hide their assumptions and produce errors when applied outside their domain. Identify what determines which view is correct in a given context.
+\end{exercise}
+
+\begin{exercise}
+The Hyatt Regency walkway collapse involved a discrepancy between the analysed load path and the as-built load path. Discuss what design-discipline moves would have caught the discrepancy during detailed design or design review. Identify the institutional factors that prevented the moves from operating as intended.
+\end{exercise}
+
+\begin{exercise}
+Argue: as analysis tools improve (FEA, multiphysics simulation, optimisation algorithms), the boundary between calculation and judgment shifts; activities that required judgment now permit calculation. Argue the opposite: as tools improve, the scope of judgment shifts but does not shrink; the same activities require different judgments. Identify the empirical evidence that bears on the dispute.
+\end{exercise}
+
+\begin{exercise}
+Detailed design produces extensive documentation that is rarely read in full by anyone other than its authors. Discuss the function of the documentation and the conditions under which the documentation discipline is justified versus the conditions under which it is theatre.
+\end{exercise}
+
+\begin{exercise}
+A design uses an off-the-shelf component whose specifications are documented by the supplier. Discuss the engineer's obligation to verify the supplier's specifications under the conditions in which the component will be used in the design. Identify the failure modes of trusting supplier specifications without verification and the costs of verifying them.
+\end{exercise}
+
+\begin{exercise}
+A detailed-design analysis predicts a margin of safety of 0.05 (the design has 5\% margin against the allowable stress). The senior reviewer pushes back: "this margin is too thin; we need at least 0.25." Discuss the technical basis on which the margin choice should rest, the role of historical performance of similar designs, the role of the analysis uncertainty, and the role of organisational risk appetite.
+\end{exercise}
