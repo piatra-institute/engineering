@@ -42,6 +42,8 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | V | 1940 | [Tacoma Narrows Bridge](tacoma-narrows-1940.md) | `acc:tacoma-narrows-1941` |
 | V | 1981 | [Hyatt Regency walkway collapse](hyatt-regency-1981.md) | `acc:nbs-hyatt-1982` |
 | V | 2000 | [London Millennium Footbridge](millennium-bridge-2000.md) | `acc:dallard-millennium-2001` |
+| P | 2017 | [Grenfell Tower fire](grenfell-tower-2017.md) | `acc:grenfell-inquiry-2024` |
+| P | 2018 | [Cape Town Day Zero water crisis](cape-town-day-zero-2018.md) | `acc:csir-capetown-2018` |
 | V | 2018 | [Genoa Morandi Bridge](genoa-morandi-bridge-2018.md) | `acc:mit-morandi-2018` |
 
 ### Process
@@ -58,6 +60,8 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 |---|---|---|---|
 | V | 1979 | [Three Mile Island](three-mile-island-1979.md) | `acc:kemeny-tmi-1979` |
 | V | 1986 | [Chernobyl](chernobyl-1986.md) | `acc:iaea-insag7-1992` |
+| P | 2011 | [Fukushima Daiichi nuclear accident](fukushima-daiichi-2011.md) | `acc:tepco-fukushima-2012` |
+| P | 2021 | [Texas February 2021 grid failure](texas-grid-2021.md) | `acc:ferc-nerc-texas-2021` |
 
 ### Environmental
 
@@ -70,6 +74,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | Status | Year | Name | Primary source |
 |---|---|---|---|
 | V | 1985-1987 | [Therac-25](therac-25-1985-1987.md) | closest-equivalent: `paper:leveson-turner1993` |
+| P | 2005-2009 | [Mid Staffordshire NHS failure](mid-staffordshire-2005-2009.md) | `acc:francis-mid-staffs-2013` |
 
 ### Software
 
@@ -77,26 +82,27 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 |---|---|---|---|
 | V | 1991 | [Patriot missile system, Dhahran](patriot-dhahran-1991.md) | `acc:gao-patriot-1992` |
 | V | 1994 | [Pentium FDIV bug](pentium-fdiv-1994.md) | `paper:coe-tang-pratt-1995` |
+| P | 2010-2020 | [F-35 ALIS programme](f35-alis-2010-2020.md) | `acc:gao-f35-alis-2020` |
 | V | 2015 | [Volkswagen diesel emissions defeat device](volkswagen-diesel-defeat-2015.md) | `acc:epa-vw-nov-2015` |
 
 ## Counts
 
 - Aerospace: 16
-- Civil: 4
+- Civil: 6
 - Process: 3
-- Power: 2
+- Power: 4
 - Environmental: 1
-- Medical: 1
-- Software: 3
-- **Total: 30**
+- Medical: 2
+- Software: 4
+- **Total: 36**
 
-## Pending entries (~18-20)
+## Pending entries
 
 Accumulate as chapters cite them. Listed here for forward planning, not as commitment:
 
 - Civil: Tay Bridge (1879), Citicorp Tower (1978-1979, averted), Aberfan (1966), Vajont Dam (1963).
 - Process: Flixborough (1974), Buncefield (2005), Deepwater Horizon (2010).
-- Power: Fukushima (2011), Northeast blackout (2003), Texas grid failure (2021).
+- Power: Northeast blackout (2003).
 - Software: Knight Capital (2012).
 
 The schema and citation policy govern future additions. New entries are added in the appropriate domain section above when their primary or closest-equivalent source has been confirmed and the body sections are filled.

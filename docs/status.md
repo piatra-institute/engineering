@@ -4,7 +4,7 @@ Last updated: 2026-05-16.
 
 ## Phase
 
-**Phase 1: production prose at scale.** In progress. Volumes I through V are drafted in full at first-draft density; Volume VI is partially drafted (Ch 1 through Ch 10 of 13); Volumes VII, VIII, IX, X, and XI are drafted in full (19 of 19, 14 of 14, 19 of 19, 16 of 16, and 13 of 13 chapters respectively). All 157 drafted chapters compile cleanly in `main.pdf`. The discipline guards (`make check`, `make audit-docs`, `make accidents`, `make exercise-counts`) report PASS across the current state.
+**Phase 1: production prose at scale.** In progress. Volumes I through V are drafted in full at first-draft density; Volume VI is partially drafted (Ch 1 through Ch 10 of 13); Volumes VII, VIII, IX, X, XI, and XII are drafted in full (19 of 19, 14 of 14, 19 of 19, 16 of 16, 13 of 13, and 14 of 14 chapters respectively). All 171 drafted chapters compile cleanly in `main.pdf`. The discipline guards (`make check`, `make audit-docs`, `make accidents`, `make exercise-counts`) report PASS across the current state.
 
 Per-volume state:
 
@@ -19,13 +19,13 @@ Per-volume state:
 - **Volume IX (Systems)** — 19 of 19 chapters at **Stage 4** awaiting Codex review. Drafted on the `dev: vol09` commit.
 - **Volume X (Failure)** — 16 of 16 chapters at **Stage 4** awaiting Codex review. Drafted in the current session; volume opener plus Chapters 1-16 all carry first-draft prose.
 - **Volume XI (Design)** — 13 of 13 chapters at **Stage 4** awaiting Codex review. Drafted in the current session; volume opener plus Chapters 1-13 (including the design-studios chapter and the capstone) all carry first-draft prose. Chapter 13 (the capstone) carries the integrative project for the volume rather than exercises.
-- **Volume XII** — 17 chapters at **Stage 1** (scaffolding shells with dossier-derived metadata; no prose).
+- **Volume XII (Civilization)** — 14 of 14 chapters at **Stage 4** awaiting Codex review. Drafted in the current session; volume opener plus Chapters 1-14 (including the political-economy chapter and the closing future-of-the-artificial chapter that closes the entire book) all carry first-draft prose. Chapter 14 (the book closer) carries the integrative personal-manifesto project rather than exercises.
 
 Two lanes remain open:
 
-- Continue forward into Volume VI Ch 11-13 and Volume XII prose.
-- Codex review for Volumes II through XI (148 chapters awaiting review on the same three-role protocol that carried Volume I from Stage 4 to Stage 5).
-- Volume I-XI production-density pass: figures, project artifacts, expanded solution sets, case-study expansions, code/data co-located with each chapter. Q57 (page density vs target) is the open question that gates whether this lane runs at all; with ten full volumes plus Vol VI partial drafted at consistent ~10-31% of target density, the empirical case is now strong.
+- Continue forward into Volume VI Ch 11-13 prose (the remaining $3$ chapters at Stage 1).
+- Codex review for Volumes II through XII (162 chapters awaiting review on the same three-role protocol that carried Volume I from Stage 4 to Stage 5).
+- Volume I-XII production-density pass: figures, project artifacts, expanded solution sets, case-study expansions, code/data co-located with each chapter. Q57 (page density vs target) is the open question that gates whether this lane runs at all; with eleven full volumes plus Vol VI partial drafted at consistent ~10-31% of target density, the empirical case is now strong.
 
 Previous phases:
 
@@ -44,19 +44,19 @@ Previous phases:
 | Per-chapter dossiers | 174 |
 | `\chapmeta` blocks in chapter shells | 174 |
 | Half-life: TBD remaining | 0 |
-| `Project track: TBD` remaining | 20 (Vol VI Ch 11-13 plus all of Vol XII) |
-| TODO markers in TeX | ~180 |
-| Empty epigraphs in chapter shells | 18 |
-| Section headings | ~1735 |
-| Bibliography entries | 281 |
-| Named-case registry entries | 30 |
-| `acc:` keys cited in chapter prose | 32 |
+| `Project track: TBD` remaining | 3 (Vol VI Ch 11-13) |
+| TODO markers in TeX | ~65 |
+| Empty epigraphs in chapter shells | 4 |
+| Section headings | ~1629 |
+| Bibliography entries | 324 |
+| Named-case registry entries | 36 |
+| `acc:` keys cited in chapter prose | 38 |
 | Research seeds on disk | 1 |
-| Chapters with prose (Stage 4 or 5) | 157 |
+| Chapters with prose (Stage 4 or 5) | 171 |
 | Vol I chapters at Stage 5 | 9 of 9 |
-| Vols II-XI chapters at Stage 4 | 148 awaiting review |
-| Chapters at Stage 1 | 17 |
-| `main.pdf` page count (last build) | 2863 |
+| Vols II-XII chapters at Stage 4 | 162 awaiting review |
+| Chapters at Stage 1 | 3 |
+| `main.pdf` page count (last build) | 2986 |
 | Volume I page span | pp 1-220 (~220pp; target ~720) |
 | Volume II page span | pp 221-710 (~490pp; target ~1800) |
 | Volume III page span | pp 711-984 (~274pp; target ~1300) |

@@ -246,13 +246,13 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 - **Phase 0.5** (structural hardening) **Complete** 2026-04-28.
 - **Phase 0.6** (curriculum expansion: 11 new chapters, 4 renames) **Complete** 2026-04-28.
 - **Phase 0.7** (registry foundation and pilot prose) **Complete** 2026-04-29.
-- **Phase 1** (production prose at scale) **In progress**. Volumes I-V drafted in full at first-draft density; Volume VI 10 of 13 drafted; Volumes VII, VIII, IX, X, and XI drafted in full (19 of 19, 14 of 14, 19 of 19, 16 of 16, and 13 of 13). Volume I is at Stage 5 (reviewed and resolved); Volumes II-XI are at Stage 4 awaiting Codex review. Codex-review lane for Vols II-XI and forward-prose lane into Vol VI Ch 11-13 and Vol XII both open; Q57 (page density vs target) gates the production-density choice and now has eleven volumes of evidence behind it.
+- **Phase 1** (production prose at scale) **In progress**. Volumes I-V drafted in full at first-draft density; Volume VI 10 of 13 drafted; Volumes VII, VIII, IX, X, XI, and XII drafted in full (19 of 19, 14 of 14, 19 of 19, 16 of 16, 13 of 13, and 14 of 14). Volume I is at Stage 5 (reviewed and resolved); Volumes II-XII are at Stage 4 awaiting Codex review. Codex-review lane for Vols II-XII and forward-prose lane into Vol VI Ch 11-13 both open; Q57 (page density vs target) gates the production-density choice and now has twelve volumes of evidence behind it.
 
 Verified at last edit (2026-05-16):
 
 - 12 volumes / 174 chapters / 174 dossiers.
-- 2863-page PDF.
-- 157 chapters with first-draft prose. Per-volume status:
+- 2986-page PDF.
+- 171 chapters with first-draft prose. Per-volume status:
   - **Vol I** 9/9 at Stage 5, pp 1-220 (~220pp; target ~720).
   - **Vol II** 18/18 at Stage 4, pp 221-710 (~490pp; target ~1800).
   - **Vol III** 13/13 at Stage 4, pp 711-984 (~274pp; target ~1300).
@@ -262,17 +262,17 @@ Verified at last edit (2026-05-16):
   - **Vol VII** 19/19 at Stage 4, pp 1635-1898 (~264pp; target ~1980).
   - **Vol VIII** 14/14 at Stage 4, pp 1899-2240 (~342pp; target ~1610).
   - **Vol IX** 19/19 at Stage 4, pp 2241-2416 (~176pp; target ~1850).
-  - **Vol X** 16/16 at Stage 4, pp 2417-2705 (~289pp; target ~1450). Highest first-draft density to date ($\approx$ 20\% of target).
+  - **Vol X** 16/16 at Stage 4, pp 2417-2705 (~289pp; target ~1450). Highest first-draft density (Vol X-XII period) ($\approx$ 20\% of target).
   - **Vol XI** 13/13 at Stage 4, pp 2706-2863 (~158pp; target ~1080). Includes the design-studios chapter (Ch 12) and the capstone (Ch 13); Ch 13 carries the integrative project for the volume rather than exercises.
-  - **Vol XII** 17 chapters at Stage 1 (scaffolding shells only).
-- 281 bibliography entries.
-- 30 named-case registry entries; 32 `acc:` keys cited in prose; `make accidents` PASS. (Vol X drafting added 7 entries: Boeing 737 MAX MCAS, Tenerife, Eastern Air Lines Flight 401, American Eagle 4184 / Roselawn ATR-72 icing, Comair Flight 5191, Genoa Morandi Bridge, Flint water crisis.)
+  - **Vol XII** 14/14 at Stage 4, pp 2864-2986 (~123pp; target ~1320). Drafted in the current session; includes the closing future-of-the-artificial chapter (Ch 14) that closes the entire book and carries the integrative personal-manifesto project rather than exercises.
+- 324 bibliography entries.
+- 36 named-case registry entries; 38 `acc:` keys cited in prose; `make accidents` PASS. (Vol XII drafting added 6 entries: Fukushima Daiichi, Texas grid 2021, Cape Town day zero, Mid Staffordshire NHS, Grenfell Tower, F-35 ALIS.)
 - 1 research seed on disk under `docs/research/seeds/`.
-- 20 chapters still carry `Project track: TBD` (Vol VI Ch 11-13 plus all of Vol XII). Q55 settled per-chapter for Vols I-V, Vol VI Ch 1-10, and Vols VII-XI during drafting.
-- Vol I review log complete: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`, each with a `Resolved:` banner. Vols II-XI reviews not yet started; the same three-role protocol carries forward.
+- 3 chapters still carry `Project track: TBD` (Vol VI Ch 11-13). Q55 settled per-chapter for Vols I-V, Vol VI Ch 1-10, and Vols VII-XII during drafting.
+- Vol I review log complete: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`, each with a `Resolved:` banner. Vols II-XII reviews not yet started; the same three-role protocol carries forward.
 - Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
-- Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`); trace and diagonal (`\tr`, `\diag`); optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`). Added during Vol II drafting; carried forward unchanged through Vols III-X. Vol VII drafting added the `\usepackage[inline]{enumitem}` option in `preamble.tex` to support `enumerate*` inline lists.
-- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 2863-page PDF.
+- Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`); trace and diagonal (`\tr`, `\diag`); optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`). Added during Vol II drafting; carried forward unchanged through Vols III-XII. Vol VII drafting added the `\usepackage[inline]{enumitem}` option in `preamble.tex` to support `enumerate*` inline lists.
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 2986-page PDF.
 
 ## What not to do
 
