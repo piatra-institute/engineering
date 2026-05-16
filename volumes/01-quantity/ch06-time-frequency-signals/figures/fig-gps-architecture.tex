@@ -1,0 +1,102 @@
+\begin{figure}[p]
+\centering
+\begin{tikzpicture}[
+  x=1cm, y=1cm,
+  font=\small,
+  block/.style={draw, thick, rounded corners=2pt, minimum width=2.8cm, minimum height=0.9cm, align=center, font=\small},
+  arrow/.style={->, thick, >=stealth},
+  faint/.style={draw=gray, thick, dashed}
+]
+
+% Earth at the bottom
+\draw[thick, fill=engblue!10] (4.5, 0) circle (1.6);
+\node at (4.5, 0) {Earth};
+
+% Satellite glyphs around the top
+\foreach \angle/\lab in {110/SV1, 80/SV2, 50/SV3, 20/SV4} {
+  \pgfmathsetmacro{\sx}{4.5 + 4.8*cos(\angle)}
+  \pgfmathsetmacro{\sy}{0 + 4.8*sin(\angle)}
+  \node[block, fill=engred!15] (sat\lab) at (\sx, \sy) {\lab \\ atomic clock};
+}
+
+% Receiver on ground
+\node[block, fill=engblue!15] (rx) at (4.5, -2.6) {Receiver \\ local oscillator};
+
+% Signal paths satellite -> receiver
+\foreach \lab in {SV1, SV2, SV3, SV4} {
+  \draw[faint, ->] (sat\lab) -- (rx);
+}
+
+% Control segment box
+\node[block, fill=engblack!8, minimum width=3.2cm] (cs) at (-2.0, 3.0) {Master control \\ station};
+
+% Ground reference / UTC box
+\node[block, fill=engblack!8, minimum width=3.4cm] (utc) at (11.0, 3.0) {GPS system time \\ steered to UTC(USNO)};
+
+% Arrows: control segment commands satellites
+\draw[arrow, gray] (cs.east) to[bend left=10] (satSV1.west);
+\draw[arrow, gray] (cs.east) to[bend left=5] (satSV2.west);
+
+% UTC arrow to receiver
+\draw[arrow, gray] (utc.south) -- ++(0, -2) -| (rx.east);
+\node[font=\footnotesize, anchor=west] at (8.6, 1.5) {nav msg};
+\node[font=\footnotesize, anchor=west] at (8.6, 1.0) {UTC offset};
+
+% Pseudorange equation block
+\node[block, fill=engred!8, minimum width=6cm, minimum height=1.6cm, align=left] (eq) at (4.5, -5.6) {
+  \textbf{Pseudorange:} $\rho_i = c \,(t_{\text{rx}} - t_{\text{tx},i})$ \\[1pt]
+  \textbf{Unknowns:} $(x, y, z, \Delta t_{\text{rx}})$ \\[1pt]
+  \textbf{Equations:} 4 satellites, 4 pseudoranges
+};
+\draw[arrow] (rx.south) -- (eq.north);
+
+% Error sources annotation
+\node[align=left, font=\footnotesize, anchor=west, draw=gray, rounded corners=2pt, fill=engblack!4] (err) at (-3.5, -2) {
+  \textbf{Error sources}\\
+  \textbullet\ ionospheric delay\\
+  \textbullet\ tropospheric delay\\
+  \textbullet\ multipath\\
+  \textbullet\ satellite clock/eph.\\
+  \textbullet\ receiver noise\\
+  \textbullet\ geometry (DOP)\\
+  \textbullet\ relativistic shifts
+};
+
+% Relativistic correction note
+\node[align=left, font=\footnotesize, anchor=west, draw=gray, rounded corners=2pt, fill=engblack!4] (rel) at (8.5, -2.8) {
+  \textbf{Relativistic offset}\\
+  GR: $+45 \,\mu\text{s}/\text{day}$\\
+  SR: $-7 \,\mu\text{s}/\text{day}$\\
+  Net: $+38 \,\mu\text{s}/\text{day}$\\
+  pre-tuned at launch
+};
+
+% Position output arrow
+\draw[arrow] (eq.south) -- ++(0, -0.6) node[below, font=\footnotesize] {$\hat{x}, \hat{y}, \hat{z}, \widehat{\Delta t_{\text{rx}}}$};
+
+% Working-number callout
+\node[align=center, anchor=west, font=\footnotesize, draw, rounded corners=2pt, fill=engred!10] at (-3.5, 3.0) {
+  \textbf{Working number}\\[1pt]
+  $1 \,\text{ns} \Leftrightarrow 30 \,\text{cm}$\\
+  on the pseudorange
+};
+
+\end{tikzpicture}
+\caption[GPS as a measurement system]{The GPS measurement chain.
+Each satellite (SV) broadcasts a signal disciplined by its on-board
+atomic clocks, steered by the master control station against GPS
+system time, which is itself steered to UTC(USNO). The receiver
+records the time of arrival against its local oscillator and forms
+a pseudorange to each satellite. Four satellites in view supply
+four pseudoranges, which solve four unknowns: the receiver
+coordinates $(x, y, z)$ and the receiver clock offset $\Delta
+t_{\text{rx}}$. Each block in the chain contributes its own error
+budget; the working conversion $1 \,\text{ns} \Leftrightarrow 30
+\,\text{cm}$ on the pseudorange anchors a reader's intuition.
+Relativistic corrections are pre-applied at the satellite
+frequency standard and refined in the receiver firmware. Position
+service quoted current as of 2026; receiver and broadcast
+performance figures vary with configuration, environment, and
+processing.}
+\label{fig:vol01:ch06:gps-architecture}
+\end{figure}

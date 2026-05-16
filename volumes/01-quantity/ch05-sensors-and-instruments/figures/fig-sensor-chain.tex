@@ -1,0 +1,123 @@
+\begin{figure}[p]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\small,
+  node distance=0.6cm,
+  block/.style={draw=engblue, fill=engblue!8, thick, minimum width=2.4cm,
+                minimum height=1.0cm, align=center, rounded corners=2pt},
+  noisesrc/.style={draw=engred, fill=engred!8, thick, minimum width=2.0cm,
+                   minimum height=0.7cm, align=center, rounded corners=2pt,
+                   font=\footnotesize},
+  arrow/.style={->, thick, engblue},
+  noisearrow/.style={->, thick, engred, dashed}
+]
+
+%% Panel A: the measurement chain ===========================================
+\node[anchor=west, font=\bfseries] at (-0.5, 9.6) {A. The measurement chain};
+
+\node[block] (phenomenon) at (0.5, 8) {Physical\\phenomenon};
+\node[block] (transducer) at (3.5, 8) {Transducer\\(thermistor, gauge,\\photodiode, ...)};
+\node[block] (cond)       at (6.7, 8) {Signal\\conditioning\\(gain, filter)};
+\node[block] (adc)        at (9.8, 8) {ADC\\(quantise,\\sample)};
+\node[block] (record)     at (12.9, 8) {Digital\\record};
+
+\draw[arrow] (phenomenon) -- (transducer) node[midway, above, font=\scriptsize]{$T,\,F,\,P$};
+\draw[arrow] (transducer) -- (cond)       node[midway, above, font=\scriptsize]{$R,\,V,\,I$};
+\draw[arrow] (cond)       -- (adc)        node[midway, above, font=\scriptsize]{$V_{\text{cond}}$};
+\draw[arrow] (adc)        -- (record)     node[midway, above, font=\scriptsize]{count};
+
+% Noise sources injected at each interface
+\node[noisesrc] (n1) at (3.5, 6.3) {self-heating,\\thermal contact};
+\node[noisesrc] (n2) at (6.7, 6.3) {Johnson noise,\\drift, EMI};
+\node[noisesrc] (n3) at (9.8, 6.3) {quantisation,\\$V_{\text{ref}}$ drift};
+\node[noisesrc] (n4) at (12.9, 6.3) {clock jitter,\\packet loss};
+
+\draw[noisearrow] (n1) -- (transducer);
+\draw[noisearrow] (n2) -- (cond);
+\draw[noisearrow] (n3) -- (adc);
+\draw[noisearrow] (n4) -- (record);
+
+\node[anchor=west, font=\scriptsize\itshape, color=engred] at (-0.5, 5.4)
+  {Each interface adds an uncertainty term. The transport archetype is the accounting.};
+
+%% Panel B: the calibration loop ===========================================
+\node[anchor=west, font=\bfseries] at (-0.5, 4.4) {B. The calibration loop};
+
+\node[block, minimum width=2.6cm] (sensor) at (1.4, 3) {Sensor\\under test};
+\node[block, minimum width=2.6cm] (refstd) at (5.6, 3) {Reference\\standard};
+\node[block, minimum width=2.6cm] (fit)    at (9.8, 3) {Fit\\calibration\\function};
+\node[block, minimum width=2.6cm] (record2) at (13.8, 3)
+  {Record\\$\hat{f}$, $u(\hat{f})$};
+
+\draw[arrow] (sensor) -- (refstd)
+  node[midway, above, font=\scriptsize]{paired readings};
+\draw[arrow] (refstd) -- (fit)
+  node[midway, above, font=\scriptsize]{$\{(x_i, y_i)\}$};
+\draw[arrow] (fit) -- (record2)
+  node[midway, above, font=\scriptsize]{coeffs};
+
+% feedback loop
+\draw[arrow, rounded corners=4pt]
+  (record2.south) -- ++(0, -0.7) -| (sensor.south);
+\node[anchor=north, font=\scriptsize, color=engblue] at (7.4, 1.7)
+  {periodic recalibration};
+
+%% Panel C: spec sheet vs working uncertainty ==============================
+\node[anchor=west, font=\bfseries] at (-0.5, 0.7)
+  {C. Datasheet specification vs working uncertainty};
+
+% Bars: stacked uncertainty contributions
+\foreach \y/\label in {-0.5/{datasheet}, -1.5/{working}} {
+  \node[anchor=east, font=\footnotesize] at (1.5, \y) {\label};
+}
+
+% datasheet: one segment
+\fill[engblue!30] (1.7, -0.85) rectangle (4.0, -0.15);
+\draw (1.7, -0.85) rectangle (4.0, -0.15);
+\node[font=\scriptsize] at (2.85, -0.5) {manufacturer $\pm$};
+
+% working: many segments
+\definecolor{seg1}{RGB}{31, 78, 121}
+\definecolor{seg2}{RGB}{86, 130, 168}
+\definecolor{seg3}{RGB}{142, 178, 207}
+\definecolor{seg4}{RGB}{200, 100, 80}
+\definecolor{seg5}{RGB}{153, 42, 42}
+\definecolor{seg6}{RGB}{120, 120, 120}
+
+\fill[seg1!50] (1.7, -1.85) rectangle (3.0, -1.15);
+\fill[seg2!60] (3.0, -1.85) rectangle (4.2, -1.15);
+\fill[seg3!70] (4.2, -1.85) rectangle (5.4, -1.15);
+\fill[seg4!50] (5.4, -1.85) rectangle (6.6, -1.15);
+\fill[seg5!60] (6.6, -1.85) rectangle (8.0, -1.15);
+\fill[seg6!50] (8.0, -1.85) rectangle (9.6, -1.15);
+\draw (1.7, -1.85) rectangle (9.6, -1.15);
+
+\node[font=\tiny] at (2.35, -1.5) {sensor};
+\node[font=\tiny] at (3.6,  -1.5) {ref.\ res.};
+\node[font=\tiny] at (4.8,  -1.5) {$V_{\text{ref}}$};
+\node[font=\tiny] at (6.0,  -1.5) {quant.};
+\node[font=\tiny] at (7.3,  -1.5) {self-heat};
+\node[font=\tiny] at (8.8,  -1.5) {drift};
+
+\node[anchor=west, font=\scriptsize\itshape, color=engred] at (10.0, -1.5)
+  {The datasheet $\pm$ is one term in a longer budget.};
+
+% axis
+\draw[->, thick] (1.7, -2.3) -- (10.2, -2.3) node[right, font=\scriptsize]
+  {combined standard uncertainty $u_c$};
+
+\end{tikzpicture}
+\caption[The sensor measurement chain, the calibration loop, and the
+working uncertainty budget]{Three views of a sensor in working use.
+Panel A: the measurement chain from physical phenomenon to digital
+record, with the dominant noise or drift source at each interface.
+Panel B: the calibration loop closes through a reference standard,
+fits a calibration function, records the function and its
+uncertainty, and is reopened at the next recalibration interval.
+Panel C: the manufacturer's specification on the datasheet is one
+term in the working uncertainty budget; the budget collects the
+sensor's own residuals, the conditioning chain, the reference
+resistor, the ADC reference, quantisation, self-heating, and
+drift. A reader who reports the datasheet $\pm$ as if it were the
+working uncertainty has substituted one term for the sum.}
+\label{fig:vol01:ch05:sensor-chain}
+\end{figure}

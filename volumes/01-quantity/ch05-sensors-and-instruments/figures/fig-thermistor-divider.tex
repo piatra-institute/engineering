@@ -1,0 +1,110 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\small]
+
+% ---- Schematic (left) ----
+\begin{scope}[shift={(-0.5, 0)}]
+\node[anchor=west, font=\bfseries] at (-0.2, 5.2) {Schematic};
+
+% Vcc rail
+\draw[thick] (1.5, 4.8) -- (3.5, 4.8);
+\node[anchor=west, font=\footnotesize] at (3.6, 4.8) {$V_{\text{cc}} = 3.30\,\text{V}$};
+
+% Upper resistor R_ref
+\draw[thick] (2.5, 4.8) -- (2.5, 4.3);
+\draw[thick] (2.3, 4.3) rectangle (2.7, 3.3);
+\node[anchor=west, font=\footnotesize] at (2.8, 3.8) {$R_{\text{ref}}$ (10\,k$\Omega$, $\pm 1\%$)};
+\draw[thick] (2.5, 3.3) -- (2.5, 2.8);
+
+% ADC tap
+\fill (2.5, 2.8) circle (1.5pt);
+\draw[thick, engblue] (2.5, 2.8) -- (4.0, 2.8);
+\node[anchor=west, font=\footnotesize, color=engblue] at (4.0, 2.8)
+  {ADC input $V_{\text{out}}$};
+
+% Lower resistor: thermistor (zigzag-ish)
+\draw[thick] (2.5, 2.8) -- (2.5, 2.3);
+\draw[thick, engred] (2.3, 2.3) rectangle (2.7, 1.3);
+\draw[engred, thick] (2.3, 2.2) -- (2.7, 1.4);
+\node[anchor=west, font=\footnotesize, color=engred] at (2.8, 1.8)
+  {$R_{\text{th}}$ (NTC, 10\,k$\Omega$ @ 25\,\degC)};
+\draw[thick] (2.5, 1.3) -- (2.5, 0.8);
+
+% Ground
+\draw[thick] (1.8, 0.8) -- (3.2, 0.8);
+\draw[thick] (2.0, 0.7) -- (3.0, 0.7);
+\draw[thick] (2.2, 0.6) -- (2.8, 0.6);
+\node[anchor=west, font=\footnotesize] at (3.3, 0.7) {GND};
+\end{scope}
+
+% ---- Transfer curve (right) ----
+\begin{scope}[shift={(7.5, 0)}]
+\node[anchor=west, font=\bfseries] at (-0.2, 5.2)
+  {Transfer: $V_{\text{out}}$ vs $T$};
+
+% axes
+\draw[->, thick] (0, 0.8) -- (7.5, 0.8) node[right, font=\footnotesize]
+  {$T$ (\degC)};
+\draw[->, thick] (0, 0.8) -- (0, 4.8) node[above, font=\footnotesize]
+  {$V_{\text{out}}$ (V)};
+
+% ticks
+\foreach \x/\lab in {0/0, 1.75/20, 3.5/40, 5.25/60, 7/80} {
+  \draw (\x, 0.7) -- (\x, 0.9);
+  \node[font=\scriptsize, anchor=north] at (\x, 0.7) {\lab};
+}
+\foreach \y/\lab in {1.3/0.5, 2.3/1.5, 3.3/2.5, 4.3/3.3} {
+  \draw (-0.1, \y) -- (0.1, \y);
+  \node[font=\scriptsize, anchor=east] at (-0.1, \y) {\lab};
+}
+
+% Vout curve: NTC thermistor with beta = 3950, R0 = 10k at 25 C, divider with R_ref = 10k, Vcc = 3.3
+% Vout(T) = Vcc * Rth(T) / (Rref + Rth(T))
+% Computed sample points: at T = 0,10,...,80 C, Rth/(Rref+Rth) ratios give Vout values that
+% rise smoothly because Rth at 0 C is large (~33k) so Vout near 2.5 V, decreasing as T rises.
+% At T = 0 C   : Rth ~ 33 k, Vout ~ 2.54 V
+% At T = 25 C  : Rth ~ 10 k, Vout ~ 1.65 V
+% At T = 50 C  : Rth ~ 3.6 k, Vout ~ 0.87 V
+% At T = 80 C  : Rth ~ 1.25 k, Vout ~ 0.37 V
+% Map to plot: x = T/80 * 7 ; y = 0.8 + Vout * 1.0  (approx)
+
+% Hand-traced smooth descending curve
+\draw[thick, engblue]
+  (0.0, 0.8+2.54) .. controls (1.0, 0.8+2.30) and (1.4, 0.8+2.05) ..
+  (1.75, 0.8+1.85) .. controls (2.2, 0.8+1.60) and (2.6, 0.8+1.35) ..
+  (3.0, 0.8+1.20) .. controls (3.5, 0.8+1.00) and (4.2, 0.8+0.75) ..
+  (4.4, 0.8+0.70) .. controls (5.0, 0.8+0.55) and (5.6, 0.8+0.45) ..
+  (6.0, 0.8+0.37) .. controls (6.4, 0.8+0.30) and (6.8, 0.8+0.25) ..
+  (7.0, 0.8+0.22);
+
+% Mark working point at 25 C
+\fill[engred] (1.75, 0.8+1.85) circle (2pt);
+\draw[engred, thin, dashed] (1.75, 0.8) -- (1.75, 0.8+1.85)
+  -- (0, 0.8+1.85);
+\node[font=\scriptsize, color=engred, anchor=south west, align=left] at (1.85, 0.8+1.85)
+  {working point\\(25\,\degC, $\sim$1.65\,V)};
+
+% Sensitivity zone shading
+\fill[engblue!12] (1.0, 0.8) rectangle (4.5, 4.8);
+\node[font=\scriptsize\itshape, color=engblue, anchor=north] at (2.75, 4.7)
+  {steepest slope};
+
+\end{scope}
+
+\end{tikzpicture}
+\caption[Thermistor voltage divider: schematic and transfer]{Left:
+the chapter project's voltage divider with the fixed reference
+resistor as the upper element and the NTC thermistor as the lower
+element. The ADC tap reads
+$V_{\text{out}} = V_{\text{cc}} R_{\text{th}}/(R_{\text{ref}} +
+R_{\text{th}})$. Right: the resulting transfer curve for a
+$10\,\text{k}\Omega$ NTC thermistor with $\beta = 3950\,\text{K}$
+across the kitchen-temperature range. The slope $|\dd V_{\text{out}}
+/ \dd T|$ is largest in the middle of the range (shaded), where
+$R_{\text{th}}$ is close to $R_{\text{ref}}$; the divider's
+small-signal sensitivity is approximately
+$\Delta V_{\text{out}}/V_{\text{out}} \approx \varepsilon/2$ for a
+fractional resistance change $\varepsilon$ at the symmetric
+operating point.}
+\label{fig:vol01:ch05:thermistor-divider}
+\end{figure}

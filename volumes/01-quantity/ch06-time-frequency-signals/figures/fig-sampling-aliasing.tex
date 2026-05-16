@@ -1,0 +1,56 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\small]
+
+% Top panel: original sinusoid sampled above Nyquist
+\begin{scope}[shift={(0,0)}]
+  \node[anchor=south west] at (0, 1.4) {\textbf{Above Nyquist: faithful sample}};
+  \draw[->, thick] (-0.1, 0) -- (8.2, 0) node[right, font=\footnotesize] {$t$};
+  \draw[->, thick] (0, -1.1) -- (0, 1.2);
+  \draw[domain=0:8, samples=200, smooth, engblue, thick]
+    plot (\x, {sin(deg(2*pi*\x/2))});
+  % Samples at sample period 0.25 (Nyquist period 0.5, well above)
+  \foreach \i in {0,1,...,32} {
+    \pgfmathsetmacro{\tx}{0.25*\i}
+    \pgfmathsetmacro{\ty}{sin(deg(2*pi*\tx/2))}
+    \fill[engred] (\tx, \ty) circle (0.06);
+    \draw[engred, very thin] (\tx, 0) -- (\tx, \ty);
+  }
+  \node[engblue, anchor=west, font=\footnotesize] at (8.2, 1.0) {original};
+  \node[engred, anchor=west, font=\footnotesize] at (8.2, 0.5) {samples};
+\end{scope}
+
+% Bottom panel: undersampled, alias visible
+\begin{scope}[shift={(0,-3.6)}]
+  \node[anchor=south west] at (0, 1.4) {\textbf{Below Nyquist: alias replaces signal}};
+  \draw[->, thick] (-0.1, 0) -- (8.2, 0) node[right, font=\footnotesize] {$t$};
+  \draw[->, thick] (0, -1.1) -- (0, 1.2);
+  % True signal at f
+  \draw[domain=0:8, samples=200, smooth, engblue, thick, opacity=0.5]
+    plot (\x, {sin(deg(2*pi*\x*1.7))});
+  % Samples at sample period 1.176 (so fs ~ 0.85, f = 1.7 well above fs/2)
+  % Alias frequency falias = |f - fs| (with n=1) so falias ~ 0.85, alias period ~ 1.18
+  % Use a moderate sample spacing of 0.667; f=1.7 vs fs=1.5 -> falias = |1.7 - 1.5| = 0.2 too slow
+  % Pick: fs = 2.0 sample period 0.5, f = 1.7 -> falias = |1.7 - 2.0| = 0.3 period 3.33
+  \foreach \i in {0,1,...,16} {
+    \pgfmathsetmacro{\tx}{0.5*\i}
+    \pgfmathsetmacro{\ty}{sin(deg(2*pi*\tx*1.7))}
+    \fill[engred] (\tx, \ty) circle (0.06);
+    \draw[engred, very thin] (\tx, 0) -- (\tx, \ty);
+  }
+  % Alias drawn through the sample points (falias = 0.3)
+  \draw[domain=0:8, samples=200, smooth, engred, dashed, thick]
+    plot (\x, {sin(deg(2*pi*\x*0.3))});
+  \node[engblue, anchor=west, font=\footnotesize] at (8.2, 1.0) {true ($f$)};
+  \node[engred, anchor=west, font=\footnotesize] at (8.2, 0.5) {alias ($f-f_s$)};
+\end{scope}
+
+\end{tikzpicture}
+\caption[Sampling and aliasing]{Top: a sinusoid sampled well above
+the Nyquist rate. The samples (red) trace the original (blue) and
+allow reconstruction. Bottom: the same sinusoid sampled below the
+Nyquist rate. The samples now lie equally on the original signal
+and on a lower-frequency alias (red dashed). The sampler cannot
+distinguish the two; the recorded sequence reports the alias.}
+\label{fig:vol01:ch06:sampling-aliasing}
+\end{figure}

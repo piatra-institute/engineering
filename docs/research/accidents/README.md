@@ -84,6 +84,13 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | V | 1994 | [Pentium FDIV bug](pentium-fdiv-1994.md) | `paper:coe-tang-pratt-1995` |
 | P | 2010-2020 | [F-35 ALIS programme](f35-alis-2010-2020.md) | `acc:gao-f35-alis-2020` |
 | V | 2015 | [Volkswagen diesel emissions defeat device](volkswagen-diesel-defeat-2015.md) | `acc:epa-vw-nov-2015` |
+| P | 1999/2019 | [GPS week-number rollover](gps-week-rollover-1999-2019.md) | `web:gpsgov-week-rollover-2019` |
+
+### Metrology
+
+| Status | Year | Name | Primary source |
+|---|---|---|---|
+| V | 1889-2019 | [IPK mass drift (international prototype of the kilogram)](ipk-mass-drift-1889-2019.md) | `paper:girard-ipk-1994` |
 
 ## Counts
 
@@ -93,8 +100,9 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 - Power: 4
 - Environmental: 1
 - Medical: 2
-- Software: 4
-- **Total: 36**
+- Software: 5
+- Metrology: 1
+- **Total: 38**
 
 ## Pending entries
 

@@ -1,0 +1,109 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\small]
+
+% Top: independent failures (left), common-mode (right)
+\node[anchor=west, font=\bfseries] at (0, 5.4)
+  {Independent failures};
+\node[anchor=west, font=\bfseries] at (7.5, 5.4)
+  {Common-mode failure};
+
+% Left scene: three sensors, three different environments
+\foreach \i/\x/\envcolor in {1/0.8/engblue!20, 2/2.3/engred!20, 3/3.8/enggray!25} {
+  \fill[\envcolor] (\x-0.5, 3.4) rectangle (\x+0.5, 5.0);
+  \draw[thick] (\x-0.5, 3.4) rectangle (\x+0.5, 5.0);
+  \node[font=\scriptsize] at (\x, 4.65) {env $\i$};
+  \draw[fill=white, thick] (\x-0.25, 3.8) rectangle (\x+0.25, 4.3);
+  \node[font=\scriptsize] at (\x, 4.05) {S$_{\i}$};
+}
+
+% Voter
+\draw[thick] (1.0, 2.3) rectangle (3.6, 2.9);
+\node at (2.3, 2.6) {majority vote};
+
+% Lines from sensors to voter
+\foreach \x in {0.8, 2.3, 3.8} {
+  \draw[->, thick] (\x, 3.4) -- (\x, 2.9);
+}
+
+% Result OK
+\node[font=\footnotesize, anchor=west] at (0.2, 1.8)
+  {one sensor fails $\Rightarrow$ vote rejects it};
+\node[font=\footnotesize\itshape, color=engblue, anchor=west] at (0.2, 1.2)
+  {redundancy works};
+
+% Right scene: three sensors, same environment
+\fill[engred!15] (7.8, 3.4) rectangle (11.8, 5.0);
+\draw[thick] (7.8, 3.4) rectangle (11.8, 5.0);
+\node[font=\scriptsize, anchor=north] at (9.8, 5.0)
+  {shared environment (ice, batch, firmware, ref.\ chain)};
+\foreach \i/\x in {1/8.4, 2/9.8, 3/11.2} {
+  \draw[fill=white, thick] (\x-0.25, 3.8) rectangle (\x+0.25, 4.3);
+  \node[font=\scriptsize] at (\x, 4.05) {S$_{\i}$};
+}
+
+\draw[thick] (8.6, 2.3) rectangle (11.2, 2.9);
+\node at (9.9, 2.6) {majority vote};
+\foreach \x in {8.4, 9.8, 11.2} {
+  \draw[->, thick, engred] (\x, 3.4) -- (\x, 2.9);
+}
+
+\node[font=\footnotesize, anchor=west] at (7.7, 1.8)
+  {shared cause $\Rightarrow$ all three fail together};
+\node[font=\footnotesize\itshape, color=engred, anchor=west] at (7.7, 1.2)
+  {redundancy delivers a unanimous wrong answer};
+
+% Bottom: correlation-coefficient axis showing uncertainty-of-mean penalty
+\draw[->, thick] (0.4, -0.2) -- (12, -0.2)
+  node[right, font=\footnotesize] {correlation $\rho$ between sensor errors};
+\foreach \x/\lab in {1.0/0, 3.6/0.5, 6.2/0.9, 8.8/0.99, 11.4/1.0} {
+  \draw (\x, -0.3) -- (\x, -0.1);
+  \node[font=\scriptsize, anchor=north] at (\x, -0.3) {\lab};
+}
+
+% Plot u(mean)/sigma for three sensors: sqrt((1 + 2 rho)/3)
+% rho=0:    sqrt(1/3) = 0.577
+% rho=0.5:  sqrt(2/3) = 0.816
+% rho=0.9:  sqrt(2.8/3) = 0.966
+% rho=0.99: sqrt(2.98/3) = 0.996
+% rho=1:    1.000
+\draw[thick, engred]
+  (1.0, -0.2 + 0.577*1.6)
+  .. controls (1.8, -0.2 + 0.65*1.6) and (2.8, -0.2 + 0.75*1.6) ..
+  (3.6, -0.2 + 0.816*1.6)
+  .. controls (4.6, -0.2 + 0.88*1.6) and (5.4, -0.2 + 0.93*1.6) ..
+  (6.2, -0.2 + 0.966*1.6)
+  .. controls (7.5, -0.2 + 0.985*1.6) and (8.0, -0.2 + 0.993*1.6) ..
+  (8.8, -0.2 + 0.996*1.6)
+  -- (11.4, -0.2 + 1.0*1.6);
+
+% y-axis on the right of the bottom panel
+\draw[->, thick] (12.2, -0.2) -- (12.2, -0.2 + 1.7);
+\node[font=\scriptsize, anchor=west, rotate=90, align=center]
+  at (12.7, -0.2 + 0.85) {$u(\bar y)/\sigma$};
+\foreach \y/\lab in {0/0, 0.577/0.58, 0.816/0.82, 1.0/1.0} {
+  \draw (12.1, -0.2 + \y*1.6) -- (12.3, -0.2 + \y*1.6);
+  \node[font=\scriptsize, anchor=west] at (12.3, -0.2 + \y*1.6) {\lab};
+}
+
+\node[font=\scriptsize\itshape, color=engred, anchor=west]
+  at (0.4, -1.2) {Three correlated sensors deliver no more
+  precision than one when $\rho \to 1$.};
+
+\end{tikzpicture}
+\caption[Common-mode failure: independent vs shared cause]{Three
+sensors voting on a measurement. Independent failures (left)
+respond to the cause the vote was designed to handle: a single
+sensor disagreeing with the other two is overruled by the
+majority. A shared cause (right), ice crystals around a pitot
+suite, the same firmware build in three inertial reference units,
+or three voltage transducers from the same batch calibrated against
+the same drifting secondary reference, defeats the vote. The
+bottom panel shows the standard uncertainty of the mean of three
+sensors with pairwise correlation $\rho$ between their errors,
+relative to a single sensor's standard deviation $\sigma$. At
+$\rho = 0$ the mean is $1/\sqrt{3} \approx 0.58$ times the
+single-sensor spread; at $\rho \to 1$ the ratio approaches one and
+the redundancy delivers no precision benefit.}
+\label{fig:vol01:ch05:common-mode}
+\end{figure}

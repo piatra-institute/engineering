@@ -192,6 +192,11 @@ the reader should recognize their mechanisms before fitting data
 \cite[ch.~3-4]{text:devore2015}. We state each in the form a working
 engineer needs: its shape, its parameters, the mechanism that
 produces it, and the engineering quantities it commonly models.
+\Cref{fig:vol01:ch08:distribution-menagerie} collects the five
+together with Student's $t$, the small-sample correction the
+chapter uses throughout sections 8.3 and 8.4.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-distribution-menagerie.tex}
 
 \subsection{Normal (Gaussian)}
 
@@ -358,7 +363,12 @@ against the normal distribution) makes deviations from Gaussian
 visible. A log-scale histogram makes deviations from log-normal
 visible. A Weibull plot, which uses a transformation that linearises
 $\ln(-\ln S(t))$ against $\ln t$, makes Weibull data fall on a
-straight line.
+straight line. \Cref{fig:vol01:ch08:qq-plot} contrasts the Q-Q
+signature of a Gaussian sample with that of a heavy-tailed sample;
+the engineer who learns to read this plot saves hours of mistaken
+fits.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-qq-plot.tex}
 
 The fit diagnostic checks the chosen distribution against the data
 quantitatively. A goodness-of-fit test (Kolmogorov-Smirnov,
@@ -421,6 +431,14 @@ The engineer designs the test by choosing $\alpha$ from the cost of
 a Type I error and choosing $n$ to achieve a target power $1 - \beta$
 at the smallest effect size that matters. Section 8.6 takes up
 sample size and power as a planning quantity.
+\Cref{fig:vol01:ch08:type-i-type-ii} shows the geometry: $\alpha$
+is the area of the null tail past the critical value $c$, and
+$\beta$ is the area of the alternative density to the left of $c$.
+Moving $c$ trades the two areas against each other at fixed $n$;
+increasing $n$ narrows both densities and shrinks both areas at
+once.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-type-i-type-ii.tex}
 
 \subsection{Common tests}
 
@@ -621,6 +639,44 @@ $95 \,\%$ confidence. The Devore text \cite[ch.~7]{text:devore2015}
 gives the engineering tables; we mention tolerance intervals here so
 the reader recognises the third option without computing it in this
 chapter.
+
+\subsection{The bootstrap, when the parametric form is suspect}
+
+The intervals above assume a parametric model for the sample (most
+often, Gaussian). The \engterm{bootstrap}
+\cite{paper:ch08-efron-tibshirani-1993} replaces the parametric
+assumption with an empirical resampling procedure. Given a sample
+of size $n$, the analyst draws $B$ resamples of size $n$ with
+replacement, computes the statistic of interest on each resample,
+and uses the empirical distribution of the $B$ replicates as an
+estimate of the sampling distribution of the statistic.
+\Cref{fig:vol01:ch08:bootstrap-schematic} shows the pipeline.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-bootstrap-schematic.tex}
+
+A $95 \,\%$ percentile-bootstrap confidence interval for the
+statistic is the interval between the $2.5$th and $97.5$th
+percentiles of the bootstrap distribution. The bootstrap inherits
+the sample's biases (a non-representative sample yields a
+non-representative bootstrap) and breaks down for statistics whose
+sampling distribution depends sensitively on the tails (sample
+maximum, extreme quantiles); it is the default tool for confidence
+intervals on statistics that have no closed-form sampling
+distribution: ratios, medians, trimmed means, regression
+coefficients in non-linear models, correlations between dependent
+samples. Typical $B$ is $10^{3}$ for an interval and $10^{4}$ or
+more when the tail probability itself is the quantity of interest.
+
+\paragraph{Worked example.} Applied to the commute series, the
+bootstrap returns a $95 \,\%$ interval of approximately
+$[28.0, 29.5] \,\text{min}$, in close agreement with the $t$-based
+interval above. The agreement is expected: $n = 30$ is large enough
+that the sampling distribution of the mean is approximately
+Gaussian by the central limit theorem, and the bootstrap and
+$t$-based intervals coincide when both apply. The bootstrap earns
+its keep when, for instance, the analyst wants a confidence
+interval for the sample median or for the $90$th-percentile
+commute, both of which have no clean parametric form.
 
 \subsection{Worked example: the commute revisited}
 
@@ -906,6 +962,64 @@ equal variances. Welch's correction, unequal sample sizes, and
 non-Gaussian distributions all change the constant. Statistical
 software returns the exact required $n$ for the chosen test. The
 rule of thumb is for planning, not for the final calculation.
+\Cref{fig:vol01:ch08:effect-size-vs-n} plots the rule of thumb
+against the standardised effect size $d = \delta/\sigma$ (Cohen's
+$d$), highlighting the inverse-square scaling: each halving of $d$
+quadruples $n$.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-effect-size-vs-n.tex}
+
+\paragraph{Worked example: clinical-trial recruitment.} A clinical
+team plans a two-arm trial comparing a new sensor against the
+standard of care. The smallest difference in mean response time
+that would change clinical practice is $d = 0.3$ (small to medium).
+The rule of thumb returns $n \approx 16/(0.3)^{2} \approx 178$ per
+arm; rounding up for the Welch correction gives $n \approx 190$ per
+arm, or $380$ total. Recruitment costs the project approximately
+\$2{,}400 per enrolled patient (current as of 2025), so detecting
+the $d = 0.3$ effect at $\alpha = 0.05$ and power $0.80$ costs
+approximately $380 \cdot \$2{,}400 \approx \$912{,}000$ in
+recruitment alone. Reducing the target to $d = 0.2$ raises the
+sample to $n \approx 400$ per arm and the recruitment cost to
+roughly $\$1.9$ million. The numerical case for fielding the largest
+detectable effect that still matters clinically is the
+inverse-square scaling, not the analyst's preference.
+
+\begin{estimation}
+\textbf{Question.} A quality-engineering team screens $200$
+manufacturing process parameters against a single output metric,
+running an independent $t$-test for each at $\alpha = 0.05$ with no
+multiple-comparison correction. The team plans to flag every
+parameter with $p < 0.05$ for follow-up investigation. Assuming the
+null is true for every parameter (no real effects in the screen),
+how many false positives should the team expect to flag, and what is
+the probability of flagging at least one?
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The expected number of false positives is $200 \cdot 0.05 = 10$.
+The probability of zero false positives across $200$ independent
+tests is $(1 - 0.05)^{200} = 0.95^{200} \approx 3.5 \times
+10^{-5}$, so the probability of at least one false positive is
+above $0.99997$.
+Even if half of the $200$ parameters carry small real effects, the
+expected false-positive count is still around $5$, and the engineer
+who follows up every flag without correction wastes follow-up
+budget on noise.
+
+The remedies match the problem. Bonferroni correction reduces the
+per-test significance level to $\alpha/200 = 2.5 \times 10^{-4}$,
+which keeps the family-wise error rate at $0.05$ but is
+conservative when many real effects are present. Benjamini-Hochberg
+control of the false discovery rate
+\cite{method:ch08-benjamini-hochberg-1995} keeps the expected
+fraction of false positives among the flagged tests below a target
+rate (say $0.10$), at the cost of allowing some false positives in
+absolute number; it is the default in high-throughput engineering
+and biological screening.
+\end{estimation}
 
 \subsection{Why power matters}
 
@@ -949,6 +1063,29 @@ A statistically significant result has confirmatory weight only
 when the analysis that produced it was specified before the data
 were seen \cite[ch.~10]{text:wasserman2004}. The same framework
 fails when the analysis plan is chosen after the data are visible.
+The American Statistical Association's 2016 statement on $p$-values
+\cite{method:ch08-wasserstein-asa-2016} restates the principle in
+six points that should be in every engineer's working memory: a
+$p$-value measures the compatibility of the data with a specified
+null, it does not measure the probability that the null is true,
+it does not measure the size of the effect, and scientific
+conclusions should not be based on whether a $p$-value passes a
+specific threshold. Ioannidis's earlier analysis
+\cite{method:ch08-ioannidis-2005} derives the structural
+consequence: under modest assumptions about prior plausibility,
+power, and analytical flexibility, the majority of published
+research findings in many fields are expected to be false. The
+mechanisms section 8.7 names are how that result is generated in
+practice.
+
+\Cref{fig:vol01:ch08:p-value-distributions} makes the inference
+geometry visible. Under the null, $p$ is uniform on $[0, 1]$; under
+a well-powered alternative, $p$ piles up near zero. The empirical
+$p$-value distribution of a research literature is therefore a
+diagnostic: a sharp spike just under $0.05$ with a flat tail above
+is the signature of selective reporting.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-p-value-distributions.tex}
 
 \subsection{P-hacking}
 
@@ -1313,6 +1450,68 @@ across two to four weeks at one or two trials per day), three to
 four hours of analysis, and three to five hours of reflection
 writing. Total approximately six to ten hours of work, distributed
 across the chosen collection period.
+
+\textbf{Phases}. The project decomposes into four phases with
+explicit checkpoint outputs:
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{Phase 1: design and pre-registration} (1 to 2
+    hours). The reader writes the pre-registration document, names
+    the test, justifies $\alpha$, $1 - \beta$, $\delta$, and $n$,
+    and dates the document. Checkpoint: the pre-registration is
+    archived in a notebook or repository commit before any data
+    are collected.
+  \item \textit{Phase 2: data collection} (2 to 4 weeks at one or
+    two trials per day). The reader records each measurement with
+    date, time, conditions, and an outlier flag if the
+    pre-registered rule triggers. Checkpoint: the raw data file
+    contains thirty trials and any deviations from the
+    pre-registered protocol are footnoted.
+  \item \textit{Phase 3: analysis} (3 to 4 hours). The reader
+    produces the summary statistics, histogram, boxplot, Q-Q plot,
+    pre-registered test, confidence interval, and prediction
+    interval, in that order. Checkpoint: every analysis output is
+    reproducible from the data file and a single analysis script
+    or spreadsheet.
+  \item \textit{Phase 4: reflection and audit} (3 to 5 hours). The
+    reader writes the fifteen-hundred-word reflection, then
+    rereads the pre-registration alongside the analysis and notes
+    every branch where the data could have nudged the analysis
+    differently. Checkpoint: the reflection cites at least three
+    such branches and states how each was resolved against the
+    pre-registration.
+\end{itemize}
+
+\textbf{Success criteria}. The project is judged complete when
+each of the following is true:
+
+\begin{itemize}[leftmargin=*]
+  \item The pre-registration was archived before any measurement
+    and has a verifiable timestamp.
+  \item The thirty trials are recorded with conditions, and any
+    outlier flags follow the pre-registered rule.
+  \item The analysis runs end to end on the recorded data and a
+    colleague who reads the deliverable can reproduce the
+    summary statistics, the test statistic, and the two intervals
+    without further instructions.
+  \item The reflection names a specific engineering decision the
+    experiment was designed to inform and states how the result
+    changes that decision.
+  \item The reflection identifies at least one assumption of the
+    chosen test that the data partially violate, names the
+    alternative analysis, and states what the alternative would
+    have changed.
+\end{itemize}
+
+\textbf{Common failure modes to avoid}. The pre-registration is
+written after data collection begins (failure mode of section 8.7);
+the outlier rule is invented after seeing the data; the chosen
+test ignores a dependence between consecutive trials (commutes on
+adjacent days are not independent); only the mean is reported and
+the confidence interval is interpreted as a prediction interval.
+Each of these failure modes is enumerated in the reflection so the
+reader is forced to confront whether their own analysis is exposed
+to it.
 \end{project}
 
 \section{Exercises}
@@ -1331,6 +1530,17 @@ using the quartile convention stated in the solution notes. Report
 each statistic to one more decimal place than the data.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Sum is $123.0$, so $\bar{x} = 12.30$. Sorted:
+$12.0, 12.1, 12.1, 12.2, 12.3, 12.3, 12.4, 12.4, 12.5, 12.7$;
+median is $(12.3 + 12.3)/2 = 12.30$. Deviations from $\bar{x}$ are
+$-0.2, +0.1, -0.3, +0.2, 0.0, -0.1, +0.4, -0.2, +0.1, 0.0$; sum of
+squares is $0.40$, so $s^{2} = 0.40/9 \approx 0.0444$ and $s
+\approx 0.211$. Range is $12.7 - 12.0 = 0.70$. With the linear
+percentile convention (R's type 7), $Q_{1} \approx 12.125$ and
+$Q_{3} \approx 12.400$, so IQR $\approx 0.275$. A Tukey-hinges
+convention gives slightly larger IQR; state the convention.
+
 \begin{exercise}
 A sample of $n = 16$ resistors has $\bar{R} = 998 \,\si{\ohm}$ and
 $s = 12 \,\si{\ohm}$. Compute the $95 \,\%$ confidence interval for
@@ -1338,12 +1548,27 @@ the mean resistance, using the appropriate $t$ critical value.
 Report bounds to the same precision as $\bar{R}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+With $n - 1 = 15$ degrees of freedom and $\alpha = 0.05$, the
+two-sided critical value is $t_{0.975, 15} \approx 2.131$. Standard
+error $s/\sqrt{n} = 12/4 = 3.0 \,\si{\ohm}$. Half-width $2.131
+\cdot 3.0 \approx 6.4 \,\si{\ohm}$. The interval is approximately
+$[992, 1004] \,\si{\ohm}$.
+
 \begin{exercise}
 For the resistor sample of the previous exercise, compute the
 $95 \,\%$ prediction interval for the next resistor's resistance.
 Compare the width to the confidence interval and explain why the
 prediction interval is wider.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Prediction half-width $t_{0.975, 15} \cdot s \cdot \sqrt{1 + 1/n}
+= 2.131 \cdot 12 \cdot \sqrt{17/16} \approx 26.4 \,\si{\ohm}$.
+Interval $[972, 1024] \,\si{\ohm}$, more than four times wider than
+the CI. The confidence interval narrows as $1/\sqrt{n}$; the
+prediction interval cannot narrow below the population's intrinsic
+spread $\sigma$, here estimated by $s = 12 \,\si{\ohm}$.
 
 \begin{exercise}
 A diagnostic test has sensitivity $90 \,\%$, specificity $95 \,\%$,
@@ -1353,12 +1578,32 @@ defective. Compute the probability after a second independent
 positive.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Imagine $10{,}000$ units. Defective: $500$; truly flagged: $0.90
+\cdot 500 = 450$. Good: $9{,}500$; falsely flagged: $0.05 \cdot
+9{,}500 = 475$. Total positives $925$; posterior $450/925 \approx
+0.486$. After a second independent positive with the new prior
+$0.486$:
+\[
+\frac{0.90 \cdot 0.486}{0.90 \cdot 0.486 + 0.05 \cdot 0.514}
+= \frac{0.4374}{0.4631} \approx 0.945.
+\]
+The first positive moves belief from $5\,\%$ to about $49\,\%$; the
+second positive moves it to about $94\,\%$.
+
 \begin{exercise}
 A Poisson process has mean rate $\lambda = 3$ events per minute.
 Compute the probability of zero events in a one-minute window, the
 probability of at least five events, and the standard deviation of
 the count.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\Pr(K = 0) = e^{-3} \approx 0.0498$. The cumulative through $k =
+4$ is $e^{-3}(1 + 3 + 9/2 + 27/6 + 81/24) \approx
+0.0498(1 + 3 + 4.5 + 4.5 + 3.375) = 0.0498 \cdot 16.375 \approx
+0.815$, so $\Pr(K \geq 5) \approx 1 - 0.815 = 0.185$. Standard
+deviation $\sqrt{\lambda} = \sqrt{3} \approx 1.73$.
 
 \begin{exercise}
 A Weibull lifetime distribution has $\beta = 2.0$ and $\eta = 1000
@@ -1367,6 +1612,15 @@ $500 \,\si{\hour}$, the probability that it survives to $1500 \,
 \si{\hour}$, and the time at which the cumulative failure
 probability is $50 \,\%$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$S(t) = \exp(-(t/1000)^{2})$. At $t = 500$: $S = e^{-0.25} \approx
+0.779$. At $t = 1500$: $S = e^{-2.25} \approx 0.105$. Median
+satisfies $S(t_{m}) = 0.5$, so $(t_{m}/1000)^{2} = \ln 2$, giving
+$t_{m} = 1000 \sqrt{\ln 2} \approx 833 \,\text{h}$. The scale
+parameter $\eta = 1000 \,\text{h}$ is the $63.2 \,\%$-failure time,
+not the median; the median sits earlier because the Weibull at
+$\beta = 2$ is right-skewed.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1377,12 +1631,36 @@ distribution with mean $\mu$. Identify a sampling design under which
 this identity fails.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+By linearity of expectation, $\E[\bar{x}] = (1/n) \sum_{i=1}^{n}
+\E[X_{i}] = (1/n) \cdot n\mu = \mu$. Independence is not required
+for unbiasedness; identical marginals are. The identity fails when
+the sampling design is biased: a self-selected sample (a survey
+that respondents may decline), size-biased sampling (units chosen
+in proportion to a covariate that correlates with $X$), or
+truncation (only units above a threshold are recorded). In each
+case $\E[X_{i}] \neq \mu$ for the recorded units, so $\E[\bar{x}]
+\neq \mu$ even though the arithmetic of $\bar{x}$ is unchanged.
+
 \begin{exercise}
 Show that for a Gaussian sample, the standard uncertainty of the
 mean is $\sigma/\sqrt{n}$, then derive the corresponding $95 \,\%$
 confidence interval expression. State explicitly which two
 quantities the interval estimates as the sample size grows.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+For independent $X_{i} \sim \mathcal{N}(\mu, \sigma^{2})$,
+$\Var(\bar{x}) = (1/n^{2}) \sum \Var(X_{i}) = \sigma^{2}/n$, so the
+standard error is $\sigma/\sqrt{n}$. When $\sigma$ is unknown and
+estimated by $s$, the pivot $(\bar{x} - \mu)/(s/\sqrt{n})$ follows
+$t_{n-1}$. The $95 \,\%$ CI is $\bar{x} \pm t_{0.975, n-1} \cdot
+s/\sqrt{n}$. As $n \to \infty$, the half-width tends to zero (the
+sample mean converges to $\mu$ in probability), while the
+prediction interval's half-width tends to $z_{0.975} \cdot \sigma$
+(the population's intrinsic scatter). The CI estimates the
+location of the population mean; the PI estimates the location of
+the next observation.
 
 \begin{exercise}
 Starting from the variance formula $\Var(X + Y) = \Var(X) + \Var(Y)
@@ -1392,6 +1670,16 @@ variance $\sigma^{2}$ is $\sigma\sqrt{n}$. Then show that the
 standard deviation of the mean is $\sigma/\sqrt{n}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Uncorrelated implies $\Cov(X_{i}, X_{j}) = 0$ for $i \neq j$.
+Iterating the two-variable identity gives $\Var(\sum_{i=1}^{n}
+X_{i}) = \sum \Var(X_{i}) = n\sigma^{2}$, so the standard deviation
+of the sum is $\sigma\sqrt{n}$. The sample mean is the sum divided
+by $n$; $\Var(\bar{x}) = (1/n^{2}) \cdot n\sigma^{2} =
+\sigma^{2}/n$, so the standard deviation of the mean is
+$\sigma/\sqrt{n}$. The $\sqrt{n}$ on the sum and the $1/\sqrt{n}$
+on the mean are the same $\sqrt{n}$ wearing different hats.
+
 \begin{exercise}
 For a Poisson distribution with parameter $\lambda$, show that the
 mean and variance both equal $\lambda$. Use the
@@ -1400,6 +1688,16 @@ or the direct sum form. If using the moment-generating function,
 state the derivative step explicitly.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Using the MGF: $M(t) = \E[e^{tK}] = \sum_{k \geq 0} e^{tk}
+\lambda^{k} e^{-\lambda}/k! = e^{-\lambda} \sum (\lambda e^{t})^{k}
+/k! = e^{\lambda(e^{t} - 1)}$. First derivative: $M'(t) = \lambda
+e^{t} \cdot M(t)$; at $t = 0$, $M'(0) = \lambda$, so $\E[K] =
+\lambda$. Second derivative: $M''(t) = (\lambda e^{t})^{2} M(t) +
+\lambda e^{t} M(t)$; at $t = 0$, $M''(0) = \lambda^{2} + \lambda$,
+so $\E[K^{2}] = \lambda^{2} + \lambda$ and $\Var(K) = \E[K^{2}] -
+(\E[K])^{2} = \lambda$.
+
 \begin{exercise}
 Show that for a two-sample $t$-test with equal sample sizes and
 equal population variances $\sigma^{2}$, the standard error of the
@@ -1407,6 +1705,18 @@ difference of means is $\sigma\sqrt{2/n}$. Use this to motivate
 the rule of thumb $n \approx 16 \sigma^{2}/\delta^{2}$ for $\alpha
 = 0.05$ and power $0.80$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\Var(\bar{x}_{1} - \bar{x}_{2}) = \sigma^{2}/n + \sigma^{2}/n =
+2\sigma^{2}/n$; standard error $\sigma\sqrt{2/n}$. Test rejects
+when $|\bar{x}_{1} - \bar{x}_{2}| > z_{\alpha/2} \cdot
+\sigma\sqrt{2/n}$. For power $1 - \beta$ at true difference
+$\delta$, require $\delta = (z_{\alpha/2} + z_{\beta}) \cdot
+\sigma\sqrt{2/n}$. Solve: $n = 2\sigma^{2}(z_{\alpha/2} +
+z_{\beta})^{2}/\delta^{2}$. At $\alpha = 0.05$ (so $z_{\alpha/2}
+\approx 1.96$) and power $0.80$ (so $z_{\beta} \approx 0.84$),
+$(1.96 + 0.84)^{2} \approx 7.84$; $2 \cdot 7.84 \approx 15.7
+\approx 16$. Hence $n \approx 16\sigma^{2}/\delta^{2}$.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1418,6 +1728,14 @@ power $0.80$. State your assumptions and compare to the rule-of-
 thumb formula.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Standardised effect $d = \delta/\sigma = 0.05/0.10 = 0.5$. Rule of
+thumb $n \approx 16/d^{2} = 16/0.25 = 64$ per group. Assumptions:
+Gaussian populations, two-sample two-sided $t$-test, equal sample
+sizes, equal variances. Exact software value for these settings is
+approximately $n \approx 64$ per group; rule of thumb is within
+one or two units.
+
 \begin{exercise}
 Estimate the probability that the mean of $25$ independent samples
 from a Gaussian distribution falls within one standard error of the
@@ -1425,12 +1743,34 @@ true mean. Compare to the same probability for $100$ samples and
 explain the relationship to the central limit theorem.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\bar{x} \sim \mathcal{N}(\mu, \sigma^{2}/n)$ exactly for a
+Gaussian parent. $\Pr(|\bar{x} - \mu| \leq \sigma/\sqrt{n}) =
+\Pr(|Z| \leq 1) \approx 0.683$. The answer is the same for $n =
+25$ and $n = 100$ when expressed in standard-error units; the
+absolute width of the interval shrinks as $1/\sqrt{n}$ even though
+the coverage probability does not. The CLT says this story holds
+approximately for non-Gaussian parents at large $n$; here the
+parent is Gaussian, so the result is exact.
+
 \begin{exercise}
 A factory produces $10{,}000$ units per day with a defect rate
 that the engineer estimates is between $0.5 \,\%$ and $1.5 \,\%$.
 Estimate the daily defect count and its uncertainty range. State
 the distributional assumption you used.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Treat each unit's defect status as independent Bernoulli with
+$p \in [0.005, 0.015]$. Expected count $\lambda = N p$ between $50$
+and $150$. The defect count is binomial; for $N$ large and $p$
+small, it is approximately Poisson with mean $\lambda$. At $\lambda
+= 100$ (mid-range $p = 0.01$), the standard deviation is
+$\sqrt{100} = 10$, giving a $\pm 2\sigma$ range of roughly
+$[80, 120]$. Combined with the $p$-uncertainty, the daily count
+plausibly falls in $[50, 150]$. Independence is the weak link: a
+shift-change effect or a common process drift would inflate the
+spread.
 
 \begin{exercise}
 Estimate the half-width of a $95 \,\%$ confidence interval for a
@@ -1440,6 +1780,17 @@ half-width for $n = 100$. Compare the cost of each sample size to
 the half-width reduction.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+At $n = 10$: $t_{0.975, 9} \approx 2.26$, half-width $2.26 \cdot
+0.5/\sqrt{10} \approx 0.36 \,\si{\milli\meter}$. At $n = 100$:
+$t_{0.975, 99} \approx 1.98$, half-width $1.98 \cdot 0.5/\sqrt{100}
+\approx 0.099 \,\si{\milli\meter}$. Ten times the data buys roughly
+$3.6 \times$ the precision (the $\sqrt{n}$ wall) and the small-
+sample $t$-correction recedes from $\approx 2.26$ to $\approx 1.98$.
+Whether $0.26 \,\si{\milli\meter}$ of additional precision justifies
+ten times the data depends on what engineering decision the
+interval informs.
+
 \begin{exercise}
 Estimate the probability that, in a class of thirty independent
 significance tests at $\alpha = 0.05$, at least one rejects a true
@@ -1447,6 +1798,18 @@ null. State the assumption that allows you to compute the
 probability and explain why this calculation motivates multiple-
 comparison correction.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Independence (the load-bearing assumption) gives
+$\Pr(\text{no rejection}) = (1 - 0.05)^{30} = 0.95^{30} \approx
+0.215$. Probability of at least one rejection $\approx 0.785$.
+With thirty independent tests under the global null, the chance of
+a false positive somewhere is nearly four in five. Bonferroni
+correction lowers the per-test $\alpha$ to $0.05/30 \approx 0.0017$
+and brings the family-wise error rate back to $\approx 0.05$. The
+calculation generalises to subgroup analyses, exploratory plots,
+and dashboard alarms: the cost of multiplicity is paid in
+false-positive rate.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1459,6 +1822,16 @@ the theoretical Gaussian with mean $0$ and standard deviation
 $1/\sqrt{30}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Theoretical sd of the mean is $1/\sqrt{30} \approx 0.183$.
+Empirical sd of $10^{4}$ means should land within a few percent of
+$0.183$; the histogram of means looks Gaussian to the eye even at
+$n = 30$ because the parent is already Gaussian (each sample mean
+is exactly Gaussian for any $n$). The reference companion script
+\repopath{code/clt\_skewed.py} runs the equivalent experiment for
+an exponential parent; compare the two runs to see what the CLT
+adds versus what it does not.
+
 \begin{exercise}
 Simulate $10^{4}$ samples of size $n = 30$ from a heavily skewed
 distribution (e.g., exponential with rate $1$, or log-normal with
@@ -1466,6 +1839,17 @@ $\mu = 0$ and $\sigma = 1$). Plot the distribution of sample means
 and compare to the central limit theorem prediction. Identify the
 sample size at which the means become approximately Gaussian.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+For exponential$(1)$ the parent has mean $1$, sd $1$, skewness $2$.
+At $n = 30$ the sample-mean sd matches $1/\sqrt{30} \approx 0.183$
+to within Monte Carlo noise, while the empirical skewness of the
+sample means is approximately $2/\sqrt{n} \approx 0.37$, still
+visible on a Q-Q plot. Approximate Gaussian shape (skewness below
+$0.1$) appears around $n \approx 200$ to $400$ for the exponential
+parent; lognormal$(0, 1)$ takes considerably longer because its
+skewness is $6.18$. The companion script
+\repopath{code/clt\_skewed.py} tabulates the convergence.
 
 \begin{exercise}
 Simulate an engineering trial in which the true effect size is
@@ -1478,6 +1862,18 @@ empirical false-positive rate for the reported $p$-value is much
 higher than $0.05$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The single-test FPR converges to $\approx 0.05$ within
+$\sqrt{1000} \cdot \sqrt{0.05 \cdot 0.95}/1000 \approx 0.007$
+binomial uncertainty. Reporting the smallest of three subgroup
+tests inflates the empirical FPR to roughly $0.10$ to $0.14$
+(slightly below $1 - (1 - 0.05)^{3} = 0.143$ because the subgroup
+tests share data and are not fully independent). The companion
+script \repopath{code/p\_hacking\_demo.py} runs the five-path
+version with outlier-trim, subgroup-A, subgroup-B, and
+log-transform branches added; its empirical FPR for the
+minimum-$p$ strategy is in the range $0.15$ to $0.22$.
+
 \begin{exercise}
 Simulate the Bayes-rule defect-test calculation of section 8.5 by
 generating $10^{6}$ units with a $1 \,\%$ defect prior, applying a
@@ -1487,6 +1883,19 @@ positive test. Compare to the analytical $0.324$. Then repeat with
 a $10 \,\%$ prior and explain how the posterior depends on the
 prior at fixed test characteristics.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Expected counts: defective $10^{4}$, of which $9{,}500$ are flagged;
+good $9.9 \times 10^{5}$, of which $1.98 \times 10^{4}$ are flagged
+falsely. Posterior $9{,}500/29{,}300 \approx 0.324$, matching the
+analytical answer to three decimal places (Monte Carlo error is
+$\approx 0.003$ at $10^{6}$ trials). At $10 \,\%$ prior: $10^{5}$
+defective of which $95{,}000$ flagged, $9 \times 10^{5}$ good of
+which $1.8 \times 10^{4}$ flagged. Posterior $95{,}000/113{,}000
+\approx 0.841$. Lifting the prior from $1 \,\%$ to $10 \,\%$ moves
+the posterior from $0.32$ to $0.84$ at fixed test characteristics:
+the posterior depends on the prior approximately linearly when the
+prior is small and saturates near $1$ when the prior is moderate.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1499,6 +1908,19 @@ trigger an engineering response, and the sample size per line.
 Include the pre-registration document outline.
 \end{exercise}
 
+\paragraph{Discussion.}
+A defensible response names: $H_{0}: \mu_{\text{new}} =
+\mu_{\text{old}}$, $H_{1}$ two-sided; two-sample Welch $t$-test;
+$\alpha = 0.05$; power $0.80$ at smallest engineering-meaningful
+difference (a fraction of process specification tolerance). Sample
+size from the rule of thumb $n \approx 16(\sigma/\delta)^{2}$ per
+line; record $\sigma$ from historical line data. The
+pre-registration outline includes: hypothesis, test, $\alpha$,
+power, $\delta$, $n$, outlier rule, sampling scheme (random across
+shifts), and analysis script committed before sampling. Common
+weakness: stating $\delta$ that is convenient for $n$ rather than
+the actual engineering tolerance.
+
 \begin{exercise}
 Design an A/B test for a software-deployment decision, assuming
 the metric is a continuous per-user response with known pilot
@@ -1509,6 +1931,19 @@ pre-specified stopping rule. If the metric remains daily active
 users as a count or proportion, move this exercise to mastery and
 provide the appropriate model.
 \end{exercise}
+
+\paragraph{Discussion.}
+A defensible response specifies the metric (e.g.\ per-session
+response time), the unit of randomisation (per user, not per
+request), $H_{0}$: no mean difference, $\alpha = 0.05$ with a
+sequential correction (alpha-spending or group-sequential) since
+the test is monitored. Sample size from the two-sample rule of
+thumb at the chosen $\delta$. The stopping rule is the alpha-
+spending or group-sequential boundary, not a peek-and-stop on
+nominal $p < 0.05$. A weak response chooses a Bayesian framing
+without specifying the prior or chooses a fixed sample size with
+no stopping rule but allows engineers to look at the dashboard,
+which is the failure mode of section 8.7.
 
 \begin{exercise}
 Design a reliability test for a new component whose target lifetime
@@ -1521,6 +1956,20 @@ Mark this exercise mastery unless the chapter adds the
 reliability-test machinery.
 \end{exercise}
 
+\paragraph{Discussion.}
+$B_{10}$ satisfies $1 - \exp(-(B_{10}/\eta)^{2}) = 0.1$, so $B_{10}
+= \eta\sqrt{-\ln(0.9)} \approx 0.3246\,\eta$. To meet $B_{10} \geq
+10{,}000 \,\text{h}$ requires $\eta \geq 30{,}800 \,\text{h}$. A
+defensible test plan uses type-I censoring at, say, $5{,}000
+\,\text{h}$ on $n = 30$ units, estimating $(\beta, \eta)$ from the
+censored sample by maximum likelihood (a standard reliability-
+software function) and producing a confidence interval for $B_{10}$.
+The submission passes if the lower confidence bound on $B_{10}$
+exceeds $10{,}000 \,\text{h}$. Weak responses propose
+running-until-all-fail (cost-prohibitive) or testing all units to
+$10{,}000 \,\text{h}$ and counting failures (statistically wasteful
+of censored information).
+
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
 
 \begin{exercise}
@@ -1531,6 +1980,19 @@ report that an engineering decision would require. Propose at
 least four follow-up questions.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Missing: (i) the effect size and its confidence interval, (ii) the
+pre-registration status of the test (was the test selected after
+the data?), (iii) the power at the engineering-meaningful effect
+size, (iv) the units of measurement and what counts as
+``improvement'' in operational terms, (v) the outlier rule, (vi)
+the distributional check (Q-Q plot or equivalent). Follow-up
+questions: ``what is the effect size and its $95 \,\%$ confidence
+interval?'', ``was the test specified before data collection?'',
+``what would the result have been with a one-sided test at $\alpha
+= 0.05$?'', ``was the change attempted on multiple metrics and
+this is the one that reached significance?''.
+
 \begin{exercise}
 A published study reports a $30 \,\%$ improvement in a sensor
 metric with $p < 0.001$ and $n = 8$. State why the small sample
@@ -1538,6 +2000,17 @@ size is concerning even with a small $p$-value, and identify the
 specific failure mechanism that small underpowered studies
 exhibit when they reach significance.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+At $n = 8$ the power to detect a moderate true effect is low; the
+only way an underpowered study reaches $p < 0.001$ is for the
+random sample to land on the high tail of the true effect's
+sampling distribution. The reported effect is therefore biased
+upward (the ``winner's curse'' of underpowered studies). The same
+mechanism predicts the result fails to replicate at larger $n$
+because the estimator regresses to the true (smaller) effect. A
+$30 \,\%$ effect from $n = 8$ should be treated as a hypothesis to
+test in a larger replication, not as a calibrated estimate.
 
 \begin{exercise}
 A factory's defect-rate dashboard shows that one of $20$ inspection
@@ -1547,6 +2020,20 @@ of a real change and what additional information would resolve
 the question.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Twenty metrics times fifty-two weeks gives roughly $10^{3}$
+threshold-crossing opportunities under the null; the expected
+count of $p < 0.05$ flags is about $50$ per year by chance alone.
+A single weekly crossing, especially on a metric that has not
+been independently flagged by process knowledge, is consistent
+with chance. Resolving the question requires: the false-positive
+rate of the dashboard at the chosen threshold (Bonferroni or FDR
+corrected), the metric's prior plausibility of change (was there a
+process intervention this week?), and whether the metric crosses
+again in a follow-up week. Acting on every flag wastes follow-up
+budget; ignoring all flags misses real change. A pre-specified
+two-week confirmation rule is a practical compromise.
+
 \begin{exercise}
 A laboratory reports a confidence interval $[1.20, 1.25]$ for a
 process mean and notes that the next ten observations all fell
@@ -1554,6 +2041,18 @@ within this interval. Identify the conceptual error in interpreting
 this as a property of the confidence interval and state which
 interval should have been used.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The confidence interval is a statement about the location of the
+population mean, not about future observations. The probability
+that the next observation falls in a confidence interval depends
+on $n$ (CI narrows as $1/\sqrt{n}$) and is generally below the
+nominal coverage. A coincidence that ten consecutive observations
+landed inside is not evidence the CI ``works'' for future readings;
+it suggests either an unusually quiet ten-observation stretch or
+that the laboratory's true population spread is small. The
+correct tool is the prediction interval (or, for setting acceptance
+bounds, a tolerance interval).
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1565,6 +2064,25 @@ trustworthy and what physical or statistical reason might produce
 $\beta < 1$ in a wear-out process.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Fatigue is a wear-out mechanism: the hazard rate increases with
+time, which predicts $\beta > 1$ (often $\beta \in [2, 4]$). A
+fitted $\beta = 0.7$ contradicts the physics. Plausible
+explanations: (i) the sample mixes two failure modes (early
+infant-mortality failures from manufacturing defects together
+with later fatigue failures), producing a bimodal hazard that the
+single-Weibull fit averages into a decreasing rate; (ii) the
+sample is heavily censored at the right and the fit sees mostly
+early failures; (iii) the $20$-unit sample is too small to
+estimate $\beta$ reliably (the standard error of $\beta$ at $n =
+20$ is large enough that the $95 \,\%$ CI may include $\beta = 2$);
+(iv) the fitting code has a sign or convention error. Next steps:
+inspect the lifetime distribution for bimodality, partition the
+sample by failure mode, increase the sample size, and report the
+confidence interval on $\beta$ alongside the point estimate. A
+$\beta$ that disagrees with the physics is a diagnostic that the
+fit, the sample, or the failure-mode model is wrong.
+
 \begin{exercise}
 A widely-cited engineering result, originally published with $n =
 15$ and $p = 0.03$, has been used as design input by multiple
@@ -1575,6 +2093,23 @@ the design teams should do, and identify the specific statistical
 mechanism that produced the disagreement.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The mechanism is the winner's curse of underpowered original
+studies. At $n = 15$, only a sample that lands on the upper tail
+of the effect's true distribution reaches $p = 0.03$; the
+reported effect is therefore biased upward. The $n = 100$
+replication, with much higher power, estimates closer to the true
+(smaller) effect. The original report and the replication are not
+contradictory; the original is the noisy upper-tail draw and the
+replication is the calibrated estimate. Design teams should: (i)
+re-derive any safety margin or capacity claim using the replication
+effect size, not the original; (ii) if the replication's effect
+size is engineering-relevant at its lower confidence bound,
+preserve the original design; (iii) if not, redesign or commission
+a second independent replication before reverting. The general
+discipline is to size design margins against a defensible lower
+bound on the effect, not against the published point estimate.
+
 \begin{exercise}
 A regulatory submission cites a single study to support a safety
 margin. The study reports a one-sided $t$-test at $p = 0.04$ with
@@ -1583,6 +2118,24 @@ accept the submission, and identify the discipline (pre-
 registration, replication, effect-size reporting) that would
 strengthen the submission.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+A regulator should not accept a single-study, $n = 12$, one-sided
+$p = 0.04$ submission for a safety claim. The combination of low
+$n$, one-sided test (which is half as strict as a two-sided test
+at the same nominal $\alpha$), and a $p$ just below threshold is
+the signature pattern of underpowered studies that selectively
+report the favourable direction. The submission lacks: a
+pre-registration that fixes hypothesis, test, and analysis ahead
+of time; independent replication; effect-size reporting with a
+confidence interval; and a discussion of the safety margin's
+sensitivity to the lower bound of the effect's CI. Strengthened
+submission: a pre-registered confirmatory study with $n$ sized for
+$80 \,\%$ power at the safety-critical effect; an effect-size
+estimate with a confidence interval whose lower bound exceeds the
+safety threshold; ideally an independent replication. The
+regulator's job in the present submission is to refuse on
+statistical grounds and request the strengthened form.
 
 \subsection*{Judgment}\pathtag{standard}
 
@@ -1595,6 +2148,23 @@ seriously, identifies the missing information, and proposes a
 minimum acceptable form for the report.
 \end{exercise}
 
+\paragraph{Discussion.}
+A defensible response acknowledges the colleague's effort,
+identifies the structural concerns (three rigs is a multilevel
+sampling structure that requires a mixed-effects analysis or an
+explicit per-rig sensitivity analysis; dropped outliers require a
+pre-specified rule and a reported analysis with the outliers
+included as a sensitivity check), and proposes a minimum
+acceptable form: pre-registered hypothesis (or, failing that, an
+honest exploratory label), the effect size with a confidence
+interval, an analysis with and without the dropped outliers,
+per-rig effect estimates, and a discussion of whether the
+engineering decision changes at the lower bound of the effect's CI.
+The tone respects the colleague's professional standing while
+naming the specific deficiencies. A response that simply says
+``$p = 0.049$ is not enough'' misses the chance to give the
+colleague a concrete path to a defensible report.
+
 \begin{exercise}
 An engineer is asked to analyse a dataset that has already been
 collected. They notice that one analysis specification gives
@@ -1603,12 +2173,48 @@ words, which $p$-value the engineer should report and what
 disclosures the report must contain.
 \end{exercise}
 
+\paragraph{Discussion.}
+The engineer should report both, with full disclosure of which was
+the pre-specified analysis (if any) and which was the alternative
+specification. If the pre-specified analysis is unavailable
+(retrospective dataset), the report must declare the analysis as
+exploratory and present a sensitivity table covering the
+alternative specifications the analyst considered. Selecting and
+reporting only the lower $p$-value without disclosing the
+alternative is the garden-of-forking-paths failure of section 8.7
+in its most direct form. Selecting and reporting only the higher
+$p$-value is equally distorting. A defensible report contains: the
+specifications considered, the criteria used to choose among them,
+the $p$-values from each, the effect sizes from each, and a
+plain-language statement that the analysis was exploratory. The
+engineering decision should then be sized against the more
+conservative result, with any confirmatory claim deferred to a
+pre-registered follow-up.
+
 \begin{exercise}
 Argue, in one paragraph, whether engineering training should
 emphasise frequentist or Bayesian methods. Take a position and
 defend it with a specific example from your own experience or a
 documented case.
 \end{exercise}
+
+\paragraph{Discussion.}
+A defensible response takes a position rather than hedging. One
+defensible position: training should emphasise frequentist methods
+first (Bessel correction, $t$-tests, confidence intervals,
+$p$-values, power calculations) because these are the language of
+specification documents, regulatory submissions, and process-
+control software; Bayesian methods are then introduced as a more
+flexible framework for sequential updating, sensor fusion, and
+small-sample decisions where prior information is genuine. Another
+defensible position: start with Bayes because the conditional-
+probability reasoning is more transparent and the
+hypothesis-testing machinery can be taught later as a specialised
+decision rule. Either position is acceptable if it engages with
+the concrete example (a specific calibration history, a specific
+A/B test, a specific reliability prediction) and acknowledges the
+operational facts about which frameworks are present in the
+engineer's working environment.
 
 \begin{exercise}
 A vendor reports a confidence interval for a sensor's accuracy and
@@ -1618,6 +2224,19 @@ report format that prevents the customer's interpretation while
 preserving the inferential content the vendor wants to communicate.
 \end{exercise}
 
+\paragraph{Discussion.}
+A defensible note: explain the confusion (confidence intervals are
+for the parameter, not the next observation), recommend that the
+vendor report both a confidence interval for the calibration
+parameter \emph{and} a prediction interval (or a tolerance
+interval, if specifying acceptance bounds) for the next reading,
+suggest that the report state in plain language what each interval
+covers (``$95\,\%$ of long-run averages'' vs ``$95\,\%$ of next
+readings''), and propose a worked numerical example in the
+documentation. The note should be respectful of the vendor's
+expertise while making the customer's misinterpretation a design
+constraint on the report, not a customer error to be corrected.
+
 \begin{exercise}
 A reader's pre-registered hypothesis test fails to reject the null
 ($p = 0.42$) at the planned sample size. The reader is tempted to
@@ -1625,3 +2244,22 @@ add ten more samples and re-test. Argue, in 200 to 300 words,
 whether the reader should add the samples, what the addition does
 to the false-positive rate, and what the principled alternative is.
 \end{exercise}
+
+\paragraph{Discussion.}
+Adding samples and re-testing without a sequential method inflates
+the false-positive rate above the pre-registered $\alpha$. The
+peek-and-extend strategy is a special case of optional-stopping
+bias: every additional test gives the random fluctuation another
+chance to cross the threshold. Principled alternatives: (i) accept
+the result as a non-rejection and update the engineering decision
+accordingly; (ii) commission a fresh pre-registered study at a
+larger sample size if the engineering question still warrants
+investigation; (iii) use a group-sequential design or
+alpha-spending function from the start if optional stopping was
+anticipated. Honest reporting: if the reader proceeds with the
+extension, the result is labelled exploratory in the report, and
+the original pre-registration is preserved as the primary
+analysis. The reader's instinct to extend the sample is
+understandable; the discipline is to recognise that the
+extension's $p$-value cannot carry the confirmatory weight the
+pre-registration was designed to support.
