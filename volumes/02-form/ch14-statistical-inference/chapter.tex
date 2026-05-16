@@ -153,6 +153,33 @@ is a $1-\alpha$ confidence interval. With unknown $\sigma$ and a
 Gaussian model, $z_{1-\alpha/2}$ is replaced by the $t$-quantile
 $t_{1-\alpha/2,n-1}$, recovering the Volume I formula.
 
+\subsection{The bootstrap}
+
+When the estimator has no closed-form standard error and no
+asymptotic formula the engineer is willing to trust, the
+\engterm{bootstrap} provides a working substitute
+\cite{paper:v2ch14-efron-bootstrap-1979}. The idea is the
+plug-in principle applied to the sampling distribution. The
+empirical distribution $\hat{F}_{n}$ stands in for the unknown
+population $F$. Repeated samples of size $n$ are drawn from
+$\hat{F}_{n}$ with replacement; the statistic of interest is
+recomputed on each resample; the empirical distribution of the
+$B$ resample-statistics is the \engterm{bootstrap distribution}
+of the estimator. The bootstrap standard error is the standard
+deviation of the resample-statistics; the percentile interval
+takes the $\alpha/2$ and $1-\alpha/2$ quantiles of the bootstrap
+distribution as confidence-interval endpoints. The procedure is
+the engineer's default when no asymptotic formula is available.
+Its working failures are predictable: the bootstrap is unreliable
+for statistics that depend on extremes (sample maxima, sample
+minima, quantiles near the support boundary) and for heavy-tailed
+distributions where the sample-quantile substitution becomes
+unstable \cite{paper:ch08-efron-tibshirani-1993}. The full-page
+schematic in figure \ref{fig:vol02:ch14:bootstrap} reads the
+procedure off as a single diagram.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-bootstrap.tex}
+
 \subsection{Confidence versus prediction}
 
 A confidence interval reports uncertainty about a parameter (a
@@ -215,6 +242,8 @@ power is what the engineer wants; the two cannot be made arbitrarily
 small at fixed sample size, and the trade-off is governed by the
 Neyman-Pearson lemma.
 
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-test-regions.tex}
+
 \subsection{The Neyman-Pearson lemma}
 
 For testing a simple null $H_{0}: \theta = \theta_{0}$ against a
@@ -262,6 +291,38 @@ question (``how often would the null model produce a statistic this
 extreme?'') is exactly the right reading; the formal definition
 adds the supremum over a composite null and the explicit choice of
 test statistic.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-pvalue.tex}
+
+\subsection{Power, sample size, and design}
+
+The dual to a fixed-$\alpha$ test is a fixed-power design. For a
+one-sample $z$-test of $H_{0}: \mu = \mu_{0}$ against $H_{1}: \mu =
+\mu_{0} + d\sigma$, the power at sample size $n$ is approximately
+\[
+\mathrm{power}(d, n; \alpha) \approx
+\Phi\!\left(d\sqrt{n} - z_{1-\alpha/2}\right),
+\]
+where $\Phi$ is the standard normal cdf and $d$ is the
+standardised effect size. Solving for $n$ at a target power
+$1-\beta$ gives
+\[
+n \approx \left(\frac{z_{1-\alpha/2} + z_{1-\beta}}{d}\right)^{2}.
+\]
+A study at $\alpha = 0.05$, $1-\beta = 0.80$ needs
+$n \approx (1.96 + 0.84)^{2}/d^{2} \approx 7.85/d^{2}$, the
+working back-of-envelope that detecting a half-sigma effect
+demands about $30$ observations and detecting a fifth-sigma effect
+demands about $200$. The power curves in figure
+\ref{fig:vol02:ch14:power-curve} make the trade explicit.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-power-curve.tex}
+
+A study that reports a non-significant result and reports its
+power against the effect size the engineer cares about is an
+honest report. A study that reports a non-significant result and
+does not report power is reporting that no effect was detected
+and is silent on whether the design could have detected one.
 
 \subsection{Decision-theoretic framing}
 
@@ -659,6 +720,48 @@ The choice of $\lambda$ for either estimator is the central
 modelling decision, and cross-validation is the standard discipline
 for making it.
 
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-bias-variance.tex}
+
+The ridge penalty was introduced by Hoerl and Kennard for
+nonorthogonal design matrices in chemical engineering
+\cite{paper:v2ch14-hoerl-kennard-ridge-1970}; the lasso, with
+its variable-selection property, was introduced by Tibshirani for
+problems where many candidate predictors are believed to be
+inactive \cite{paper:v2ch14-tibshirani-lasso-1996}. The two
+penalties are now the working catalogue's first reach; a fuller
+treatment with elastic-net, group-lasso, and adaptive variants
+sits in Hastie, Tibshirani, and Friedman
+\cite{text:hastie-tibshirani-friedman}.
+
+\begin{estimation}
+\textbf{Question.} A ridge regression with
+$\mat{X}^{\transpose}\mat{X}$ approximately $\mat{I}_{p}$ and
+$p = 10$ has unbiased OLS variance per coefficient of
+$\sigma^{2}/n = 1.0$. Ridge introduces a bias whose square scales
+as $b^{2}(\lambda) \approx (\lambda/(1+\lambda))^{2}\,
+\norm*{\vect{\beta}}_{2}^{2}/p$ at moderate $\lambda$, with
+$\norm*{\vect{\beta}}_{2}^{2}/p \approx 0.5$ in working units.
+Estimate the value of $\lambda$ that approximately minimises the
+mean squared error per coefficient.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+Variance scales as $V(\lambda) \approx 1/(1+\lambda)^{2}$ in the
+orthogonal-design approximation; bias squared scales as
+$B^{2}(\lambda) \approx 0.5\,(\lambda/(1+\lambda))^{2}$. Setting
+$\dd(V + B^{2})/\dd\lambda \approx 0$ gives $-2/(1+\lambda)^{3} +
+0.5 \cdot 2\lambda/(1+\lambda)^{3} = 0$, hence $\lambda^{\star}
+\approx 1/0.5 = 2$. The minimum is broad; any $\lambda$ in the
+range $1$ to $4$ produces a mean squared error within $10\,\%$ of
+the optimum. The lesson the engineer takes home is the shape of
+the curve, not the exact minimum: cross-validation will land in
+the broad valley provided the procedure is honest, and reporting
+a single $\lambda$ without its cross-validated error band is
+overspecifying the choice.
+\end{estimation}
+
 \section{Cross-validation, hold-out, the danger of looking at test data}\pathtag{core}
 
 The MLE and the OLS estimator both have closed-form measures of
@@ -699,6 +802,8 @@ contaminated the procedure. The test error is then biased downward
 by an amount that grows with the number of looks. The Volume I Ch
 8 ban on choosing the analysis after seeing the data is the same
 discipline at the level of model selection.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-kfold.tex}
 
 \subsection{$k$-fold cross-validation}
 
@@ -861,10 +966,28 @@ than original effects by a factor of about three, with mixed
 success rates across multiple replication criteria
 \cite{method:errington-cancer-biology-2021}.
 
-The two studies, taken together, are the empirical evidence behind
-the engineer's working caution. The named statistical malpractices
-are not theoretical risks. They have measurable effects on the
-literatures the engineer might draw on for design input.
+The pattern extends beyond psychology. The 2016 Camerer et al.\
+replication of $18$ laboratory experiments in economics found
+that $61\,\%$ of the original results replicated as significant,
+with replication effect sizes averaging about two-thirds of the
+originals \cite{method:v2ch14-camerer-economics-2016}. The
+\textcite{method:ch08-ioannidis-2005} essay had argued, on the
+basis of the power and prior-probability arithmetic that Volume I
+Chapter 8 already worked through, that most published research
+findings in fields with low statistical power and high analytic
+flexibility were likely false. The replication studies above are
+the post-hoc empirical evidence behind that argument. The Nuzzo
+2014 \textit{Nature} feature surveyed the public arc of the
+discussion and the working compromises the discipline arrived at
+\cite{method:v2ch14-nuzzo-scientific-method-2014}; the 2016 ASA
+Statement on $p$-values \cite{method:ch08-wasserstein-asa-2016}
+remains the discipline's most-cited formal position.
+
+The four studies, taken together, are the empirical evidence
+behind the engineer's working caution. The named statistical
+malpractices are not theoretical risks. They have measurable
+effects on the literatures the engineer might draw on for design
+input.
 
 \subsection{What an engineer does about it}
 
@@ -1026,6 +1149,15 @@ sample mean $\bar{x} = 12.4$ and sample standard deviation $s =
 2.1$, compute the $95\,\%$ confidence interval for $\mu$ and the
 $95\,\%$ prediction interval for the next observation. Use
 $t_{0.975, 24} \approx 2.064$.
+
+\paragraph{Solution sketch.} The standard error of the mean is
+$s/\sqrt{n} = 2.1/5 = 0.42$. The confidence half-width is
+$2.064 \times 0.42 \approx 0.87$, giving the interval
+$12.4 \pm 0.87 = [11.53, 13.27]$. The prediction-interval inner
+factor is $s\sqrt{1 + 1/n} = 2.1\sqrt{1.04} \approx 2.14$, so the
+half-width is $2.064 \times 2.14 \approx 4.42$, giving
+$12.4 \pm 4.42 = [7.98, 16.82]$. The prediction interval is
+roughly $\sqrt{n}$ times wider, which is the working mnemonic.
 \end{exercise}
 
 \begin{exercise}
@@ -1033,6 +1165,15 @@ A coin is flipped $n = 40$ times and lands heads $s = 27$ times.
 Compute the maximum-likelihood estimate of $p$, its observed-Fisher
 standard error, and a $95\,\%$ Wald confidence interval. State the
 $z$-quantile used.
+
+\paragraph{Solution sketch.} $\hat{p} = s/n = 27/40 = 0.675$. The
+observed Fisher information at $\hat{p}$ is $n/(\hat{p}(1-\hat{p}))
+= 40/(0.675 \times 0.325) \approx 182.4$, so the standard error is
+$1/\sqrt{182.4} \approx 0.0740$. With $z_{0.975} = 1.96$, the Wald
+interval is $0.675 \pm 1.96 \times 0.0740 = [0.530, 0.820]$. The
+Wald interval is mildly anti-conservative near the boundaries of
+$[0, 1]$; the Wilson or Agresti-Coull interval would tighten near
+the endpoints.
 \end{exercise}
 
 \begin{exercise}
@@ -1040,6 +1181,14 @@ For an exponential sample with observations $\set*{1.2, 0.5, 2.1,
 0.8, 1.7, 0.3, 1.0, 1.5, 0.9, 2.4}$, compute the MLE
 $\hat{\lambda} = 1/\bar{x}$. Report $\bar{x}$, $\hat{\lambda}$, and
 the observed log-likelihood $\ell(\hat{\lambda})$.
+
+\paragraph{Solution sketch.} Sum is $12.4$, so $\bar{x} = 1.24$
+and $\hat{\lambda} = 1/1.24 \approx 0.806$. The log-likelihood at
+the MLE is $\ell(\hat{\lambda}) = n\log\hat{\lambda} -
+\hat{\lambda}\sum x_{i} = 10\log(0.806) - 0.806 \times 12.4 =
+10(-0.2158) - 10 = -2.158 - 10 = -12.16$. Equivalently
+$n(\log\hat{\lambda} - 1)$, which is the working closed form for
+the exponential MLE's maximised log-likelihood.
 \end{exercise}
 
 \begin{exercise}
@@ -1047,6 +1196,14 @@ A Beta$(2, 2)$ prior is placed on the success probability $p$ of a
 Bernoulli model. After observing $s = 7$ successes in $n = 10$
 trials, compute the posterior parameters and the posterior mean.
 Compare the posterior mean to the MLE.
+
+\paragraph{Solution sketch.} The conjugate update gives
+$\mathrm{Beta}(\alpha + s, \beta + n - s) = \mathrm{Beta}(9, 5)$.
+The posterior mean is $9/(9+5) = 9/14 \approx 0.643$. The MLE is
+$\hat{p} = 7/10 = 0.700$. The posterior mean is shrunk toward the
+prior mean $0.5$; the shrinkage is the prior's effective sample
+size $\alpha + \beta = 4$ acting on a data sample of $n = 10$,
+giving a $4/14 \approx 29\,\%$ weight on the prior.
 \end{exercise}
 
 \begin{exercise}
@@ -1055,6 +1212,21 @@ design matrix $\mat{X}$ for a linear regression with intercept and
 solve the normal equations to obtain $\hat{\beta}_{0}$ and
 $\hat{\beta}_{1}$. Verify against the closed-form Volume I Chapter
 8 expressions.
+
+\paragraph{Solution sketch.} $\mat{X}$ has columns
+$(1,1,1,1)^{\transpose}$ and $(0,1,2,3)^{\transpose}$;
+$\vect{y} = (1, 3, 4, 7)^{\transpose}$.
+$\mat{X}^{\transpose}\mat{X} = \bigl(\begin{smallmatrix} 4 & 6 \\ 6 & 14 \end{smallmatrix}\bigr)$
+and $\mat{X}^{\transpose}\vect{y} = (15, 33)^{\transpose}$. The
+determinant is $4 \cdot 14 - 36 = 20$, so
+$(\mat{X}^{\transpose}\mat{X})^{-1} = \frac{1}{20}\bigl(\begin{smallmatrix} 14 & -6 \\ -6 & 4 \end{smallmatrix}\bigr)$.
+Multiplying gives $\hat{\beta}_{0} = (14 \cdot 15 - 6 \cdot
+33)/20 = (210 - 198)/20 = 0.6$ and $\hat{\beta}_{1} = (-6 \cdot
+15 + 4 \cdot 33)/20 = (-90 + 132)/20 = 2.1$. The Volume I formulae
+$\hat{\beta}_{1} = S_{xy}/S_{xx}$ with $\bar{x} = 1.5$,
+$\bar{y} = 3.75$, $S_{xy} = 10.5$, $S_{xx} = 5$ give the same
+$\hat{\beta}_{1} = 2.1$ and $\hat{\beta}_{0} = 3.75 - 2.1 \times
+1.5 = 0.6$.
 \end{exercise}
 
 \begin{exercise}
@@ -1062,6 +1234,15 @@ For the Gaussian-Gaussian model with prior $\mu \sim \mathcal{N}(0,
 1)$ and known $\sigma^{2} = 4$, compute the posterior mean and
 posterior variance after observing the sample $\set*{1.1, 0.7,
 2.3}$. State the prior and data precisions used.
+
+\paragraph{Solution sketch.} Prior precision $\tau_{0}^{-2} = 1$;
+data precision $n\sigma^{-2} = 3/4 = 0.75$. Posterior precision
+$\tau_{n}^{-2} = 1 + 0.75 = 1.75$, so $\tau_{n}^{2} = 4/7
+\approx 0.571$. Sample mean $\bar{x} = (1.1 + 0.7 + 2.3)/3 =
+1.367$. Posterior mean $\mu_{n} = (4/7)(1 \cdot 0 + 0.75 \cdot
+1.367) = (4/7)(1.025) \approx 0.586$. The posterior is
+$\mathcal{N}(0.586, 0.571)$. The data have pulled the prior toward
+the sample mean by a fraction $0.75/1.75 \approx 43\,\%$.
 \end{exercise}
 
 \begin{exercise}
@@ -1069,6 +1250,18 @@ Compute the Bonferroni-corrected significance level for a family of
 $m = 12$ simultaneous hypothesis tests at family-wise level $\alpha
 = 0.05$. State which individual $p$-values would be rejected from
 the list $\set*{0.001, 0.003, 0.012, 0.025, 0.040}$.
+
+\paragraph{Solution sketch.} The Bonferroni threshold is
+$\alpha/m = 0.05/12 \approx 0.00417$. Of the five listed
+$p$-values, only $0.001$ and $0.003$ are below the threshold; the
+other three are not rejected. Note the gap: $0.012$, which would
+have been significant at uncorrected $\alpha = 0.05$, fails the
+corrected threshold by a factor of nearly three. The
+Benjamini-Hochberg procedure applied to the same list with
+$m = 12$ would reject $\{p_{(k)} \leq k\alpha/m\}$ for the
+largest such $k$; here $p_{(1)} = 0.001 \leq 0.00417$,
+$p_{(2)} = 0.003 \leq 0.00833$, $p_{(3)} = 0.012 \leq 0.01250$,
+$p_{(4)} = 0.025 > 0.01667$, so BH rejects the first three.
 \end{exercise}
 
 \begin{exercise}
@@ -1077,6 +1270,17 @@ For the ridge regression estimator with $\mat{X}^{\transpose}\mat{X}
 compute $\hat{\vect{\beta}}_{\mathrm{ridge}}(\lambda)$ for $\lambda
 \in \set*{0, 1, 4, 9}$. Plot the coefficient values as a function
 of $\lambda$ and identify the limiting behaviour.
+
+\paragraph{Solution sketch.} With orthogonal design,
+$\hat{\vect{\beta}}_{\mathrm{ridge}}(\lambda) = (1+\lambda)^{-1}
+\mat{X}^{\transpose}\vect{Y}$. Evaluating at the four
+$\lambda$-values gives $\hat{\vect{\beta}}(0) = (3, 2)$,
+$\hat{\vect{\beta}}(1) = (1.5, 1.0)$, $\hat{\vect{\beta}}(4) =
+(0.6, 0.4)$, $\hat{\vect{\beta}}(9) = (0.3, 0.2)$. Both
+coordinates shrink toward zero by the common factor
+$1/(1+\lambda)$; the relative direction $(3:2)$ is preserved.
+The limiting behaviour as $\lambda \to \infty$ is
+$\hat{\vect{\beta}} \to \vect{0}$.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -1086,6 +1290,16 @@ Show that the sample variance with the Bessel correction,
 $S_{n}^{2} = \frac{1}{n-1}\sum (X_{i} - \bar{X}_{n})^{2}$, is
 unbiased for the population variance $\sigma^{2}$. State the
 expectation identity used at each step.
+
+\paragraph{Solution sketch.} Expand
+$\sum_{i}(X_{i} - \bar{X})^{2} = \sum_{i} X_{i}^{2} - n\bar{X}^{2}$.
+Taking expectations and using $\E[X_{i}^{2}] = \mu^{2} + \sigma^{2}$
+and $\E[\bar{X}^{2}] = \mu^{2} + \sigma^{2}/n$ gives
+$\E[\sum (X_{i} - \bar{X})^{2}] = n(\mu^{2} + \sigma^{2}) - n(\mu^{2}
++ \sigma^{2}/n) = (n-1)\sigma^{2}$. Dividing by $n-1$ yields
+$\E[S_{n}^{2}] = \sigma^{2}$. The Bessel correction recovers the
+single degree of freedom consumed by estimating $\mu$ with
+$\bar{X}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1094,6 +1308,16 @@ Derive the bias-variance decomposition $\operatorname{MSE}(\hat{\theta})
 the definition $\operatorname{MSE}(\hat{\theta}) = \E[(\hat{\theta}
 - \theta)^{2}]$, using the addition and subtraction of
 $\E[\hat{\theta}]$.
+
+\paragraph{Solution sketch.} Write
+$\hat{\theta} - \theta = (\hat{\theta} - \E\hat{\theta}) +
+(\E\hat{\theta} - \theta)$. Squaring and taking expectations,
+the cross term $2\E[(\hat{\theta} - \E\hat{\theta})(\E\hat{\theta} -
+\theta)]$ vanishes because $\E\hat{\theta} - \theta$ is constant
+and $\E[\hat{\theta} - \E\hat{\theta}] = 0$. The remaining two
+terms are $\E[(\hat{\theta} - \E\hat{\theta})^{2}] =
+\Var(\hat{\theta})$ and $(\E\hat{\theta} - \theta)^{2} =
+\operatorname{bias}(\hat{\theta})^{2}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1101,6 +1325,19 @@ Derive the MLE for a Poisson sample $X_{1}, \ldots, X_{n}$. Compute
 its observed Fisher information at $\hat{\lambda}$ and the
 asymptotic variance. State the regularity condition you used to
 move the derivative inside the expectation.
+
+\paragraph{Solution sketch.} The log-likelihood is
+$\ell(\lambda) = (\sum x_{i})\log\lambda - n\lambda + \text{const}$.
+Setting $\dd\ell/\dd\lambda = (\sum x_{i})/\lambda - n = 0$ gives
+$\hat{\lambda} = \bar{x}$. The second derivative is
+$-(\sum x_{i})/\lambda^{2}$; its negation, evaluated at
+$\hat{\lambda}$, is the observed information $n/\bar{x}$.
+$I_{n}(\lambda) = n/\lambda$ in expectation, so the asymptotic
+variance per observation is $\lambda$; the standard error of
+$\hat{\lambda}$ is $\sqrt{\bar{x}/n}$. The regularity condition
+used is that the support $\set{0, 1, 2, \ldots}$ does not depend
+on $\lambda$, allowing the dominated-convergence interchange of
+derivative and expectation.
 \end{exercise}
 
 \begin{exercise}
@@ -1109,6 +1346,17 @@ $\mathrm{Beta}(\alpha, \beta)$ and data with $s$ successes in $n$
 trials, the posterior is $\mathrm{Beta}(\alpha + s, \beta + n - s)$.
 Identify the prior parameters as ``prior successes'' and ``prior
 failures'' and discuss the working intuition.
+
+\paragraph{Solution sketch.} The posterior is proportional to
+$L(p) \pi(p) \propto p^{s}(1-p)^{n-s} \cdot p^{\alpha-1}
+(1-p)^{\beta-1} = p^{\alpha+s-1}(1-p)^{\beta+n-s-1}$, the kernel
+of $\mathrm{Beta}(\alpha + s, \beta + n - s)$. The prior
+parameters $\alpha$ and $\beta$ act as prior pseudo-counts: a
+$\mathrm{Beta}(\alpha, \beta)$ prior has the inferential weight of
+$\alpha + \beta$ prior observations, of which $\alpha$ are prior
+successes. The posterior mean $(\alpha + s)/(\alpha + \beta + n)$
+is a precision-weighted average of the prior mean $\alpha/
+(\alpha+\beta)$ and the MLE $s/n$.
 \end{exercise}
 
 \begin{exercise}
@@ -1117,6 +1365,23 @@ design matrix $\mat{X}$, the OLS estimator satisfies
 $\E[\hat{\vect{\beta}}] = \vect{\beta}$ and $\Var(\hat{\vect{\beta}})
 = \sigma^{2}(\mat{X}^{\transpose}\mat{X})^{-1}$. State, but do not
 prove, the Gauss-Markov theorem.
+
+\paragraph{Solution sketch.} Substitute $\vect{Y} = \mat{X}
+\vect{\beta} + \vect{\varepsilon}$ into the closed form:
+$\hat{\vect{\beta}} = (\mat{X}^{\transpose}\mat{X})^{-1}
+\mat{X}^{\transpose}(\mat{X}\vect{\beta} + \vect{\varepsilon}) =
+\vect{\beta} + (\mat{X}^{\transpose}\mat{X})^{-1}
+\mat{X}^{\transpose}\vect{\varepsilon}$. Taking expectations and
+using $\E[\vect{\varepsilon}] = \vect{0}$ gives unbiasedness.
+$\Var(\hat{\vect{\beta}}) = (\mat{X}^{\transpose}\mat{X})^{-1}
+\mat{X}^{\transpose}\Var(\vect{\varepsilon})\mat{X}
+(\mat{X}^{\transpose}\mat{X})^{-1} = \sigma^{2}(\mat{X}^{\transpose}
+\mat{X})^{-1}$, using
+$\Var(\vect{\varepsilon}) = \sigma^{2}\mat{I}$ and the
+symmetry of $\mat{X}^{\transpose}\mat{X}$. The Gauss-Markov
+theorem: among all linear unbiased estimators of $\vect{\beta}$,
+the OLS estimator has the smallest variance in the matrix
+positive-semidefinite ordering.
 \end{exercise}
 
 \begin{exercise}
@@ -1126,6 +1391,19 @@ Derive the closed form $\hat{\vect{\beta}}_{\mathrm{ridge}}(\lambda)
 $\min_{\vect{\beta}} \norm*{\vect{Y} - \mat{X}\vect{\beta}}_{2}^{2}
 + \lambda \norm*{\vect{\beta}}_{2}^{2}$ by setting the gradient
 with respect to $\vect{\beta}$ to zero.
+
+\paragraph{Solution sketch.} Expand the objective as
+$\vect{Y}^{\transpose}\vect{Y} - 2\vect{\beta}^{\transpose}
+\mat{X}^{\transpose}\vect{Y} + \vect{\beta}^{\transpose}
+\mat{X}^{\transpose}\mat{X}\vect{\beta} + \lambda
+\vect{\beta}^{\transpose}\vect{\beta}$. Differentiating with
+respect to $\vect{\beta}$ and setting to zero:
+$-2\mat{X}^{\transpose}\vect{Y} + 2(\mat{X}^{\transpose}\mat{X}
++ \lambda \mat{I})\vect{\beta} = \vect{0}$. Rearranging gives
+the claimed closed form. The matrix $\mat{X}^{\transpose}\mat{X}
++ \lambda\mat{I}$ is positive definite for $\lambda > 0$ even
+when $\mat{X}^{\transpose}\mat{X}$ is singular, which is the
+operational reason ridge always has a unique solution.
 \end{exercise}
 
 \begin{exercise}
@@ -1135,6 +1413,22 @@ $\chi^{2}_{r}$ distribution under the null, where $r$ is the
 difference in dimension between the alternative and the null
 parameter sets. Sketch the argument; do not work the regularity
 conditions.
+
+\paragraph{Solution sketch.} Let $\hat{\theta}$ be the
+unrestricted MLE on $\Theta$ and $\hat{\theta}_{0}$ the
+restricted MLE on $\Theta_{0}$. Taylor-expand the log-likelihood
+$\ell$ around $\hat{\theta}$ to second order:
+$\ell(\hat{\theta}_{0}) \approx \ell(\hat{\theta}) - \frac{1}{2}
+(\hat{\theta} - \hat{\theta}_{0})^{\transpose} I_{n}(\hat{\theta})
+(\hat{\theta} - \hat{\theta}_{0})$, since the first-order term
+vanishes at the MLE. Multiplying through by $-2$,
+$-2\ln\Lambda = -2[\ell(\hat{\theta}_{0}) - \ell(\hat{\theta})]
+\approx (\hat{\theta} - \hat{\theta}_{0})^{\transpose}
+I_{n}(\hat{\theta}) (\hat{\theta} - \hat{\theta}_{0})$. Under
+$H_{0}$, $\sqrt{n}(\hat{\theta} - \hat{\theta}_{0})$ is
+asymptotically Gaussian with covariance $I_{1}(\theta)^{-1}$ on
+the $r$-dimensional complement of $\Theta_{0}$ in $\Theta$, so
+the quadratic form has an asymptotic $\chi^{2}_{r}$ distribution.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -1144,6 +1438,15 @@ Estimate the sample size required to estimate a population mean to
 within $\pm 1\,\%$ relative precision at $95\,\%$ confidence, given
 a working coefficient of variation $\sigma/\mu = 0.1$. State the
 working approximation used.
+
+\paragraph{Solution sketch.} The half-width of the $95\,\%$
+confidence interval is $1.96 \sigma/\sqrt{n}$. Setting this equal
+to $0.01 \mu$ and using $\sigma = 0.1\mu$ gives $1.96 \times
+0.1\mu /\sqrt{n} = 0.01\mu$, so $\sqrt{n} = 19.6$, $n \approx
+384$. The working rule: at $95\,\%$ confidence, the sample size
+scales as $(z_{1-\alpha/2})^{2}(\sigma/\mu)^{2}/r^{2}$ where $r$
+is the relative precision; here $(1.96)^{2}(0.1)^{2}/(0.01)^{2}
+\approx 384$.
 \end{exercise}
 
 \begin{exercise}
@@ -1151,6 +1454,14 @@ Estimate the family-wise false-positive rate when an analyst runs
 $m = 20$ independent tests at $\alpha = 0.05$ each and reports the
 smallest $p$-value as a single test result. State the approximate
 formula and the result to two significant figures.
+
+\paragraph{Solution sketch.} The probability that at least one of
+$m = 20$ independent tests crosses the $\alpha = 0.05$ threshold
+under the global null is $1 - (1 - 0.05)^{20} = 1 - (0.95)^{20}$.
+With $(0.95)^{20} \approx 0.358$, the family-wise rate is
+approximately $0.64$, or $64\,\%$. A nominally $5\,\%$ test
+reported as a single result from $20$ trials is in fact about a
+$64\,\%$ test.
 \end{exercise}
 
 \begin{exercise}
@@ -1159,6 +1470,18 @@ for a Bernoulli success probability under a Beta$(2, 2)$ prior
 after $n = 50$ observations, using the working approximation that
 the Beta posterior is approximately Gaussian for moderate
 parameters. Compare to the frequentist Wald interval.
+
+\paragraph{Solution sketch.} Suppose $s = 30$ successes. The
+posterior is $\mathrm{Beta}(32, 22)$ with posterior mean $32/54
+\approx 0.593$ and posterior variance $\alpha'\beta'/((\alpha' +
+\beta')^{2}(\alpha' + \beta' + 1)) = 32 \cdot 22 / (54^{2} \cdot
+55) \approx 0.00439$, so posterior standard deviation $\approx
+0.0663$. The $95\,\%$ credible half-width is approximately
+$1.96 \times 0.0663 \approx 0.130$. The Wald frequentist interval
+uses $\hat{p}(1-\hat{p})/n$ with $\hat{p} = 0.6$: standard error
+$\sqrt{0.24/50} \approx 0.0693$, half-width $\approx 0.136$.
+The two are close because the prior is weak ($\alpha + \beta = 4$
+compared to $n = 50$).
 \end{exercise}
 
 \begin{exercise}
@@ -1167,6 +1490,19 @@ cross-validated mean squared error for a linear regression with
 $n = 100$ observations, given an in-sample residual standard
 deviation of $\sigma_{\hat{\varepsilon}} = 0.5$. State the working
 approximation.
+
+\paragraph{Solution sketch.} The per-fold mean squared error
+estimate has variance approximately $2\sigma^{4}/n_{\mathrm{fold}}$
+under Gaussian residuals; with $n_{\mathrm{fold}} = 20$ and
+$\sigma^{2} = 0.25$, the per-fold variance is about $2(0.25)^{2}/
+20 = 0.00625$, so per-fold standard deviation $\approx 0.079$.
+Averaging across $k = 5$ folds and treating them as approximately
+independent gives a standard error of the cross-validated metric
+of $0.079/\sqrt{5} \approx 0.035$. The folds are not fully
+independent (the training sets overlap), so the actual standard
+error is somewhat larger; the working approximation is treated
+as a lower bound, and the engineer reports the empirical
+across-fold standard deviation alongside.
 \end{exercise}
 
 \begin{exercise}
@@ -1175,6 +1511,16 @@ makes a ridge regression's effective degrees of freedom (the trace
 of the hat matrix) equal to half the rank $p$ of the design
 matrix, when $\mat{X}^{\transpose}\mat{X} = \mat{I}_{p}$. State the
 formula used.
+
+\paragraph{Solution sketch.} For ridge with orthogonal design,
+the hat matrix is $\mat{H} = \mat{X}(\mat{I} + \lambda\mat{I})^{-1}
+\mat{X}^{\transpose}$, and the effective degrees of freedom are
+$\tr(\mat{H}) = p/(1 + \lambda)$. Setting $p/(1+\lambda) = p/2$
+gives $\lambda = 1$. In words, $\lambda$ equal to the
+eigenvalue of $\mat{X}^{\transpose}\mat{X}$ halves the effective
+dimensionality of the model. For a general design, replace
+$\lambda$ by the working ratio of $\lambda$ to the typical
+eigenvalue of $\mat{X}^{\transpose}\mat{X}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1182,6 +1528,17 @@ Estimate the generalisation error inflation factor for a model
 with $p = 20$ parameters fit to $n = 100$ observations, given an
 in-sample residual mean squared error of $\sigma^{2}_{\hat{\varepsilon}}$.
 Use Mallows' $C_{p}$ approximation as the working rule.
+
+\paragraph{Solution sketch.} The expected generalisation error
+under Mallows' approximation is $\sigma^{2}(1 + 2p/n)$, where
+$\sigma^{2}$ is the true noise variance, estimated by
+$\sigma^{2}_{\hat{\varepsilon}}\,n/(n-p)$ to correct the in-sample
+estimate. With $p = 20$, $n = 100$, the in-sample inflation
+factor is $1 + 2(20)/100 = 1.40$. The $40\,\%$ inflation is the
+canonical reason an in-sample mean squared error from a
+$20$-parameter model on $100$ observations is not a defensible
+estimate of generalisation error; cross-validation or hold-out is
+required.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -1193,6 +1550,16 @@ $\mu = 10$, $\sigma = 2$. For each sample, compute the $95\,\%$
 $t$-confidence interval for $\mu$. Verify that the empirical
 coverage is approximately $0.95$ and report the sample standard
 error of the empirical coverage rate.
+
+\paragraph{Solution sketch.} The expected coverage is exactly
+$0.95$ under the Gaussian model. The standard error of the
+empirical coverage rate, treated as a binomial proportion with
+$N = 10\,000$, is $\sqrt{0.95 \times 0.05 / 10000} \approx
+0.0022$, so the empirical coverage should land within roughly
+$0.945$ to $0.955$ on a typical run. A seed-fixed implementation
+with $t_{0.975, 29} \approx 2.045$ produces a value in that band;
+a value outside the band on a single run signals an
+implementation bug, not a Monte Carlo failure.
 \end{exercise}
 
 \begin{exercise}
@@ -1202,6 +1569,18 @@ $t$-tests on different post hoc subgroups (random partitions),
 and report the smallest $p$-value as a single result. Verify that
 the empirical false-positive rate at nominal $\alpha = 0.05$
 exceeds $0.05$ and approaches the analytical $1 - (1-\alpha)^{m}$.
+
+\paragraph{Solution sketch.} The analytical false-positive rate
+under independent tests is $1 - (1 - 0.05)^{5} \approx 0.226$.
+Under random subgroup partitions of the same data, the tests are
+positively dependent, so the empirical inflation will land
+somewhere between $0.05$ (perfectly correlated tests) and $0.226$
+(independent tests). A typical implementation produces an
+empirical rate near $0.16$ to $0.20$, which is enough to
+demonstrate the inflation and motivate the multiple-comparisons
+correction. The standard error of the empirical rate at
+$N = 1000$ is approximately $\sqrt{0.2 \times 0.8 / 1000}
+\approx 0.013$.
 \end{exercise}
 
 \begin{exercise}
@@ -1211,6 +1590,16 @@ from $y = \sin(2\pi x) + \varepsilon$ with $\varepsilon \sim
 \mathcal{N}(0, 0.2^{2})$ and $x \in [0, 1]$. Plot the training
 mean squared error and the cross-validated mean squared error
 against $p$. Identify the degree at which the two curves diverge.
+
+\paragraph{Solution sketch.} Training mean squared error
+decreases monotonically with $p$ (the higher-order model contains
+the lower-order one). The cross-validated curve typically
+reaches a minimum near $p = 3$ to $p = 5$ (a cubic or quartic
+captures a half-period of the sine) and rises sharply for $p
+\geq 6$ as the model begins to fit the noise. The divergence
+point is the operational definition of overfitting under this
+loss; the engineer reports the cross-validation curve, not the
+training curve, when defending a model-complexity choice.
 \end{exercise}
 
 \begin{exercise}
@@ -1221,6 +1610,19 @@ $\lambda \in \set*{0, 0.1, 1, 10, 100}$. Compute the empirical
 bias squared and variance of $\hat{\vect{\beta}}_{1}$ across the
 $200$ datasets at each $\lambda$. Verify that the MSE has a
 minimum at intermediate $\lambda$.
+
+\paragraph{Solution sketch.} Variance of
+$\hat{\vect{\beta}}_{1}$ across the $200$ runs decreases
+monotonically with $\lambda$. Squared bias (squared difference
+between the run-averaged $\hat{\vect{\beta}}_{1}$ and the true
+$\beta_{1}$) increases monotonically. The sum, the empirical
+mean squared error, displays the U-shape sketched in
+figure~\ref{fig:vol02:ch14:bias-variance}: it is high at $\lambda
+= 0$ (high variance from the near-singular design), reaches a
+minimum near $\lambda = 1$ to $\lambda = 10$ depending on the
+design's conditioning, and rises again at $\lambda = 100$ as
+the bias dominates. The minimum is broad; the precise value of
+$\lambda$ that achieves it depends on the seed.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1233,6 +1635,20 @@ in light of the cost of a false alarm and a missed shift, the
 sample size required to detect a shift of $\delta = 2\,\si{\gram}$
 with power $0.90$ given $\sigma = 5\,\si{\gram}$, and the decision
 rule. Justify each choice.
+
+\paragraph{Discussion.} A defensible design uses a two-sided
+test $H_{0}: \mu = 100$ versus $H_{1}: \mu \neq 100$ with
+statistic $Z = (\bar{X} - 100)/(\sigma/\sqrt{n})$. The
+significance level depends on cost: a setting where a false alarm
+triggers an inexpensive recalibration tolerates $\alpha = 0.05$;
+a setting where it triggers a costly line stop justifies
+$\alpha = 0.01$. Sample size at $\alpha = 0.05$, $1-\beta =
+0.90$ uses $n \approx ((z_{0.975} + z_{0.90})\sigma/\delta)^{2}
+= ((1.96 + 1.28) \times 5 / 2)^{2} \approx 66$. Decision rule:
+reject $H_{0}$ if $\abs*{Z} > 1.96$, with the test conducted on
+$n = 66$ consecutive units. The design's justification names
+both errors and reports the power against the
+engineering-relevant shift, not just the significance.
 \end{exercise}
 
 \begin{exercise}
@@ -1243,6 +1659,22 @@ and the reporting threshold (the posterior probability of a defect
 rate above some critical level $p^{\star}$ that triggers a process
 halt). Justify the prior in terms of working knowledge of the
 process.
+
+\paragraph{Discussion.} A working design uses prior $p \sim
+\mathrm{Beta}(\alpha_{0}, \beta_{0})$, with $\alpha_{0}, \beta_{0}$
+chosen so the prior mean matches the historical defect rate (for
+instance $\alpha_{0} = 2$, $\beta_{0} = 198$ for a $1\,\%$ prior
+on $n = 200$ historical units). After a batch of $n_{b}$ tests
+with $s_{b}$ defects, the posterior is $\mathrm{Beta}(\alpha_{0}
++ s_{\text{cum}}, \beta_{0} + n_{\text{cum}} - s_{\text{cum}})$
+with cumulative counts across all batches. The reporting
+threshold is the posterior probability $\Pr[p > p^{\star} \mid
+\text{data}]$ exceeding a chosen level (e.g.\ $0.10$); when
+exceeded, the inspector halts the process. The prior must be
+defensible from prior production runs; a flat $\mathrm{Beta}(1,1)$
+prior is rarely defensible in a mature process and would treat
+the first defect as far more diagnostic than working knowledge
+warrants.
 \end{exercise}
 
 \begin{exercise}
@@ -1252,6 +1684,25 @@ loss function, the pre-processing operations and which sit inside
 the loop, the hyperparameter search grid, and the reporting
 metric. State the rule by which the cross-validation result is
 trusted as an estimate of generalisation.
+
+\paragraph{Discussion.} A defensible design uses stratified
+$k = 5$ folds to preserve the failure-rate balance per fold.
+Loss is log-loss (proper scoring rule) with a calibration plot
+as a diagnostic. Pre-processing inside the loop: per-fold
+standardisation of the three sensor readings, per-fold imputation
+of any missing values. Outside the loop: time-invariant
+operations such as variable renaming and physical-unit
+conversion. The hyperparameter search grid is the $\ell_{2}$
+regularisation strength $C \in \set{0.01, 0.1, 1, 10, 100}$,
+chosen by inner cross-validation if the engineer wants a
+fully nested procedure. Reporting metric: mean and across-fold
+standard error of held-out log-loss, plus held-out classification
+accuracy at a stated decision threshold. The procedure is
+trusted as an estimate of generalisation when no operation
+adapts to the data outside the loop and when the failure rate
+is preserved across folds; if the failure rate is below
+$5\,\%$, stratification or a different evaluation metric (such
+as AUC) is required.
 \end{exercise}
 
 \begin{exercise}
@@ -1262,6 +1713,24 @@ genomics-style dataset. State the family-wise control method
 (Benjamini-Hochberg), the significance level chosen, the criterion
 by which the analyst decides between the two methods, and the
 report format.
+
+\paragraph{Discussion.} The choice between Bonferroni and
+Benjamini-Hochberg follows the cost structure. Bonferroni
+controls the family-wise error rate at the cost of low power
+when $m$ is large; it is appropriate when a single false rejection
+is itself costly (a confirmatory finding that triggers expensive
+follow-up). Benjamini-Hochberg controls the expected proportion
+of false rejections among rejections; it is appropriate when
+the cost of a missed true rejection outweighs the cost of one
+or two false ones (exploratory genomics). At $m = 50$ and
+$\alpha = 0.05$, Bonferroni rejects at per-test threshold
+$0.001$; BH rejects up to the largest $k$ with $p_{(k)} \leq k
+\times 0.001$. The report names the chosen method, the
+per-comparison threshold, the number of tests run, the number
+rejected, and the false-discovery-rate or family-wise-error
+guarantee. The unreported $m$ is the disclosure failure that
+inflates the literature
+\cite{method:simmons-nelson-simonsohn-2011}.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -1271,6 +1740,20 @@ A colleague reports a regression with in-sample $R^{2} = 0.99$ and
 no cross-validated error. Identify the three things that should
 make the engineer suspicious of the report and propose follow-up
 questions.
+
+\paragraph{Solution sketch.} Three suspicions are warranted.
+First, the in-sample $R^{2}$ is large because the model has many
+parameters relative to $n$, and the cross-validated $R^{2}$ may
+be far smaller. Ask for $n$, $p$, and the cross-validated
+metric. Second, the predictors may include leakage (a variable
+that is a proxy for or downstream of the response). Ask for the
+full predictor list and the temporal or causal relationship
+between each predictor and the response. Third, the response
+variable may have been transformed in a way that inflates
+$R^{2}$ artificially (logging a heavily skewed variable can
+move $R^{2}$ from $0.5$ to $0.95$ without improving prediction
+of the original quantity). Ask for the working units of the
+response and the metric reported on the original scale.
 \end{exercise}
 
 \begin{exercise}
@@ -1278,6 +1761,21 @@ A colleague reports a $p$-value of $0.03$ for a single test from a
 study that examined ``several outcomes.'' Identify the additional
 information the engineer needs to interpret the $p$-value and the
 correction that would bring the report into the working discipline.
+
+\paragraph{Solution sketch.} The engineer needs $m$ (the number
+of outcomes examined), whether the analysis was pre-registered,
+and which outcomes were planned versus selected after the data
+were seen. With $m = 5$ untargeted tests at nominal $\alpha =
+0.05$, the family-wise rate is $1 - 0.95^{5} \approx 0.23$, and
+the reported $p = 0.03$ is consistent with a global null. The
+correction depends on the framing: Bonferroni gives a corrected
+$p$-value of $\min(5 \times 0.03, 1) = 0.15$, no longer
+significant at $\alpha = 0.05$; Benjamini-Hochberg at $\alpha =
+0.05$ requires $p_{(k)} \leq k \times 0.01$ for the ranked
+list. If the study was not pre-registered and the chosen
+outcome was selected for promise, the correct interpretation is
+``working hypothesis to be replicated,'' not ``established
+effect.''
 \end{exercise}
 
 \begin{exercise}
@@ -1286,6 +1784,21 @@ degrees of freedom would predict under the model. Diagnose the
 two most likely causes (over-fit due to too many predictors;
 contamination of the training set with test data) and propose the
 diagnostic that distinguishes the two.
+
+\paragraph{Solution sketch.} Under a correctly specified
+logistic model, $\E[\text{residual deviance}] \approx
+\text{residual degrees of freedom}$. A deviance much smaller than
+the degrees of freedom indicates the model is fitting too
+closely. Over-fit by too many predictors shows up as a deviance
+that recovers to the expected level under $k$-fold cross-validation
+(the held-out deviance is much larger than the in-sample). Data
+leakage shows up as a deviance that remains small under
+cross-validation; the model has access to the response within the
+training fold through a leaked variable. The distinguishing
+diagnostic: refit on the cross-validation training folds and
+compare in-sample versus held-out deviance per fold. A large gap
+points to over-fit; a small gap with small overall deviance
+points to leakage.
 \end{exercise}
 
 \begin{exercise}
@@ -1295,6 +1808,22 @@ estimator $\hat{\vect{\beta}}_{\mathrm{OLS}}$ in sign on one
 coefficient. Diagnose what this sign reversal indicates about the
 design matrix's conditioning and the variance of the OLS
 coefficient. Propose the diagnostic that confirms the diagnosis.
+
+\paragraph{Solution sketch.} A sign reversal under ridge
+indicates that the OLS coefficient was estimated with high
+variance, large enough that the sign is not stable across small
+perturbations of the data. The underlying cause is collinearity:
+two or more predictors carry similar information, the design
+matrix has a small eigenvalue, and the corresponding OLS
+coefficient absorbs a noisy linear combination that ridge
+shrinks toward zero. Confirming diagnostics: compute the
+variance inflation factors (VIF) of each predictor; a VIF above
+10 confirms collinearity. Examine the singular values of
+$\mat{X}$; a condition number above $30$ indicates an
+ill-conditioned design. Refit OLS on bootstrapped resamples and
+inspect the resampled distribution of the coefficient; a wide
+distribution that straddles zero confirms the OLS estimate's
+sign is not informative.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1305,6 +1834,31 @@ in the 2015 Reproducibility Project: Psychology should change the
 way an engineer reads a single published study with $p = 0.04$.
 Cite \cite{method:open-science-collaboration-2015} and connect the
 argument to the disclosure rule of section 14.7.
+
+\paragraph{Solution sketch.} A defensible argument: the Open
+Science Collaboration found that only $36\,\%$ of originally
+significant findings replicated, with replication effects
+averaging half the original. A single published $p = 0.04$ is
+therefore consistent with one of two regimes: a true effect
+that will replicate at smaller magnitude, or a false-positive
+arising from p-hacking, the garden of forking paths, or
+publication bias. The published $p$-value alone does not
+distinguish the two. The disclosure rule of section 14.7
+requires the engineer to ask what tests were run, whether
+pre-registration was in place, whether the analysis was the
+planned one, and whether the effect size carries a confidence
+interval that excludes a working null. A $p = 0.04$ that
+survives a multiple-comparisons correction, was specified before
+the data were seen, comes from a high-powered design, and is
+accompanied by an effect-size interval that excludes negligible
+effects is a different working object from a $p = 0.04$ that
+appears without context. The engineer who sizes a load-bearing
+design against the second class of evidence is treating a single
+observation as confirmation, which the empirical replication
+record warns against. The working compromise is to read a
+single $p = 0.04$ as a working hypothesis to be replicated, not
+as a result to be acted on, until the disclosures are made and
+the effect survives an honest correction.
 \end{exercise}
 
 \begin{exercise}
@@ -1313,6 +1867,29 @@ solve the garden-of-forking-paths problem
 \cite{method:gelman-loken-forking-paths}, and identify the
 additional discipline that a reader should ask of an analysis to
 defend its $p$-value.
+
+\paragraph{Solution sketch.} Pre-registration commits the
+analyst to a primary test and a primary outcome before the data
+are seen. The forking-paths argument shows that even
+pre-registered analyses can be undermined when the
+pre-registration is loose or when secondary analyses absorb the
+flexibility that the primary analysis was supposed to remove.
+A pre-registration that says ``a $t$-test will be conducted''
+without specifying covariate adjustment, outlier handling, or
+the subgroup of interest still permits substantial post hoc
+flexibility. The additional discipline a reader should require:
+the pre-registration is specific (test, model, covariates,
+outlier rule, subgroup, decision threshold); the analysis report
+explicitly enumerates every deviation from the pre-registration
+and its justification; every secondary analysis is reported
+alongside the primary, with the same level of detail; the
+underlying data and analysis code are available for independent
+replication. Pre-registration in the absence of these companion
+disciplines reduces but does not eliminate the inflation. The
+defensible report distinguishes confirmatory results (specified
+in advance, all deviations disclosed) from exploratory results
+(discovered in the data, reported as hypotheses for replication,
+not as established effects).
 \end{exercise}
 
 \begin{exercise}
@@ -1323,6 +1900,31 @@ to 300 words, whether the gap is consistent with overfitting,
 with covariate shift, or with leakage of patient-identifier
 information into the original training set, and propose the
 diagnostic that distinguishes the three.
+
+\paragraph{Solution sketch.} The gap is large enough to demand
+investigation, and all three explanations are consistent with
+the observation. Overfitting would imply the original
+cross-validation was honest but the model has memorised
+within-dataset noise that does not generalise. Diagnostic:
+re-fit on the original dataset with stronger regularisation and
+re-evaluate on the new hospital; if accuracy recovers, the
+original was overfit. Covariate shift means the predictor
+distribution differs between the two hospitals (different
+scanner, different patient population, different acquisition
+protocol). Diagnostic: compare the marginal distributions of
+each predictor across the two datasets; substantial
+distributional differences confirm covariate shift. Patient-
+identifier leakage (the model learned to identify individual
+patients via incidental features, and the cross-validation folds
+contained multiple images per patient) implies the original
+cross-validation was contaminated. Diagnostic: split folds by
+patient rather than by image and re-run the original
+cross-validation; a drop to near $0.71$ confirms leakage. The
+three diagnostics together identify the failure mode. The
+cross-hospital evaluation is the discipline that surfaces all
+three; an engineer who reports only the within-hospital
+cross-validation accuracy is reporting a number that does not
+defend deployment across institutions.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1333,6 +1935,22 @@ strong prior whose source is not stated. Argue, in one paragraph,
 what the engineer should ask before treating the interval as
 load-bearing for design and what disclosures should accompany
 every Bayesian report.
+
+\paragraph{Discussion.} A strong prior with unstated source is
+the Bayesian analogue of an undisclosed analysis choice. The
+engineer should ask: what is the parametric form of the prior;
+what is its effective sample size (the prior's pseudo-count
+relative to the data); what evidence underwrites the prior
+(earlier studies with citations, physical constraints with
+derivations, expert elicitation with the elicitation protocol);
+and how does the posterior change under a flat or weakly
+informative prior. A Bayesian report that does not disclose the
+prior, its effective sample size, the prior-elicitation
+provenance, and a sensitivity analysis is not reportable. The
+credible interval inherits whatever the prior pulls it toward;
+without the disclosures the engineer cannot distinguish a
+genuine posterior update from a prior assertion dressed in
+data.
 \end{exercise}
 
 \begin{exercise}
@@ -1341,6 +1959,22 @@ on the data the model was trained on, with no cross-validation.
 Argue, in one paragraph, why this is the wrong figure to compare
 across vendors and what figure the engineer should request
 instead.
+
+\paragraph{Discussion.} In-sample classification accuracy is
+inflated by the model's flexibility relative to the dataset.
+Across vendors with different model complexities, the more
+flexible model wins on in-sample accuracy almost regardless of
+its actual generalisation performance; a comparison made on
+in-sample accuracy systematically prefers overfit models. The
+engineer should request held-out accuracy on a fresh test set
+that the vendor never saw during training and hyperparameter
+tuning. Better: held-out accuracy on a benchmark dataset that
+the engineer holds in escrow and only releases for the
+evaluation. Best: held-out accuracy plus a calibration plot and
+held-out log-loss; accuracy alone misses the model's confidence
+calibration, which matters for downstream cost-sensitive
+decisions. The figure to compare is the one the vendor cannot
+have optimised against.
 \end{exercise}
 
 \begin{exercise}
@@ -1349,6 +1983,24 @@ parameter $\lambda$ in a ridge regression by minimising training
 error. Argue, in one paragraph, why this choice does not control
 generalisation error and what the consultant should do instead.
 Reference the bias-variance trade-off of section 14.1.
+
+\paragraph{Discussion.} Training error decreases monotonically
+as $\lambda \to 0$: with no penalty the OLS fit minimises the
+residual sum of squares by construction. Choosing $\lambda$ to
+minimise training error therefore always picks $\lambda = 0$,
+which is OLS, and forfeits the variance reduction the
+bias-variance decomposition promises. The generalisation error,
+by contrast, has a minimum at some $\lambda^{\star} > 0$
+whenever the design is ill-conditioned (figure
+\ref{fig:vol02:ch14:bias-variance}). The consultant should
+choose $\lambda$ by minimising the cross-validated error across
+a grid (typically logarithmically spaced from $10^{-3}$ to
+$10^{3}$ times the typical eigenvalue of $\mat{X}^{\transpose}
+\mat{X}$), report the cross-validated curve, and apply the
+one-standard-error rule for the final choice. Training error is
+the wrong target for any hyperparameter that exists to
+trade-off bias against variance, including $\lambda$, polynomial
+degree, neural-network width, and regression-tree depth.
 \end{exercise}
 
 \begin{exercise}
@@ -1360,4 +2012,29 @@ evidence the engineer should require before using the result, in
 light of the replication-rate evidence in
 \cite{method:open-science-collaboration-2015,method:errington-cancer-biology-2021}
 and the HARKing literature \cite{method:kerr-harking-1998}.
+
+\paragraph{Discussion.} The numbers describe a low-power
+study: at $\alpha = 0.05$ and $d = 0.6$, $n = 24$ gives power
+of roughly $0.45$. A barely significant result from a low-power
+study, with no replication, is exactly the configuration the
+replication-rate evidence flags as most likely to evaporate on
+re-analysis: the Open Science Collaboration found replication
+effects averaging half the original, the Errington cancer-biology
+project found a factor-of-three attenuation, and both studies
+emphasised low original power as a predictor of non-replication.
+The HARKing literature adds that a single significant result from
+a study that examined multiple outcomes may have been selected
+after the fact, inflating the apparent effect size. Before
+using the result, the engineer should require: the
+pre-registration (or its absence and the consequences),
+the full list of analyses run, the cross-validated or held-out
+effect-size estimate, at least one independent replication, and
+the effect-size confidence interval (which at $n = 24$ is wide
+enough that the lower bound may include effects too small for
+the design to depend on). If no replication exists, the
+engineer should size the design against the lower confidence
+bound rather than the point estimate, accept that the
+load-bearing claim cannot rest on this single study, and
+commission or wait for an independent replication. The
+disclosure rule of section 14.7 is the working test.
 \end{exercise}

@@ -1,0 +1,121 @@
+\begin{figure}[p]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\small]
+
+% Log-scale plot, y axis: log10 of suboptimality
+% x axis: iteration count
+\draw[->, thick] (0, 0) -- (12.5, 0) node[right, font=\scriptsize] {iteration $k$};
+\draw[->, thick] (0, 0) -- (0, 8.5) node[above, font=\scriptsize]
+  {$\log_{10}(f - f^{*})$};
+
+% x-axis tick marks (k = 0, 50, 100, 150, 200, 250, 300, 350, 400)
+\foreach \xk/\lbl in {0/0, 1.5/50, 3.0/100, 4.5/150, 6.0/200, 7.5/250, 9.0/300, 10.5/350, 12.0/400} {
+  \draw (\xk, -0.05) -- (\xk, 0.05);
+  \node[font=\tiny, anchor=north] at (\xk, -0.05) {\lbl};
+}
+
+% y-axis tick marks (log10 from 0 down to -8)
+\foreach \yk/\lbl in {0/0, 1/-1, 2/-2, 3/-3, 4/-4, 5/-5, 6/-6, 7/-7, 8/-8} {
+  \draw (-0.05, \yk) -- (0.05, \yk);
+  \node[font=\tiny, anchor=east] at (-0.1, \yk) {\lbl};
+}
+
+% Gradient descent on a strongly convex quadratic with kappa = 100.
+% rate = 1 - mu/L = 0.99 per step, so log10 of error decreases
+% by log10(0.99) = -0.00436 per step. Reaches 1e-8 at about 1830 steps.
+% Plot from k = 0..400, error goes from 1 to about 0.0178 (log10 = -1.75)
+\draw[engblue, thick]
+  (0, 0)
+  -- (1.5, {0.00436*50})
+  -- (3.0, {0.00436*100})
+  -- (4.5, {0.00436*150})
+  -- (6.0, {0.00436*200})
+  -- (7.5, {0.00436*250})
+  -- (9.0, {0.00436*300})
+  -- (10.5, {0.00436*350})
+  -- (12.0, {0.00436*400});
+\node[engblue, anchor=west, font=\scriptsize] at (12.0, {0.00436*400 - 0.1})
+  {gradient descent ($\kappa = 100$)};
+
+% Accelerated gradient on the same problem.
+% Rate ~ 1 - sqrt(mu/L) = 1 - 0.1 = 0.9 per step, log10(0.9) = -0.0458
+% so reaches 1e-8 at about 175 steps.
+\draw[engred, thick]
+  (0, 0)
+  -- (1.5, {0.0458*50})
+  -- (3.0, {0.0458*100})
+  -- (4.5, {0.0458*150})
+  -- (5.4, 8.0);
+\node[engred, anchor=west, font=\scriptsize] at (5.4, 8.1)
+  {Nesterov accelerated};
+
+% Newton's method: quadratic convergence, error squares.
+% Starting from 1, error after k steps is 1 / (2^(2^k)). Reaches 1e-8
+% by k = 3. Plot as a steep curve to the floor.
+\draw[engblack, thick]
+  (0, 0)
+  -- (0.45, 1)
+  -- (0.9, 4)
+  -- (1.35, 8.0);
+\fill[engblack] (0, 0) circle (1.6pt);
+\fill[engblack] (0.45, 1) circle (1.6pt);
+\fill[engblack] (0.9, 4) circle (1.6pt);
+\fill[engblack] (1.35, 8.0) circle (1.6pt);
+\node[engblack, anchor=west, font=\scriptsize] at (1.4, 8.2)
+  {Newton};
+
+% L-BFGS, superlinear (between geometric and quadratic). Plot in between.
+\draw[gray, thick]
+  (0, 0)
+  -- (1.5, 0.7)
+  -- (3.0, 2.0)
+  -- (4.5, 4.0)
+  -- (6.0, 6.5)
+  -- (7.5, 8.0);
+\node[gray, anchor=west, font=\scriptsize] at (7.5, 8.2)
+  {L-BFGS};
+
+% SGD on the noisy version, O(1/sqrt(k)) rate; log10 error = -0.5 log10(k+1) + const
+% At k=50: -0.5 log10(51) = -0.85. At k=400: -0.5 log10(401) = -1.30.
+% Add noise (jitter).
+\draw[engblue, thick, dash pattern=on 2pt off 2pt]
+  (0, 0)
+  -- (0.5, 0.10) -- (1.0, 0.40) -- (1.5, 0.85)
+  -- (2.0, 0.95) -- (3.0, 1.10) -- (4.0, 1.18)
+  -- (5.0, 1.25) -- (6.0, 1.27) -- (7.5, 1.30)
+  -- (9.0, 1.32) -- (10.5, 1.33) -- (12.0, 1.30);
+\node[engblue, anchor=west, font=\scriptsize] at (12.0, 1.20)
+  {SGD ($\sigma^{2} = 1$)};
+
+% Legend / annotation block under the body
+\node[anchor=north west, align=left, font=\scriptsize] at (0, -1.0) {
+  Convergence rates on a smooth strongly convex objective with $\kappa = 100$.\\
+  Newton: quadratic (error squares each step). \\
+  Nesterov accelerated gradient: geometric with rate $1 - \sqrt{\mu/L}$. \\
+  L-BFGS: superlinear in practice on smooth medium-scale problems. \\
+  Gradient descent: geometric with rate $1 - \mu/L = 1 - 1/\kappa$. \\
+  SGD on the noisy version: $O(1/\sqrt{k})$ to a noise floor. \\
+  The right method depends on $n$, noise, smoothness, and per-iteration cost.
+};
+
+\end{tikzpicture}
+\caption[Convergence rates of optimisation methods]{Schematic
+convergence rates of the chapter's algorithms on a smooth strongly
+convex problem with condition number $\kappa = 100$. Newton's
+method squares the error each step and reaches double precision in
+under five iterations, at the cost of an $O(n^{3})$ Hessian solve
+per step. Nesterov's accelerated gradient achieves a geometric
+rate of $1 - \sqrt{\mu/L} = 1 - 1/\sqrt{\kappa}$, a $\sqrt{\kappa}$
+improvement over plain gradient descent's $1 - 1/\kappa$. L-BFGS
+sits between, with superlinear convergence on smooth medium-scale
+problems at $O(n)$ per step. Stochastic gradient descent on the
+noisy version of the same problem converges at $O(1/\sqrt{k})$ to
+a noise floor set by the per-sample gradient variance; the $1/k$
+rate of the strongly convex case requires variance reduction or a
+schedule $\eta_{k} \propto 1/k$. The choice of method is governed
+by the dimension $n$, the access pattern to the gradient (full
+batch versus stochastic), the smoothness regime, and the
+per-iteration cost. The principle of Section 15.5 codifies the
+selection rule.}
+\label{fig:vol02:ch15:method-comparison}
+\end{figure}

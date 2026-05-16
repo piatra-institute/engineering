@@ -251,10 +251,10 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 Verified at last edit (2026-05-16):
 
 - 12 volumes / 174 chapters / 174 dossiers.
-- 3128-page PDF (Vol I complete at Tier 1+2 density across all 9 chapters).
+- 3289-page PDF (Vol I complete at Tier 1+2 density; Vol II at Tier 1+2 across 17 of 18 chapters, with Ch 2 still at first-draft pending re-run).
 - 171 chapters with first-draft prose. Per-volume status:
   - **Vol I** 9/9 at Stage 5 and at **Tier 1+2 density**, pp 1-328 (~328pp; target ~720). Production-density rollout completed 2026-05-16 in two phases: Ch 1-4 sequential single-chapter turns, then Ch 5-9 via five parallel git-worktree agents merged back to main; Ch 1 received a Tier 2 supplement (explicit phases, success criteria, common failure modes on the project block).
-  - **Vol II** 18/18 at Stage 4, pp 221-710 (~490pp; target ~1800).
+  - **Vol II** 18/18 at Stage 4; 17 of 18 chapters expanded to Tier 1+2 density 2026-05-16 via four batches of parallel git-worktree agents. Ch 2 (Functions and graphs) is still at first-draft density — agent re-run stalled on a watchdog timeout; needs a follow-up pass. Ch 7 (ODEs) and Ch 11 (Multivariable calculus) have partial solution coverage (22/45 and 10/35 exercises respectively) plus full figures/code/data — needs solution top-up. Page span shifts upward with each volume's expansion; old span pp 221-710 no longer accurate.
   - **Vol III** 13/13 at Stage 4, pp 711-984 (~274pp; target ~1300).
   - **Vol IV** 14/14 at Stage 4, pp 985-1218 (~234pp; target ~1400).
   - **Vol V** 12/12 at Stage 4, pp 1219-1456 (~238pp; target ~1200).
@@ -265,14 +265,14 @@ Verified at last edit (2026-05-16):
   - **Vol X** 16/16 at Stage 4, pp 2417-2705 (~289pp; target ~1450). Highest first-draft density (Vol X-XII period) ($\approx$ 20\% of target).
   - **Vol XI** 13/13 at Stage 4, pp 2706-2863 (~158pp; target ~1080). Includes the design-studios chapter (Ch 12) and the capstone (Ch 13); Ch 13 carries the integrative project for the volume rather than exercises.
   - **Vol XII** 14/14 at Stage 4, pp 2864-2986 (~123pp; target ~1320). Drafted in the current session; includes the closing future-of-the-artificial chapter (Ch 14) that closes the entire book and carries the integrative personal-manifesto project rather than exercises.
-- 381 bibliography entries.
+- 463 bibliography entries.
 - 38 named-case registry entries; 38 `acc:` keys cited in prose; `make accidents` PASS. (Vol I Tier 1+2 rollout added 2 entries: GPS week-number rollover 1999/2019, IPK mass drift 1889-2019.)
 - 1 research seed on disk under `docs/research/seeds/`.
 - 3 chapters still carry `Project track: TBD` (Vol VI Ch 11-13). Q55 settled per-chapter for Vols I-V, Vol VI Ch 1-10, and Vols VII-XII during drafting.
 - Vol I review log complete: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`, each with a `Resolved:` banner. Vols II-XII reviews not yet started; the same three-role protocol carries forward.
 - Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
 - Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`); trace and diagonal (`\tr`, `\diag`); optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`). Added during Vol II drafting; carried forward unchanged through Vols III-XII. Vol VII drafting added the `\usepackage[inline]{enumitem}` option in `preamble.tex` to support `enumerate*` inline lists.
-- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 3128-page PDF.
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 3289-page PDF.
 
 ## What not to do
 

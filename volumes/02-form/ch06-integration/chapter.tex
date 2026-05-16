@@ -51,6 +51,12 @@ accumulation. A flow rate in litres per minute, sampled at $\xi_{i}$
 and multiplied by the duration $x_{i}-x_{i-1}$ in minutes, gives
 litres. The sum has the dimensions of a total volume of water. The
 Riemann sum is dimensional accounting before it is mathematics.
+\Cref{fig:vol02:ch06:riemann-sum} shows the picture for a
+sinusoidally varying integrand: the rectangles overshoot on rising
+portions of $f$ and undershoot on falling portions, and the picture
+makes the limit-of-mesh argument visible.
+
+\input{volumes/02-form/ch06-integration/figures/fig-riemann-sum.tex}
 
 \begin{archetype}[Balance, accumulation form]
 The Riemann sum is the chapter's pure form of the balance archetype
@@ -411,7 +417,12 @@ x \sin x + \cos x + C.
 \]
 The reader checks the result by differentiating: $(x \sin x +
 \cos x)' = \sin x + x \cos x - \sin x = x \cos x$, which is the
-integrand.
+integrand. \Cref{fig:vol02:ch06:by-parts-geometry} reads the
+formula geometrically as the decomposition of a rectangle by the
+curve $v(u)$ into two regions of areas $\int v \dd u$ and $\int u
+\dd v$.
+
+\input{volumes/02-form/ch06-integration/figures/fig-integration-by-parts.tex}
 
 The standard mnemonic for the choice of $u$ is LIATE: prefer for
 $u$ a Logarithm, then Inverse trig, then Algebraic, then
@@ -634,6 +645,11 @@ function evaluations and gives an order-of-magnitude better error at
 modest sample counts. On noisy measured data with discontinuities or
 kinks, the higher-order methods can amplify noise; the trapezoidal
 rule is then more honest.
+\Cref{fig:vol02:ch06:trap-vs-simpson} compares the interpolants
+panel by panel for $e^{-x^{2}}$ on $[0, 1]$: the parabolic fit hugs
+the curve where the chord cuts across it.
+
+\input{volumes/02-form/ch06-integration/figures/fig-trap-vs-simpson.tex}
 
 \subsection{Gaussian quadrature}
 
@@ -701,6 +717,91 @@ property of the instrument. The chapter 5 numerical-differentiation
 discussion of bias and variance applies here in mirror: smoothing
 biases the integral toward the assumed model and reduces the
 variance from noise, with the same trade.
+
+A reader who tabulates the actual errors of each rule against $n$,
+on a smooth analytical integrand, reproduces
+\Cref{fig:vol02:ch06:quadrature-convergence}: the trapezoidal rule
+falls with slope $-2$ on log-log axes, Simpson's rule with slope
+$-4$, and Gauss-Legendre reaches the double-precision floor at
+about $n = 12$. The script
+\texttt{code/quadrature\_convergence.py} reproduces the table that
+generates the figure. The picture is the working argument for
+choosing Gauss-Legendre on integrands known analytically and for
+distrusting any rule's asymptotic order on integrands whose
+smoothness the rule's error formula assumes
+\cite{paper:v2ch06-trefethen-quadrature-2008}.
+
+\input{volumes/02-form/ch06-integration/figures/fig-quadrature-convergence.tex}
+
+\begin{estimation}
+\textbf{Question.} A meteorological station logs a wind-speed
+measurement once per minute for a full day, giving $1440$ values
+in metres per second. The reader is asked to estimate the total
+distance the air has travelled past the sensor over the day, with
+a factor-of-two confidence range, before computing any integral.
+
+\smallskip
+\textit{Estimate.}
+
+\smallskip
+A typical surface wind speed at a temperate-zone site is $3$ to
+$7\,\text{m/s}$. Taking $5\,\text{m/s}$ as the working mean and
+$86400\,\text{s}$ as the day, the distance the air has travelled
+past the sensor is about $5\,\text{m/s} \times 86400\,\text{s}
+\approx 4.3 \times 10^{5}\,\text{m}$, or roughly $430\,\text{km}$.
+The factor-of-two range covers windier-than-average and
+calmer-than-average days, from about $200\,\text{km}$ to
+$900\,\text{km}$. The estimate uses one mean value and one
+duration; the integral $\int_{0}^{86400} v(t) \dd t$ refines the
+mean to whatever the day's measurements support.
+
+The trapezoidal rule applied to the logged data lands inside the
+estimated range provided the sensor sees a representative day. A
+trapezoidal answer that lands outside the range, in either
+direction, is a diagnostic: either the sensor is reading wrong
+(stuck low at calm, saturating high in gusts), or the integrand
+is contaminated (the data-acquisition system has dropped samples
+and the rule has integrated over the gaps as if they were
+zero-wind intervals), or the day was genuinely unusual and the
+report must say so. The estimation block earns the calculation by
+giving the engineer a yardstick against which the calculation's
+answer is sane or suspect. The wind-speed example is the routine
+form of a general discipline: every numerical integral against
+measured data has a back-of-the-envelope sibling.
+\end{estimation}
+
+\subsection{When the working rule of thumb breaks}\pathtag{standard}
+
+The engineering folklore that ``Simpson is better than
+trapezoidal'' rests on three assumptions about the integrand: it
+is smooth enough that the fourth derivative is bounded and not
+much larger than the function itself; the integration interval is
+covered uniformly; and the sample count is large enough that the
+$h^{4}$ term has overtaken the $h^{2}$ term in the trapezoidal
+rule's error expansion. The first assumption fails on measured
+signals with kinks or noise. The second fails when the integrand
+varies far more rapidly in one part of the interval than in
+another (a chemical-kinetics curve with a fast transient and a
+slow tail, an optical-spectrum signal with sharp lines on a slow
+background, a financial cash-flow with quarterly spikes). The
+third fails at small $n$, where the trapezoidal rule's lower
+constant in front of the $h^{2}$ term can beat Simpson's
+$h^{4}$ term even though the asymptotic order is worse.
+
+The working response is \engterm{adaptive quadrature}: split the
+interval where the integrand varies fastest, integrate each panel
+to its own tolerance, and refine until each panel's error
+estimate falls below the panel's share of the global tolerance.
+The MATLAB \texttt{integral} function, the SciPy
+\texttt{scipy.integrate.quad}, and the GSL
+\texttt{gsl\_integration\_qag} family all implement adaptive
+Gauss-Kronrod schemes; the working engineer who treats them as
+black boxes loses the discipline they require. The black box
+returns a number and a claimed error estimate; the discipline is
+to read the error estimate, verify it against convergence by
+halving, and treat any disagreement as evidence the integrand has
+broken one of the smoothness assumptions
+\cite{text:v2ch06-burden-faires-numerical}.
 
 \section{Multiple integrals preview}\pathtag{standard}
 
@@ -872,6 +973,12 @@ reproduces the time-domain solution that a Volume III circuit
 analysis would derive by solving the governing ODE. The two
 methods agree because the LTI system has a unique forced response
 to a given input.
+\Cref{fig:vol02:ch06:rc-convolution} shows the full picture for a
+rectangular pulse: the input drives the output up the charging
+curve while the pulse holds, and the output decays exponentially
+once the pulse drops to zero.
+
+\input{volumes/02-form/ch06-integration/figures/fig-rc-convolution.tex}
 
 \subsection{Convolution as the engineer's tool}
 
@@ -1106,6 +1213,56 @@ Cauchy random variable does not have a finite expectation, by the
 divergence diagnosis of section 6.8: the integrand
 $x/[\pi(1 + x^{2})]$ does not converge absolutely.
 
+\subsection{Short-form additional cases}\pathtag{standard}
+
+Four additional integrals recur often enough in engineering
+practice to warrant short-form treatment. Each is a one-paragraph
+worked case the reader files alongside the section's main four.
+
+\engterm{Area swept by a planar curve.} A planet on a Keplerian
+orbit sweeps area at the rate $\dd A / \dd t = L / (2m)$ where
+$L$ is the angular momentum and $m$ the planet's mass. Integrating
+the rate over one orbital period gives the total area swept,
+which equals the area enclosed by the elliptical orbit, $\pi a b$.
+The integral is the working content of Kepler's second law and
+the algebra reduces to the conservation of angular momentum
+\cite{text:v2ch06-apostol-calculus}.
+
+\engterm{Arc length of a smooth curve.} A curve $y = f(x)$ on
+$[a, b]$ has arc length $s = \int_{a}^{b}\sqrt{1 + (f'(x))^{2}}
+\dd x$. The integrand comes from the Pythagorean theorem applied
+to an infinitesimal arc $\dd s = \sqrt{\dd x^{2} + \dd y^{2}}$.
+A circle of radius $R$ has $f(x) = \sqrt{R^{2} - x^{2}}$, and
+$\int_{-R}^{R}\sqrt{1 + x^{2}/(R^{2} - x^{2})}\dd x =
+\int_{-R}^{R} R/\sqrt{R^{2} - x^{2}}\dd x = R \pi$, half the
+circumference of the circle (the upper semicircle alone). The
+factor of $2$ that recovers the full circumference comes from
+including the lower semicircle.
+
+\engterm{Hydrostatic pressure on a vertical surface.} A vertical
+plate of width $w(y)$ at depth $y$ in a fluid of density $\rho$
+carries a total horizontal force $F = \int_{0}^{h} \rho g y w(y)
+\dd y$, where $h$ is the plate's submerged depth. The depth
+multiplies the pressure (the pressure at depth $y$ is $\rho g y$)
+and the width converts the pressure to force per unit depth. For
+a rectangular dam face of constant width $W$, $F = \rho g W h^{2}
+/ 2$; the linear pressure-depth profile gives a triangular
+distribution whose centroid lies at depth $2h/3$, the point of
+application of the resultant force.
+
+\engterm{Heat capacity from a temperature-dependent specific
+heat.} The heat $Q$ required to raise the temperature of a body
+of mass $m$ from $T_{1}$ to $T_{2}$ is $Q = m \int_{T_{1}}^{T_{2}}
+c(T) \dd T$, where $c(T)$ is the specific heat at constant
+pressure. For water near room temperature the integral collapses
+to $m c \Delta T$ with $c = 4186\,\text{J}/(\text{kg K})$, but for
+materials with rapidly varying specific heat (a metal near its
+Debye temperature, water near its phase boundaries) the integral
+does not collapse, and tabulated specific-heat data must be
+integrated numerically. The integral is the working content of
+the first law of thermodynamics applied to a single-phase, no-work
+heating process.
+
 \begin{archetype}[Transport, integral form]
 The integral of a flux gives the total transported quantity. For a
 flow rate $\phi(t)$ in litres per minute, the total volume
@@ -1256,6 +1413,99 @@ completing their own three-method computation.
 \textbf{Time}. Two to three hours per method, plus three to four
 hours of analysis and writing. Total approximately ten to thirteen
 hours, distributed across one to two weekends.
+
+\medskip
+\textbf{Phases.}
+\begin{enumerate}[leftmargin=*]
+  \item \textit{Object and axis selection (30 min).} Pick the
+    object; mark the axis on the object with a removable indicator
+    (tape, pencil, post-it). Record the choice in a notebook with
+    a photograph that shows the axis location relative to identifying
+    features of the object.
+  \item \textit{Mass and geometry (60 min).} Weigh the whole
+    object on the kitchen scale to its full resolution. Measure the
+    overall length, width, thickness, and any other dimensions the
+    decomposition needs. Photograph the calliper on each
+    measurement for the project record.
+  \item \textit{Method i (analytical decomposition, 90 min).}
+    Decompose into simple shapes; for each, record its mass (by
+    proportioning the total mass to estimated volumes), centre-of-
+    mass location relative to the chosen axis, and moment of
+    inertia about its own centre. Apply the parallel-axis theorem
+    and sum.
+  \item \textit{Method ii (numerical integration, 90 min).}
+    Measure cross-section areas at $5\,\text{mm}$ axial intervals
+    along the chosen axis. Tabulate in a spreadsheet. Compute the
+    trapezoidal-rule integral of $x^{2} \sigma(x)$. Halve the
+    sampling on a representative segment to check convergence.
+  \item \textit{Method iii (sub-decomposition, 90 min).} Pick a
+    different decomposition than method i, ideally with fewer or
+    differently-grouped components. Recompute by the parallel-axis
+    theorem applied at the new sub-axes.
+  \item \textit{Reconciliation and reflection (3-4 h).} Tabulate
+    the three results with uncertainties. Compute pairwise
+    compatibility ratios. Write the 1500-word reflection.
+\end{enumerate}
+
+\textbf{Deliverables.}
+\begin{itemize}[leftmargin=*]
+  \item Project notebook (paper or digital) with photographs of
+    the object, the chosen axis, and the measurement instruments
+    in use.
+  \item Spreadsheet or table for method (ii) containing the axial
+    coordinates and cross-section areas, with the trapezoidal-rule
+    integral computed by formula in the spreadsheet (not by hand).
+  \item Comparison table with $I_{1}$, $I_{2}$, $I_{3}$, their
+    expanded uncertainties at $k = 2$, and the three pairwise
+    compatibility ratios $r_{ij}$.
+  \item Reflection (1500 words) addressing the five bulleted
+    questions above.
+\end{itemize}
+
+\textbf{Success criteria.}
+\begin{itemize}[leftmargin=*]
+  \item At least two of the three methods agree within
+    $r \leq 2$. (All three agreeing is the ideal; one outlier
+    within $r \leq 3$ with a stated reason is acceptable.)
+  \item The reflection identifies the dominant uncertainty source
+    for each method specifically, not in generic terms.
+  \item The reflection explicitly names at least one assumption
+    the reader made (about uniform density, about the
+    cross-section shape, about the position of the axis) and
+    states whether the project's reconciliation supports or
+    challenges the assumption.
+  \item The reader can recompute the moment of inertia of the
+    same object six months later from the project record alone,
+    without relying on the original physical object.
+\end{itemize}
+
+\textbf{Common failure modes.}
+\begin{itemize}[leftmargin=*]
+  \item \textit{Ignoring uncertainty in method i.} The
+    analytical decomposition is treated as exact because it
+    comes from formulas; the assumed density of each component
+    carries the dominant uncertainty and the reader has not
+    propagated it. The fix is to estimate component densities
+    from a published material table and to assign each at least
+    $\pm 10\,\%$ uncertainty.
+  \item \textit{Confusing $I_{\mathrm{cm}}$ and $I_{\mathrm{axis}}$.}
+    The simple-shape formulas in standard tables are about each
+    shape's own centre of mass; the parallel-axis term moves them
+    to the chosen axis. A reader who skips the parallel-axis
+    correction reports an answer that is correct for a different
+    axis from the one chosen.
+  \item \textit{Sampling too coarsely for method ii.} The
+    convergence-by-halving check is mandatory. A reader who skips
+    it has no defence against under-resolved cross-sections,
+    especially near the object's ends where the cross-section
+    changes rapidly.
+  \item \textit{Inflating success by manipulating uncertainty.}
+    A reader who, on seeing $r > 2$ between two methods, widens
+    the uncertainty bars until the methods agree, has converted
+    the reconciliation into theatre. The honest response is to
+    name the disagreement, propose at least one mechanism, and
+    record an unresolved discrepancy for future work.
+\end{itemize}
 \end{project}
 
 \section{Exercises}
@@ -1271,6 +1521,18 @@ fundamental theorem of calculus, and verify by the trapezoidal
 rule with $n = 4$ subintervals. Report the trapezoidal error.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The antiderivative is $x^{3} - x^{2} + 5x$, so
+$\int_{0}^{1}(3x^{2} - 2x + 5)\dd x = (1 - 1 + 5) - 0 = 5$. For
+$n = 4$, $h = 0.25$ and the sample values $f(0), f(0.25), f(0.5),
+f(0.75), f(1)$ are $5, 4.6875, 4.75, 5.1875, 6$. The trapezoidal
+sum is $T_{4} = 0.25\bigl(2.5 + 4.6875 + 4.75 + 5.1875 + 3\bigr) =
+5.03125$. The error is $T_{4} - I = 0.03125$. The leading-order
+formula predicts $-(b-a)h^{2}f''(\xi)/12 = -1 \cdot 0.0625 \cdot 6
+/ 12 = -0.03125$ for $f'' = 6$ constant, so the magnitude agrees
+and the sign confirms that the trapezoidal rule overestimates a
+convex integrand.
+
 \begin{exercise}
 Compute $\int_{0}^{\pi} \sin x \dd x$ by Part II of the
 fundamental theorem. Then approximate the same integral with
@@ -1279,16 +1541,42 @@ error and compare it to the trapezoidal rule's error on the same
 data.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\int_{0}^{\pi}\sin x \dd x = [-\cos x]_{0}^{\pi} = 2$. For $n =
+4$, $h = \pi/4$ and the samples $\sin(0), \sin(\pi/4), \sin(\pi/2),
+\sin(3\pi/4), \sin(\pi)$ are $0, \sqrt{2}/2, 1, \sqrt{2}/2, 0$.
+Simpson gives $S_{4} = (h/3)[0 + 4\sqrt{2}/2 + 2 + 4\sqrt{2}/2 +
+0] = (\pi/12)[2 + 4\sqrt{2}] \approx 2.0046$, an error of
+$+4.6\times 10^{-3}$. The trapezoidal sum on the same five points
+is $T_{4} = (\pi/4)[0 + \sqrt{2}/2 + 1 + \sqrt{2}/2 + 0]
+\approx 1.8961$, an error of $-0.104$. Simpson's error is smaller
+by a factor of about $22$, consistent with the predicted $h^{4}/
+h^{2}$ ratio.
+
 \begin{exercise}
 Use the substitution $u = x^{2} + 1$ to compute
 $\int_{0}^{2} \dfrac{x}{x^{2} + 1} \dd x$. Verify by transforming
 the limits explicitly.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+With $u = x^{2} + 1$, $\dd u = 2x \dd x$, so $x \dd x = \dd u /
+2$. Limits transform as $x = 0 \mapsto u = 1$ and $x = 2 \mapsto
+u = 5$. The integral becomes
+$\tfrac{1}{2}\int_{1}^{5} \dd u / u = \tfrac{1}{2}\ln(5/1) =
+\tfrac{1}{2}\ln 5 \approx 0.8047$.
+
 \begin{exercise}
 Compute $\int x \sin x \dd x$ by integration by parts. Verify by
 differentiating the result.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Take $u = x$ ($\dd u = \dd x$) and $\dd v = \sin x \dd x$ ($v =
+-\cos x$). Then $\int x \sin x \dd x = -x \cos x + \int \cos x
+\dd x = -x \cos x + \sin x + C$. Differentiating: $(-x \cos x +
+\sin x)' = -\cos x + x \sin x + \cos x = x \sin x$, which is the
+integrand.
 
 \begin{exercise}
 Compute $\int \dfrac{2x + 3}{(x - 1)(x + 2)} \dd x$ by partial
@@ -1296,11 +1584,29 @@ fractions. State the cover-up rule values for each fraction
 explicitly.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Cover-up: $A = (2 \cdot 1 + 3)/(1 + 2) = 5/3$ and $B = (2 \cdot
+(-2) + 3)/(-2 - 1) = (-1)/(-3) = 1/3$. Then
+$\int \tfrac{2x + 3}{(x-1)(x+2)} \dd x = \tfrac{5}{3}\ln\abs{x-1}
++ \tfrac{1}{3}\ln\abs{x+2} + C$. A check on a single value
+($x = 3$, both sides give the same rate of change with $x$)
+confirms the decomposition.
+
 \begin{exercise}
 Compute $\int_{0}^{1} \ln(x) \dd x$ as a convergent improper
 integral by the limit definition. Identify the singularity and
 the comparison test that establishes convergence.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The integrand is unbounded as $x \to 0^{+}$, so the integral is
+improper at the left endpoint. Integration by parts with $u = \ln
+x$, $\dd v = \dd x$ gives $\int \ln x \dd x = x \ln x - x$. Then
+$\int_{\varepsilon}^{1}\ln x \dd x = [x \ln x - x]_{\varepsilon}
+^{1} = -1 - \varepsilon \ln \varepsilon + \varepsilon$. As
+$\varepsilon \to 0^{+}$, $\varepsilon \ln \varepsilon \to 0$
+(comparison: $\abs{\ln x} \leq x^{-1/2}$ near $0$ implies
+$x \abs{\ln x} \leq x^{1/2} \to 0$). The limit is $-1$.
 
 \begin{exercise}
 Compute $\int_{1}^{\infty} \dfrac{\dd x}{x^{2}}$ as a convergent
@@ -1308,6 +1614,14 @@ improper integral and compare its value to the divergent integral
 $\int_{1}^{\infty} \dfrac{\dd x}{x}$. State the boundary case
 $p = 1$ explicitly.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\int_{1}^{R} x^{-2} \dd x = [-x^{-1}]_{1}^{R} = 1 - 1/R \to 1$ as
+$R \to \infty$; the integral converges to $1$. By contrast,
+$\int_{1}^{R} x^{-1} \dd x = \ln R \to \infty$; the integral
+diverges. The boundary $p = 1$ is divergent at infinity (and
+divergent at the origin); $p > 1$ converges at infinity (diverges
+at origin); $p < 1$ converges at origin (diverges at infinity).
 
 \begin{exercise}
 Compute the centre of mass of a rod of length $L = 1\,\si{\meter}$
@@ -1317,6 +1631,20 @@ total mass in terms of $\lambda_{0}$ and $L$, and verify that the
 centre of mass is at $x = L/2$ by symmetry.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The density profile is not symmetric about $x = L/2$ as stated
+(it peaks at $x = 0$ and vanishes at $x = L$), so symmetry about
+the midpoint does not apply directly. The reader who reinterprets
+the density as $\lambda(x) = \lambda_{0}\bigl(1 - (x - L/2)^{2} /
+(L/2)^{2}\bigr)$, the symmetric parabolic profile that vanishes
+at both ends and peaks at the midpoint, has the symmetry: $m =
+\int_{0}^{L}\lambda \dd x = \tfrac{2}{3}\lambda_{0} L$, and
+$\bar{x} = L/2$ by symmetry of the density about the midpoint. A
+solver who solves the exercise as written gets $m =
+\lambda_{0}(L - L/3) = \tfrac{2}{3}\lambda_{0} L$ and $\bar{x} =
+\bigl(\lambda_{0}\int_{0}^{L} x(1 - x^{2}/L^{2}) \dd x\bigr)/m =
+\tfrac{3}{8}L$, biased toward the dense end at $x = 0$.
+
 \begin{exercise}
 Compute the moment of inertia of a uniform thin disc of radius $R$
 and mass $M$ about an axis through its centre and perpendicular to
@@ -1324,6 +1652,14 @@ the disc, by the integral $I = \int_{0}^{R} r^{2} \, \sigma \, 2 \pi
 r \dd r$ with surface mass density $\sigma = M/(\pi R^{2})$.
 Verify $I = \tfrac{1}{2} M R^{2}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$I = \sigma \cdot 2\pi \int_{0}^{R} r^{3} \dd r = \sigma \cdot 2
+\pi \cdot R^{4}/4 = \tfrac{\pi \sigma R^{4}}{2}$. Substituting
+$\sigma = M/(\pi R^{2})$ gives $I = \tfrac{M R^{2}}{2}$. The
+factor of $r^{3}$ in the integrand reflects that mass in a
+circular annulus at radius $r$ is $\sigma \cdot 2\pi r \dd r$ and
+each element contributes $r^{2}$ to the moment.
 
 \begin{exercise}
 Compute the work done by a force $F(x) = F_{0} \sin(\pi x / L)$
@@ -1333,6 +1669,17 @@ magnitude $F_{0}$ acting over the same displacement, and explain
 the ratio in physical terms.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$W = \int_{0}^{L} F_{0} \sin(\pi x / L) \dd x = F_{0} \cdot
+(L/\pi)\bigl[-\cos(\pi x / L)\bigr]_{0}^{L} = F_{0} \cdot (L/\pi)
+\cdot 2 = 2 F_{0} L / \pi$. The constant-force work is
+$W_{\mathrm{const}} = F_{0} L$, so $W/W_{\mathrm{const}} = 2/\pi
+\approx 0.637$. The varying force averages $2/\pi$ of its peak
+value over the displacement; physically it ramps up from zero,
+peaks at $x = L/2$, and ramps back to zero, so its work is the
+peak-time-displacement area under a half-sine, which is
+$(2/\pi)$ of the rectangle.
+
 \subsection*{Derivation}\pathtag{standard}
 
 \begin{exercise}
@@ -1341,11 +1688,34 @@ in section 6.1, by passing to the limit in the linearity of the
 finite Riemann sums.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Fix $\varepsilon > 0$. For any partition $P$ of $[a, b]$ and
+sample points $\xi_{i}$, the Riemann sum for $\alpha f + \beta g$
+is $\sum_{i}(\alpha f(\xi_{i}) + \beta g(\xi_{i})) \Delta x_{i} =
+\alpha \sum_{i} f(\xi_{i})\Delta x_{i} + \beta \sum_{i}
+g(\xi_{i})\Delta x_{i}$. Choose $\delta > 0$ small enough that
+both Riemann sums approximate their integrals within
+$\varepsilon / (2 \max(\abs{\alpha}, \abs{\beta}, 1))$ for every
+partition with mesh below $\delta$. The triangle inequality then
+gives the combined sum within $\varepsilon$ of $\alpha \int f +
+\beta \int g$, which is the definition of $\int (\alpha f + \beta
+g) = \alpha \int f + \beta \int g$.
+
 \begin{exercise}
 Prove the additive property of intervals
 $\int_{a}^{b} f = \int_{a}^{c} f + \int_{c}^{b} f$ from the
 definition, for $f$ continuous on $[a, b]$ and $c \in (a, b)$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+For any partition of $[a, b]$ that includes $c$ as a node, the
+Riemann sum splits into one sum over $[a, c]$ and one over
+$[c, b]$. Continuity of $f$ on $[a, b]$ implies integrability on
+both subintervals (section 6.1) and on the whole. Refining the
+partition to include $c$ does not change the limiting value of
+the Riemann sum (the convergence is independent of the partition
+choice). Passing to the limit, the left side is $\int_{a}^{b}f$,
+the right is $\int_{a}^{c}f + \int_{c}^{b}f$.
 
 \begin{exercise}
 Derive the substitution rule for definite integrals from the
@@ -1353,11 +1723,33 @@ chain rule. State the conditions on $g$ and $f$ explicitly and
 identify the step at which the limits transform.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Assume $g$ is continuously differentiable on $[a, b]$ and $f$ is
+continuous on $g([a, b])$. Let $F$ be an antiderivative of $f$ on
+that range. By the chain rule, $\dv{}{x}\bigl(F(g(x))\bigr) =
+f(g(x))\,g'(x)$. By Part II of the fundamental theorem applied
+to the left side, $\int_{a}^{b} f(g(x))\,g'(x)\dd x = F(g(b)) -
+F(g(a))$. By Part II applied to $f$ on $[g(a), g(b)]$, the right
+side equals $\int_{g(a)}^{g(b)} f(u)\dd u$. The limits transform
+in the second application of Part II: the integral over $u$ runs
+between $g(a)$ and $g(b)$ because $F$ is being evaluated at those
+points.
+
 \begin{exercise}
 Derive the integration-by-parts formula from the product rule of
 differentiation. State the conditions on $u$ and $v$ that justify
 the integration on both sides.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Assume $u$ and $v$ are continuously differentiable on $[a, b]$.
+The product rule says $(uv)' = u'v + uv'$. Both sides are
+continuous, so integrate on $[a, b]$ by Part II of the fundamental
+theorem: $\int_{a}^{b}(uv)' \dd x = [uv]_{a}^{b} = u(b)v(b) -
+u(a)v(a)$. Rearranging, $\int_{a}^{b} u v' \dd x = [uv]_{a}^{b}
+- \int_{a}^{b} u' v \dd x$, which is the integration-by-parts
+formula. The indefinite form follows by treating $a$ as a
+boundary constant absorbed into $C$.
 
 \begin{exercise}
 Derive the trapezoidal-rule error formula
@@ -1365,6 +1757,21 @@ $\int_{a}^{b} f - T_{n} = -(b - a) h^{2} f''(\xi) / 12$ on a single
 subinterval first, by a Taylor expansion of $f$ about the midpoint
 of the subinterval, and then sum.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+On a subinterval $[x_{i-1}, x_{i}]$ of width $h$, let $m_{i} =
+(x_{i-1} + x_{i})/2$. Expand $f$ as $f(x) = f(m_{i}) +
+f'(m_{i})(x - m_{i}) + \tfrac{1}{2}f''(m_{i})(x - m_{i})^{2} +
+O((x - m_{i})^{3})$. Integrate over $[x_{i-1}, x_{i}]$: the
+linear term integrates to zero by symmetry, and $\int(x - m_{i})
+^{2}\dd x = h^{3}/12$. The trapezoidal estimate on this panel is
+$h(f(x_{i-1}) + f(x_{i}))/2 = h f(m_{i}) + h \cdot \tfrac{1}{2}
+f''(m_{i})(h/2)^{2} + O(h^{5}) = h f(m_{i}) + h^{3}f''(m_{i})/8 +
+O(h^{5})$. The exact integral on the panel is $h f(m_{i}) +
+h^{3}f''(m_{i})/24 + O(h^{5})$. The panel error is therefore
+$-h^{3}f''(m_{i})/12 + O(h^{5})$. Summing over $n$ panels and
+applying the mean value theorem to the sum gives
+$-(b-a)h^{2}f''(\xi)/12$.
 
 \begin{exercise}
 Derive the parallel-axis theorem
@@ -1374,6 +1781,18 @@ State the assumption (the chosen axis is parallel to the centre-of-
 mass axis).
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Place coordinates so the centre-of-mass axis is the $z$-axis and
+the parallel axis is offset by $d$ along $x$. For a point at
+$(x, y, z)$ with mass element $\dd m$, the distance to the
+centre-of-mass axis is $\sqrt{x^{2} + y^{2}}$ and to the parallel
+axis is $\sqrt{(x - d)^{2} + y^{2}}$. So $I_{\mathrm{axis}} =
+\int\bigl((x - d)^{2} + y^{2}\bigr) \dd m = \int(x^{2} + y^{2})
+\dd m - 2d \int x \dd m + d^{2}\int \dd m = I_{\mathrm{cm}} -
+2d \cdot M \bar{x} + d^{2} M$. The centre-of-mass coordinate
+$\bar{x}$ vanishes by the definition of the centre of mass, so
+$I_{\mathrm{axis}} = I_{\mathrm{cm}} + M d^{2}$.
+
 \begin{exercise}
 Derive the convolution-commutativity identity $f * g = g * f$ from
 the definition $(f * g)(t) = \int_{-\infty}^{\infty} f(\tau) g(t -
@@ -1381,6 +1800,17 @@ the definition $(f * g)(t) = \int_{-\infty}^{\infty} f(\tau) g(t -
 condition on $f$ and $g$ under which the manipulation of limits is
 justified (absolute convergence of the integral over $\R$).
 \end{exercise}
+
+\paragraph{Solution sketch.}
+With $\sigma = t - \tau$, $\dd \sigma = -\dd \tau$. When $\tau =
+-\infty$, $\sigma = +\infty$; when $\tau = +\infty$, $\sigma =
+-\infty$. The minus sign on $\dd \sigma$ swaps the limits back:
+$\int_{-\infty}^{\infty} f(\tau) g(t - \tau) \dd \tau =
+\int_{-\infty}^{\infty} f(t - \sigma) g(\sigma) \dd \sigma$,
+which is $(g * f)(t)$. The manipulation is justified when the
+integral converges absolutely (which lets the change of variables
+proceed without conditional-convergence subtleties); $f, g \in
+L^{1}(\R)$ is the standard sufficient condition.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1392,6 +1822,17 @@ some fraction of the year off). Provide a factor-of-three
 confidence range.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+A year has about $8.76 \times 10^{3}\,\text{h}$. Continuous duty:
+$60\,\si{\watt} \times 8760\,\text{h} = 5.26 \times 10^{5}\,
+\text{Wh} \approx 525\,\text{kWh}$. A more realistic typical
+household lamp runs perhaps $4\,\text{h}/\text{day}$, giving
+$60 \times 1460 = 87.6\,\text{kWh}$. The factor-of-three range
+covers anything from a closet lamp seldom used ($\sim 50\,
+\text{kWh}$) to a continuously lit security lamp ($\sim 525\,
+\text{kWh}$). At a 2026 residential rate of about
+\$0.20$/\text{kWh}$, the continuous-duty cost is about \$105/yr.
+
 \begin{exercise}
 Estimate the integral $\int_{0}^{\infty} e^{-x^{2}} \dd x$ to within
 a factor of two using only the comparison
@@ -1401,6 +1842,18 @@ two confidence claim. The exact value $\sqrt{\pi}/2$ may be quoted
 afterwards as a calibration.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+On $[0, 1]$, $e^{-x^{2}}$ falls from $1$ to $1/e \approx 0.37$.
+Linear interpolation gives an average of about $0.68$, so the
+contribution to the integral is about $0.68$. On $[1, \infty)$,
+the comparison $e^{-x^{2}} \leq e^{-x}$ gives an upper bound
+$\int_{1}^{\infty} e^{-x} \dd x = 1/e \approx 0.37$; the actual
+contribution is somewhat smaller (because the Gaussian falls
+faster), say $0.15$ as a guess. The estimate is then $0.68 + 0.15
+= 0.83$; the actual value is $\sqrt{\pi}/2 \approx 0.886$, so the
+estimate is within $7\,\%$, comfortably inside the factor-of-two
+claim.
+
 \begin{exercise}
 Estimate the moment of inertia of a hardback book about an axis
 through its spine, by treating the book as a uniform rectangular
@@ -1409,6 +1862,18 @@ Quote a factor-of-three confidence range and state which dimension
 or mass uncertainty dominates.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+A representative hardback: $24\,\text{cm}$ tall, $16\,\text{cm}$
+wide, $3\,\text{cm}$ thick, mass $0.9\,\text{kg}$. The axis runs
+through the spine, parallel to the height; the moment is then
+$I = (M/12)(w^{2} + t^{2}) = (0.9/12)(0.16^{2} + 0.03^{2}) =
+0.075 \cdot (0.0256 + 0.0009) = 0.075 \cdot 0.0265 \approx 2.0
+\times 10^{-3}\,\text{kg m}^{2}$. The width term dominates by a
+factor of $\sim 30$, so width uncertainty (which is $\sim 10\,\%$
+across hardback formats) governs the result. A factor-of-three
+range covers everything from a small novella ($\sim 5 \times 10
+^{-4}$) to an oversized art book ($\sim 6 \times 10^{-3}$).
+
 \begin{exercise}
 Estimate the work done in lifting a $10\,\si{\kilogram}$ bag of
 sand from the floor to a shelf $1.5\,\si{\meter}$ above the floor.
@@ -1416,6 +1881,16 @@ State the integration that turns the variable height into the work
 calculation and identify the assumption that lets the answer
 collapse to $m g h$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The work is $W = \int_{0}^{h} F(z) \dd z$ where $F(z)$ is the
+upward force required to hold the bag at height $z$. For a rigid
+bag in a uniform gravitational field, $F(z) = m g$ is constant,
+and the integral collapses to $W = m g h = 10 \cdot 9.81 \cdot
+1.5 \approx 147\,\text{J}$. The collapsing assumption is twofold:
+the bag is rigid (so all its mass moves the same distance) and
+$g$ is constant over the lifting range (true to better than
+$10^{-6}$ at $1.5\,\text{m}$).
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1428,6 +1903,17 @@ from $4$ to $1024$. Verify the slopes match the theoretical
 $h^{2}$ and $h^{4}$ scaling.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+A reference implementation is in
+\texttt{code/quadrature\_convergence.py}. The exact value is
+$(\sqrt{\pi}/2)\,\mathrm{erf}(1) \approx 0.7468241328$. The
+expected output: trapezoidal error falls by a factor of $4$ each
+doubling of $n$ (slope $-2$ on log-log), Simpson by a factor of
+$16$ (slope $-4$), until floating-point cancellation in the
+weighted sum dominates somewhere around $n = 10^{5}$. The plot
+should show two straight lines of the predicted slopes, joining
+the data points at small $n$ where rounding error is invisible.
+
 \begin{exercise}
 Implement three-point Gauss-Legendre quadrature for
 $\int_{0}^{\pi/2} \sqrt{\sin x} \dd x$. Compare the result to a
@@ -1435,6 +1921,21 @@ trapezoidal rule with $n = 100$ subintervals. State the function-
 evaluation count for each and identify which method gives more
 accuracy per evaluation.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The reference value (via a high-order rule) is
+$\int_{0}^{\pi/2}\sqrt{\sin x} \dd x \approx 1.19814$. Three-point
+Gauss-Legendre on $[0, \pi/2]$ with $3$ evaluations gives about
+$1.196$; relative error $\sim 2 \times 10^{-3}$. The integrand
+has an integrable singularity in its derivative at $x = 0$
+($\sqrt{\sin x} \sim \sqrt{x}$), so neither rule converges at its
+nominal asymptotic rate. The trapezoidal rule with $n = 100$
+gives about $1.197$; relative error $\sim 8 \times 10^{-4}$. The
+trapezoidal rule wins on absolute accuracy because it has $101$
+evaluations versus $3$; per evaluation Gauss-Legendre is far
+ahead. A composite three-point Gauss-Legendre with $33$ panels
+($99$ evaluations) brings the Gauss result below $10^{-5}$,
+restoring the per-evaluation advantage.
 
 \begin{exercise}
 Implement the discrete convolution
@@ -1446,12 +1947,38 @@ and identify the boundary effects at the start and end of the
 output.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+A reference implementation is in
+\texttt{code/rc\_convolution.py}; the same NumPy
+\texttt{np.convolve} call with \texttt{mode="full"} times the
+sample interval $\dd t$ gives the discrete approximation to
+$(f * g)(t)$. The two outputs agree to within the trapezoidal
+discretisation error in the interior; at the start (the first
+$\sim N/2$ samples) the discrete convolution treats samples
+outside the recorded interval as zero, producing a ramping-on
+artefact. The remedy is to record a margin of zero-padding on
+both sides or to use \texttt{mode="valid"} and report only the
+unambiguous central portion.
+
 \begin{exercise}
 Implement a Monte Carlo integration of $\int_{0}^{1}\int_{0}^{1}
 e^{-(x^{2} + y^{2})} \dd x \dd y$ with $N = 10^{4}$ samples. Report
 the mean and standard error of the estimate. Compare to a
 trapezoidal-rule double integral on a $40 \times 40$ grid.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+A reference implementation is in
+\texttt{code/monte\_carlo\_2d.py}. The exact value is about
+$0.5577$. Monte Carlo with $N = 10^{4}$ gives an estimate with
+standard error $\sigma_{f}/\sqrt{N}$ where $\sigma_{f} \approx
+0.18$ is the standard deviation of the integrand over the unit
+square; the standard error is therefore $\sim 1.8 \times 10^{-3}$.
+The $40 \times 40$ trapezoidal grid gives an error $\sim 10^{-4}$
+on the smooth integrand, comfortably below the Monte Carlo
+standard error and at $\sim 1600$ evaluations versus $10000$.
+Monte Carlo wins in higher dimensions where the trapezoidal grid
+grows as $n^{d}$.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1463,6 +1990,20 @@ and the rule applied. Justify your choice over a naive Simpson's
 rule applied to the original integrand.
 \end{exercise}
 
+\paragraph{Discussion.}
+Substitute $x = u^{2}$, $\dd x = 2 u \dd u$, so $\int_{0}^{1}
+f(x)/\sqrt{x}\,\dd x = 2 \int_{0}^{1} f(u^{2}) \dd u$. The
+transformed integrand is smooth on $[0, 1]$ if $f$ is, and
+Simpson's rule (or three-point Gauss-Legendre per panel) attains
+its nominal order of convergence on the transformed integrand. A
+naive Simpson on the original integrand misbehaves because the
+fourth derivative of $f(x)/\sqrt{x}$ blows up at the origin: the
+error formula's $\xi$-dependent constant becomes unbounded, and
+no fixed-step rule converges at the predicted rate. The change of
+variables is the cheaper fix; adaptive quadrature with
+singularity detection is the more general alternative when the
+singularity's form is unknown.
+
 \begin{exercise}
 Design an experimental procedure for measuring the moment of
 inertia of a rolling object (a soup can, a marble) by rolling it
@@ -1471,6 +2012,20 @@ distance. State the integration relation between the moment of
 inertia and the rolling acceleration, and the dominant
 uncertainty source.
 \end{exercise}
+
+\paragraph{Discussion.}
+For an object of mass $m$ and radius $R$ rolling without
+slipping down a plane inclined at angle $\theta$, the
+translational acceleration is $a = g \sin\theta / (1 + I/(mR^{2}))$.
+Solving, $I = m R^{2}(g \sin\theta / a - 1)$. Measure $a$ by
+timing the roll over a known distance $d$ from rest:
+$a = 2 d / t^{2}$. The dominant uncertainty is usually the timing
+of the start ($\sim 50\,\text{ms}$ on a stopwatch, much less with
+a photogate) and the rolling-friction departure from the
+ideal-no-slip assumption (an error of order a few per cent that
+biases $I$ low). A second incline at a different angle gives an
+internal consistency check; agreement between angles within their
+combined uncertainties validates the no-slip assumption.
 
 \begin{exercise}
 Design a sampling plan for measuring the cross-sections of a
@@ -1482,12 +2037,40 @@ your choice of sampling interval against the convergence-by-
 halving criterion.
 \end{exercise}
 
+\paragraph{Discussion.}
+For an object of length $L \sim 30\,\text{cm}$ (typical hammer or
+bottle), measure cross-sections at $5\,\text{mm}$ axial intervals
+($\sim 60$ samples). Use a digital calliper with $0.05\,\text{mm}$
+resolution; each cross-section area carries $\sim 2\,\%$ relative
+uncertainty if the section is approximated as an ellipse from two
+semi-axes. The integral $I = \int x^{2} \sigma(x) \dd x$ inherits
+about $\sim 3\,\%$ from the measurement chain. Halving the
+sampling to $2.5\,\text{mm}$ on a representative segment and
+comparing should change the integral by less than the
+$3\,\%$ measurement floor; if it changes more, the $5\,\text{mm}$
+sampling was too coarse and the working interval is $2.5\,\text{mm}$.
+
 \begin{exercise}
 Design a procedure for verifying the convergence of a numerical
 integration of a measured signal whose true integral is unknown.
 State the convergence criterion, the refinement strategy, and the
 stopping rule.
 \end{exercise}
+
+\paragraph{Discussion.}
+Compute the integral at sampling interval $h$, $h/2$, $h/4$, and
+so on (by subdividing existing samples through interpolation, or
+by collecting new samples at the finer interval if the signal can
+be re-acquired). The convergence criterion is $\abs{I_{h/2} -
+I_{h}} < \mathrm{tol}$, where the tolerance is set by the
+downstream use. The Richardson extrapolation step
+$I^{*} = I_{h/2} + (I_{h/2} - I_{h})/(2^{p} - 1)$, with $p$ the
+rule's order, gives a higher-order estimate whose own convergence
+check ($\abs{I_{h/4}^{*} - I_{h/2}^{*}}$) is a more sensitive
+proxy. Stopping rule: terminate when two successive halvings
+agree within the tolerance; if they fail to agree as $h$ shrinks
+indefinitely, the integrand is too irregular for the chosen rule
+or the data carries noise the rule cannot integrate.
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
 
@@ -1499,12 +2082,37 @@ plausible mechanisms and propose the next test that distinguishes
 them.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Three mechanisms. First, the integrand has high-frequency content
+above the sampling Nyquist limit, and aliasing makes the rule
+read different totals depending on phase. Test: low-pass filter
+the signal at half the sample rate and re-integrate; if the
+result becomes phase-independent, aliasing was the cause. Second,
+the integrand has sharp features (spikes, kinks) whose sample
+coverage is phase-dependent; integrating with finer sampling
+across those features removes the phase dependence. Third, the
+trapezoidal rule's error formula assumes a twice-differentiable
+integrand and the signal is too irregular; the test is to switch
+to a rule designed for irregular signals (a midpoint rule, an
+adaptive rule with refinement on the irregular regions).
+
 \begin{exercise}
 A numerical integration of $\int_{0}^{1} 1/\sqrt{x} \dd x = 2$
 returns a value of $1.7$ from a Simpson rule with $n = 10$
 subintervals, and $1.85$ from $n = 100$. State the failure mode
 and propose a corrected procedure.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The integrand has a singularity at $x = 0$, so Simpson's rule
+underestimates the contribution from the near-origin region.
+Refining from $n = 10$ to $n = 100$ improves the answer by $0.15$
+but does not recover the true value because the singularity is
+not removed by uniform refinement. The corrected procedure is the
+substitution $x = u^{2}$, $\dd x = 2 u \dd u$, giving
+$\int_{0}^{1} 2 \dd u = 2$ exactly. Alternatively, an adaptive
+rule with finer panels near $x = 0$ converges, but only at the
+cost of many panels.
 
 \begin{exercise}
 A Monte Carlo estimate of an expected value of a random variable
@@ -1515,6 +2123,20 @@ heavy-tailed distribution (where the expectation diverges) from a
 finite-expectation distribution sampled with a bug.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Plot the running mean against the sample size on a log $x$-axis.
+A finite-expectation distribution with high variance shows a
+random walk that narrows as $1/\sqrt{N}$; a heavy-tailed
+distribution shows occasional large jumps that grow with $N$ (the
+maximum observation grows at a rate determined by the tail
+exponent). Plot also the maximum observation against $N$: for a
+distribution with finite expectation, $\max / N \to 0$; for a
+heavy tail with $\alpha < 1$, the maximum grows faster than $N$
+and the sample mean is dominated by the maximum. A bug in the
+sampler typically produces a deterministic drift or a structured
+non-stationarity that direct inspection of the sample sequence
+reveals.
+
 \begin{exercise}
 A reader computes the moment of inertia of a hammer about an axis
 through its head by analytical decomposition (head plus handle,
@@ -1524,6 +2146,21 @@ profile and gets $I_{2} = 1.5 I_{1}$. State two plausible
 mechanisms for the discrepancy and propose, for each, the test
 that would confirm or refute it.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+First mechanism: the analytical decomposition under-counts the
+handle's contribution to the moment about the head end, because
+the handle's far end is at $\sim L$ from the axis and contributes
+$\sim m_{\mathrm{handle}} L^{2}/3$. If the handle's mass or length
+was underestimated, $I_{1}$ is biased low. Test: weigh the
+handle and head separately (cut a comparable hammer, or estimate
+from the head's volume and the handle's density) and recompute
+$I_{1}$ with the correct masses. Second mechanism: the
+numerical-integration profile has an axial-origin error so the
+$x^{2}$ weighting integrates against shifted coordinates,
+overstating the moment. Test: vary the assumed origin in the
+profile script by $\pm 5\,\text{mm}$; if $I_{2}$ moves by $\sim
+30\,\%$, the origin error is responsible.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1536,6 +2173,18 @@ the section 6.8 discussion of high-frequency oscillation at the
 sampling scale.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+At exactly the Nyquist rate (two samples per period), the
+trapezoidal rule returns a value that depends entirely on the
+phase: samples at the peaks give a large sum, samples at the
+zero crossings give zero. The true integral of $\sin(\omega t)$
+over an integer number of periods is zero. The rule becomes
+reliable only well above the Nyquist rate; engineering practice
+oversamples by a factor of three to ten so that the trapezoidal
+panels span well below one period each. Below Nyquist (less than
+two samples per period) the integration is hopelessly aliased and
+no rule on the existing samples can recover the true integral.
+
 \begin{exercise}
 A risk analyst computes the expected value of a Pareto-distributed
 loss with shape parameter $\alpha = 0.8$. State the failure mode
@@ -1544,6 +2193,21 @@ expectation exists. Discuss whether the median, the truncated
 mean, or another summary statistic is the appropriate report
 when the expectation does not exist.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The Pareto density $f(x) = \alpha x_{\min}^{\alpha} / x^{\alpha +
+1}$ for $x \geq x_{\min}$ has expectation
+$\int x f(x) \dd x = \alpha x_{\min}^{\alpha} \int x^{-\alpha} \dd
+x$, which converges at infinity only for $\alpha > 1$. At $\alpha
+= 0.8$ the integral diverges; the sample mean does not stabilise
+and the reported expected value is a number that depends on the
+sample, not on the distribution. The threshold is $\alpha > 1$
+for the mean, $\alpha > 2$ for the variance. When the
+expectation does not exist, the median is the only well-defined
+location statistic; a truncated mean (with an explicit truncation
+threshold and a sensitivity analysis on the threshold) is a
+working compromise that the analyst must report transparently as
+truncated, not as ``the mean.''
 
 \begin{exercise}
 An automated scientific instrument integrates a measured spectrum
@@ -1555,6 +2219,21 @@ biased high, low, or unbiased, and propose a defence against the
 mechanism.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The bias depends on the spike rate per sample and the spike's
+sign. If the spikes are positive and occur with rate $r$ samples
+per spike on average, the average sample carries an extra
+contribution of (spike amplitude $\times$ duration $/$ sample
+interval). The trapezoidal rule sees these as genuine signal and
+the reported flux is biased high by that amount. If spikes are
+narrow enough to be missed by some samples and caught by others,
+the integrated bias is the spike amplitude times spike duration
+times spike rate, regardless of sampling phase, because in the
+aggregate every spike contributes some product of amplitude and
+duration. The defence is a notch filter or median filter applied
+to the raw samples before integration, or oversampling with a
+boxcar averager that integrates the spikes deterministically.
+
 \subsection*{Judgment}\pathtag{standard}
 
 \begin{exercise}
@@ -1565,6 +2244,26 @@ defend it with a specific scenario in which your preferred answer
 fails.
 \end{exercise}
 
+\paragraph{Discussion.}
+Defensible position: prefer Gauss-Legendre because for smooth
+integrands its polynomial-exactness gains beat Simpson's
+sample-by-sample. Three-point Gauss-Legendre matches Simpson's
+$n = 6$ polynomial exactness with half the function evaluations,
+and a composite eight-panel three-point Gauss matches
+$n \approx 100$ Simpson at $24$ evaluations. The defensible
+failure mode is integrand discontinuity: a piecewise definition
+with a jump in the middle of a Gauss panel violates the
+polynomial-exactness premise, and Gauss errs by a fraction of the
+jump per panel regardless of panel count, while Simpson with the
+jump on a node boundary returns the correct sum of two integrals.
+Defending the alternative (Simpson) position rests on the cost of
+inserting Gauss tables and the awkwardness of non-equispaced
+nodes when the integrand is sampled on a fixed grid, which in
+engineering practice is the usual case. The reader who picks
+either position is on defensible ground; the AI-generic answer
+``it depends'' is not, because every working engineer must, in
+fact, pick on a given problem.
+
 \begin{exercise}
 A senior colleague tells the reader that ``numerical integration
 is an implementation detail; the analytical answer is the truth.''
@@ -1572,6 +2271,24 @@ Write a one-paragraph reply that takes the colleague seriously,
 identifies the regime in which the claim is defensible, and
 identifies the regime in which it is not.
 \end{exercise}
+
+\paragraph{Discussion.}
+The colleague is defensible where the analytical answer exists,
+is in a closed form whose value can be evaluated to higher
+precision than the engineering use requires, and the numerical
+rule is a backup check against the analytic derivation having an
+algebra error. The colleague is wrong in two regimes. Most
+engineering integrands of practical importance (measured spectra,
+finite-element residuals, Monte Carlo expectations, convolutions
+with measured impulse responses) have no analytical closed form;
+the numerical rule is the answer and its convergence study is
+the analyst's commitment to the answer's accuracy. Second,
+analytical formulas evaluated at scale on floating-point hardware
+themselves carry numerical error from elementary-function library
+implementations, ill-conditioned subtractions, and overflow; the
+analytical formula is then not the truth but a different
+numerical computation whose error is hidden by being implicit
+rather than declared.
 
 \begin{exercise}
 Argue, in 200 to 300 words, whether the convolution integral or
@@ -1582,6 +2299,25 @@ it with reference to a working engineering domain (audio, control,
 imaging, or another).
 \end{exercise}
 
+\paragraph{Discussion.}
+Defensible position: the convolution integral is more useful for
+direct intuition about time-domain behaviour, and the Fourier
+transform is more useful for frequency-domain reasoning. The
+engineer in audio reasoning about a reverb knows the impulse
+response of the room as a measurable artefact and the convolution
+gives the time-domain output directly; the Fourier transform of
+that impulse response, while equivalent, is not what an audio
+engineer's ear tracks. The engineer in control theory reasoning
+about stability of a closed loop wants the Fourier (or Laplace)
+description because pole locations in the complex plane carry the
+stability information directly; the convolution that produces
+the step response gives information about the same poles but
+through a transient that the engineer must read backwards to
+recover them. The defensible position is that the choice depends
+on the question; the working compromise is fluency in both, with
+the discipline of using the simpler representation for the
+problem at hand rather than the more familiar one.
+
 \begin{exercise}
 Argue, in 200 to 300 words, whether the engineering working rule
 ``use Simpson on smooth data, trapezoidal on noisy data, Gauss on
@@ -1589,3 +2325,26 @@ analytical integrands'' is a defensible heuristic or a habit that
 hides the working trade. Take a position and defend it with a
 specific case where the heuristic gives the wrong recommendation.
 \end{exercise}
+
+\paragraph{Discussion.}
+The heuristic is defensible as a starting position for an
+engineer with no other information about the integrand, because
+each rule is appropriate to the integrand class the rule's error
+formula assumes. The heuristic hides the working trade in three
+common cases. First, ``noisy data'' covers both random
+measurement noise (where trapezoidal is honest) and structured
+artefacts like power-line pickup or quantisation noise (where
+filtering then Simpson is better than trapezoidal on the raw
+data). Second, ``smooth data'' covers both genuinely smooth
+samples and over-sampled smooth signals where Simpson's
+higher-order error formula has not yet caught up with
+trapezoidal's lower-constant error; for $n$ in the low tens, the
+two rules can give comparable accuracy on the same data, and the
+choice rests on implementation cost. Third, ``analytical
+integrands'' includes integrands with hidden singularities or
+high-frequency content that defeats Gauss-Legendre's polynomial
+exactness assumption. The defensible response is to take the
+heuristic as the default and to make the integrand's class
+explicit before defaulting; an analyst who applies the rule
+without that check is making the heuristic do work it cannot
+support.

@@ -17,7 +17,9 @@ polynomial fit by three methods with conditioning comparison, plus a
 1500-word reflection). Hazard class: none. Reader path default:
 standard, with sections explicitly tagged. Named cases: Ariane 5
 Flight 501 (1996), as the canonical case of a numerical conversion
-that should have been refused.}
+that should have been refused; Hubble primary mirror (1990) and
+Patriot missile clock drift at Dhahran (1991) as short-form
+companion cases of the same precondition-verification discipline.}
 
 \noindent
 A linear system is the engineer's working notation for a problem in
@@ -27,7 +29,15 @@ formulas the reader took on trust; this chapter supplies the
 apparatus that earns the formulas. The same apparatus carries the
 reader from a hand-solved $3 \times 3$ system to the polynomial fit
 of section 9.6, the conditioning analysis of section 9.7, and the
-refusal discipline of section 9.8.
+refusal discipline of section 9.8. Two textbooks supplement the
+working derivations: Strang \cite{text:strang2016} for the
+subspace-first orientation and an undergraduate-accessible
+abstract treatment in Axler \cite{text:v2ch09-axler2015}; Trefethen
+and Bau \cite{text:trefethen-bau1997} for numerical linear algebra
+and Golub and Van Loan \cite{text:v2ch09-golub-vanloan2013} for the
+encyclopaedic algorithmic reference; Higham
+\cite{text:v2ch09-higham2002} for the backward-stability and
+condition-number analysis the failure section depends on.
 
 \section{Vector spaces}\pathtag{core}
 
@@ -194,6 +204,9 @@ null space} is $\nul(\mat{A}^{\transpose}) \subseteq \R^{m}$. The
 four subspaces stand in two orthogonal pairs: in $\R^{n}$, the row
 space and the null space are orthogonal complements; in $\R^{m}$,
 the column space and the left null space are orthogonal complements.
+Figure~\ref{fig:vol02:ch09:four-subspaces} records the picture.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-four-subspaces.tex}
 
 \subsection{Special matrices}
 
@@ -335,6 +348,15 @@ the LU factors recorded by the elimination are
 \]
 
 The reader who multiplies $\mat{L}\mat{U}$ recovers $\mat{A}$.
+Figure~\ref{fig:vol02:ch09:gaussian-elimination} stages the
+elimination and records the multipliers.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-gaussian-elimination.tex}
+
+The same example is the input to the LU demonstration code in
+\path{code/lu_demo.py}, which solves it by hand-coded Doolittle
+elimination and verifies $\mat{L}\mat{U} = \mat{A}$ and
+$\mat{A}\vect{x} = \vect{b}$ to machine precision.
 
 \begin{archetype}[Optimisation]
 The least-squares problem (section 9.6) minimises $\norm{\mat{A}
@@ -539,6 +561,9 @@ The matrix $\mat{P} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
 it satisfies $\mat{P}^{2} = \mat{P}$ (idempotent) and
 $\mat{P}^{\transpose} = \mat{P}$ (symmetric), the algebraic
 fingerprint of an orthogonal projection.
+Figure~\ref{fig:vol02:ch09:projection} draws the geometry.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-projection.tex}
 
 \subsection{The normal equations}
 
@@ -645,7 +670,11 @@ nearly linearly dependent (the higher powers of $x$ correlate
 strongly with each other on any interval that does not include
 zero), and the condition number of $\mat{V}^{\transpose}\mat{V}$
 explodes. Section 9.7 quantifies the trouble; the project of this
-chapter walks the reader through it.
+chapter walks the reader through it, and
+Figure~\ref{fig:vol02:ch09:vandermonde-conditioning} previews the
+result for $m = 100$ equispaced points in three bases.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-vandermonde-conditioning.tex}
 
 \section{Conditioning and numerical sensitivity}\pathtag{core}
 
@@ -704,7 +733,39 @@ in the right-hand side, and the specific norm in use all change
 the constant. The rule's value is as a triage: the engineer who
 sees $\kappa = 10^{14}$ knows, before any computation, that the
 problem in this formulation has at most one or two reliable
-digits.
+digits. Figure~\ref{fig:vol02:ch09:condition-number} encodes the
+budget across the three working IEEE precisions.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-condition-number.tex}
+
+\begin{estimation}
+\textbf{Question.} A daily-mean temperature record at a single
+weather station, $m = 365$ points over one year, is to be fitted by
+a polynomial of degree $p$ in the monomial basis on the day index
+$x \in \{1, \ldots, 365\}$, in double precision. At what degree $p$
+does the rule of thumb predict that the normal equations have lost
+all reliable digits in the fitted coefficients, assuming the data
+are accurate to about three significant figures?
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+Vandermonde conditioning on equispaced points scales roughly as
+$\log_{10}\kappa(\mat{V}) \approx 1.5 p$ in the monomial basis on
+an interval that does not include the origin. Squaring for the Gram
+matrix gives $\log_{10}\kappa(\mat{V}^{\transpose}\mat{V}) \approx
+3 p$. The data carry three digits; double precision carries sixteen;
+the working budget is about $13$ digits. The rule of thumb says
+$3p \approx 13$, i.e.\ $p \approx 4$ to $5$, exhausts the budget.
+The script \path{code/condition_visualiser.py} confirms the
+estimate to within a factor of three: at $p = 5$ the Gram condition
+number is already above $10^{14}$ on $[0, 1]$, leaving at most one
+or two coefficient digits. Rescaling $x$ to $[-1, 1]$ buys back
+about three orders of magnitude per degree; the Chebyshev basis
+buys back the rest. The estimate is the triage that tells the
+engineer to rescale or change basis before the fit, not after.
+\end{estimation}
 
 \subsection{The condition number of the Gram matrix}
 
@@ -751,6 +812,10 @@ with the SVD can truncate the smallest singular values explicitly
 (the \engterm{truncated SVD}), which gives a regularised solution
 whose conditioning the engineer controls. The QR and the normal
 equations do not offer this control without further work.
+Figure~\ref{fig:vol02:ch09:svd-geometry} draws the geometric
+content: rotate, scale, rotate.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-svd-geometry.tex}
 
 \subsection{Floating-point overflow as a related failure}
 
@@ -817,48 +882,103 @@ the formulation whose conditioning the engineer can defend.
 
 \subsection{The Ariane 5 case}
 
+\paragraph{Technical mechanism.}
 Ariane 5 Flight 501, the maiden flight of the European Space Agency's
 new launcher, broke up about 39 seconds after main engine ignition
-on 4 June 1996. The Lions Inquiry Board identified the cause as an
-unhandled software exception in the inertial reference system (SRI),
-triggered when a 64-bit floating-point representation of an internal
-horizontal-bias variable was converted to a 16-bit signed integer
-and the result exceeded the integer's range $[-32768, 32767]$.
-The conversion occurred inside an alignment function reused unchanged
-from Ariane 4. For Ariane 4, the trajectory kept the variable within
-range; for Ariane 5, the trajectory developed horizontal velocity
-faster, and the variable did not. The exception was unhandled;
-the primary SRI shut down; the back-up SRI, running the same software,
-shut down for the same reason. The on-board computer interpreted
-diagnostic output from the SRIs as flight data, commanded extreme
+on 4 June 1996. The Lions Inquiry Board, reporting on 19 July 1996,
+identified the cause as an unhandled software exception in the
+inertial reference system (SRI), triggered during conversion of a
+64-bit floating-point representation of an internal horizontal-bias
+variable (BH) to a 16-bit signed integer; the result exceeded the
+integer's range $[-32768, 32767]$ and the conversion overflowed
+\cite{acc:ariane501-ifr}. The conversion occurred inside an
+alignment function reused unchanged from Ariane 4. For Ariane 4,
+the alignment function had been kept active for a few seconds after
+lift-off to support a pre-launch-recovery requirement, and the
+Ariane 4 trajectory kept BH within range. The Ariane 5 trajectory
+developed horizontal velocity faster, and BH did not stay in range.
+The variable was one of seven internal SRI variables for which
+overflow protection had been considered; four were protected, three
+(including BH) were left unprotected on the basis that the Ariane 4
+trajectory analysis showed they could not go out of range. That
+analysis was not redone for Ariane 5. The exception was unhandled;
+the primary SRI shut down; the back-up SRI, running the same
+software, shut down for the same reason for the same diagnostic
+output. The on-board computer interpreted SRI diagnostic words as
+flight data, computed extreme attitude corrections, commanded large
 nozzle deflections, and the launcher broke up under aerodynamic
-loads \cite{acc:ariane501-ifr}.
+loads. The self-destruct system then activated. The underlying
+numerical operation, real-to-integer conversion, is the simplest
+possible numerical procedure: no matrix factorisation, no
+conditioning analysis, no near-singularity. The failure is the
+overflow failure mode of section 9.7, in its most elementary form.
 
-The case is canonical for this chapter for two reasons. First, the
-underlying numerical operation, conversion of a real number to an
-integer, is the simplest possible numerical procedure. There is no
-matrix factorisation, no conditioning analysis, no
-near-singularity. The failure is range overflow, the related
-floating-point failure mode named in section 9.7. Second, the
-verification discipline that should have refused the operation is
-the same discipline this chapter has been building. The conversion
-was a \emph{procedure with a precondition}: the input must lie in
-the integer's range. The procedure ran in a context (Ariane 5
-trajectory) whose envelope the engineers had not analysed against
-the precondition. The Inquiry Board's framing was that this was a
-verification-domain failure: software qualified for one launcher
-was reused on another whose flight envelope had not been
-re-analysed against the reused code.
+\paragraph{Organisational context.}
+The Inquiry Board's framing of the cause was a verification-domain
+failure rather than a coding error. The implementation was correct
+for the Ariane 4 envelope it had been verified against. What was
+absent was a re-verification of the same implementation against the
+Ariane 5 envelope when the software was reused. The board observed
+that the Ariane 5 qualification programme had treated the reused
+SRI software as already qualified by its Ariane 4 service history
+rather than as new software whose flight envelope must be
+re-verified \cite{acc:ariane501-ifr}. The Ariane 4 documentation
+recorded that the variable BH could not exceed the 16-bit range on
+the Ariane 4 trajectory; the documentation did not state, because
+it had no reason to state, that this guarantee was a property of
+the Ariane 4 trajectory rather than of the conversion itself. The
+Ariane 5 verification then read the Ariane 4 guarantee as a
+property of the SRI code and proceeded. The board's recommendations
+were structural: re-analysis of internal variable ranges against
+the new flight envelope, defensive programming for arithmetic
+operations on flight-critical values, exception handling on all
+arithmetic exceptions in flight-critical software, software
+architecture review for reused components in qualification, and
+loss of the assumption that service-history qualification on one
+launcher transfers to another. The recommendations are
+restatements, in the software-engineering register, of the
+verification discipline of section 9.7.
 
-The lesson generalises. Whenever a piece of numerical code is
-ported across operating envelopes (a control law, a Kalman filter,
-a finite-element solver, a regression pipeline), the engineer
-verifies that the new envelope's data fall inside the preconditions
-of every numerical operation the code performs. The matrix-conditioning
-discipline of section 9.7 is one instance of this verification; the
-Ariane 5 conversion is another. The discipline that prevents both
-failure modes is the same: \emph{name the precondition, verify the
-input meets it, and refuse the operation when verification fails}.
+\paragraph{Lesson for linear-systems modelling.}
+The lesson generalises beyond software-conversion failures.
+Whenever a piece of numerical code is ported across operating
+envelopes (a control law, a Kalman filter, a finite-element solver,
+a regression pipeline), the engineer verifies that the new
+envelope's data fall inside the preconditions of every numerical
+operation the code performs. The matrix-conditioning discipline of
+section 9.7 is one instance of this verification: the precondition
+is a bound on $\kappa(\mat{A})$ inside which a chosen factorisation
+delivers a defensible answer; the operation is the solve; the
+verification is the conditioning estimate. The Ariane 5 conversion
+is another instance: the precondition is the integer range; the
+operation is the conversion; the verification is the
+range-analysis check against the operating envelope. The
+discipline that prevents both failure modes is the same: name the
+precondition, verify the input meets it, and refuse the operation
+when verification fails. The chapter's principle (below) states
+this in operative form.
+
+\paragraph{Short-form companion cases.}
+Two further failures sit beside the Ariane 5 case as standing
+references for the same precondition-verification discipline,
+without their own chapter section here. The Patriot missile
+software failure of 25 February 1991 at Dhahran lost an Iraqi Scud
+missile track because a 24-bit fixed-point clock drift accumulated
+over $\approx 100\,\si{\hour}$ of continuous operation,
+introducing an integration error of about $0.34\,\si{\second}$ in
+the prediction of the Scud's location; the precondition violated
+was a continuous-operation bound on the clock variable that
+exceeded the qualification envelope. The Hubble Space Telescope
+primary mirror failure of 1990 was a metrology-procedure
+verification failure: the null corrector used to figure the mirror
+was itself out of alignment by $1.3\,\si{\milli\meter}$ on a single
+component, and the alignment was not cross-checked against an
+independent measurement before the mirror was certified as the
+correct figure \cite{acc:nasa-hubble-optical-systems-1990}. In
+each case, an algebraic operation was performed inside a software
+or measurement pipeline whose precondition the engineering process
+had not verified against the new envelope. The discipline of
+section 9.7 is the same in all three.
 
 \subsection{The principle}
 
@@ -972,6 +1092,74 @@ online; the reader compares only after completing their own.
 dataset, two to three hours to implement the three methods, one
 hour to produce the table and plot, and three to four hours to
 write the reflection. Total approximately seven to nine hours.
+
+\textbf{Phases}.
+\begin{enumerate}[leftmargin=*]
+  \item \textit{Dataset selection and sanity check} (one hour).
+    Choose the dataset; plot $(x_{i}, y_{i})$; compute $\bar{x}$,
+    $\bar{y}$, the range of $x$, and the empirical noise estimate
+    (the standard deviation of residuals from a low-degree fit).
+    Record source and date.
+  \item \textit{Reference implementation} (two to three hours).
+    Set the polynomial degree $p$. Implement the three methods in
+    a single script that consumes the dataset and produces a
+    coefficient table, three condition numbers, and three residual
+    norms. The reference script
+    \path{code/least_squares_three_ways.py} is a working template;
+    the deliverable is the reader's own implementation, not a
+    transcription.
+  \item \textit{Conditioning analysis} (one hour). Sweep the degree
+    $p$ from $2$ to $10$ on the chosen dataset. At each $p$, record
+    $\kappa(\mat{V})$, $\kappa(\mat{V}^{\transpose}\mat{V})$, and
+    the residual norms for the three methods. Identify the degree
+    at which the normal-equations coefficients diverge from QR.
+  \item \textit{Rescaling and basis change} (one hour). Repeat the
+    analysis with $x$ rescaled to $[-1, 1]$ and with a Chebyshev
+    or Legendre basis. Compare conditioning gains.
+  \item \textit{Reflection} (three to four hours). Address the five
+    questions listed above.
+\end{enumerate}
+
+\textbf{Success criteria}.
+\begin{itemize}[leftmargin=*]
+  \item The three coefficient vectors are reported with their
+    relative disagreement quantified as a percentage of the QR
+    coefficient.
+  \item The three condition numbers are reported and the rule of
+    thumb is applied numerically to predict the digit loss for each
+    formulation.
+  \item The reflection states the regime in which each method is
+    defensible and the regime in which each method must be refused.
+  \item The deliverable identifies at least one singular value of
+    the Vandermonde matrix that lies below or near the SVD cutoff
+    and gives a one-sentence interpretation of its associated input
+    direction.
+\end{itemize}
+
+\textbf{Common failure modes}.
+\begin{itemize}[leftmargin=*]
+  \item Forming $\mat{V}^{\transpose}\mat{V}$ for a degree-eight or
+    higher fit on raw $x$ values in an interval that does not
+    include zero, then reporting the resulting coefficients without
+    a conditioning check. The reflection should identify this as
+    the canonical Vandermonde pathology and refer to
+    Figure~\ref{fig:vol02:ch09:vandermonde-conditioning}.
+  \item Reporting residual norms only, without coefficient
+    disagreement. Two formulations may agree on the residual to
+    several digits while disagreeing on individual coefficients by
+    orders of magnitude; the residual-only check fails to flag the
+    conditioning problem.
+  \item Treating the SVD cutoff $\epsilon$ as an algorithmic
+    parameter rather than as an engineering choice. The cutoff
+    encodes the engineer's judgement about which input directions
+    the data can support; the reflection states the cutoff with the
+    reasoning behind it.
+  \item Choosing a polynomial when the dataset asks for a different
+    model class. A sinusoidal trend (the temperature dataset is
+    one) fits poorly to any polynomial degree the conditioning
+    allows; the reflection should acknowledge the model-selection
+    signal in the conditioning trouble.
+\end{itemize}
 \end{project}
 
 \section{Exercises}
@@ -990,12 +1178,43 @@ Compute, by Gaussian elimination, the solution of $\mat{A}\vect{x}
 and verify $\mat{L}\mat{U} = \mat{A}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Subtract $2 R_{1}$ from $R_{2}$ and add $R_{1}$ to $R_{3}$:
+$\mat{U}^{(1)} = \begin{psmallmatrix} 1 & 2 & -1 \\ 0 & -3 & 3 \\
+0 & 3 & 1 \end{psmallmatrix}$, transformed $\vect{b}^{(1)} = (3,
+-2, 4)^{\transpose}$, multipliers $(2, -1)$ in column 1 of $\mat{L}$.
+Add $R_{2}$ to $R_{3}$ to clear the $(3,2)$ entry: $\mat{U} =
+\begin{psmallmatrix} 1 & 2 & -1 \\ 0 & -3 & 3 \\ 0 & 0 & 4
+\end{psmallmatrix}$, $\vect{b}^{(2)} = (3, -2, 2)^{\transpose}$,
+multiplier $-1$ at $(3,2)$ of $\mat{L}$. Back substitution:
+$x_{3} = 2/4 = 0.5$, $x_{2} = (-2 - 3 \cdot 0.5)/(-3) = 7/6$,
+$x_{1} = 3 - 2 \cdot 7/6 + 0.5 = 3 - 7/3 + 1/2 = 7/6$. Check:
+$\mat{A}\vect{x} = (7/6 + 14/6 - 1/2, 14/6 + 7/6 + 1/2, -7/6 +
+7/6 + 1)^{\transpose} = (3, 4, 1)^{\transpose}$. Factors: $\mat{L}
+= \begin{psmallmatrix} 1 & 0 & 0 \\ 2 & 1 & 0 \\ -1 & -1 & 1
+\end{psmallmatrix}$, $\mat{U}$ as above; verify $\mat{L}\mat{U} =
+\mat{A}$ by direct multiplication.
+
 \begin{exercise}
 For the matrix $\mat{A} = \begin{psmallmatrix} 1 & 2 & 3 \\ 2 & 4
 & 6 \\ 1 & 1 & 1 \end{psmallmatrix}$, find a basis for the column
 space, the null space, and the row space. State the rank and
 verify the rank-nullity theorem.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Row reduce: $R_{2} \to R_{2} - 2 R_{1}$ gives a zero row;
+$R_{3} \to R_{3} - R_{1}$ gives $(0, -1, -2)$. The reduced echelon
+form is $\begin{psmallmatrix} 1 & 0 & -1 \\ 0 & 1 & 2 \\ 0 & 0 & 0
+\end{psmallmatrix}$, so $\rank \mat{A} = 2$. Column-space basis:
+the original first two columns $\{(1, 2, 1)^{\transpose}, (2, 4,
+1)^{\transpose}\}$ (columns 1 and 2 are pivot columns; column 3 =
+$-1 \cdot$ col 1 $+ 2 \cdot$ col 2 in REF, recovered as $(3, 6, 1)
+= -(1,2,1) + 2(2,4,1) \cdot$). Row-space basis: any two
+independent rows, e.g., $\{(1, 2, 3), (1, 1, 1)\}$. Null-space
+basis: solve $x_{1} - x_{3} = 0$, $x_{2} + 2 x_{3} = 0$, giving
+$(1, -2, 1)^{\transpose}$ (one-dimensional). Rank-nullity: $\rank
++ \dim \nul = 2 + 1 = 3 = n$.
 
 \begin{exercise}
 Compute the QR factorisation of $\mat{A} = \begin{psmallmatrix} 1
@@ -1004,12 +1223,32 @@ procedure on the columns. Verify that $\mat{Q}^{\transpose}\mat{Q}
 = \mat{I}_{2}$ and that $\mat{Q}\mat{R} = \mat{A}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Column 1: $\vect{a}_{1} = (1, 1, 0)^{\transpose}$, $\norm{\vect{a}_{1}}_{2}
+= \sqrt{2}$, $\vect{q}_{1} = (1, 1, 0)^{\transpose}/\sqrt{2}$.
+Column 2: $\vect{a}_{2} = (1, 0, 1)^{\transpose}$, projection on
+$\vect{q}_{1}$ is $\inner*{\vect{a}_{2}, \vect{q}_{1}} = 1/\sqrt{2}$,
+so $\vect{a}_{2} - (1/\sqrt{2})\vect{q}_{1} = (1, 0, 1) - (1/2,
+1/2, 0) = (1/2, -1/2, 1)$, norm $\sqrt{3/2}$. Thus $\vect{q}_{2} =
+(1/2, -1/2, 1)/\sqrt{3/2} = (1, -1, 2)/\sqrt{6}$. Then
+$\mat{R} = \begin{psmallmatrix} \sqrt{2} & 1/\sqrt{2} \\ 0 &
+\sqrt{3/2} \end{psmallmatrix}$. Verify $\mat{Q}^{\transpose}\mat{Q}
+= \mat{I}_{2}$ by inner products; $\mat{Q}\mat{R} = \mat{A}$ by
+direct multiplication.
+
 \begin{exercise}
 Compute the determinant of $\mat{A} = \begin{psmallmatrix} 2 & 1
 & 1 \\ 4 & 3 & 3 \\ 8 & 7 & 9 \end{psmallmatrix}$ by reading it
 off the LU factorisation of the worked example in section 9.3.
 Verify by cofactor expansion along the first row.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+From section 9.3, $\mat{U} = \begin{psmallmatrix} 2 & 1 & 1 \\ 0 &
+1 & 1 \\ 0 & 0 & 2 \end{psmallmatrix}$ and $\mat{P} = \mat{I}$
+(no row swaps), so $\det \mat{A} = \prod U_{ii} = 2 \cdot 1 \cdot
+2 = 4$. Cofactor expansion: $\det \mat{A} = 2 (27 - 21) - 1 (36 -
+24) + 1 (28 - 24) = 12 - 12 + 4 = 4$. The two computations agree.
 
 \begin{exercise}
 Compute the orthogonal projection of $\vect{b} = (1, 2, 3)^{\transpose}$
@@ -1020,12 +1259,42 @@ $\mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}\mat{A}^{\transpose}
 to each column of $\mat{A}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\mat{A}^{\transpose}\mat{A} = \begin{psmallmatrix} 2 & 1 \\ 1 & 2
+\end{psmallmatrix}$, $(\mat{A}^{\transpose}\mat{A})^{-1} =
+\frac{1}{3}\begin{psmallmatrix} 2 & -1 \\ -1 & 2 \end{psmallmatrix}$.
+$\mat{A}^{\transpose}\vect{b} = (1 + 3, 2 + 3)^{\transpose} = (4,
+5)^{\transpose}$. $\hat{\vect{x}} = \frac{1}{3}\begin{psmallmatrix}
+2 & -1 \\ -1 & 2 \end{psmallmatrix}\begin{psmallmatrix} 4 \\ 5
+\end{psmallmatrix} = \frac{1}{3}(3, 6)^{\transpose} = (1,
+2)^{\transpose}$. Then $\proj_{\col(\mat{A})}\vect{b} =
+\mat{A}\hat{\vect{x}} = (1, 2, 3)^{\transpose}$, so the residual
+is zero: $\vect{b}$ already lies in $\col(\mat{A})$ (rows 1 and 2
+of $\vect{b}$ determine $\hat{x}_{1}$ and $\hat{x}_{2}$, and row
+3 of $\mat{A}\hat{\vect{x}}$ is $1 + 2 = 3 = b_{3}$). Orthogonality
+holds trivially. A more instructive test case takes $\vect{b} =
+(1, 2, 4)^{\transpose}$: the projection is still $(1, 2,
+3)^{\transpose}$ but the residual $(0, 0, 1)^{\transpose}$ is
+orthogonal to both columns.
+
 \begin{exercise}
 Compute the least-squares straight-line fit through the four
 points $(0,1), (1,3), (2,4), (3,7)$ by setting up and solving the
 normal equations. Compare the slope and intercept to the
 closed-form Volume I Chapter 8 expressions.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\sum x_{i} = 6$, $\sum y_{i} = 15$, $\sum x_{i}^{2} = 14$,
+$\sum x_{i} y_{i} = 0 + 3 + 8 + 21 = 32$, $m = 4$. Slope:
+$\hat{\beta}_{1} = (4 \cdot 32 - 6 \cdot 15)/(4 \cdot 14 - 36) =
+(128 - 90)/20 = 38/20 = 1.9$. Intercept: $\bar{x} = 1.5$,
+$\bar{y} = 3.75$, $\hat{\beta}_{0} = 3.75 - 1.9 \cdot 1.5 = 3.75 -
+2.85 = 0.9$. The normal equations route, $\mat{A}^{\transpose}
+\mat{A}\hat{\vect{c}} = \mat{A}^{\transpose}\vect{b}$ with
+$\mat{A}^{\transpose}\mat{A} = \begin{psmallmatrix} 4 & 6 \\ 6 &
+14 \end{psmallmatrix}$ and $\mat{A}^{\transpose}\vect{b} = (15,
+32)^{\transpose}$, yields the same $(0.9, 1.9)^{\transpose}$.
 
 \begin{exercise}
 For the matrix $\mat{A} = \begin{psmallmatrix} 1 & 1 \\ 1 & 1.0001
@@ -1036,11 +1305,35 @@ in the solution to $\mat{A}\vect{x} = \vect{b}$ given input data
 accurate to $10^{-10}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\det \mat{A} = 1.0001 - 1 = 10^{-4}$. $\mat{A}^{-1} = 10^{4}
+\begin{psmallmatrix} 1.0001 & -1 \\ -1 & 1 \end{psmallmatrix}$.
+For singular values, $\mat{A}^{\transpose}\mat{A} = \begin{psmallmatrix}
+2 & 2.0001 \\ 2.0001 & 2.00020001 \end{psmallmatrix}$ has trace
+$\approx 4.0002$ and determinant $\approx 10^{-8}$, so eigenvalues
+$\lambda_{1} \approx 4.0002$, $\lambda_{2} \approx 2.5 \times
+10^{-9}$, giving $\sigma_{1} \approx 2.000$, $\sigma_{2} \approx
+5.0 \times 10^{-5}$, $\kappa(\mat{A}) = \sigma_{1}/\sigma_{2}
+\approx 4.0 \times 10^{4}$. Rule of thumb: $\log_{10}\kappa
+\approx 4.6$. Data accurate to $10^{-10}$ carry $10$ digits;
+$10 - 4.6 \approx 5.4$ digits in the solution. The reader should
+not trust more than five digits of $\hat{\vect{x}}$ for this
+near-singular matrix.
+
 \begin{exercise}
 Compute the angle between the vectors $\vect{u} = (1, 2, 2)^{\transpose}$
 and $\vect{v} = (2, -1, 2)^{\transpose}$ using the inner-product
 formula. Verify the Cauchy-Schwarz inequality numerically.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\inner*{\vect{u}, \vect{v}} = 2 - 2 + 4 = 4$. $\norm{\vect{u}}_{2}
+= \sqrt{1 + 4 + 4} = 3$. $\norm{\vect{v}}_{2} = \sqrt{4 + 1 + 4}
+= 3$. $\cos\theta = 4/9 \approx 0.444$, so $\theta \approx
+\arccos(0.444) \approx 63.6^{\circ}$. Cauchy-Schwarz: $\abs{\inner*{
+\vect{u}, \vect{v}}} = 4 \leq 9 = \norm{\vect{u}}_{2}
+\norm{\vect{v}}_{2}$. Equality would hold only if $\vect{u}$ and
+$\vect{v}$ were parallel; they are not.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1051,6 +1344,18 @@ Show that the column space and the null space of a matrix $\mat{A}
 and left-null spaces.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Row reduce $\mat{A}$ to its reduced row-echelon form $\mat{R}$.
+Let $r$ be the number of pivot columns. The pivot columns of
+$\mat{A}$ (not of $\mat{R}$) form a basis for $\col(\mat{A})$, so
+$\dim \col(\mat{A}) = r$. The non-pivot columns yield $n - r$ free
+parameters; each free parameter contributes one basis vector of
+$\nul(\mat{A})$, so $\dim \nul(\mat{A}) = n - r$. Summing gives
+$r + (n - r) = n$. The analogous identity is $\dim
+\col(\mat{A}^{\transpose}) + \dim \nul(\mat{A}^{\transpose}) = m$;
+row rank equals column rank equals $r$, the central content of the
+four-subspaces picture (Figure~\ref{fig:vol02:ch09:four-subspaces}).
+
 \begin{exercise}
 Show that the matrix $\mat{P} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
 \mat{A}^{\transpose}$, when $\mat{A}$ has full column rank,
@@ -1058,6 +1363,18 @@ satisfies $\mat{P}^{2} = \mat{P}$ and $\mat{P}^{\transpose} =
 \mat{P}$. Use only the algebraic properties of transpose and
 inverse.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Symmetry: $\mat{P}^{\transpose} = (\mat{A}^{\transpose})^{\transpose}
+((\mat{A}^{\transpose}\mat{A})^{-1})^{\transpose}\mat{A}^{\transpose}
+= \mat{A}((\mat{A}^{\transpose}\mat{A})^{\transpose})^{-1}
+\mat{A}^{\transpose}$. Since $(\mat{A}^{\transpose}\mat{A})^{\transpose}
+= \mat{A}^{\transpose}\mat{A}$, $\mat{P}^{\transpose} = \mat{P}$.
+Idempotence: $\mat{P}^{2} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose}\mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose} = \mat{A}(\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose} = \mat{P}$; the inner $\mat{A}^{\transpose}
+\mat{A}$ cancels its inverse.
 
 \begin{exercise}
 Starting from $\norm{\mat{A}\vect{x} - \vect{b}}_{2}^{2}$, derive
@@ -1067,12 +1384,32 @@ to $\vect{x}$ to zero. State the assumption on $\mat{A}$ that
 guarantees a unique minimiser.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Expand: $f(\vect{x}) = \vect{x}^{\transpose}\mat{A}^{\transpose}
+\mat{A}\vect{x} - 2\vect{x}^{\transpose}\mat{A}^{\transpose}\vect{b}
++ \vect{b}^{\transpose}\vect{b}$. The gradient is $\nabla f =
+2\mat{A}^{\transpose}\mat{A}\vect{x} - 2\mat{A}^{\transpose}\vect{b}$.
+Setting $\nabla f = \vect{0}$ gives the normal equations. The
+Hessian is $2\mat{A}^{\transpose}\mat{A}$; the minimiser is unique
+when this Hessian is positive definite, which holds if and only if
+$\mat{A}$ has full column rank.
+
 \begin{exercise}
 Show that a square matrix $\mat{A}$ is invertible if and only if
 $\det \mat{A} \neq 0$, by combining the multiplicative property
 $\det(\mat{A}\mat{B}) = \det \mat{A} \cdot \det \mat{B}$ with
 $\det \mat{I} = 1$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$(\Rightarrow)$ If $\mat{A}$ is invertible, $\mat{A}\mat{A}^{-1} =
+\mat{I}$ and $\det \mat{A} \cdot \det \mat{A}^{-1} = \det \mat{I}
+= 1$, forcing $\det \mat{A} \neq 0$. $(\Leftarrow)$ If $\det \mat{A}
+\neq 0$, then the columns of $\mat{A}$ are linearly independent (a
+linear dependence would collapse the image parallelepiped to lower
+dimension, forcing $\det \mat{A} = 0$). For a square matrix,
+linearly independent columns span $\R^{n}$, so $\mat{A}$ defines a
+bijection and is invertible.
 
 \begin{exercise}
 Show that for a full-column-rank matrix $\mat{A}$, the Gram matrix
@@ -1082,6 +1419,20 @@ the Cholesky factorisation $\mat{A}^{\transpose}\mat{A} =
 \mat{L}\mat{L}^{\transpose}$ exists.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Symmetry: $(\mat{A}^{\transpose}\mat{A})^{\transpose} =
+\mat{A}^{\transpose}\mat{A}$. Positive definiteness: for any
+$\vect{x} \neq \vect{0}$, $\vect{x}^{\transpose}\mat{A}^{\transpose}
+\mat{A}\vect{x} = \norm{\mat{A}\vect{x}}_{2}^{2} \geq 0$, with
+equality if and only if $\mat{A}\vect{x} = \vect{0}$, which under
+full column rank forces $\vect{x} = \vect{0}$. Existence of
+Cholesky: a symmetric positive-definite matrix has all positive
+eigenvalues; the constructive Cholesky algorithm proceeds column
+by column, each diagonal pivot $\sqrt{L_{kk}^{2}}$ being positive
+by induction on the leading principal submatrix's positive
+definiteness, terminating with a real lower-triangular $\mat{L}$
+such that $\mat{A}^{\transpose}\mat{A} = \mat{L}\mat{L}^{\transpose}$.
+
 \begin{exercise}
 Show that the condition number satisfies $\kappa(\mat{A}^{\transpose}
 \mat{A}) = \kappa(\mat{A})^{2}$ for a full-column-rank $\mat{A}$.
@@ -1090,12 +1441,37 @@ Use the singular-value characterisation $\kappa(\mat{A}) =
 of $\mat{A}$ and those of $\mat{A}^{\transpose}\mat{A}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The singular values of $\mat{A}^{\transpose}\mat{A}$ are the
+squares of the singular values of $\mat{A}$: if $\mat{A} =
+\mat{U}\mat{\Sigma}\mat{V}^{\transpose}$, then $\mat{A}^{\transpose}
+\mat{A} = \mat{V}\mat{\Sigma}^{2}\mat{V}^{\transpose}$, which has
+singular values $\sigma_{i}^{2}$ (it is symmetric positive definite,
+so eigenvalues coincide with singular values). Therefore
+$\kappa(\mat{A}^{\transpose}\mat{A}) = \sigma_{1}^{2}/\sigma_{n}^{2}
+= \kappa(\mat{A})^{2}$.
+
 \begin{exercise}
 Show that the Householder reflector $\mat{H} = \mat{I} - 2\vect{v}
 \vect{v}^{\transpose}/\norm{\vect{v}}_{2}^{2}$ is orthogonal and
 symmetric, where $\vect{v}$ is any nonzero vector. State the
 geometric action of $\mat{H}$ on a vector $\vect{x}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Let $\alpha = 2/\norm{\vect{v}}_{2}^{2}$. Symmetry:
+$\mat{H}^{\transpose} = \mat{I} - \alpha (\vect{v}\vect{v}^{\transpose})^{\transpose}
+= \mat{I} - \alpha \vect{v}\vect{v}^{\transpose} = \mat{H}$.
+Orthogonality: $\mat{H}^{\transpose}\mat{H} = \mat{H}^{2} = \mat{I}
+- 2\alpha\vect{v}\vect{v}^{\transpose} + \alpha^{2}\vect{v}
+(\vect{v}^{\transpose}\vect{v})\vect{v}^{\transpose} = \mat{I} -
+2\alpha\vect{v}\vect{v}^{\transpose} + 2\alpha\vect{v}\vect{v}^{\transpose}
+= \mat{I}$, using $\alpha \vect{v}^{\transpose}\vect{v} = 2$.
+Geometry: $\mat{H}\vect{x} = \vect{x} - 2(\vect{v}^{\transpose}
+\vect{x}/\norm{\vect{v}}_{2}^{2})\vect{v}$ is the reflection of
+$\vect{x}$ through the hyperplane orthogonal to $\vect{v}$. The
+component of $\vect{x}$ parallel to $\vect{v}$ is negated; the
+component orthogonal to $\vect{v}$ is preserved.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1107,6 +1483,21 @@ $\mat{A}$ explicitly and multiplying. State the working rule of
 thumb that makes explicit inversion the wrong choice.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+LU costs $\tfrac{2}{3}n^{3} = \tfrac{2}{3} \cdot 10^{12} \approx
+6.7 \times 10^{11}$ flops for the factorisation plus $2 n^{2} = 2
+\times 10^{8}$ flops for forward+back substitution. Total $\approx
+6.7 \times 10^{11}$. Explicit inversion costs $\tfrac{2}{3}n^{3}$
+for the LU plus $n$ back-solves to recover the columns of
+$\mat{A}^{-1}$ ($n \cdot 2 n^{2} = 2 \times 10^{12}$ flops) plus
+the matrix-vector multiply $\mat{A}^{-1}\vect{b}$ ($2 n^{2}$ flops).
+Total $\approx 2.7 \times 10^{12}$, four times the cost. The rule
+of thumb: never form $\mat{A}^{-1}$ explicitly; always solve
+$\mat{A}\vect{x} = \vect{b}$ directly via factorisation. The
+factor-of-four cost penalty is the small part; the larger penalty
+is the numerical inaccuracy of $\mat{A}^{-1}$ relative to a direct
+solve.
+
 \begin{exercise}
 Estimate the condition number of the $5 \times 5$ Hilbert matrix
 $H_{ij} = 1/(i+j-1)$, given that the Hilbert matrix is the
@@ -1114,6 +1505,17 @@ canonical ill-conditioned example. State, by the rule of thumb,
 how many decimal digits of accuracy a double-precision solution
 to $\mat{H}\vect{x} = \vect{b}$ retains.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Tabulated Hilbert condition numbers grow roughly as $\kappa(\mat{H}_{n})
+\approx e^{3.5 n}$ for small $n$. For $n = 5$, $\kappa(\mat{H}_{5})
+\approx 4.8 \times 10^{5}$ (working value to within a factor of
+two). Rule of thumb: $\log_{10}\kappa \approx 5.7$. Double
+precision carries 16 digits; the solution retains roughly $16 -
+5.7 \approx 10$ digits, comfortable for engineering work. The
+$10 \times 10$ Hilbert is the more relevant warning: $\kappa
+\approx 1.6 \times 10^{13}$ leaves only two to three reliable
+digits, which is the classic exam for any newly written solver.
 
 \begin{exercise}
 Estimate the condition number of the $11 \times 11$ Vandermonde
@@ -1123,6 +1525,18 @@ fit on these points in double precision and which alternative
 formulation you would recommend.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+By the monomial-basis rule of thumb $\log_{10}\kappa(\mat{V})
+\approx 1.5 p$, the degree-10 fit on $[0, 1]$ has $\kappa
+\approx 10^{15}$. The Gram matrix would have $\kappa \approx
+10^{30}$, dwarfing double precision. The QR formulation, governed
+by $\kappa(\mat{V})$, leaves about one digit of accuracy.
+Recommendation: refuse the monomial basis. Rescale $x$ to $[-1,
+1]$ (recovers about $3 \times 10 = 30$ orders of magnitude in
+$\log_{10}\kappa$ as Figure~\ref{fig:vol02:ch09:vandermonde-conditioning}
+shows) or switch to the Chebyshev basis on $[-1, 1]$ (keeps
+$\kappa$ near unity through degree $10$).
+
 \begin{exercise}
 A least-squares regression has a design matrix with condition
 number $10^{6}$. The data are accurate to four decimal digits.
@@ -1130,6 +1544,17 @@ Estimate the relative accuracy of the fitted coefficients in the
 QR formulation and in the normal-equations formulation, and state
 which is reportable.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Data accuracy: $4$ digits, so $\norm{\Delta\vect{b}}/\norm{\vect{b}}
+\approx 10^{-4}$. QR: governed by $\kappa(\mat{A}) = 10^{6}$, so
+relative error of coefficients $\lesssim 10^{6} \cdot 10^{-4} =
+10^{-2}$, i.e.\ two digits. Marginal but reportable, with the
+caveat stated. Normal equations: governed by $\kappa(\mat{A}^{\transpose}
+\mat{A}) = 10^{12}$, so relative error $\lesssim 10^{12} \cdot
+10^{-4} = 10^{8}$, i.e.\ no digits. Not reportable. The engineer
+reports the QR result with its design-matrix condition number
+disclosed and explicitly refuses the normal-equations result.
 
 \begin{exercise}
 Estimate the dimension of the displacement space of a planar truss
@@ -1139,6 +1564,19 @@ roller (each removing one degree of freedom). State the rank check
 that turns this estimate into an exact count.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Unconstrained displacement space: $2 n = 100$. Pin constraints
+remove $2 \times 10 = 20$. Roller constraints remove $1 \times 5
+= 5$. Estimated displacement dimension: $100 - 25 = 75$. The
+constraint count is exact only when all constraints are linearly
+independent; if two pins are collinear with a shared bar or a
+roller is parallel to a pin's reaction direction, the constraint
+matrix loses rank. The rank check is: assemble the constraint
+matrix $\mat{C} \in \R^{25 \times 100}$ and compute its rank
+numerically; if $\rank \mat{C} < 25$, the true displacement
+dimension is $100 - \rank \mat{C} > 75$, and the structure has
+hidden mechanisms.
+
 \begin{exercise}
 Estimate the wall-clock time to solve a dense linear system of
 size $n = 5000$ on a single core that sustains $10^{10}$ flops per
@@ -1147,6 +1585,19 @@ scaling. State the largest $n$ for which a one-hour solve is
 feasible at this throughput, and the implication for choosing
 between dense and sparse formulations.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+LU on $n = 5000$: $\tfrac{2}{3} n^{3} \approx 8.3 \times 10^{10}$
+flops, $\approx 8.3 \,\text{s}$ at $10^{10}\,\text{flop}/\text{s}$.
+Cubic scaling for $n = 50000$: $\tfrac{2}{3} \cdot (5 \times 10^{4})^{3}
+\approx 8.3 \times 10^{13}$ flops, $\approx 8.3 \times 10^{3}
+\,\text{s} \approx 2.3\,\text{h}$. One-hour budget at $10^{10}
+\,\text{flop}/\text{s}$ is $3.6 \times 10^{13}$ flops; solving
+$\tfrac{2}{3} n^{3} = 3.6 \times 10^{13}$ gives $n \approx 38000$.
+For larger $n$, dense LU is infeasible; the engineer must exploit
+structure (banded, sparse, low-rank, Krylov-iterative) or accept
+multi-hour solves. The cubic wall is the central reason finite-element
+codes use sparse factorisations or preconditioned conjugate gradient.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1158,6 +1609,21 @@ to $[-1, 1]$ and recompute. Quantify the conditioning improvement
 and explain it in terms of the orthogonality of the column space.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The reference script \path{code/condition_visualiser.py} at degree
+$p = 4$ on $m = 100$ points gives $\kappa(\mat{V}_{[0,1]}) \approx
+1.6 \times 10^{4}$ and $\kappa(\mat{V}_{[-1,1]}) \approx 70$, an
+improvement of more than two orders of magnitude. The explanation:
+on $[0, 1]$ all monomials $x^{k}$ are non-negative and increase
+together, so their columns correlate strongly. On $[-1, 1]$ the
+odd monomials are antisymmetric and the even monomials are
+symmetric about zero; columns of opposite parity are exactly
+orthogonal under the uniform inner product, and columns of the
+same parity correlate less than on $[0, 1]$. The Chebyshev basis
+(third column of the script) makes the orthogonality exact by
+construction, taking $\kappa$ to near unity for any degree the
+sampling supports.
+
 \begin{exercise}
 Simulate a least-squares fit of a degree-$10$ polynomial to $200$
 points generated from $y = \sin(2\pi x) + \epsilon$ with
@@ -1167,6 +1633,22 @@ fitted coefficients and the residual norms. Identify the
 coefficient that disagrees most between the two methods and explain
 the disagreement using the conditioning analysis of section 9.7.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Typical run with the reference script
+\path{code/least_squares_three_ways.py}: $\kappa(\mat{V}) \approx
+10^{15}$ on $[0, 1]$ at degree $10$, so $\kappa(\mat{V}^{\transpose}
+\mat{V}) \approx 10^{30}$, well past double precision. The residual
+norms agree (both methods fit the data equally well in the 2-norm),
+but the coefficient vectors diverge sharply, with the largest
+disagreement typically in the highest-degree coefficient $c_{10}$
+where the basis function $x^{10}$ is most correlated with the
+lower powers and the conditioning trouble concentrates. The QR
+coefficients are the trustworthy ones, governed by $\kappa(\mat{V})$;
+the normal-equations coefficients are nonsense, governed by
+$\kappa(\mat{V}^{\transpose}\mat{V})$. Rescaling $x$ to $[-1, 1]$
+brings both methods into agreement to several digits and is the
+default fix.
 
 \begin{exercise}
 Simulate a perturbation experiment: generate a $20 \times 20$
@@ -1179,6 +1661,20 @@ over $100$ random matrices and verify the sensitivity bound of
 section 9.7.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Typical run: most random Gaussian $20 \times 20$ matrices have
+$\kappa(\mat{A})$ between $10$ and $10^{4}$; with $\norm{\Delta
+\mat{A}}/\norm{\mat{A}} = 10^{-8}$ the predicted relative error in
+$\vect{x}$ is $\kappa \cdot 10^{-8}$, ranging from $10^{-7}$ to
+$10^{-4}$. The scatter plot of $\log_{10}(\norm{\Delta\vect{x}}/
+\norm{\vect{x}})$ against $\log_{10}\kappa$ shows a band of points
+lying near or below the line $y = x - 8$, with occasional
+outliers below the bound (the bound is tight only in the worst
+direction). To force higher conditioning the engineer can
+construct $\mat{A} = \mat{Q}_{1}\mat{D}\mat{Q}_{2}^{\transpose}$
+with $\mat{Q}_{i}$ random orthogonal and $\mat{D}$ diagonal with a
+controlled $\sigma_{1}/\sigma_{n}$.
+
 \begin{exercise}
 Implement the Householder QR algorithm from scratch on a $6 \times
 4$ matrix and verify the result against the library routine. The
@@ -1186,6 +1682,23 @@ goal is to see, by working through the algorithm, why Householder
 reflections are numerically stable while classical Gram-Schmidt
 is not.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The Householder algorithm, column $k$: form $\vect{x}$ as the
+sub-column $\mat{A}_{k:m, k}$, compute the reflector vector $\vect{v}
+= \vect{x} - \sgn(x_{1})\norm{\vect{x}}_{2}\vect{e}_{1}$ (note the
+sign chosen to avoid cancellation), build $\mat{H}_{k} = \mat{I} -
+2 \vect{v}\vect{v}^{\transpose}/\norm{\vect{v}}_{2}^{2}$, and
+update $\mat{A}_{k:m, k:n} \to \mat{H}_{k}\mat{A}_{k:m, k:n}$. After
+$n = 4$ reflections, $\mat{A}$ is upper-triangular and $\mat{R}$
+sits in its upper part; $\mat{Q} = \mat{H}_{1}\mat{H}_{2}
+\mat{H}_{3}\mat{H}_{4}$ implicitly. Verify $\norm{\mat{Q}\mat{R} -
+\mat{A}}_{F} \lesssim 10^{-15} \cdot \norm{\mat{A}}_{F}$ against
+\path{numpy.linalg.qr}. The stability follows from orthogonality of
+$\mat{H}_{k}$: every step is a unitary transformation that does not
+amplify floating-point error. Classical Gram-Schmidt loses
+orthogonality in the columns of $\mat{Q}$ because the projection
+subtractions are not unitary; the error compounds across columns.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1198,6 +1711,23 @@ threshold. State the thresholds used and justify them with the
 rule of thumb of section 9.7.
 \end{exercise}
 
+\paragraph{Discussion.}
+A defensible procedure: (1) rescale $x$ to $[-1, 1]$ before forming
+the design matrix; (2) compute $\kappa(\mat{V})$ once (via SVD or
+the library routine); (3) if $\kappa(\mat{V}) < 10^{3.5}$, the
+Gram condition number is below $10^{7}$ and normal equations are
+defensible at four to five digits in double precision; use
+normal equations for speed; (4) if $10^{3.5} \leq \kappa(\mat{V})
+< 10^{7.5}$, use QR; (5) if $\kappa(\mat{V}) \geq 10^{7.5}$,
+compute the SVD and apply truncation at $\epsilon = 10^{-12}$
+times $\sigma_{1}$, then report the truncation cutoff and the
+number of singular values retained. The thresholds follow the
+rule of thumb: each factor of $10$ in $\kappa$ costs one digit;
+sixteen digits in double precision, minus the data's precision,
+gives a budget that the squared (Gram) conditioning consumes
+twice as fast. Always report $\kappa(\mat{V})$ and the chosen
+method with the fit.
+
 \begin{exercise}
 Design a verification check for a numerical-conversion operation
 between two representations (e.g., 32-bit float to 16-bit integer)
@@ -1206,6 +1736,26 @@ operation's precondition (range), the verification method, and
 the action when verification fails. Reference the Ariane 5 case
 of section 9.8 in the design rationale.
 \end{exercise}
+
+\paragraph{Discussion.}
+Precondition: the input value $x$ satisfies $-32768 \leq x \leq
+32767$ over the entire flight envelope at the operation's call
+sites, with margin chosen by the safety case (a $10\%$ margin on
+the trajectory's worst-case excursion is a defensible default).
+Verification method: (1) static analysis over the flight envelope
+to derive an upper bound on $\abs{x}$ from the propulsion,
+guidance, and trajectory models; (2) runtime range check
+immediately before conversion that asserts $\abs{x} \leq 32767$;
+(3) on assertion failure, route to the safe-state handler rather
+than allowing the IEEE float to convert to undefined-on-overflow
+integer behaviour. The action on verification failure must not be
+``log and continue,'' which is what the Ariane 5 software did in
+effect by raising an unhandled exception that propagated to SRI
+shutdown. The defensible action is graceful degradation to a
+fallback computation that does not require the converted value, or
+explicit transition to a defined safe mode. The rationale references
+\cite{acc:ariane501-ifr}: the failure mode is the absence of a
+range-check on the conversion's input under a new flight envelope.
 
 \begin{exercise}
 Design a sparse-matrix linear solver for a finite-element
@@ -1217,6 +1767,21 @@ factorisation; provide the storage and complexity scaling
 otherwise.
 \end{exercise}
 
+\paragraph{Discussion.}
+Storage: a banded matrix of size $n$ and bandwidth $b$ stores
+$(2 b + 1) n$ entries, approximately $200 \times 10^{6} = 2
+\times 10^{8}$ doubles, or $1.6 \,\text{GB}$. Banded LU
+factorisation costs $\oom{n b^{2}} = 10^{10}$ flops, about one
+second on a contemporary core; the fill-in is bounded by
+$\oom{n b}$. If the stiffness matrix is symmetric positive
+definite (it is, for elastic problems), banded Cholesky halves
+the storage and the flop count and is the production choice. For
+$b$ larger or the structure less band-like, a sparse-direct
+solver with nested-dissection ordering (MUMPS, PARDISO, SuiteSparse)
+trades factorisation cost for fill-in control. Iterative methods
+(preconditioned conjugate gradient) become competitive when $n$
+exceeds $10^{7}$ or memory becomes the binding constraint.
+
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
 
 \begin{exercise}
@@ -1226,6 +1791,20 @@ the three things that should make the engineer suspicious of the
 report and propose follow-up questions.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The three signals. First, the residual is far smaller than the data
+noise floor: $10^{-12}$ on $10^{-3}$-precision data means the fit
+has driven through the noise, which is overfitting. Second, no
+condition number is reported; the residual alone hides whether the
+fit is meaningful or whether the design matrix has consumed all the
+degrees of freedom. Third, the model class is not stated; a
+polynomial of degree $m - 1$ on $m$ data points interpolates
+exactly, residual zero, with no predictive value. Follow-up
+questions: (a) what is the model degree relative to the sample
+size; (b) what is $\kappa(\mat{V})$ of the design matrix; (c)
+what is the residual on a held-out sample; (d) which factorisation
+was used.
+
 \begin{exercise}
 A linear system $\mat{A}\vect{x} = \vect{b}$ in a control
 application produces a solution that changes by a factor of two
@@ -1233,6 +1812,24 @@ when the right-hand side changes by one part in $10^{4}$. Diagnose
 the conditioning regime of $\mat{A}$ and propose two reformulations
 that would stabilise the computation.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+By the sensitivity bound, $\norm{\Delta\vect{x}}/\norm{\vect{x}}
+\approx \kappa(\mat{A}) \cdot \norm{\Delta\vect{b}}/\norm{\vect{b}}$.
+Observed $\norm{\Delta\vect{x}}/\norm{\vect{x}} \approx 1$ at
+$\norm{\Delta\vect{b}}/\norm{\vect{b}} = 10^{-4}$ implies
+$\kappa(\mat{A}) \approx 10^{4}$. The system is moderately
+ill-conditioned. Two reformulations. (1) Regularise: replace
+$\mat{A}\vect{x} = \vect{b}$ by $(\mat{A}^{\transpose}\mat{A} +
+\lambda\mat{I})\vect{x} = \mat{A}^{\transpose}\vect{b}$ (Tikhonov,
+or ridge in regression), with $\lambda$ chosen near $10^{-4}
+\norm{\mat{A}}_{2}^{2}$ to cap the conditioning. (2) Reduce to
+the dominant singular components: compute $\mat{A} = \mat{U}
+\mat{\Sigma}\mat{V}^{\transpose}$ and truncate singular values
+below a cutoff $\epsilon \sigma_{1}$ (truncated SVD, the
+chapter's preferred refusal). Both reformulations declare the
+problem's effective rank explicitly rather than letting the
+floating-point arithmetic discover it.
 
 \begin{exercise}
 A polynomial fit of degree $8$ to $40$ data points produces wildly
@@ -1243,6 +1840,23 @@ truncated SVD) and state which would be the right choice without
 running the computation.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The conditioning failure: Vandermonde at degree $8$ on raw $x$
+values in an interval that does not include zero has $\kappa
+\approx 10^{12}$ in the monomial basis. The Gram matrix is past
+double-precision usable conditioning. Large oscillations in the
+coefficients with small residual are the signature: cancellation
+in the linear combination $\mat{V}\hat{\vect{c}}$ reproduces the
+data while individual coefficients are nonsense. First alternative,
+rescaling to $[-1, 1]$: $\kappa$ drops by about $3 \times 8 = 24$
+orders of magnitude in the rule-of-thumb extrapolation, recovering
+six to eight digits per coefficient. Second alternative, the
+Chebyshev basis on the rescaled interval: keeps $\kappa$ near
+unity at every degree. Without running the computation, the
+right default is the Chebyshev basis: orthogonal-polynomial
+formulations were designed for this problem and are the canonical
+fix for polynomial-fit conditioning trouble.
+
 \begin{exercise}
 A finite-element analysis of a truss returns a stiffness matrix
 $\mat{K}$ with $\det \mat{K} = 10^{-30}$. Identify the physical
@@ -1250,6 +1864,25 @@ meaning of the small determinant, diagnose whether the structure
 is genuinely under-constrained or merely poorly numbered, and
 propose the diagnostic check that distinguishes the two.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The physical meaning of $\det \mat{K} \to 0$ is a rigid-body mode:
+a displacement pattern $\vect{u}$ for which $\mat{K}\vect{u} =
+\vect{0}$, meaning the structure can move with no internal strain.
+The diagnostic distinction. Genuine under-constraint: the
+rigid-body modes are physical (the structure is missing supports,
+or a hinge has been left in). Poor numbering: the small determinant
+is an artefact of bad row scaling (the diagonal entries differ by
+$10^{20}$ because some rows have units of $\si{\newton\per\meter}$
+and others $\si{\newton\meter\per\radian}$). The diagnostic check
+is the SVD of $\mat{K}$: compute the singular vectors associated
+with the smallest singular values. If those vectors describe
+sensible rigid-body translations or rotations, the structure is
+genuinely under-constrained. If they describe coordinate
+combinations that follow the row-unit scaling pattern, the matrix
+is poorly numbered and a row-equilibration preconditioner
+($\mat{D}^{-1}\mat{K}\vect{x} = \mat{D}^{-1}\vect{b}$, with
+$\mat{D}$ diagonal of row norms) restores defensible conditioning.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1262,6 +1895,31 @@ verification procedure that would have detected the violation
 during qualification rather than at $H_{0} + 39 \,\si{\second}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The precondition: $\mathrm{BH} \in [-32768, 32767]$ at every
+call site of the conversion across the operational flight
+envelope. The Ariane 5 trajectory developed a horizontal velocity
+profile that took $\mathrm{BH}$ above $32767$ at about $H_{0} +
+36.7\,\si{\second}$, violating the precondition. The verification
+procedure: a range analysis of every internal variable in the
+SRI software against the Ariane 5 worst-case envelope, using the
+trajectory profiles already produced by the launcher's flight
+dynamics team. A two-page tabulation of $(\text{variable, upper
+bound, lower bound, conversion target})$ for the seven internal
+variables in the alignment function would have flagged BH (and the
+other two unprotected variables) as outside their conversion
+targets. The discipline this chapter develops names that
+tabulation as a verification artefact: the conversion is a numerical
+operation with a precondition, and the precondition must be
+verified against the new envelope when the code is ported. The
+Inquiry Board's recommendations (range analysis against the new
+envelope, defensive arithmetic on flight-critical paths, exception
+handling that does not propagate to system shutdown) read as
+restatements of the same principle in the software-engineering
+register. The refusal was available; what was missing was the
+process step that connected the trajectory analysis to the SRI
+software qualification.
+
 \begin{exercise}
 A regression analysis on a clinical dataset reports a coefficient
 estimate $\hat{\beta} = 2.4$ with standard error $0.3$. A
@@ -1272,6 +1930,30 @@ in the design matrix or with a real difference in the underlying
 populations, and identify the diagnostic that would distinguish
 the two.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The reported difference $(-1.1) - 2.4 = -3.5$ with combined
+standard error $\sqrt{0.3^{2} + 0.4^{2}} = 0.5$ gives $z = -7$:
+statistically incompatible under the null of identical populations
+and identical conditioning. Two competing explanations. Conditioning:
+if the design matrix has $\kappa \approx 10^{4}$ or higher, small
+changes in sample composition (which change the design matrix
+columns) can swing the fitted coefficient by orders of magnitude.
+The standard errors reported by the regression software, computed
+from the variance-covariance matrix, may themselves be unreliable
+when the Gram matrix is ill-conditioned. Real population difference:
+the two samples are drawn from genuinely different distributions
+(different recruitment, different intervention era, different
+measurement protocol), and the coefficient really does change
+sign. The diagnostic: compute $\kappa(\mat{X})$ for both design
+matrices and the variance inflation factor for the coefficient of
+interest in each. If $\kappa > 10^{3}$ or $\mathrm{VIF} > 10$,
+conditioning trouble is in play and the reported standard errors
+are not trustworthy. If both design matrices are well conditioned
+($\kappa < 10^{2}$, $\mathrm{VIF} < 5$), the disagreement reflects
+a real population difference and the next investigation is into
+the sampling protocol or the unmodelled covariates that vary
+between the two cohorts.
 
 \begin{exercise}
 A simulation of a chemical reactor, using a $1000 \times 1000$
@@ -1284,6 +1966,34 @@ underlying physical model, and propose the diagnostic that
 identifies which.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Three candidate causes, ranked by their signature. (1)
+Time-step-matrix conditioning: $\kappa$ near the precision limit
+makes each solve lose digits, with the loss compounding linearly
+or super-linearly across steps. Signature: errors grow steadily
+from step one but stay small until step $\approx 1000$ when the
+cumulative digit loss exhausts double precision. (2) Error
+accumulation: each step adds $\oom{\epsilon_{\text{mach}}}$
+round-off; over $1000$ steps this is $\oom{1000 \epsilon_{\text{mach}}}
+\approx 10^{-13}$, far too small to cause visible failure on its
+own. Likely a contributing factor, not the primary cause. (3)
+Physical instability: the underlying reactor model has a positive
+real eigenvalue (autocatalytic kinetics, exothermic runaway) whose
+exponential growth saturates the numerical scheme at a definite
+time. Signature: the failure time depends on the initial
+perturbation and matches a predictable $\exp(\lambda t)$ growth.
+Diagnostic: (a) compute $\kappa(\mat{A}_{\text{step}})$ at the
+first step; if $\kappa < 10^{6}$, conditioning is not the
+primary cause. (b) Repeat the simulation with a perturbed initial
+condition and check whether the failure time shifts in the
+predicted exponential-growth way. (c) Linearise the reactor
+equations and compute the dominant eigenvalue; if positive, the
+physical model is genuinely unstable in the operating regime, and
+the simulation is correctly reporting the instability rather than
+failing. The fix differs by cause: precondition the matrix,
+shorten the step, or refuse the simulation as outside the model's
+domain of validity.
+
 \subsection*{Judgment}\pathtag{standard}
 
 \begin{exercise}
@@ -1294,6 +2004,22 @@ and what the engineer should ask the vendor before adopting the
 calibration.
 \end{exercise}
 
+\paragraph{Discussion.}
+Twelve significant digits is not meaningful for a degree-$9$
+polynomial fit unless the design matrix's condition number is
+disclosed and below about $10^{4}$. By the rule of thumb, a
+degree-$9$ Vandermonde fit on unrescaled data over a finite
+interval has $\kappa \gtrsim 10^{13}$, which leaves at most three
+trustworthy coefficient digits in double precision. The reported
+twelve digits are an artefact of the floating-point representation,
+not of the calibration itself. The engineer asks the vendor: (a)
+$\kappa(\mat{V})$ of the design matrix; (b) the basis used
+(monomial, Chebyshev, B-spline); (c) the data interval and whether
+$x$ was rescaled; (d) the residual norm and the out-of-sample
+prediction error; (e) the factorisation method. A calibration with
+no answers to (a) and (b) is not adoptable for traceable
+measurement.
+
 \begin{exercise}
 A senior colleague proposes solving a $10^{6} \times 10^{6}$ dense
 linear system by computing $\mat{A}^{-1}$ explicitly and
@@ -1302,6 +2028,24 @@ approach, and propose the right approach for the most likely use
 case (multiple right-hand sides on the same matrix, single
 right-hand side, structured matrix).
 \end{exercise}
+
+\paragraph{Discussion.}
+A $10^{6} \times 10^{6}$ dense matrix stores $10^{12}$ doubles, or
+$8 \,\text{TB}$, before the engineer attempts any factorisation;
+the inverse would require equal storage and a further $\oom{n^{3}}
+= 10^{18}$ flops to form. Even on a $10^{15}$-flop-per-second
+exascale machine the inversion is a multi-thousand-second task,
+and the resulting $\mat{A}^{-1}$ carries the squared conditioning
+of the original solve, so the matrix-vector multiply $\mat{A}^{-1}
+\vect{b}$ is less accurate than a direct solve. The right approach
+depends on the use case. Multiple right-hand sides on the same
+matrix: compute the LU factorisation once and reuse it (the cost
+of the second and subsequent solves is $\oom{n^{2}}$, not $\oom{n^{3}}$).
+Single right-hand side: direct LU solve, no inverse formed.
+Structured matrix (sparse, banded, Toeplitz, low-rank, hierarchical):
+use a structure-exploiting solver whose complexity is sub-cubic;
+a $10^{6} \times 10^{6}$ dense system is almost always actually
+sparse and the structure is the leverage.
 
 \begin{exercise}
 An engineer is offered two implementations of a least-squares
@@ -1314,6 +2058,26 @@ state the conditioning threshold above which the choice would
 flip.
 \end{exercise}
 
+\paragraph{Discussion.}
+At $\kappa(\mat{A}) = 10^{4}$ the Gram matrix has $\kappa \approx
+10^{8}$. By the rule of thumb, the normal-equations solution loses
+about $8$ decimal digits, leaving $16 - 8 = 8$; QR loses about
+$4$, leaving $12$. Both are well above what a single-precision
+implementation would deliver and both are far above what a real-time
+signal-processing pipeline typically requires (six to eight digits
+in the fitted coefficients suffices for almost any audio, radar,
+or sensor-fusion application). The engineer's call is between
+roughly twice the speed (normal equations, $\tfrac{2}{3}n^{3}$
+flops versus QR's $\tfrac{4}{3}n^{3}$) and four extra digits.
+For a $10\,\si{\milli\second}$ real-time budget at $n \approx 100$,
+the choice favours normal equations. The threshold flips when
+$\kappa(\mat{A}) > 10^{7.5}$: the Gram conditioning passes
+$10^{15}$, leaving normal equations with no usable digits, and
+the engineer must use QR or refuse the formulation. The reflection
+should also note that the choice is reversible: a production
+pipeline can monitor $\kappa(\mat{A})$ at runtime and switch
+methods if the conditioning drifts.
+
 \begin{exercise}
 A research group reports a linear-algebraic claim with no
 condition-number information and no statement of which
@@ -1322,6 +2086,27 @@ engineer should ask the group before treating the claim as
 load-bearing for design, and what disclosures the engineer should
 demand for any future submission.
 \end{exercise}
+
+\paragraph{Discussion.}
+The engineer asks: (1) what is the condition number of the
+underlying matrix (in the relevant norm, with the chosen
+factorisation); (2) which factorisation was used (LU, Cholesky,
+QR, SVD), with the implementation library and version; (3) what
+the residual or backward error was, in the same norm; (4) whether
+any singular values were below a cutoff and what cutoff was
+applied; (5) what the precision of the floating-point representation
+was and whether iterative refinement was used. Without (1) and
+(2), the reported numerical result has no defensible accuracy
+estimate; refuse the claim as load-bearing for design. For future
+submissions the engineer demands: a numerical-disclosure section
+in the paper or report that records the five answers, with the
+provenance of the matrix (synthetic, measured, simulated) and the
+seed of any random generation. The disclosures are not an
+imposition; they are the minimal documentation a reader needs to
+reproduce the claim and to assess whether the reported precision is
+real. The discipline that section 9.8 develops, refusal of an
+unsafe numerical operation, generalises to refusal of an
+undocumented numerical claim.
 
 \begin{exercise}
 A reader of this chapter argues that, since the SVD reveals
@@ -1332,3 +2117,21 @@ this is wrong as a default, identifying both the cost argument
 (many problems have structure that LU or QR exploits and SVD
 discards).
 \end{exercise}
+
+\paragraph{Discussion.}
+The SVD costs $\oom{m n^{2} + n^{3}}$ flops with a constant
+several times that of QR and an order of magnitude above LU. For
+a square $n \times n$ system, LU at $\tfrac{2}{3}n^{3}$ delivers
+the answer; SVD at $\approx 22 n^{3}$ delivers the answer plus
+the full spectrum the engineer rarely needs. The default-SVD
+position pays the spectral cost on every solve. The structure
+argument is the stronger one. Sparse matrices: LU and Cholesky
+preserve much of the sparsity (with fill-in control by reordering);
+SVD destroys it. Banded matrices: banded LU is $\oom{n b^{2}}$;
+SVD ignores the bandedness. Symmetric positive-definite matrices:
+Cholesky is half the cost of LU; SVD is far more. Toeplitz,
+circulant, and hierarchical matrices: each has a sub-cubic
+specialised solver; SVD discards the structure. The defensible
+default is to use the cheapest factorisation that exploits the
+matrix's structure and to escalate to SVD only when the
+conditioning analysis requires the spectral information.

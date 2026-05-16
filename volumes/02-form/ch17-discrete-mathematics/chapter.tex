@@ -429,10 +429,13 @@ it is the first design decision in implementing a graph algorithm.
 
 Consider a graph $G$ on $V = \set{1, 2, 3, 4, 5}$ with edges $E =
 \set{\set{1,2}, \set{1,3}, \set{2,3}, \set{2,4}, \set{3,4},
-\set{4,5}}$. The graph has $n = 5$ vertices and $m = 6$ edges.
-Degrees: $\deg(1) = 2, \deg(2) = 3, \deg(3) = 3, \deg(4) = 3,
-\deg(5) = 1$. The handshake lemma checks: the degree sum is $2 + 3
-+ 3 + 3 + 1 = 12 = 2 m$.
+\set{4,5}}$, drawn in figure
+\ref{fig:vol02:ch17:worked-graph}. The graph has $n = 5$ vertices
+and $m = 6$ edges. Degrees: $\deg(1) = 2, \deg(2) = 3, \deg(3) = 3,
+\deg(4) = 3, \deg(5) = 1$. The handshake lemma checks: the degree
+sum is $2 + 3 + 3 + 3 + 1 = 12 = 2 m$.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-worked-graph.tex}
 
 The graph is connected: every vertex reaches every other along the
 edge set. The diameter is $d(1, 5) = d(3, 5) = 2$ (each goes through
@@ -443,6 +446,95 @@ $\set{3,4}$ exist, $\set{1,4}$ does not, so $C(2) = 2/3$. The same
 calculation at vertex $3$ gives $C(3) = 2/3$. At vertex $4$, the
 neighbours are $\set{2, 3, 5}$; the only neighbour-pair edge is
 $\set{2, 3}$, giving $C(4) = 1/3$.
+
+Vertex $4$ also illustrates the \engterm{articulation-point}
+concept: its removal disconnects vertex $5$ from the rest of the
+graph. The articulation points and \engterm{bridges} (edges whose
+removal disconnects the graph) of a network are the single-point
+failures an engineer locates before commissioning a system. Both
+can be found in $O(n + m)$ time by Tarjan's depth-first algorithm
+on the graph's DFS tree, the standard pre-flight check on any
+network whose service depends on connectivity.
+
+\subsection{Special graph families}\pathtag{standard}
+
+Three families recur often enough that an engineer reads them on
+sight (figure \ref{fig:vol02:ch17:graph-families}).
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-graph-families.tex}
+
+A \engterm{planar} graph is one that can be drawn in the plane
+without edge crossings. Planarity is the structural property a
+printed-circuit-board layout, a road map, and a chemical-bond
+diagram all enjoy in the limit of no via, no overpass, no
+out-of-plane bond. Kuratowski's theorem (1930) gives the test: a
+graph is planar if and only if it contains no subgraph that is a
+subdivision of $K_{5}$ (the complete graph on five vertices) or
+$K_{3,3}$ (the complete bipartite graph on $3 + 3$ vertices).
+Euler's formula $v - e + f = 2$ for a connected planar graph (with
+$v$ vertices, $e$ edges, $f$ faces including the outer face) gives
+the upper bound $e \leq 3v - 6$ on edge count, the engineer's
+working ceiling for a planar topology. The four-colour theorem
+states that every planar graph admits a proper vertex colouring
+with at most four colours; the result is used in frequency
+assignment, register allocation, and scheduling problems whose
+conflict graphs are planar. We refer the reader to
+\cite{text:v2ch17-bondy-murty} for the proofs.
+
+A \engterm{bipartite} graph $G = (V, E)$ has $V = A \cup B$ with
+$A \cap B = \emptyset$ and every edge between $A$ and $B$. A graph
+is bipartite if and only if it has no odd-length cycle, a test that
+runs in $O(n + m)$ time by two-colouring during a BFS. The
+bipartite case is the canonical structure for assignment problems
+(section 17.3 matching), for tracking which workers can perform
+which tasks, which channels are compatible with which receivers,
+and which test cases exercise which code modules.
+
+A \engterm{tree} (introduced above) has the redundant
+characterisation that it is the unique connected graph with no
+cycles, equivalently the connected graph with $n - 1$ edges.
+\engterm{Rooted trees} carry a parent-child hierarchy and are the
+working data structure for hierarchical organisation: file systems,
+parse trees, decision trees, dependency trees, and the
+divide-and-conquer recursion trees we meet in section 17.6.
+
+\subsection{Graph traversal: BFS and DFS}\pathtag{standard}
+
+Almost every graph algorithm reduces, in part, to a systematic
+exploration of vertices reachable from a start vertex. Two
+traversal disciplines, breadth-first and depth-first, are the
+engineer's working primitives (figure
+\ref{fig:vol02:ch17:bfs-dfs}).
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-bfs-dfs.tex}
+
+\engterm{Breadth-first search} (BFS) maintains a queue of vertices
+to visit, dequeues a vertex, enqueues each of its undiscovered
+neighbours, and records the discovery order. On an unweighted
+graph, the discovery order is a level order from the source, so
+BFS computes the unweighted shortest-path distance from the source
+to every reachable vertex in $\Theta(n + m)$ time. BFS is the
+right answer for unweighted shortest paths, connectivity testing,
+bipartite-graph two-colouring, and any problem that asks ``what is
+the smallest number of edges between $u$ and $v$.''
+
+\engterm{Depth-first search} (DFS) replaces the queue with a stack
+(or with recursion). The traversal drives along one branch as far
+as the edges permit, backtracks when it runs out, and tries the
+next branch. DFS runs in $\Theta(n + m)$ and yields the structural
+information on which a family of standard algorithms is built:
+topological sort of a DAG, cycle detection in directed and
+undirected graphs, strongly-connected-component decomposition
+(Tarjan and Kosaraju), articulation-point and bridge identification,
+and the back-edge / cross-edge / forward-edge classification that
+underwrites the analysis of recursive procedures on graphs.
+
+The choice between BFS and DFS is rarely a wash. The engineer
+picks BFS when the application is about distance from a source, the
+shallowest match, or level structure; DFS when the application is
+about reachability, ordering, or recursive structure on the
+exploration tree. The implementations differ in one line of code
+and produce algorithmically distinct outputs.
 
 \section{Algorithmic graph problems}\pathtag{standard}
 
@@ -493,6 +585,18 @@ binary-heap form is the engineer's default; the Fibonacci-heap
 form's constant factors are large enough that the asymptotic gain
 rarely repays the implementation cost.
 
+Figure \ref{fig:vol02:ch17:dijkstra-trace} shows the algorithm run
+on a five-vertex digraph (the same instance as exercise 17.4). The
+relaxation $d(a) = d(b) + 1 = 3$ overwrites the direct-edge
+estimate $d(a) = 4$ once $b$ is settled at distance $2$; the
+finalisation order is $s, b, a, c, t$. The reference
+implementation in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/dijkstra.py}
+reproduces the trace and serves as the baseline for the simulation
+exercise in section 17.9.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-dijkstra-trace.tex}
+
 \subsection{Shortest path: Bellman-Ford}
 
 Bellman-Ford solves the same single-source shortest-path problem,
@@ -535,7 +639,14 @@ algorithm grows a single tree from a starting vertex by repeatedly
 adding the cheapest edge that connects the tree to a non-tree
 vertex. Kruskal's algorithm sorts the edges by weight and adds them
 in order, skipping any edge that would create a cycle. Both achieve
-$O(m \log n)$ running time.
+$O(m \log n)$ running time. A third algorithm, Bor\r{u}vka's,
+predates both and runs in $O(m \log n)$ by growing all components
+in parallel and merging on the lightest outgoing edge; it remains
+the cleanest MST algorithm to parallelise. Bor\r{u}vka published
+the algorithm in 1926 \cite{text:v2ch17-boruvka-1926} to plan an
+electrification network for the Moravian region; MST is one of the
+few computer-science problems whose first algorithm was driven by
+a real engineering deployment.
 
 \begin{principle}[Kruskal's algorithm]
 \textbf{Input}: connected weighted graph $G = (V, E)$, weights $w$.
@@ -608,6 +719,51 @@ in continuous form in Chapter 15 of this volume, in stochastic
 form in Volumes IX and X, and in mixed form in operations research
 and integer programming.
 \end{archetype}
+
+\subsection{Estimation: routing on a continental network}
+
+\begin{estimation}
+\textbf{Question.} A continental fibre-optic network has $n
+\approx 4 \times 10^{4}$ routers and an average vertex degree
+$\bar{d} \approx 5$, sparse and roughly planar in its physical
+layout. A network management system computes shortest paths from
+each router to every other router once per hour to keep the routing
+tables current. Estimate, before reading on, the per-hour
+computational cost of the all-pairs shortest-path workload using
+Dijkstra from each source with a binary-heap priority queue. State
+the working assumption your estimate makes.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The single-source Dijkstra cost on a graph with $n$ vertices and
+$m = \bar{d} n / 2 \approx 10^{5}$ edges is $O((n + m) \log_{2}
+n)$. With $n \approx 4 \times 10^{4}$, $\log_{2} n \approx 15$.
+The per-source operation count is roughly $(n + m) \log_{2} n
+\approx 1.4 \times 10^{5} \cdot 15 \approx 2 \times 10^{6}$.
+Multiplied across $n$ sources, the per-hour total is about
+$8 \times 10^{10}$ heap operations. A current-generation laptop
+performs roughly $10^{10}$ simple operations per second; the
+workload takes roughly 8 seconds with a per-op constant of unity,
+or roughly 1 to 2 minutes with the per-op constant of a heap
+priority-queue (memory allocation, comparison, pointer chasing).
+The estimate matters: the workload fits on a single machine with
+room to spare. A network operator who proposes a parallel
+all-pairs implementation has either misestimated the per-hour cost
+or is solving a different problem (such as $k$-shortest paths or
+all-pairs with traffic-aware weights).
+
+The same workload on a graph ten times denser ($\bar{d} = 50$, the
+regime of a campus-scale Ethernet topology) costs ten times more,
+still fits a single machine. On a graph ten times larger ($n = 4
+\times 10^{5}$, the continental aggregation of all access-network
+nodes), the cost grows by a factor of $100$, pushing into the
+single-machine ceiling and motivating a parallel implementation,
+landmark-based algorithms (the Galaxy Network architecture; the
+A$^{*}$ algorithm with admissible heuristics), or a hierarchical
+decomposition.
+\end{estimation}
 
 \section{Boolean algebra and logic}\pathtag{standard}
 
@@ -717,6 +873,17 @@ The pattern is general: the worst case is intractable, but the
 instances arising from real engineering structure are tractable in
 practice. We return to the theme in section 17.8.
 
+Random 3-SAT instances exhibit a striking \engterm{phase
+transition} around clause-to-variable ratio $m/n \approx 4.27$
+\cite{paper:v2ch17-cheeseman-sat-1991}. For $m/n$ well below this
+threshold, almost all instances are easily satisfiable; well above
+it, almost all are easily unsatisfiable; right at the threshold,
+instances are hard. The reference
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/sat_brute.py}
+generates instances at the threshold density and measures the
+running time of a brute-force solver, the working baseline for the
+simulation exercise.
+
 \subsection{Circuit minimisation}
 
 A digital circuit implements a Boolean function as a network of
@@ -788,6 +955,21 @@ boundary between feasible and infeasible at modern scale; an
 engineer who proposes a quadratic algorithm for a million-element
 input has misread the scale.
 
+Figure \ref{fig:vol02:ch17:growth-classes} plots the classes
+on a semilog axis up to $n = 64$. The single-machine
+operations budget for a one-year run (current as of 2026, roughly
+$3 \times 10^{17}$ operations) sits as a horizontal line across the
+plot. The class crossings against this line set the engineer's
+feasibility frontier: linear and $n \log n$ remain comfortably
+below, quadratic crosses near $n \approx 10^{9}$, cubic near
+$n \approx 10^{6}$, exponential $2^{n}$ near $n \approx 60$, and
+factorial near $n \approx 21$. The reference table at
+\repopath{volumes/02-form/ch17-discrete-mathematics/data/feasibility_frontier.csv}
+records the per-class frontier for single-machine and modest-cluster
+budgets.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-growth-classes.tex}
+
 \subsection{Working examples}
 
 A linear scan over $n$ items is $\Theta(n)$. Sorting $n$ items by
@@ -855,9 +1037,11 @@ $T(n) \leq 2 (c (n/2) \log_{2}(n/2)) + n = c n \log_{2} n - c n + n
 \textbf{Recursion-tree} expansion writes the recurrence's recursion
 tree and sums the work at each level. For $T(n) = 2 T(n/2) + n$ the
 tree has $\log_{2} n$ levels, each performing $\Theta(n)$ work,
-giving $\Theta(n \log n)$. The technique is the engineer's
-fastest path to the right answer when the recurrence has a clean
-structure.
+giving $\Theta(n \log n)$. Figure \ref{fig:vol02:ch17:recursion-tree}
+shows the tree explicitly. The technique is the engineer's fastest
+path to the right answer when the recurrence has a clean structure.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-recursion-tree.tex}
 
 \textbf{Master theorem} packages the recursion-tree analysis for a
 common class of divide-and-conquer recurrences.
@@ -993,11 +1177,19 @@ near $n = 10^{18}$, about one in every $41$ integers is prime.
 Two algorithmic facts of working importance:
 
 \textbf{Primality testing} of an integer $n$ is in deterministic
-polynomial time (the AKS algorithm, 2002), but the working choice is
-a probabilistic Miller-Rabin test, which runs in $O(k \log^{3} n)$
+polynomial time (the AKS algorithm,
+\cite{paper:v2ch17-aks-2004}), but the working choice is a
+probabilistic Miller-Rabin test, which runs in $O(k \log^{3} n)$
 for $k$ rounds and has failure probability at most $4^{-k}$ on
 composite inputs. For $k = 40$ rounds, the failure probability is
-below $10^{-24}$, well beyond cryptographic confidence.
+below $10^{-24}$, well beyond cryptographic confidence. With a
+fixed witness set of the first thirteen primes, the test is
+deterministic for $n < 3.3 \times 10^{24}$ (Sorenson and Webster,
+2017), which covers nearly every working application short of
+RSA-key generation. The reference
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/miller_rabin.py}
+implements the test in this form and finds the first $100$ primes
+above $10^{18}$ in a fraction of a second on a current laptop.
 
 \textbf{Integer factorisation} is, as far as we know, hard: the
 best classical algorithm (the general number-field sieve) runs in
@@ -1031,8 +1223,14 @@ in the multiplicative group.
 \textbf{Hash functions}. A cryptographic hash function maps
 arbitrary-length strings to fixed-length digests, with the working
 properties of preimage resistance, second-preimage resistance, and
-collision resistance. SHA-256 and BLAKE3 are the engineer's working
-choices, current as of 2026.
+collision resistance. SHA-256, specified in NIST FIPS 180-4
+\cite{std:v2ch17-nist-fips-180-4}, and BLAKE3 are the engineer's
+working choices, current as of 2026. SHA-1, deprecated by NIST in
+2011 and broken in practice by the SHAttered collision attack of
+2017, illustrates the half-life of a cryptographic primitive: the
+hash that was the workhorse of TLS through the 2000s is no longer
+acceptable for collision-resistance applications, and an engineer
+who deploys SHA-1 today for new code has ignored the trajectory.
 
 The engineer's working level is recognition rather than design. A
 working engineer never designs a cryptographic primitive from
@@ -1227,6 +1425,75 @@ reflection. Repository path:
 \textbf{Time.} Two to three hours of data acquisition and cleaning,
 two to three hours of graph computation, two hours of writing.
 The total work fits in a long weekend.
+
+\textbf{Phases.}
+\begin{enumerate}[leftmargin=*]
+  \item \textit{Acquisition} (2--3 h). Find a documented source for
+    the network. For transit, the General Transit Feed Specification
+    (GTFS) feeds publish stop lists and stop-time tables. For power
+    grids, regional grid operators (ENTSO-E in Europe, the U.S.
+    Energy Information Administration) publish substation and
+    line-segment data with deliberate aggregation. For software
+    dependencies, the registries (PyPI, npm, Cargo) expose
+    dependency metadata. Pick a source whose abstractions you can
+    name and whose licence permits the work.
+  \item \textit{Abstraction} (1 h). Write the node and edge
+    definitions explicitly. Record the omissions (one-way bus
+    segments, transformers, optional dependencies) and the
+    rationale.
+  \item \textit{Computation} (2--3 h). Implement the four
+    computations (diameter, clustering, degree distribution, hubs)
+    using NetworkX, igraph, or graph-tool. Verify on a small
+    hand-checked subgraph before running on the full data.
+  \item \textit{Interpretation} (1 h). Identify the high-degree and
+    high-betweenness vertices and locate them in the underlying
+    physical or social system. The interpretation is the part the
+    library cannot do.
+  \item \textit{Write-up} (2 h). The 1500-word reflection plus the
+    plots.
+\end{enumerate}
+
+\textbf{Success criteria.}
+\begin{enumerate}[leftmargin=*]
+  \item The data source resolves to a citation (URL, DOI) and the
+    abstraction choices are stated explicitly enough that a
+    different engineer could reproduce the graph.
+  \item The four computations are reported with their algorithm
+    name, parameter choices, and observed running time.
+  \item The degree distribution plot shows axes, units, and a
+    fitted curve (power-law or Poisson) with the fit's parameters.
+  \item The high-degree vertices are identified by their real-world
+    name (Times Square, Substation X, the \texttt{lodash} package)
+    and the engineer offers a one-sentence explanation of why each
+    is a hub.
+  \item The reflection takes a position on the network's resilience
+    and identifies the principal caveat the engineer would attach.
+\end{enumerate}
+
+\textbf{Common failure modes.}
+\begin{enumerate}[leftmargin=*]
+  \item \textit{Treating a disconnected graph as connected.}
+    Diameter is undefined on disconnected graphs; compute it on the
+    largest connected component, not on the raw input.
+  \item \textit{Loading a multigraph as a simple graph.} Many real
+    datasets carry parallel edges (two bus routes on the same
+    segment); silently collapsing them changes the degree
+    distribution. Decide explicitly and document.
+  \item \textit{Computing all-pairs shortest paths on a million-node
+    graph.} The cost scales as $\Theta(n \cdot (n + m) \log n)$
+    with Dijkstra from each source. A road-network with $n = 10^{6}$
+    saturates a single machine; use a sample of source vertices for
+    the diameter estimate or a landmark-based algorithm.
+  \item \textit{Fitting a power law without checking the bound.} A
+    log-log plot looks linear over many distributions that are not
+    power laws. The reader is referred to Clauset, Shalizi, and
+    Newman's hypothesis-testing procedure for the proper fit.
+  \item \textit{Confusing degree with betweenness.} The two
+    centrality measures agree on canonical hubs but disagree on
+    bottlenecks: a low-degree vertex on the only path between two
+    large communities has high betweenness and low degree. Report
+    both.
+\end{enumerate}
 \end{project}
 
 \section{Exercises}
@@ -1247,11 +1514,24 @@ ENGINEERING. State the multinomial coefficient that governs the
 count.
 \end{exercise}
 
+\paragraph{Solution sketch.} The word has 11 letters with class
+sizes E:3, N:3, I:2, G:2, R:1. The multinomial coefficient is
+\[
+\binom{11}{3, 3, 2, 2, 1} = \frac{11!}{3!\, 3!\, 2!\, 2!\, 1!}
+= \frac{39\,916\,800}{6 \cdot 6 \cdot 2 \cdot 2 \cdot 1}
+= \frac{39\,916\,800}{144} = 277\,200.
+\]
+
 \begin{exercise}
 Compute $\binom{20}{7}$ exactly, then verify that
 $\binom{20}{7} = \binom{19}{6} + \binom{19}{7}$ using Pascal's
 identity.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\binom{20}{7} = 20! / (7!\, 13!) = 77\,520$. Pascal:
+$\binom{19}{6} = 27\,132$ and $\binom{19}{7} = 50\,388$; sum is
+$27\,132 + 50\,388 = 77\,520$, agreeing with $\binom{20}{7}$.
 
 \begin{exercise}
 For the graph $G$ on $V = \set{1, 2, 3, 4, 5, 6}$ with edges $E =
@@ -1259,6 +1539,30 @@ For the graph $G$ on $V = \set{1, 2, 3, 4, 5, 6}$ with edges $E =
 \set{1,6}, \set{2,5}}$, compute (a) the degree sequence, (b) the
 diameter, (c) the global clustering coefficient.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+(a) Degrees: $\deg(1) = 2$ (neighbours $2, 6$), $\deg(2) = 3$
+(neighbours $1, 3, 5$), $\deg(3) = 2$ (neighbours $2, 4$),
+$\deg(4) = 2$ (neighbours $3, 5$), $\deg(5) = 3$ (neighbours $2,
+4, 6$), $\deg(6) = 2$ (neighbours $1, 5$). Degree sequence
+$(3, 3, 2, 2, 2, 2)$. Handshake check: $\sum \deg = 14 = 2 m$
+with $m = 7$.
+
+(b) The graph is the 6-cycle $1\text{-}2\text{-}3\text{-}4\text{-}5\text{-}6\text{-}1$
+with one chord $\set{2, 5}$. Distances:
+$d(1, 4) = 3$ via $1\text{-}2\text{-}3\text{-}4$ or
+$1\text{-}6\text{-}5\text{-}4$, and $d(1, 4) = 3$ via the chord
+($1\text{-}2\text{-}5\text{-}4$) does not improve. All other
+pairs at distance $\leq 3$; diameter is $3$.
+
+(c) Triangles: $\set{2, 5}$ is a chord; we check whether any
+triple $\set{i, j, k}$ with all three pairwise edges exists. The
+only candidate triangles involve the chord: $\set{2, 5, 1}$
+($\set{2,5}, \set{1,2}$ yes, $\set{1,5}$ no), $\set{2, 5, 6}$
+($\set{5,6}$ yes, $\set{2,6}$ no), $\set{2, 5, 3}$ ($\set{2,3}$
+yes, $\set{3,5}$ no), $\set{2, 5, 4}$ ($\set{4,5}$ yes, $\set{2,4}$
+no). No triangles; clustering coefficient is $0$ at every vertex
+with $\deg \geq 2$, and the global clustering coefficient is $0$.
 
 \begin{exercise}
 On the directed weighted graph with vertices $\set{s, a, b, c, t}$
@@ -1268,6 +1572,18 @@ $s$ and report $d(s, v)$ for every $v$. Indicate the order in which
 vertices are finalised.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The trace is shown in figure
+\ref{fig:vol02:ch17:dijkstra-trace}. Initial: $d(s) = 0$, all
+others $\infty$. Finalise $s$, relax: $d(a) = 4$, $d(b) = 2$.
+Finalise $b$ (smallest unvisited at $2$); relax: $d(a) =
+\min(4, 2 + 1) = 3$, $d(c) = 2 + 4 = 6$, $d(t) = 2 + 5 = 7$.
+Finalise $a$ ($d = 3$); relax: $d(c) = \min(6, 3 + 3) = 6$
+(no change). Finalise $c$ ($d = 6$); relax: $d(t) =
+\min(7, 6 + 2) = 8$. Finalise $t$. Final distances:
+$d(s, s) = 0$, $d(s, b) = 2$, $d(s, a) = 3$, $d(s, c) = 6$,
+$d(s, t) = 8$. Finalisation order: $s, b, a, c, t$.
+
 \begin{exercise}
 On the undirected weighted graph with vertices $\set{1, 2, 3, 4,
 5}$ and edges $\set{1,2}: 1$, $\set{2,3}: 4$, $\set{1,3}: 3$,
@@ -1275,10 +1591,46 @@ $\set{3,4}: 2$, $\set{4,5}: 5$, $\set{2,4}: 6$, run Kruskal's
 algorithm and report the MST and its total weight.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Sort edges by weight: $\set{1,2}{:}1$, $\set{3,4}{:}2$,
+$\set{1,3}{:}3$, $\set{2,3}{:}4$, $\set{4,5}{:}5$, $\set{2,4}{:}6$.
+Process in order. Add $\set{1,2}$ (no cycle); add $\set{3,4}$ (no
+cycle); add $\set{1,3}$ (no cycle, joins the $\set{1,2}$ and
+$\set{3,4}$ components); skip $\set{2,3}$ (would create cycle
+$1\text{-}2\text{-}3$); add $\set{4,5}$ (extends tree to vertex 5);
+$\set{2,4}$ would create a cycle but the tree already has $n - 1 = 4$
+edges, so the algorithm halts. MST: $\set{1,2}, \set{3,4},
+\set{1,3}, \set{4,5}$, total weight $1 + 2 + 3 + 5 = 11$. The
+reference implementation in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/kruskal.py}
+reproduces this.
+
 \begin{exercise}
 Compute the truth table of $f(a, b, c) = (a \land b) \lor (\lnot
 a \land c)$ in all eight rows. Write a CNF and a DNF for $f$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Truth table (rows in $abc$ order, $0$ to $7$): $f(0,0,0) = 0$;
+$f(0,0,1) = 1$; $f(0,1,0) = 0$; $f(0,1,1) = 1$; $f(1,0,0) = 0$;
+$f(1,0,1) = 0$; $f(1,1,0) = 1$; $f(1,1,1) = 1$. Truth-true rows:
+$(0,0,1), (0,1,1), (1,1,0), (1,1,1)$.
+
+DNF (one conjunction per truth-true row):
+\[
+f = (\lnot a \land \lnot b \land c) \lor (\lnot a \land b \land c)
+  \lor (a \land b \land \lnot c) \lor (a \land b \land c).
+\]
+Simplification by combining minterms gives the original form
+$f = (a \land b) \lor (\lnot a \land c)$.
+
+CNF (one clause per truth-false row, with each literal negated):
+$f(0,0,0) = 0$ gives clause $(a \lor b \lor c)$;
+$f(0,1,0) = 0$ gives $(a \lor \lnot b \lor c)$;
+$f(1,0,0) = 0$ gives $(\lnot a \lor b \lor c)$;
+$f(1,0,1) = 0$ gives $(\lnot a \lor b \lor \lnot c)$. CNF is the
+conjunction of these four clauses. Simplification gives
+$(a \lor c) \land (\lnot a \lor b)$.
 
 \begin{exercise}
 Solve the recurrence $T(n) = 4 T(n/2) + n^{2}$ with $T(1) = 1$ by
@@ -1286,12 +1638,41 @@ master theorem. State which case applies and the resulting
 $\Theta(\cdot)$ class.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Identify $a = 4$, $b = 2$, $f(n) = n^{2}$. Compute
+$n^{\log_{b} a} = n^{\log_{2} 4} = n^{2}$. Compare $f(n) =
+\Theta(n^{2}) = \Theta(n^{\log_{b} a})$: this is case 2 of the
+master theorem. The conclusion is $T(n) = \Theta(n^{\log_{b} a}
+\log n) = \Theta(n^{2} \log n)$. The recurrence is the running
+time of the standard square-matrix multiplication algorithm
+expressed in divide-and-conquer form.
+
 \begin{exercise}
 Compute $\gcd(2024, 1547)$ by the Euclidean algorithm, showing each
 remainder step. Then run the extended Euclidean algorithm and
 report integers $x, y$ such that $2024 x + 1547 y = \gcd(2024,
 1547)$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Euclidean steps:
+$2024 = 1 \cdot 1547 + 477$;
+$1547 = 3 \cdot 477 + 116$;
+$477 = 4 \cdot 116 + 13$;
+$116 = 8 \cdot 13 + 12$;
+$13 = 1 \cdot 12 + 1$;
+$12 = 12 \cdot 1 + 0$. The gcd is $1$, so $2024$ and $1547$ are
+coprime.
+
+Back-substitute for the extended algorithm. From $1 = 13 - 1 \cdot
+12$ and $12 = 116 - 8 \cdot 13$: $1 = 13 - (116 - 8 \cdot 13) = 9
+\cdot 13 - 116$. From $13 = 477 - 4 \cdot 116$: $1 = 9(477 - 4
+\cdot 116) - 116 = 9 \cdot 477 - 37 \cdot 116$. From $116 = 1547 -
+3 \cdot 477$: $1 = 9 \cdot 477 - 37(1547 - 3 \cdot 477) = 120
+\cdot 477 - 37 \cdot 1547$. From $477 = 2024 - 1547$: $1 = 120
+(2024 - 1547) - 37 \cdot 1547 = 120 \cdot 2024 - 157 \cdot 1547$.
+Check: $120 \cdot 2024 - 157 \cdot 1547 = 242\,880 - 242\,879 = 1$.
+So $x = 120, y = -157$ satisfy $2024 x + 1547 y = 1$.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1301,10 +1682,36 @@ any undirected graph by a direct double count of edge-endpoint
 incidences.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Define an \engterm{incidence} to be a pair $(v, e)$ with $v \in V$,
+$e \in E$, and $v \in e$. Count incidences two ways. Fix a vertex
+$v$: the number of incidences with first coordinate $v$ is exactly
+$\deg(v)$, since $\deg(v)$ counts the edges containing $v$. Summing
+over $v$ gives $\sum_{v} \deg(v)$ incidences in total. Fix an edge
+$e = \set{u, v}$: the number of incidences with second coordinate
+$e$ is exactly $2$, namely $(u, e)$ and $(v, e)$. Summing over $e$
+gives $2 \abs{E}$ incidences in total. The two counts are of the
+same set, so they are equal. The corollary follows: $\sum
+\deg(v)$ is even, so the number of odd-degree vertices is even.
+
 \begin{exercise}
 Prove that a tree on $n \geq 1$ vertices has exactly $n - 1$
 edges, by induction on $n$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Induct on $n$. Base case $n = 1$: a one-vertex tree has $0$ edges,
+and $n - 1 = 0$. Inductive step: assume every tree on $k$ vertices
+has $k - 1$ edges, $1 \leq k < n$. Let $T$ be a tree on $n$
+vertices. A tree has at least one leaf (a vertex of degree $1$);
+otherwise every vertex has degree $\geq 2$, the sum of degrees is
+$\geq 2n > 2(n - 1)$, contradicting the handshake lemma plus the
+cycle-free property $\abs{E} \leq n - 1$. Pick a leaf $v$ and
+remove it together with its incident edge. The result $T - v$ has
+$n - 1$ vertices, is still connected (removing a leaf cannot
+disconnect a tree), and is still cycle-free; so $T - v$ is a tree
+on $n - 1$ vertices with $(n - 1) - 1 = n - 2$ edges by induction.
+Adding back $v$ and its incident edge gives $n - 1$ edges total.
 
 \begin{exercise}
 Prove the cut property of MST: for any partition $V = S \cup (V
@@ -1315,16 +1722,64 @@ $e$ for some edge $e'$ in $T$ that crosses the cut produces a tree
 of equal or smaller weight.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Let $e = \set{u, v}$ with $u \in S$, $v \in V \setminus S$ be a
+lightest edge crossing the cut. Let $T$ be any MST. If $e \in T$,
+we are done. Otherwise add $e$ to $T$. The result $T + e$ has $n$
+edges and contains a unique cycle $C$ (the cycle is unique because
+$T$ was a spanning tree). The cycle $C$ enters $S$ via $e$ and
+must leave $S$ along some other edge $e'$ (since the endpoints of
+$C$ at $u$ and $v$ alternate sides of the cut at least twice as we
+trace $C$); $e'$ crosses the cut and $e'$ is in $T$. Now form $T'
+= T + e - e'$: $T'$ is connected (we have removed an edge that
+sits on a cycle in $T + e$), has $n - 1$ edges, and so is a
+spanning tree. Its weight is $w(T) + w(e) - w(e')$. Since $e$
+is a lightest cut edge, $w(e) \leq w(e')$, so $w(T') \leq w(T)$.
+Since $T$ was an MST, $w(T') = w(T)$ and $T'$ is also an MST, and
+$T'$ contains $e$. So some MST contains $e$.
+
 \begin{exercise}
 Prove de Morgan's law $\lnot(a \land b) = \lnot a \lor \lnot b$ by
 a four-row truth table.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The four rows of $(a, b)$ give:
+\begin{center}
+\begin{tabular}{cccc}
+$a$ & $b$ & $\lnot(a \land b)$ & $\lnot a \lor \lnot b$ \\
+\hline
+0 & 0 & 1 & 1 \\
+0 & 1 & 1 & 1 \\
+1 & 0 & 1 & 1 \\
+1 & 1 & 0 & 0 \\
+\end{tabular}
+\end{center}
+Columns agree row by row, so the two expressions are
+identically equal.
 
 \begin{exercise}
 Prove that every Boolean function on $n$ variables admits a DNF
 representation. Construct the DNF directly from the truth table.
 State the upper bound on the number of conjunctions.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Let $f: \set{0, 1}^{n} \to \set{0, 1}$. For each input $\vec{x} =
+(x_{1}, \ldots, x_{n}) \in \set{0, 1}^{n}$ with $f(\vec{x}) = 1$,
+form the conjunction
+\[
+m_{\vec{x}} = \ell_{1} \land \ell_{2} \land \cdots \land \ell_{n},
+\quad
+\ell_{i} = \begin{cases} x_{i} & \text{if } x_{i} = 1, \\
+                          \lnot x_{i} & \text{if } x_{i} = 0.
+            \end{cases}
+\]
+Each $m_{\vec{x}}$ is true on exactly the one assignment $\vec{x}$
+and false on all others. The disjunction $\bigvee_{\vec{x} :
+f(\vec{x}) = 1} m_{\vec{x}}$ is true on exactly the assignments
+where $f$ is true and so equals $f$. The number of conjunctions is
+the number of truth-true rows, at most $2^{n}$.
 
 \begin{exercise}
 Prove the master theorem case 2: if $f(n) = \Theta(n^{\log_{b} a})$
@@ -1333,11 +1788,44 @@ in the recurrence $T(n) = a T(n/b) + f(n)$, then $T(n) =
 sum the work at each level.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The recursion tree for $T(n) = a T(n/b) + f(n)$ has the root
+performing $f(n)$ work and $a$ children each on subproblems of
+size $n/b$. At depth $k$ the tree has $a^{k}$ subproblems each of
+size $n / b^{k}$. The work at depth $k$ is $a^{k} \cdot f(n /
+b^{k})$. Using $f(n) = c_{1} n^{\log_{b} a}$ at the top and
+$c_{2} n^{\log_{b} a}$ at the bottom (the $\Theta$ bound),
+substitute:
+\[
+a^{k} f(n / b^{k}) = c \cdot a^{k} (n / b^{k})^{\log_{b} a}
+= c \cdot a^{k} n^{\log_{b} a} / (b^{\log_{b} a})^{k}
+= c \cdot a^{k} n^{\log_{b} a} / a^{k}
+= c \cdot n^{\log_{b} a}.
+\]
+The work at each level is $\Theta(n^{\log_{b} a})$, independent
+of $k$. The tree has $\log_{b} n$ levels (the recursion halves
+subproblem size by factor $b$ each step, until size drops to a
+constant). Total work is $\Theta(n^{\log_{b} a}) \cdot \log_{b} n
+= \Theta(n^{\log_{b} a} \log n)$.
+
 \begin{exercise}
 Prove that the Euclidean algorithm terminates in $O(\log \min(a,
 b))$ steps. (Hint: show that two consecutive remainders satisfy
 $r_{i+2} < r_{i} / 2$.)
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The Euclidean algorithm produces a remainder sequence $r_{0} = a$,
+$r_{1} = b$, and $r_{i+1} = r_{i-1} \bmod r_{i}$ for $i \geq 1$,
+strictly decreasing and non-negative. We show $r_{i+2} <
+r_{i} / 2$. By definition, $r_{i+2} = r_{i} \bmod r_{i+1}$. Case 1:
+if $r_{i+1} \leq r_{i} / 2$, then $r_{i+2} < r_{i+1} \leq r_{i} /
+2$. Case 2: if $r_{i+1} > r_{i} / 2$, then $r_{i} = 1 \cdot
+r_{i+1} + r_{i+2}$, so $r_{i+2} = r_{i} - r_{i+1} < r_{i} - r_{i} /
+2 = r_{i} / 2$. Either way, $r_{i+2} < r_{i} / 2$. So every two
+steps halve the remainder; after $2 \log_{2} \min(a, b)$ steps the
+remainder drops below $1$, terminating the algorithm. Step count
+is $O(\log \min(a, b))$.
 
 \begin{exercise}
 Prove Fermat's little theorem: for a prime $p$ and an integer $a$
@@ -1345,6 +1833,20 @@ not divisible by $p$, $a^{p-1} \equiv 1 \pmod{p}$. (Hint: the map
 $x \mapsto a x \bmod p$ permutes $\set{1, \ldots, p-1}$; multiply
 both sides of the resulting equation by inverses.)
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The set $S = \set{1, 2, \ldots, p - 1}$ is the multiplicative
+group of $\Z/p\Z$. The map $\mu_{a}: x \mapsto a x \bmod p$ is a
+bijection on $S$: if $a x \equiv a y \pmod{p}$ then $a (x - y)
+\equiv 0$, and since $\gcd(a, p) = 1$, $p \mid x - y$, so $x = y$
+in $S$. So $\mu_{a}$ permutes $S$. The product over $S$ equals
+the product over $\mu_{a}(S)$:
+\[
+\prod_{x \in S} x = \prod_{x \in S} (a x) = a^{p - 1}
+\prod_{x \in S} x \pmod{p}.
+\]
+Cancel $\prod_{x \in S} x = (p - 1)!$ (which is coprime to $p$)
+from both sides to get $1 \equiv a^{p - 1} \pmod{p}$.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1355,6 +1857,13 @@ ratio of this count to the number of atoms in the observable
 universe ($\approx 10^{80}$).
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$52! = 8.07 \times 10^{67}$. Closest power of $10$ is $10^{68}$.
+Ratio to atoms: $10^{68} / 10^{80} = 10^{-12}$, that is, the deck
+count is about one trillionth of the atom count. The reference
+estimate: every shuffle of a well-randomised deck has, with
+overwhelming probability, never been seen before.
+
 \begin{exercise}
 A graph algorithm runs in $O(n^{2})$ on an input of size $n =
 10^{4}$ in $5$ seconds. Estimate, in seconds and in human-readable
@@ -1363,12 +1872,39 @@ would take on inputs of size $n = 10^{6}$, $n = 10^{8}$, and $n =
 10^{10}$. State the assumption your estimate makes.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Assume the asymptotic class is the running time at the relevant
+scale (the constant factor is unchanged and lower-order terms are
+negligible). At $n = 10^{4}$, runtime is $5$ s; the algorithm
+performs roughly $(10^{4})^{2} = 10^{8}$ basic operations per
+$5$ s, that is, $2 \times 10^{7}$ ops/s. Multiplying inputs by
+$10^{2}$ multiplies time by $10^{4}$ ($O(n^{2})$):
+$n = 10^{6}$: $5 \times 10^{4}$ s $\approx 14$ hours;
+$n = 10^{8}$: $5 \times 10^{8}$ s $\approx 16$ years;
+$n = 10^{10}$: $5 \times 10^{12}$ s $\approx 1.6 \times 10^{5}$
+years. The principal assumption that fails in practice is the
+memory bound: $n = 10^{8}$ already requires terabyte-scale storage
+for an adjacency matrix, and the running time is dominated by
+memory bandwidth long before $10^{10}$.
+
 \begin{exercise}
 Estimate the number of operations a current laptop, a $10^{3}$-node
 cluster, and a $10^{6}$-node supercomputer can each perform in one
 year. Use these numbers to identify, for each platform, the largest
 $n$ for which a $\Theta(2^{n})$ enumeration is feasible.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+One year $= 3.15 \times 10^{7}$ s. Per-platform ops/s, current as
+of 2026: laptop $\approx 10^{10}$, cluster ($10^{3}$ nodes)
+$\approx 10^{13}$, supercomputer ($10^{6}$ nodes) $\approx 10^{16}$.
+Per-year operations: laptop $3 \times 10^{17}$, cluster $3 \times
+10^{20}$, supercomputer $3 \times 10^{23}$. Solve $2^{n} \leq B$
+for each ceiling $B$: laptop $n \leq \log_{2}(3 \times 10^{17})
+\approx 58$; cluster $n \leq \log_{2}(3 \times 10^{20}) \approx
+68$; supercomputer $n \leq \log_{2}(3 \times 10^{23}) \approx 78$.
+The exercise's headline: a thousandfold speedup buys ten extra
+bits.
 
 \begin{exercise}
 A road network in a small city has $\approx 5000$ intersections
@@ -1378,12 +1914,43 @@ representation. State which representation you would choose and
 why.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Adjacency matrix: $n \times n$ bits with $n = 5000$ gives $2.5
+\times 10^{7}$ entries; at one byte each (a boolean stored in a
+byte, the common case in a dense-matrix library), about $25$ MB,
+or at one float each (for weighted edges), about $100$ MB.
+Adjacency list: $2 m + n$ entries (each edge listed at each
+endpoint plus a per-vertex header), with $m = 12\,000$ that is
+$\approx 30\,000$ integer references, about $0.24$ MB at four
+bytes per integer. The adjacency list wins by two orders of
+magnitude. Choose adjacency list: the graph is sparse (average
+degree $\bar{d} = 2 m / n = 4.8$, far from the dense regime where
+$\bar{d} \approx n$), and shortest-path and BFS workloads scan
+edges per vertex, the operation the list supports in $\Theta(\deg
+v)$.
+
 \begin{exercise}
 A deck of $52$ playing cards is shuffled. Estimate the probability
 that the result places the four aces consecutively (in any order,
 in any of the $49$ possible starting positions). Compare with a
 direct calculation.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Estimate: pretend the aces are placed uniformly at random in the
+52 positions. The first ace lands somewhere; the second has to
+land adjacent to it, probability roughly $2/51$; the third has to
+extend the block, roughly $2/50$; the fourth, roughly $2/49$.
+Product is $\approx (2/51)(2/50)(2/49) \approx 6 \times 10^{-5}$,
+of order $10^{-4}$.
+
+Direct calculation: count favourable arrangements as
+$49$ starting positions $\times 4!$ orderings of the aces $\times
+48!$ orderings of the other cards, total $49 \cdot 4! \cdot 48!$.
+Total arrangements $52!$. Probability is $49 \cdot 4! \cdot 48! /
+52! = 49 \cdot 24 / (52 \cdot 51 \cdot 50 \cdot 49) = 24 / (52
+\cdot 51 \cdot 50) = 24 / 132\,600 \approx 1.81 \times 10^{-4}$.
+Estimate and calculation agree to a factor of three.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1397,12 +1964,36 @@ theoretical $O((n + m) \log n)$ bound by repeating with $n \in
 $(n + m) \log n$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The reference implementation lives at
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/dijkstra.py}.
+Generate $G(n, m)$ with $m = 5n$ by sampling without replacement
+from the $n(n-1)/2$ unordered pairs and assigning uniform weights
+on $[1, 100]$. For each $n$, run Dijkstra from $10$ randomly
+chosen sources, average. Tabulate $T(n)$ versus $(n + m) \log_{2}
+n$; the points should lie close to a line through the origin in a
+linear-scale plot. Expect deviations at the low end (overhead
+dominates) and at the high end (cache effects appear). A linear
+fit's slope is the per-heap-op constant, typically tens to
+hundreds of nanoseconds on a current laptop.
+
 \begin{exercise}
 Implement Kruskal's algorithm with a union-find data structure on
 a randomly-generated graph and confirm it produces an MST of the
 same total weight as Prim's algorithm. Use $n = 10^{3}$ and $m = 4
 n$ as the working scale.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Reference Kruskal at
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/kruskal.py}.
+Implement Prim's algorithm with a min-heap keyed on the cheapest
+known edge into the tree. Run both on the same random graph (seed
+the RNG); the edge sets differ when weights tie, but the total
+weights agree exactly. On $n = 10^{3}$, $m = 4 \times 10^{3}$,
+Kruskal runs in about $1$ ms on a current laptop. Repeating on
+$n \in \set{10^{3}, 10^{4}, 10^{5}}$ confirms $O(m \log n)$
+scaling.
 
 \begin{exercise}
 Implement a brute-force SAT solver that tries all $2^{n}$
@@ -1411,6 +2002,20 @@ $n \in \set{10, 15, 20, 25, 30}$ and report the running time.
 Plot time on a log axis against $n$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Reference at
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/sat_brute.py}.
+Use clause-to-variable ratio $m/n \approx 4.25$ to land near the
+phase-transition density. Expected wall-clock on a current laptop:
+$n = 10$ in microseconds; $n = 20$ in a few seconds; $n = 25$ in
+roughly $2$ minutes; $n = 30$ in roughly $1$ hour (the time
+doubles per added variable, as $2^{n}$ predicts). Plotting
+$\log_{10} T$ versus $n$ gives a straight line with slope
+$\log_{10} 2 \approx 0.30$. A CDCL solver on the same instances
+finishes in milliseconds across the full range; the comparison is
+the chapter's empirical illustration of the worst-case versus
+working-case gap.
+
 \begin{exercise}
 Generate an Erd\H{o}s-R\'{e}nyi random graph $G(n, p)$ for $n =
 1000$ and $p \in \set{1/n, 2/n, 4/n, 8/n}$. Compute the size of
@@ -1418,12 +2023,40 @@ the largest connected component for each $p$ and plot it. Identify
 the threshold $p \approx 1/n$ at which a giant component emerges.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Reference at
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/erdos_renyi.py}.
+For $n = 1000$ and average degree $c = np$, the giant-component
+fraction $\rho$ solves $\rho = 1 - e^{-c \rho}$. Expected values:
+$c = 0.5$: $\rho \approx 0$ (no giant component);
+$c = 1$: $\rho \approx 0$ (right at the threshold; the giant is
+$o(n)$ in size);
+$c = 2$: $\rho \approx 0.80$;
+$c = 4$: $\rho \approx 0.98$;
+$c = 8$: $\rho \approx 1$. The empirical largest-component sizes
+should match these fractions to within tens of vertices. The plot
+of $|\text{LCC}| / n$ versus $c$ traces out the classical Erdos-Renyi
+phase transition.
+
 \begin{exercise}
 Implement the Miller-Rabin primality test and use it to find the
 first $100$ primes greater than $10^{18}$. Report the running time.
 Compare with a deterministic trial-division test on a
 representative input and report the speedup.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Reference at
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/miller_rabin.py}.
+Expected running time on a current laptop: the search for $100$
+primes above $10^{18}$ takes roughly $0.1$ s (the prime density
+near $10^{18}$ is $\approx 1/\ln(10^{18}) \approx 1/41$, so the
+search examines roughly $4000$ candidates; each Miller-Rabin test
+runs in microseconds at this size). Trial division on a candidate
+of order $10^{18}$ would scan up to $\sqrt{10^{18}} = 10^{9}$
+divisors, taking roughly $1$ second per candidate; the
+$4000$-candidate search would take more than an hour. Speedup is
+about four orders of magnitude.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1436,6 +2069,24 @@ an existing edge. State the asymptotic cost of each operation in
 your design and identify the operation whose cost is the worst.
 \end{exercise}
 
+\paragraph{Discussion.}
+A working design carries two per-vertex hash maps: $\mathrm{out}[u]$
+maps a head vertex $v$ to the edge weight $w(u, v)$, and
+$\mathrm{in}[v]$ symmetrically maps a tail vertex $u$ to the same
+weight. Enumeration of out-neighbours of $u$ is $\Theta(\deg^{+}
+u)$ by iterating $\mathrm{out}[u]$; enumeration of in-neighbours
+of $v$ is $\Theta(\deg^{-} v)$. Edge-weight lookup
+$(u, v) \mapsto w$ is $\Theta(1)$ amortised via $\mathrm{out}[u]$.
+Edge insertion is $\Theta(1)$ amortised (two hash-table inserts).
+Edge deletion is $\Theta(1)$ amortised (two hash-table deletes).
+The duplication doubles storage to $\Theta(n + m)$ at the cost of
+$\Theta(n + m)$ extra. The worst operation in this design is
+out-neighbour enumeration when the implementation is locality-naive
+(hash maps fragment cache lines); for a static graph used by
+shortest-path benchmarks, a compressed sparse row (CSR)
+representation with sorted neighbour arrays gives the same
+asymptotics with order-of-magnitude better constants.
+
 \begin{exercise}
 Design a graph schema for a public transit network that you would
 hand to a working software engineer. The schema must include
@@ -1445,12 +2096,51 @@ metadata. Defend two of your design choices against an imagined
 alternative.
 \end{exercise}
 
+\paragraph{Discussion.}
+A workable schema has node tables (station id, name, geographic
+coordinates, accessibility flags), line tables (line id, mode,
+operator), and edge tables (station id pair, line id, distance,
+travel time, headway, accessibility flags). Two defensible choices:
+\textit{(i)} represent each line-on-segment as a separate parallel
+edge rather than collapsing parallel services into a single
+multi-modal edge; the choice supports per-line frequency, per-line
+incident reporting, and routing that respects transfers, at the
+cost of inflating the edge count. Defending against the
+alternative: the routing algorithm needs to know which line is
+being taken (transfer penalties depend on it), so the line
+information cannot be discarded; representing it on edges rather
+than via a side-channel keeps the routing query a single pass over
+the graph. \textit{(ii)} carry segment travel time as the primary
+edge weight rather than distance; users care about time, not
+distance, and the routing query reduces to ordinary shortest path.
+Defending against the alternative: a distance-weighted routing
+would correctly find geographically short routes that miss
+infrequent services and detours through slow modes.
+
 \begin{exercise}
 Design a test plan for a Boolean expression in $10$ variables that
 arises in a safety-critical setting. The test plan must justify
 its coverage strategy against the $2^{10} = 1024$ assignments. State
 how a pairwise covering array would compare with a full enumeration.
 \end{exercise}
+
+\paragraph{Discussion.}
+$2^{10} = 1024$ is small enough to enumerate, and the safety-critical
+context tips the balance toward exhaustive testing: a single
+covered-pair miss is a costly residual risk. A defensible test plan
+states the coverage criterion (every assignment of the $10$
+variables exercised at least once), the test harness's run time
+(at $1$ ms per evaluation, the suite takes about $1$ second), and
+the failure-reporting strategy (which assignments produced
+unexpected outputs, traced back to the equation's structure). A
+pairwise covering array would cover every pair of variable values
+in approximately $10$--$20$ tests (the standard table for $2^{10}$
+gives $13$ tests), a $50$-fold reduction; the cost is that
+three-way interactions are not guaranteed covered. For
+safety-critical code, the savings do not justify the lost coverage;
+for non-safety-critical code at the same scale, the pairwise array
+is the working choice. The crossover is dictated by the
+consequence of a missed interaction, not by the absolute test count.
 
 \subsection*{Diagnosis}\pathtag{standard}
 
@@ -1461,6 +2151,20 @@ weight $-1$. Diagnose what went wrong, name the precondition the
 engineer violated, and state which algorithm should have been used.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The precondition Dijkstra requires is non-negative edge weights.
+The presence of any edge of weight $-1$ violates the invariant that
+the first time the algorithm finalises a vertex $u$, $d(s, u)$ is
+the true shortest-path distance: a later relaxation across the
+negative edge can decrease the distance below the value the
+algorithm fixed. The reported $-3$ is either an artefact of the
+silent violation (some implementations return a partial answer
+that the user reads as final) or a downstream computation that
+trusted the wrong distance. The correct algorithm for graphs with
+negative edges and no negative-weight cycle is Bellman-Ford,
+$O(nm)$; if negative cycles may be present, Bellman-Ford detects
+them in its final pass.
+
 \begin{exercise}
 A graph-algorithm benchmark measures running time of $10$ seconds on
 $n = 10^{3}$ and $40$ seconds on $n = 2 \times 10^{3}$. State which
@@ -1469,6 +2173,20 @@ follow-up measurements that would distinguish $\Theta(n^{2})$ from
 $\Theta(n \log n)$ definitively.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Doubling $n$ multiplied the time by $4$. $\Theta(n^{2})$ predicts a
+factor of $4$ exactly, consistent. $\Theta(n \log n)$ predicts a
+factor of $2 \cdot (\log_{2} 2000 / \log_{2} 1000) = 2 \cdot
+(10.97 / 9.97) \approx 2.20$, well below the observed $4$. The
+benchmark is consistent with $\Theta(n^{2})$ and not with
+$\Theta(n \log n)$. Two follow-ups that strengthen the
+discrimination: \textit{(i)} measure at $n = 10^{4}$: $n^{2}$
+predicts $1000$ s, $n \log n$ predicts $26.6$ s; the gap is two
+orders of magnitude. \textit{(ii)} plot $T(n) / (n \log n)$ on a
+log scale across $n \in \set{10^{3}, 2 \times 10^{3}, 5 \times
+10^{3}, 10^{4}}$; a constant ratio confirms $n \log n$, a linearly
+rising ratio confirms $n^{2}$.
+
 \begin{exercise}
 A junior engineer presents a Boolean simplification claiming
 $(a \lor b) \land \lnot a = b$. Diagnose the error precisely, state
@@ -1476,12 +2194,35 @@ the corrected identity, and identify the de Morgan or
 distributivity step the engineer omitted.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Distribute $\lnot a$ over the disjunction: $(a \lor b) \land
+\lnot a = (a \land \lnot a) \lor (b \land \lnot a) = 0 \lor (b
+\land \lnot a) = b \land \lnot a$. The corrected identity is
+$(a \lor b) \land \lnot a = b \land \lnot a$, not $b$. The error:
+the simplification dropped the $\land \lnot a$ on $b$. The
+counterexample is $a = 1, b = 1$: left side $(1 \lor 1) \land 0 =
+0$, the claimed right side $b = 1$. The engineer's correct chain
+uses distributivity ($\land$ over $\lor$) plus the complement law
+$a \land \lnot a = 0$; the missed step is the failure to retain
+the $\lnot a$ factor on the surviving $b$ term.
+
 \begin{exercise}
 A modular-arithmetic routine reports that the inverse of $6$ modulo
 $15$ is $11$. Verify or refute. If the inverse does not exist, state
 the precondition the routine should have checked and identify the
 correct response.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The claim is refuted: $6 \cdot 11 = 66 = 4 \cdot 15 + 6 \equiv 6
+\pmod{15}$, not $1$. More structurally, $\gcd(6, 15) = 3 \neq 1$,
+so $6$ has no multiplicative inverse modulo $15$: the precondition
+for $a^{-1} \bmod n$ to exist is $\gcd(a, n) = 1$. The routine
+should have called the extended Euclidean algorithm, which returns
+the gcd; if the gcd exceeds $1$, the routine should refuse the
+operation (raise an exception, return a sentinel value, or
+otherwise signal the precondition failure) rather than return any
+number that satisfies neither the inverse nor a sensible default.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1495,6 +2236,31 @@ to combinatorial explosion was selected by the cryptographic
 community when they replaced DES with AES.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+In 1977 the DES key space $2^{56} \approx 7.2 \times 10^{16}$
+exceeded a single-machine search budget by roughly four orders of
+magnitude (the typical 1977 mainframe ran at $\sim 10^{6}$
+operations per second, giving $\sim 10^{13}$ ops/year). Moore's
+trajectory predicted that single-machine throughput would roughly
+double every two years, shrinking the security margin by one bit
+every two years. Predicted year of feasibility: $1977 + 2 \times 13
+\approx 2003$, which matched the EFF DES Cracker (1998) and
+distributed DESCHALL effort (1997) within a few years. The
+deprecation was a predictable arithmetic consequence of the
+combinatorial-explosion estimate against the Moore trajectory.
+
+The community's response was the first of the three: reformulate
+the search by enlarging the key. AES (Rijndael, 2001) supports
+$128$-, $192$-, and $256$-bit keys; even at sustained Moore's-law
+growth, $2^{128} \approx 3.4 \times 10^{38}$ stays beyond the
+feasibility frontier of any plausible classical computer for a
+century. The community did not accept an approximate or
+probabilistic answer (cryptography requires worst-case guarantees)
+nor did it exploit structure in the cipher (the structure-exploiting
+attack on DES, differential cryptanalysis, was already known when
+AES was designed; AES was built to resist it). Reformulation by
+enlargement was the only durable answer.
+
 \begin{exercise}
 A software product with $n = 25$ Boolean configuration flags ships
 with the claim that ``every configuration has been tested.'' Argue,
@@ -1504,6 +2270,35 @@ covering-array testing as an alternative and state under what
 condition you would accept the claim at face value.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$2^{25} = 33\,554\,432$ configurations. At $1$ second per
+configuration test, exhaustive testing takes more than a year on a
+single machine. At $1$ ms per test, $9$ hours, plausible but
+expensive; at $1$ microsecond per test (an unrealistic budget for
+anything but a pure-CPU smoke check), $33$ seconds. The claim
+``every configuration has been tested'' is either using a per-test
+cost below microsecond scale (suggesting a trivially shallow test,
+in which case the claim is technically true but informationally
+vacuous) or it is misreporting. The likely truth is that the
+vendor ran tests on a small selected subset and reported the
+optimistic phrase.
+
+A pairwise covering array for $n = 25$ Boolean flags requires
+between $10$ and $20$ test cases (the precise count from
+constructions of Cohen et al. is $13$ or $14$). At $1$ second per
+test, the suite runs in $20$ seconds and covers every pair of
+flag values, catching the documented majority of two-flag
+interaction bugs. Higher-order covering arrays scale slowly: a
+three-way cover for $25$ flags is on the order of $30$--$50$ tests.
+
+The claim is acceptable at face value only when \textit{(i)} the
+per-test cost is genuinely under a microsecond and the test
+exercises a measured-significant code path, or \textit{(ii)} the
+domain admits structural reduction (most flags are independent and
+the conjoint behaviour is provably the same as the per-flag
+behaviour). Both conditions are unusual; the working presumption
+is that the claim is misreported.
+
 \begin{exercise}
 A road-network routing application using Dijkstra's algorithm
 reports inconsistent shortest paths after a software update that
@@ -1512,6 +2307,34 @@ of bug is most likely (priority-queue ordering, edge-weight
 encoding, vertex-finalisation invariant) and what diagnostic test
 would distinguish them.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The change that triggered the regression is the priority-queue
+replacement, so the priority-queue ordering is the prime suspect.
+A common defect: the new queue's comparator orders on a different
+key (insertion sequence, hash, ascending vs descending) and so the
+``smallest unvisited'' vertex is no longer the one with smallest
+$d(s, \cdot)$. The algorithm's correctness rests on that
+invariant; violating it produces wrong distances on instances
+where multiple vertices have ties or where the relaxation order
+matters. Edge-weight encoding bugs (signed-vs-unsigned overflow,
+units mismatch) would have manifested before the update, so they
+are less likely; the finalisation-invariant bug is the same class
+as the priority-queue bug (since the invariant is precisely what
+the queue order enforces).
+
+The decisive diagnostic test is a parallel run on a small,
+deterministic graph for which the correct distances are known
+(the worked example of figure
+\ref{fig:vol02:ch17:dijkstra-trace}, for instance). Compare the
+new-queue and old-queue outputs against the known answer. If the
+new-queue answer differs from the known answer, the queue
+ordering is at fault. A secondary test is to log the
+finalisation order: with a correct queue, the finalisation order
+is non-decreasing in distance. If the log shows a non-monotone
+sequence, the queue is returning the wrong vertex; if the
+sequence is monotone but distances are still wrong, the bug is in
+the relaxation code.
 
 \subsection*{Judgement}\pathtag{standard}
 
@@ -1523,6 +2346,24 @@ State at least one class of engineering problem in which the
 asymptotic class is the only defensible figure of merit.
 \end{exercise}
 
+\paragraph{Discussion.}
+The engineer's claim is half right: at fixed scale, constants
+dominate asymptotic class, and a benchmark on representative
+inputs trumps a theoretical bound. The discipline of asymptotic
+analysis exists not because it predicts the next run, but because
+it predicts how the next run scales when inputs grow. The class
+of problems where the asymptotic figure is the only defensible
+metric is exactly the class where the scaling matters more than the
+current data: long-lived infrastructure that will see input sizes
+two or three orders of magnitude beyond the present, library code
+that will be called on inputs the author cannot foresee, and any
+algorithm whose worst-case input determines a service-level
+guarantee. In those settings, an $O(n^{2})$ algorithm with a tiny
+constant is the wrong choice for a $10^{6}$-element future input
+because the asymptotic class will dominate by then; the engineer
+who optimised for the present has built a system that fails at
+scale.
+
 \begin{exercise}
 A senior engineer dismisses the use of SAT solvers in favour of
 hand-written branch-and-bound code, arguing that the SAT solver is
@@ -1532,6 +2373,37 @@ class of problem in which a modern SAT solver is the engineer's
 best working tool.
 \end{exercise}
 
+\paragraph{Discussion.}
+The position is defensible in three settings. First, when the
+problem has known structure (a one-dimensional ordering, a metric
+shortest-path, an MST) for which a polynomial-time algorithm
+exists; encoding it as SAT discards the structure. Second, when
+the deployment environment cannot tolerate the SAT solver's
+dependencies, memory footprint, or licence; embedded systems and
+hard real-time controllers are the standard examples. Third, when
+the team has documented domain knowledge that a custom solver
+will outperform a generic one by a wide margin (the SAT
+competition winners change every year, and a domain-specific
+solver tuned by experienced hands can beat the current champion
+on its own instances).
+
+The position is indefensible on combinatorial problems with no
+exploited structure, where the alternative is an exponential-time
+hand-written branch-and-bound that the team is reinventing badly.
+Hardware-circuit verification, software bounded model checking,
+combinatorial scheduling with side constraints, package-dependency
+resolution, and high-level synthesis routinely pose instances with
+millions of variables; modern CDCL solvers (MiniSat, Glucose,
+CaDiCaL, Kissat) solve them in seconds. The engineer who
+re-implements the search from scratch reinvents conflict-driven
+clause learning, restarts, phase saving, variable activity
+heuristics, and watched literals, all of which the SAT community
+has refined for two decades. The defensible position there is to
+treat the SAT solver as a thoroughly-tested algorithm and to
+encode the problem clearly enough that the solver's failure mode
+becomes the encoding's structure problem, not a black-box magic
+problem.
+
 \begin{exercise}
 The chapter argues that combinatorial explosion is the same
 archetype as the curse of dimensionality. Argue, in 200 to 300
@@ -1539,6 +2411,36 @@ words, whether the unification is illuminating or whether the two
 phenomena are different enough that the unification obscures
 useful distinctions. Take a position. Defend it.
 \end{exercise}
+
+\paragraph{Discussion.}
+The unification is illuminating on the scaling axis and obscuring
+on the diagnostic axis. Both phenomena share the engineer's
+working observation that the size of the feasible set grows
+exponentially with a parameter (variable count for combinatorial,
+dimension for continuous), and both share the same three
+responses (reformulate to shrink the set, exploit structure within
+an exponential algorithm, accept approximation). Calling them the
+same archetype is a useful pedagogy: the reader who sees one form
+recognises the other immediately, and the response taxonomy
+transfers.
+
+The unification obscures the differences that matter at the
+implementation level. Combinatorial spaces are unstructured by
+default; continuous spaces are usually equipped with a metric and
+support local search, gradient methods, and convex relaxations.
+The escape from the curse of dimensionality in continuous settings
+runs through Bayesian optimisation, low-rank approximation,
+neural-network surrogates, and dimension reduction techniques that
+have no direct combinatorial analogue. The escape from
+combinatorial explosion runs through SAT/MIP/CP solvers, branch-
+and-bound with combinatorial cuts, learning-augmented heuristics,
+and randomisation that has no direct continuous analogue.
+
+Position: name the archetype and use it as the scaling-literacy
+hook, but resist the temptation to treat the response toolboxes as
+interchangeable. The engineer who knows one toolbox should not
+assume the other works the same way; the underlying mathematics is
+unified, the engineering practice is not.
 
 \begin{exercise}
 A junior engineer proposes to brute-force a generative-design
@@ -1548,4 +2450,45 @@ engineer would give. State the calculation, the conclusion, and
 the three responses (reformulate, exact-with-structure, approximate)
 the junior engineer should consider.
 \end{exercise}
+
+\paragraph{Discussion.}
+Calculation: a 1000-node cluster at $10^{10}$ ops/s per node
+sustains $10^{13}$ ops/s total. Overnight is roughly $3 \times
+10^{4}$ s. Total operations available: $3 \times 10^{17}$. The
+search budget is $10^{15}$ candidates, each of which costs at
+minimum one evaluation. If the per-candidate evaluation is a
+single floating-point operation, the search fits, with a factor
+of $300$ margin. If the per-candidate evaluation is anything
+heavier (a finite-element solve, a CFD simulation, a structural
+check), the per-candidate cost rises by $4$ to $8$ orders of
+magnitude and the search falls outside the budget by the same
+factor. The senior engineer's first question: \textit{what is the
+per-candidate cost?}
+
+Assume the cost is non-trivial (the usual case for generative
+design). The three responses to consider:
+
+\textit{Reformulate}: identify the symmetries and decompositions
+of the design space. Geometric symmetries (parametric repetition,
+reflection, translation) and constraint-driven projections often
+shrink the effective space by orders of magnitude. The
+$10^{15}$ may collapse to $10^{10}$ or less after the structural
+quotient.
+
+\textit{Exact with structure}: integer programming with branch and
+bound, constraint programming with propagation, or SAT modulo
+theories with custom propagators. The solver communities have
+built engines that exploit problem structure beyond what hand-written
+search reaches.
+
+\textit{Approximate}: surrogate-model search (a neural network
+trained on a sample of evaluations, used as a cheap stand-in for
+the expensive per-candidate cost), Bayesian optimisation, genetic
+algorithms, or modern reinforcement-learning policies. Each
+accepts a probability of missing the optimum in exchange for
+tractable runtime.
+
+The conclusion the senior engineer hands back: the proposal as
+stated is unfounded; pick one of the three responses and justify
+it.
 

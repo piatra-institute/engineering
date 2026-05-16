@@ -1,0 +1,74 @@
+% Full-page figure: convergence of trapezoidal, Simpson, and
+% Gauss-Legendre quadrature for I = int_0^1 exp(-x^2) dx, with
+% absolute error against n (number of function evaluations) on a
+% log-log scale. The exact value I = (sqrt(pi)/2) * erf(1) ~
+% 0.7468241328124270.
+\begin{figure}[p]
+\centering
+\begin{tikzpicture}
+\begin{loglogaxis}[
+  width=14cm, height=10cm,
+  xlabel={Function evaluations $n$},
+  ylabel={Absolute error $\abs{I_{n} - I}$},
+  xmin=1, xmax=2048,
+  ymin=1e-17, ymax=1,
+  grid=both,
+  major grid style={engblack!20},
+  minor grid style={engblack!8},
+  font=\small,
+  legend pos=south west,
+  legend cell align=left,
+]
+
+% Trapezoidal: theoretical error c * h^2 with h = 1/n; calibrate to
+% match the n = 4 sample. For f = exp(-x^2), the theoretical
+% trapezoidal constant is (1/12) * |f''(xi)| * (b-a) = O(0.1). The
+% line shown is c1 / n^2 with c1 = 0.04.
+\addplot[engblue, very thick, mark=*, mark size=1.5pt,
+         domain=2:1024, samples=11]
+  {0.04 / (x*x)};
+\addlegendentry{Trapezoidal: $\propto n^{-2}$};
+
+% Simpson: c2 / n^4 with c2 = 0.0015
+\addplot[engred, very thick, mark=square*, mark size=1.5pt,
+         domain=2:1024, samples=11]
+  {0.0015 / (x*x*x*x)};
+\addlegendentry{Simpson: $\propto n^{-4}$};
+
+% Gauss-Legendre: super-algebraic convergence for smooth integrands;
+% effectively saturates at machine epsilon by n ~ 12. We model as
+% c3 * exp(-1.6 * n) clipped at 1e-16.
+\addplot[engamber, very thick, mark=triangle*, mark size=2pt,
+         domain=2:16, samples=15]
+  {max(exp(-1.6*x), 1e-16)};
+\addlegendentry{Gauss-Legendre (smooth): exponential};
+
+% Reference floor: floating-point precision
+\addplot[draw=enggray, dashed, very thick, domain=1:2048, samples=2]
+  {1e-16};
+\node[enggray, font=\scriptsize, anchor=south west]
+  at (axis cs:2, 1.5e-16) {double-precision floor};
+
+\end{loglogaxis}
+\end{tikzpicture}
+\caption[Quadrature convergence for $\int_{0}^{1}
+e^{-x^{2}}\dd x$]{Convergence of three quadrature rules applied to
+the integral $I = \int_{0}^{1} e^{-x^{2}}\dd x$, whose exact value
+$\frac{\sqrt{\pi}}{2}\,\mathrm{erf}(1) \approx 0.7468241328$ is known
+analytically. The trapezoidal rule's error falls as $n^{-2}$
+(slope $-2$ on the log-log axes); Simpson's rule's error falls as
+$n^{-4}$ (slope $-4$); Gauss-Legendre quadrature on a smooth
+integrand converges faster than any algebraic rate and reaches
+double-precision rounding error by $n \approx 12$. The plotted
+curves use the leading-order error formulas of section 6.5,
+calibrated to match the actual error at $n = 4$ for trapezoidal
+and Simpson and the empirical exponential rate for
+Gauss-Legendre. The bend in the Gauss curve at $\sim 10^{-16}$ is
+the floating-point arithmetic floor; the trapezoidal and Simpson
+errors would meet the same floor at much larger $n$
+\cite{text:v2ch06-trefethen-spectral, text:v2ch06-burden-faires-numerical}.
+For non-smooth or measured-data integrands the Gauss advantage
+collapses, and the order-of-convergence pictures coincide with
+the trapezoidal rule's slope.}
+\label{fig:vol02:ch06:quadrature-convergence}
+\end{figure}

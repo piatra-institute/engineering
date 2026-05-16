@@ -181,6 +181,19 @@ linearly independent. They span $\R^{2}$. The matrix is
 diagonalisable, and section 10.2 shows what the diagonalisation
 buys.
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-eigenvector-action.tex}
+
+\Cref{fig:vol02:ch10:eigenvector-action} shows the geometry directly.
+A fan of input vectors of equal length, each at a different angle,
+rotates as well as stretches under multiplication by $\mat{A}$;
+almost every input direction is mapped to a new direction. The two
+red arrows are the eigenvectors $\vect{v}_{1}$ and $\vect{v}_{2}$,
+and their images $5\vect{v}_{1}$ and $2\vect{v}_{2}$ point along the
+same lines (one with reversed orientation if the eigenvalue is
+negative). The diagonalisation of the next section is the algebraic
+restatement of this picture: change to the eigenbasis, and the
+rotation disappears.
+
 \begin{archetype}[Scaling]
 The eigenvalues are the scalings the matrix performs on its
 preferred directions. Volume I introduced scaling as the dimensional
@@ -272,7 +285,7 @@ and $\mat{\Lambda}^{k}$ is the diagonal matrix with entries
 $\lambda_{i}^{k}$. A computation that would have cost $\oom{n^{3}}$
 flops per matrix multiplication, repeated $k$ times for $\oom{k
 n^{3}}$ flops, becomes $\oom{n^{3}}$ flops for the diagonalisation
-plus $\oom{k n}$ flops for the diagonal powers and $\oom{n^{3})}$
+plus $\oom{k n}$ flops for the diagonal powers and $\oom{n^{3}}$
 flops for the change of basis. The same identity extends to matrix
 functions: $f(\mat{A}) = \mat{S} f(\mat{\Lambda}) \mat{S}\inv$ for
 any function $f$ that makes sense on the eigenvalues, where
@@ -390,6 +403,20 @@ spectral decomposition. A general matrix needs two distinct
 rotations, and the two are different exactly when the action of the
 matrix is not symmetric. The reader should hold this picture in mind
 through the chapter; every later derivation follows it.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-svd-geometry.tex}
+
+\Cref{fig:vol02:ch10:svd-geometry} sets out the three stages
+explicitly. The unit ball arrives, gets rotated to align with the
+matrix's preferred input directions, gets stretched along each axis
+by its singular value, and gets rotated again to align with the
+output basis. The output is an ellipsoid whose semi-axis lengths are
+exactly the singular values and whose semi-axis directions are
+exactly the left singular vectors. For a rectangular matrix the
+diagram is the same with the ambient dimension changing; for a
+rank-deficient matrix the ellipsoid degenerates in some directions
+(those mapped to zero); for a near-singular matrix one semi-axis is
+short and the condition number is its aspect ratio.
 
 \subsection{Computation and conditioning}
 
@@ -511,7 +538,51 @@ truncated eigenvectors form a Fourier basis adapted to the graph
 structure. The common pattern is that data, when arranged as a
 matrix, often have a few directions that carry most of the
 variation. The SVD finds those directions and the truncation
-projects onto them.
+projects onto them. The data-mining text by \textcite{text:v2ch10-elden2007}
+covers the same pattern across information retrieval, image
+processing, and microarray analysis with the bookkeeping in this
+chapter's vocabulary.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-singular-value-decay.tex}
+
+\Cref{fig:vol02:ch10:singular-value-decay} compares four schematic
+decay curves. The engineer in front of a new matrix runs the SVD,
+plots $\sigma_{k}/\sigma_{1}$ on a log-y axis against $k$, and reads
+off where the curve crosses the application's acceptable error level.
+A sharp drop at small $k$ followed by a plateau is the
+low-rank-plus-noise pattern: the effective rank is well defined and
+aggressive truncation is safe. A power-law decay (the natural-image
+case, blue dashed) gives a gradual quality-storage trade with no
+sharp threshold. A nearly flat curve (the random-Gaussian case,
+amber) says no useful low-rank approximation exists and the matrix
+has to be kept at full rank.
+
+\begin{estimation}
+\textbf{Question.} A grayscale photograph is $2000 \times 3000$
+pixels. The reader wants a storage saving of at least $10\times$
+through truncated-SVD compression. Estimate the rank $k$ at which
+this storage saving is achieved, and judge whether the resulting
+reconstruction is likely to be acceptable for the natural-image
+class.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The original storage is $mn = 2000 \times 3000 = 6 \times 10^{6}$
+entries. The truncated-SVD storage is $k(m + 1 + n) \approx 5000 k$
+entries, since $m + n = 5000$. A tenfold saving demands
+$5000 k \leq 6 \times 10^{5}$, or $k \leq 120$. At $k = 120$, the
+ratio $\sigma_{120}/\sigma_{1}$ for a natural image with $\sigma_{k}
+\propto 1/k$ is roughly $1/120 \approx 0.008$, below the $1\%$
+threshold in
+\cref{fig:vol02:ch10:singular-value-decay}. The reconstruction is
+likely acceptable for casual viewing but will lose fine texture and
+edges. Section 10.8's image-compression worked example confirms the
+threshold experimentally on a specific image. The same back-of-the-
+envelope works for any compression ratio $r$: solve $k(m+n) \leq
+mn/r$ for $k$ and check the spectrum at that $k$.
+\end{estimation}
 
 \subsection{Latent semantic analysis (recognition)}
 
@@ -820,6 +891,62 @@ diagonalisation is what the matrix admits, and refuse the
 algorithm when the spectrum says otherwise.
 \end{principle}
 
+\subsection{The Schur decomposition as production default}\pathtag{standard}
+
+The Schur decomposition deserves a slower look because every
+production eigensolver and matrix-function routine builds on it. A
+real square matrix $\mat{A}$ admits $\mat{A} = \mat{Q} \mat{T}
+\mat{Q}\transpose$ with $\mat{Q}$ real orthogonal and $\mat{T}$
+quasi-upper-triangular: $1 \times 1$ blocks on the diagonal for real
+eigenvalues, $2 \times 2$ blocks for complex conjugate pairs. The
+eigenvalues read off the diagonal blocks directly. The factorisation
+is unique up to ordering of the diagonal blocks and choice of basis
+within each block; the LAPACK routine \texttt{?GEES} returns one
+canonical choice and offers an interface for reordering the diagonal
+\cite[ch.~7]{text:v2ch10-golub-vanloan2013}.
+
+Three properties make Schur the algorithm of choice in regimes where
+diagonalisation fails. First, it exists for every square matrix,
+including defective ones: there is no Jordan-like degeneracy to
+detect at runtime. Second, $\mat{Q}$ is orthogonal, so $\kappa_{2}
+(\mat{Q}) = 1$ and the change-of-basis introduces no
+error-amplification. Third, $\mat{T}$ shares the eigenvalues of
+$\mat{A}$ exactly, so the eigenvalue computation reduces to reading
+the diagonal blocks of a numerically reliable triangular matrix.
+
+For matrix functions $f(\mat{A})$ the Schur form leads to the
+Parlett recurrence: write $f(\mat{T})$ as an upper triangular matrix
+with $f$ of the diagonal blocks on its diagonal and recursively
+compute the strictly upper triangular entries from the
+diagonal-block ratios. Higham's book on matrix functions is the
+production reference \cite[ch.~9]{text:v2ch10-higham-functions2008};
+the engineer should reach for \texttt{expm}, \texttt{logm},
+\texttt{sqrtm}, and similar library routines rather than coding
+$f(\mat{A})$ by hand even when the matrix appears benign, because
+the underlying algorithms handle defective and near-defective cases
+through Schur and produce useful answers where naive diagonalisation
+would produce noise.
+
+\subsection{Pseudospectra and operator non-normality}\pathtag{mastery}
+
+A non-normal matrix has eigenvectors that are not orthogonal. The
+eigenvalues then under-describe the matrix's transient behaviour.
+The \engterm{pseudospectrum} of $\mat{A}$ at level $\epsilon$ is the
+set of complex numbers $z$ such that $\norm{(\mat{A} - z\mat{I})\inv}
+\geq 1/\epsilon$. For normal matrices the pseudospectrum reduces to
+the union of $\epsilon$-discs around the eigenvalues. For non-normal
+matrices the pseudospectrum can extend far from the spectrum,
+explaining why a matrix with eigenvalues well inside the unit disc
+can still produce large transient growth $\norm{\mat{A}^{k}
+\vect{x}_{0}}$ before settling to its asymptotic decay. The
+hydrodynamic-stability literature of the 1990s replaced eigenvalue
+analysis with pseudospectral analysis for exactly this reason. We
+mention the apparatus and refer the interested reader to
+\textcite{text:trefethen-bau1997} for the foundational treatment.
+The engineering import for this chapter: if a transient analysis
+matters and the matrix is non-normal, the eigenvalues alone are not
+the right diagnostic and a pseudospectral plot is the next tool.
+
 \subsection{Real-valued failure: linear stability}
 
 In dynamical systems, eigenvalues of the Jacobian at a fixed point
@@ -882,6 +1009,21 @@ of its spread along $\vect{v}_{1}$ (the diagonal of feature space)
 and very little along $\vect{v}_{2}$ (the anti-diagonal). PCA
 recovers the structure the data already had: it lies near a line.
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-pca-axes.tex}
+
+\Cref{fig:vol02:ch10:pca-axes} draws the same idea on a slightly
+larger synthetic scatter, with both principal axes overlaid through
+the centroid. The longer axis points along the dominant principal
+direction, with length proportional to $\sqrt{\sigma_{1}^{2}/(m-1)}$;
+the shorter axis is the perpendicular direction. Projecting the
+samples onto the longer axis retains most of the variance, and a
+downstream classifier or regressor fed only that projection still
+resolves the samples. The dataset under
+\texttt{data/synth\_pca\_dataset.csv} provides a $20$-sample,
+five-feature version with a planted rank-two structure; the project
+in section 10.9 runs PCA on this dataset and on a dataset of the
+reader's choice, by three independent routes.
+
 \subsection{Modal analysis of a three-mass system}
 
 Three equal masses $m$ are connected in a line by four equal springs
@@ -915,6 +1057,13 @@ analysis is the universal apparatus of structural and acoustic
 vibration analysis (Volume III Chapter 9), of electrical resonance
 (Volume IV), and of any linear system whose response is the sum of
 its natural responses.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-vibration-modes.tex}
+
+\Cref{fig:vol02:ch10:vibration-modes} draws the three mode shapes
+schematically. The numerical mode shapes and frequencies are recorded
+in \texttt{data/three\_mass\_modal.csv} for the reader who wants to
+plot a time-domain superposition from a chosen initial condition.
 
 \subsection{Image compression by truncated SVD}
 
@@ -1051,6 +1200,72 @@ after completing their own.
 dataset, three to four hours to implement the three routes, one
 hour to produce the tables and plots, and three to four hours to
 write the reflection. Total approximately eight to ten hours.
+
+\textbf{Phases}. The project resolves in four phases.
+
+\begin{enumerate}[leftmargin=*]
+  \item \textit{Setup} (about one hour). Choose the dataset; record
+    its source, retrieval date, and the variables. Inspect the data
+    for missing entries, units, and obvious outliers. Decide whether
+    the columns should be standardised (subtracted mean and divided
+    by standard deviation) or only centred; record the choice.
+  \item \textit{Implementation} (three to four hours). Implement the
+    three routes in the order listed (covariance eigendecomposition,
+    power iteration with deflation, SVD of the centred data
+    matrix). Verify intermediate quantities (the centred data has
+    zero column mean to machine precision; the covariance matrix is
+    symmetric; the power iteration converges geometrically).
+  \item \textit{Reporting} (one to two hours). Produce the tables
+    and plots. Run the library comparison and confirm the agreement
+    to at least four decimal digits.
+  \item \textit{Reflection} (three to four hours). Write the
+    1500-word reflection. Read the chapter's section 10.7 once more
+    before judging the conditioning differences.
+\end{enumerate}
+
+\textbf{Success criteria}. The project is complete when, for the
+chosen dataset, all three of the following are demonstrated.
+
+\begin{itemize}[leftmargin=*]
+  \item The three implementation routes return principal directions
+    that, after sign alignment, agree to at least four decimal
+    digits with each other and with the library reference.
+  \item The explained-variance ratios from the three routes agree
+    to at least four decimal digits with the library reference, and
+    sum to one across the full spectrum.
+  \item The reflection answers each of the five prompted questions
+    explicitly, with a numerical or graphical reference to the
+    project's own outputs (not generic textbook statements).
+\end{itemize}
+
+\textbf{Common failure modes and recovery}. Four failure modes
+recur. The reader who hits one should apply the listed fix.
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{Sign-flip mismatches.} Eigenvectors are determined
+    up to sign; library and project may differ by signs. The fix
+    is to sign-align before comparing (the
+    \texttt{code/pca\_three\_routes.py} helper does this).
+  \item \textit{Centring forgotten.} PCA on uncentred data points
+    the first principal direction at the centroid rather than along
+    the data's spread; explained-variance ratios then exceed unity
+    or behave nonsensically. The fix is to verify the centred data
+    has zero column mean to machine precision before any further
+    computation.
+  \item \textit{Power iteration on a defective deflated matrix.}
+    Repeated deflation on a non-symmetric matrix can leave a
+    near-defective residue; power iteration then converges slowly
+    or to a spurious vector. The fix is to use the SVD route for
+    the production answer and treat power iteration as a teaching
+    artefact.
+  \item \textit{Reading explained variance from $\mat{C}$'s
+    eigenvalues but reporting it as a percentage of the SVD route's
+    sum.} The two sums agree to machine precision when the
+    arithmetic is consistent; if they do not, a centring or scaling
+    step has been applied unequally across routes. The fix is to
+    centre once, in one place, and pass the same centred matrix to
+    all three routes.
+\end{itemize}
 \end{project}
 
 \section{Exercises}
@@ -1068,12 +1283,42 @@ that the eigenvectors are orthogonal and that the trace and
 determinant equal the sum and product of the eigenvalues.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Trace is $6$ and determinant is $9 - 1 = 8$, so the characteristic
+polynomial is $\lambda^{2} - 6\lambda + 8 = (\lambda - 4)(\lambda -
+2)$. Eigenvalues are $\lambda_{1} = 4$ and $\lambda_{2} = 2$. At
+$\lambda_{1} = 4$, $\mat{A} - 4\mat{I} = \begin{psmallmatrix} -1 & 1
+\\ 1 & -1 \end{psmallmatrix}$ gives $\vect{v}_{1} = (1, 1)/\sqrt{2}$;
+at $\lambda_{2} = 2$, $\mat{A} - 2\mat{I} = \begin{psmallmatrix} 1 &
+1 \\ 1 & 1 \end{psmallmatrix}$ gives $\vect{v}_{2} = (1, -1)/\sqrt{2}$.
+Inner product $\vect{v}_{1}\transpose \vect{v}_{2} = 0$ confirms
+orthogonality, as expected for a symmetric matrix. Trace check:
+$4 + 2 = 6 = \tr \mat{A}$. Determinant check: $4 \times 2 = 8 = \det
+\mat{A}$.
+
 \begin{exercise}
 Compute the diagonalisation $\mat{A} = \mat{S} \mat{\Lambda}
 \mat{S}\inv$ of $\mat{A} =
 \begin{psmallmatrix} 5 & 4 \\ 1 & 2 \end{psmallmatrix}$. Verify by
 multiplying out $\mat{S} \mat{\Lambda} \mat{S}\inv$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Trace is $7$, determinant is $10 - 4 = 6$. Characteristic polynomial
+$\lambda^{2} - 7\lambda + 6 = (\lambda - 6)(\lambda - 1)$ gives
+$\lambda_{1} = 6$ and $\lambda_{2} = 1$. At $\lambda_{1} = 6$,
+$\mat{A} - 6\mat{I} = \begin{psmallmatrix} -1 & 4 \\ 1 & -4
+\end{psmallmatrix}$ gives $\vect{v}_{1} = (4, 1)\transpose$ (any
+nonzero multiple). At $\lambda_{2} = 1$, $\mat{A} - \mat{I} =
+\begin{psmallmatrix} 4 & 4 \\ 1 & 1 \end{psmallmatrix}$ gives
+$\vect{v}_{2} = (1, -1)\transpose$. Take $\mat{S} = \begin{psmallmatrix}
+4 & 1 \\ 1 & -1 \end{psmallmatrix}$ and $\mat{\Lambda} = \diag(6, 1)$.
+Then $\det \mat{S} = -5$ and $\mat{S}\inv = -\tfrac{1}{5}
+\begin{psmallmatrix} -1 & -1 \\ -1 & 4 \end{psmallmatrix} =
+\tfrac{1}{5}\begin{psmallmatrix} 1 & 1 \\ 1 & -4 \end{psmallmatrix}$.
+Multiplying out $\mat{S} \mat{\Lambda} \mat{S}\inv$ recovers
+$\begin{psmallmatrix} 5 & 4 \\ 1 & 2 \end{psmallmatrix}$, confirming
+the diagonalisation.
 
 \begin{exercise}
 For the symmetric matrix $\mat{A} =
@@ -1083,12 +1328,37 @@ the eigenvectors are mutually orthogonal. State which mode of a
 three-mass linear chain each eigenvector corresponds to.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+This is the stiffness matrix of section 10.8 with $k = 1$. The
+eigenvalues are $\lambda_{1} = 2 - \sqrt{2}$, $\lambda_{2} = 2$, and
+$\lambda_{3} = 2 + \sqrt{2}$, found by computing the characteristic
+polynomial $-\lambda^{3} + 6\lambda^{2} - 10\lambda + 4$ and
+factoring (try $\lambda = 2$ first; the residue is $\lambda^{2} -
+4\lambda + 2$, with roots $2 \pm \sqrt{2}$). The unit eigenvectors
+are $\vect{v}_{1} = (1, \sqrt{2}, 1)/2$ (in-phase, slow mode),
+$\vect{v}_{2} = (1, 0, -1)/\sqrt{2}$ (centre still, medium mode),
+and $\vect{v}_{3} = (1, -\sqrt{2}, 1)/2$ (alternating, fast mode).
+Pairwise inner products are all zero, confirming orthogonality.
+Match the eigenvectors to the modes of \cref{fig:vol02:ch10:vibration-modes}.
+
 \begin{exercise}
 For the stochastic matrix $\mat{P} = \begin{psmallmatrix} 0.5 & 0.5
 \\ 0.2 & 0.8 \end{psmallmatrix}$, compute the stationary distribution
 $\vect{\pi}^{*}$ and the second eigenvalue $\lambda_{2}$. State the
 mixing time, defined as $1/(1 - \abs{\lambda_{2}})$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Trace is $1.3$, determinant is $0.4 - 0.1 = 0.3$. Eigenvalues solve
+$\lambda^{2} - 1.3\lambda + 0.3 = 0$: $\lambda_{1} = 1$ (stochastic
+matrix) and $\lambda_{2} = 0.3$. For the stationary distribution,
+solve $\vect{\pi}(\mat{P} - \mat{I}) = 0$ with
+$\mat{P} - \mat{I} = \begin{psmallmatrix} -0.5 & 0.5 \\ 0.2 & -0.2
+\end{psmallmatrix}$: the first column gives $-0.5\pi_{1} + 0.2\pi_{2}
+= 0$, so $\pi_{2}/\pi_{1} = 5/2$. Normalising $\pi_{1} + \pi_{2} = 1$
+yields $\vect{\pi}^{*} = (2/7, 5/7) \approx (0.286, 0.714)$. Mixing
+time is $1/(1 - 0.3) \approx 1.43$ steps; the chain forgets initial
+conditions almost immediately.
 
 \begin{exercise}
 Compute the rank-$1$ approximation of $\mat{A} =
@@ -1097,12 +1367,40 @@ truncating its SVD. Verify that the spectral-norm error equals
 $\sigma_{2}$ as predicted by Eckart-Young.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The matrix is already in diagonal form (up to the third zero row).
+Its SVD has $\sigma_{1} = 2$ with $\vect{u}_{1} = (1, 0, 0)\transpose$
+and $\vect{v}_{1} = (1, 0)\transpose$; $\sigma_{2} = 1$ with
+$\vect{u}_{2} = (0, 1, 0)\transpose$ and $\vect{v}_{2} = (0, 1)
+\transpose$. The rank-$1$ truncation is $\mat{A}_{1} = \sigma_{1}
+\vect{u}_{1} \vect{v}_{1}\transpose = \begin{psmallmatrix} 2 & 0 \\
+0 & 0 \\ 0 & 0 \end{psmallmatrix}$. The error matrix is
+$\mat{A} - \mat{A}_{1} = \begin{psmallmatrix} 0 & 0 \\ 0 & 1 \\ 0 & 0
+\end{psmallmatrix}$, whose largest singular value is $1 = \sigma_{2}$.
+This matches Eckart-Young: $\norm{\mat{A} - \mat{A}_{1}}_{2} =
+\sigma_{k+1} = \sigma_{2} = 1$.
+
 \begin{exercise}
 For the four data points $(0, 0), (1, 2), (2, 4), (3, 6)$, compute
 the centred data matrix, the covariance matrix, the principal
 directions, and the explained-variance ratios. State the rank of
 the centred data matrix and the geometric meaning of the result.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Column means are $\bar{\vect{x}} = (1.5, 3)$. The centred data is
+$\mat{X}_{c} = \begin{psmallmatrix} -1.5 & -3 \\ -0.5 & -1 \\ 0.5 &
+1 \\ 1.5 & 3 \end{psmallmatrix}$. The covariance matrix is
+$\mat{C} = \mat{X}_{c}\transpose \mat{X}_{c}/3 = \begin{psmallmatrix}
+5/3 & 10/3 \\ 10/3 & 20/3 \end{psmallmatrix}$. Trace is $25/3$,
+determinant is $100/9 - 100/9 = 0$. Eigenvalues are $\lambda_{1} =
+25/3$ and $\lambda_{2} = 0$. Principal directions: $\vect{v}_{1} =
+(1, 2)/\sqrt{5}$ (along the data line) and $\vect{v}_{2} = (2, -1)/
+\sqrt{5}$ (perpendicular). Explained-variance ratios are $1.0$ and
+$0$. The centred data matrix has rank $1$: all four centred points
+lie exactly on the line through the origin with direction $(1, 2)$.
+The geometric meaning is exact one-dimensional structure; PCA
+recovers it with zero loss.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1113,11 +1411,40 @@ $\lambda_{i}$ are the eigenvalues counted with algebraic multiplicity.
 Use the characteristic polynomial.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The characteristic polynomial expands as $p(\lambda) = \det(\mat{A} -
+\lambda \mat{I}) = (-1)^{n} \prod_{i=1}^{n}(\lambda - \lambda_{i})$.
+Expand the product: the coefficient of $\lambda^{n-1}$ on the right
+is $(-1)^{n} \cdot (-1) \sum_{i} \lambda_{i} = (-1)^{n+1}
+\sum_{i}\lambda_{i}$. On the left, expanding $\det(\mat{A} -
+\lambda\mat{I})$ along the diagonal contributes
+$(-1)^{n} \lambda^{n} + (-1)^{n-1}(\sum_{i} A_{ii})\lambda^{n-1} +
+\cdots$, so the coefficient of $\lambda^{n-1}$ is
+$(-1)^{n-1} \tr \mat{A}$. Equating: $\tr \mat{A} = \sum_{i}
+\lambda_{i}$. For the determinant, set $\lambda = 0$ on both sides:
+$p(0) = \det \mat{A}$ on the left and $(-1)^{n} \prod_{i}(-\lambda_{i})
+= \prod_{i} \lambda_{i}$ on the right.
+
 \begin{exercise}
 Show that eigenvectors of a symmetric matrix corresponding to
 distinct eigenvalues are orthogonal. State the role of the
 symmetry assumption in the proof.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Let $\mat{A} = \mat{A}\transpose$, with $\mat{A} \vect{v}_{1} =
+\lambda_{1} \vect{v}_{1}$ and $\mat{A} \vect{v}_{2} = \lambda_{2}
+\vect{v}_{2}$, $\lambda_{1} \neq \lambda_{2}$. Then
+$\lambda_{1} \vect{v}_{2}\transpose \vect{v}_{1} = \vect{v}_{2}
+\transpose \mat{A} \vect{v}_{1} = (\mat{A}\transpose \vect{v}_{2})
+\transpose \vect{v}_{1} = (\mat{A} \vect{v}_{2})\transpose
+\vect{v}_{1} = \lambda_{2} \vect{v}_{2}\transpose \vect{v}_{1}$.
+So $(\lambda_{1} - \lambda_{2}) \vect{v}_{2}\transpose \vect{v}_{1}
+= 0$, which forces $\vect{v}_{2}\transpose \vect{v}_{1} = 0$. The
+symmetry assumption $\mat{A}\transpose = \mat{A}$ is essential at
+the step where we move $\mat{A}$ across the inner product; without
+symmetry, $\mat{A}\transpose \vect{v}_{2}$ would not equal $\mat{A}
+\vect{v}_{2}$ and the cancellation fails.
 
 \begin{exercise}
 Derive the Eckart-Young theorem in the Frobenius norm: starting from
@@ -1127,12 +1454,44 @@ that the rank-$k$ truncation $\mat{A}_{k}$ minimises $\norm{\mat{A}
 that the optimal value is $\sum_{i=k+1}^{p} \sigma_{i}^{2}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The Frobenius norm is unitarily invariant: $\norm{\mat{U}\mat{M}
+\mat{V}\transpose}_{F} = \norm{\mat{M}}_{F}$ for any orthogonal
+$\mat{U}, \mat{V}$. Substitute: $\norm{\mat{A} - \mat{B}}_{F}^{2} =
+\norm{\mat{\Sigma} - \mat{U}\transpose \mat{B} \mat{V}}_{F}^{2} =
+\norm{\mat{\Sigma} - \mat{C}}_{F}^{2}$, with $\mat{C} = \mat{U}
+\transpose \mat{B} \mat{V}$ of rank at most $k$. Now $\norm{\mat{\Sigma}
+- \mat{C}}_{F}^{2} = \sum_{i,j}(\Sigma_{ij} - C_{ij})^{2}$. Since
+$\mat{\Sigma}$ is diagonal, $\sum_{i \neq j} C_{ij}^{2} +
+\sum_{i}(\sigma_{i} - C_{ii})^{2}$. To minimise, set all
+off-diagonals of $\mat{C}$ to zero. The problem reduces to choosing
+a vector $(c_{1}, \ldots, c_{p})$ with at most $k$ nonzero entries
+minimising $\sum_{i}(\sigma_{i} - c_{i})^{2}$. The optimum is
+$c_{i} = \sigma_{i}$ for the $k$ largest $\sigma_{i}$ (i.e.\
+$i = 1, \ldots, k$) and $c_{i} = 0$ otherwise. The optimal value is
+$\sum_{i=k+1}^{p} \sigma_{i}^{2}$, achieved by $\mat{C} = \diag(\sigma_{1},
+\ldots, \sigma_{k}, 0, \ldots, 0)$, equivalently
+$\mat{B} = \mat{A}_{k}$.
+
 \begin{exercise}
 Show that a stochastic matrix $\mat{P}$ has $\lambda = 1$ as an
 eigenvalue, with the all-ones vector as a right eigenvector. Using
 the Gerschgorin circle theorem, show that every eigenvalue
 satisfies $\abs{\lambda} \leq 1$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+For the right eigenvector: $(\mat{P} \vect{1})_{i} = \sum_{j} P_{ij}
+\cdot 1 = \sum_{j} P_{ij} = 1 = 1 \cdot \vect{1}_{i}$, where the
+penultimate equality uses the row-sum-one property of stochastic
+matrices. So $\mat{P} \vect{1} = \vect{1}$ and $\lambda = 1$ is an
+eigenvalue. For the bound: by Gerschgorin, every eigenvalue lies in
+the union of discs centred at $P_{ii}$ with radius $\sum_{j \neq i}
+\abs{P_{ij}} = 1 - P_{ii}$ (using non-negativity and the row sum).
+Each disc is contained in the closed unit disc: the centre $P_{ii}$
+is real and in $[0, 1]$, and the radius is $1 - P_{ii}$, so the
+farthest point in the disc from the origin is $P_{ii} + (1 - P_{ii})
+= 1$. Hence $\abs{\lambda} \leq 1$ for every eigenvalue.
 
 \begin{exercise}
 Show that the SVD of a real matrix $\mat{A}$ is related to the
@@ -1143,6 +1502,23 @@ corresponding eigenvectors. State why this relation does not, by
 itself, give a numerically stable SVD algorithm.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+From $\mat{A} = \mat{U} \mat{\Sigma} \mat{V}\transpose$ compute
+$\mat{A}\transpose \mat{A} = \mat{V} \mat{\Sigma}\transpose
+\mat{U}\transpose \mat{U} \mat{\Sigma} \mat{V}\transpose = \mat{V}
+(\mat{\Sigma}\transpose \mat{\Sigma}) \mat{V}\transpose$. The matrix
+$\mat{\Sigma}\transpose \mat{\Sigma}$ is $n \times n$ diagonal with
+entries $\sigma_{i}^{2}$. This is the eigendecomposition of
+$\mat{A}\transpose \mat{A}$ with eigenvalues $\sigma_{i}^{2}$ and
+eigenvectors the columns of $\mat{V}$. The numerical concern: forming
+$\mat{A}\transpose \mat{A}$ squares the condition number,
+$\kappa(\mat{A}\transpose \mat{A}) = \kappa(\mat{A})^{2}$. A matrix
+with $\kappa(\mat{A}) = 10^{6}$ becomes $\kappa(\mat{A}\transpose
+\mat{A}) = 10^{12}$, well into the regime where double-precision
+arithmetic loses meaningful digits. Production SVD (Golub-Reinsch,
+1970, \cite{paper:v2ch10-golub-reinsch1970}) works on $\mat{A}$
+directly by bidiagonal reduction and avoids the squaring.
+
 \begin{exercise}
 Show that for a diagonalisable $\mat{A} = \mat{S} \mat{\Lambda}
 \mat{S}\inv$, the matrix exponential is $e^{\mat{A} t} = \mat{S}
@@ -1151,6 +1527,19 @@ the diagonal matrix with entries $e^{\lambda_{i} t}$. Verify by
 substitution into the series definition $e^{\mat{A} t} = \sum_{k}
 (\mat{A} t)^{k}/k!$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Compute $\mat{A}^{k} = (\mat{S} \mat{\Lambda} \mat{S}\inv)^{k} =
+\mat{S} \mat{\Lambda} \mat{S}\inv \cdot \mat{S} \mat{\Lambda}
+\mat{S}\inv \cdots \mat{S} \mat{\Lambda} \mat{S}\inv = \mat{S}
+\mat{\Lambda}^{k} \mat{S}\inv$ (the inner $\mat{S}\inv \mat{S}$
+factors cancel). Substitute into the series: $e^{\mat{A} t} =
+\sum_{k=0}^{\infty} (\mat{A} t)^{k}/k! = \sum_{k} \mat{S} (\mat{\Lambda}
+t)^{k} \mat{S}\inv / k! = \mat{S} \left(\sum_{k} (\mat{\Lambda} t)^{k}
+/ k!\right) \mat{S}\inv = \mat{S} e^{\mat{\Lambda} t} \mat{S}\inv$.
+The last sum is diagonal because $\mat{\Lambda}$ is diagonal, with
+$(e^{\mat{\Lambda} t})_{ii} = \sum_{k} (\lambda_{i} t)^{k}/k! =
+e^{\lambda_{i} t}$.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1162,6 +1551,18 @@ accuracy. State how the estimate changes if the ratio is $0.5$ or
 $0.99$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Power iteration's error after $t$ steps is approximately
+$r^{t}$ with $r = \abs{\lambda_{2}/\lambda_{1}}$. Three decimal
+digits of accuracy means $r^{t} \leq 10^{-3}$, so $t \geq -3 \log
+10 / \log r$. For $r = 0.9$: $t \geq 3 \cdot 2.303 / 0.105 \approx
+66$ steps. For $r = 0.5$: $t \geq 3 \cdot 2.303 / 0.693 \approx 10$
+steps. For $r = 0.99$: $t \geq 3 \cdot 2.303 / 0.01005 \approx 687$
+steps. The penalty for a closing spectral gap is brutal: a tenfold
+increase in $1 - r$ buys a sevenfold reduction in iterations. Below
+$r = 0.99$, the engineer should use a more sophisticated method
+(Lanczos for symmetric, Arnoldi for general).
+
 \begin{exercise}
 Estimate the rank at which a $1024 \times 1024$ grayscale photograph
 is visually indistinguishable from the original after truncated-SVD
@@ -1170,6 +1571,22 @@ decay roughly as $\sigma_{k} \propto k^{-1}$ over the first few
 hundred. State the storage ratio achieved at this rank.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Visual indistinguishability typically requires
+$\sigma_{k}/\sigma_{1} \leq 1\%$, i.e.\ $k \geq 100$ for a $1/k$
+decay. Be conservative and take $k = 200$ to leave headroom for the
+slower tail. The truncated storage is $k(m + 1 + n) \approx 200
+\cdot 2049 = 4.1 \times 10^{5}$ entries; the full storage is
+$1024^{2} \approx 1.05 \times 10^{6}$. The storage ratio is
+$4.1/10.5 \approx 0.39$, a $2.6 \times$ reduction. The compression
+is modest because the Eckart-Young bound is sharp and natural
+images decay slowly. For images of text or with sharp edges the
+decay is even slower and the effective compression drops further.
+For low-rank-plus-noise data (a few-component PCA-like signal),
+$k \approx 10$ may give a $50 \times$ compression.
+\Cref{fig:vol02:ch10:singular-value-decay} makes the data-class
+dependence visible.
+
 \begin{exercise}
 Estimate the second-largest eigenvalue magnitude of the PageRank
 matrix at teleportation parameter $\alpha = 0.85$, given the
@@ -1177,6 +1594,18 @@ spectral-gap bound $\abs{\lambda_{2}} \leq \alpha$. State the number
 of power-iteration steps required for $10^{-6}$ accuracy and
 compare to the number for $\alpha = 0.99$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The spectral-gap bound gives $\abs{\lambda_{2}} \leq 0.85$. Power
+iteration converges at rate $\abs{\lambda_{2}/\lambda_{1}} \leq 0.85
+/1 = 0.85$. For $10^{-6}$ accuracy: $0.85^{t} \leq 10^{-6}$ gives
+$t \geq 6 \log 10 / (-\log 0.85) \approx 13.82/0.1625 \approx 85$
+steps. For $\alpha = 0.99$: $0.99^{t} \leq 10^{-6}$ gives $t \geq
+13.82/0.01005 \approx 1376$ steps, a $16 \times$ increase. The
+default $\alpha = 0.85$ is calibrated to give the rate-versus-
+faithfulness compromise that web-scale ranking can afford. A larger
+$\alpha$ would rank more faithfully to the link structure at large
+cost in compute.
 
 \begin{exercise}
 Estimate the natural frequencies of a five-mass equal-spring
@@ -1187,6 +1616,22 @@ in units of $\sqrt{k/m}$, by reading them off the limiting cases
 spectrum.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The stiffness matrix is the $5 \times 5$ analogue of the three-mass
+case, with $2$ on the diagonal and $-1$ on the sub- and
+super-diagonals (times $k$). The eigenvalues are known in closed
+form: $\lambda_{j} = 2(1 - \cos(j\pi/6))$ for $j = 1, \ldots, 5$.
+The lowest is $\lambda_{1} = 2(1 - \cos 30^{\circ}) = 2(1 -
+\sqrt{3}/2) \approx 0.268$, giving $\omega_{1} \approx 0.518
+\sqrt{k/m}$. The highest is $\lambda_{5} = 2(1 - \cos 150^{\circ}) =
+2(1 + \sqrt{3}/2) \approx 3.732$, giving $\omega_{5} \approx 1.932
+\sqrt{k/m}$. The ratio $\omega_{5}/\omega_{1} \approx 3.7$ is the
+chain's frequency spread, much wider than the three-mass system's
+$\sqrt{3+\sqrt{2}}/\sqrt{2-\sqrt{2}} \approx 2.4$. As the chain
+grows, $\omega_{1} \to 0$ (lowest mode wavelength approaches the
+full chain length) and $\omega_{\max} \to 2\sqrt{k/m}$ (alternating
+neighbours, the discrete-lattice cutoff).
+
 \begin{exercise}
 Estimate the proportion of the variance captured by the first
 principal component of a dataset whose feature correlation
@@ -1194,6 +1639,20 @@ coefficient is $0.9$ across all features. State the proportion as
 a function of the number of features $n$ and verify the limiting
 behaviour as $n \to \infty$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+A correlation matrix $\mat{R}$ with $1$ on the diagonal and $\rho$
+everywhere off-diagonal has eigenvalues $\lambda_{1} = 1 + (n-1)\rho$
+(eigenvector all-ones) and $\lambda_{2} = \cdots = \lambda_{n} =
+1 - \rho$ (eigenvectors any orthogonal complement of the all-ones
+direction). The trace is $n$, so the explained-variance ratio of
+the first PC is $\lambda_{1}/n = (1 + (n-1)\rho)/n$. With $\rho =
+0.9$ and $n = 10$: $(1 + 9 \cdot 0.9)/10 = 0.91$. With $n = 100$:
+$(1 + 99 \cdot 0.9)/100 = 0.901$. As $n \to \infty$: $(1 + (n-1)
+\rho)/n \to \rho = 0.9$. The proportion converges to the
+correlation coefficient itself, a clean limit that justifies the
+practitioner's rule that highly correlated features compress almost
+entirely into one PC.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1205,6 +1664,19 @@ convergence rate $\abs{\lambda_{2}/\lambda_{1}}^{t}$ predicted by
 section 10.6.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The reference implementation \texttt{code/power\_iteration.py}
+covers this exercise directly. Draw a random symmetric matrix with
+Gaussian entries; compute the reference eigenvalues with a library
+eigensolver; track the Rayleigh quotient $\vect{x}_{t}\transpose
+\mat{A} \vect{x}_{t}$ across iterations and the error
+$\abs{\lambda_{1}^{(t)} - \lambda_{1}^{\text{true}}}$. Plot the
+error against $t$ on a log-y axis. The error decays as a straight
+line with slope $\log_{10}\abs{\lambda_{2}/\lambda_{1}}$, matching
+the principle in section 10.6. For a $50 \times 50$ Gaussian-symmetric
+matrix the ratio is typically near $0.9$, so a few hundred iterations
+buy three to four digits.
+
 \begin{exercise}
 Implement deflation: after computing the dominant eigenpair
 $(\lambda_{1}, \vect{v}_{1})$ by power iteration, subtract
@@ -1214,6 +1686,20 @@ matrix to find the next eigenpair. Verify on a $20 \times 20$
 symmetric random matrix and compare to a library eigensolver.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The \texttt{--deflate} flag in \texttt{code/power\_iteration.py}
+runs the deflation. After computing $\lambda_{1}, \vect{v}_{1}$,
+form $\mat{A}_{1} = \mat{A} - \lambda_{1} \vect{v}_{1}
+\vect{v}_{1}\transpose$. By construction, $\mat{A}_{1}$ has the
+same eigenvectors as $\mat{A}$ but with eigenvalue $0$ at
+$\vect{v}_{1}$ and unchanged eigenvalues elsewhere. Power iteration
+on $\mat{A}_{1}$ converges to the eigenvector at $\lambda_{2}$
+(now the dominant). Verify by comparing to the library
+eigendecomposition. Caveat: a small residual component of
+$\vect{v}_{1}$ in the deflated iterate can re-grow if $\lambda_{1}$
+is large; use re-orthogonalisation against $\vect{v}_{1}$ at each
+step to stabilise.
+
 \begin{exercise}
 Implement the truncated-SVD compression of a grayscale image of
 your choice (any $\geq 256 \times 256$ photograph). Display the
@@ -1221,6 +1707,20 @@ reconstruction at $k = 10, 50, 100, 200$ and report the
 spectral-norm error at each rank against the Eckart-Young
 prediction $\sigma_{k+1}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The reference implementation \texttt{code/svd\_image\_compression.py}
+runs this exercise on any grayscale or colour image, reporting both
+the spectral-norm and Frobenius-norm errors at each rank against
+the Eckart-Young predictions. At $k = 10$ the reconstruction is
+blurry but recognisable for portraits; at $k = 50$ it is acceptable
+for casual viewing; at $k = 100$ to $200$ it is visually
+indistinguishable from the original for most natural images. The
+spectral-norm error matches $\sigma_{k+1}$ to all reported digits
+(this is an identity, not an approximation, when the SVD is computed
+to working precision). Report the storage ratio at each rank; the
+break-even (where truncated storage equals original storage) is
+near $k \approx mn/(m+n+1)$.
 
 \begin{exercise}
 Simulate a Markov chain on a 5-state cycle with one ``leaky''
@@ -1230,6 +1730,20 @@ distribution by both eigendecomposition and direct power iteration
 on the row vector. Verify they agree to four decimal digits and
 report the mixing time.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The reference implementation \texttt{code/markov\_stationary.py}
+runs this exercise directly. The chain is irreducible (the leak to
+state $1$ guarantees return) and aperiodic (state $1$ has a self-
+return probability of $0.1 \cdot 0$ at one step but the leak
+introduces variable return paths whose gcd is $1$). Both methods
+return the same stationary distribution to machine precision; the
+second-largest eigenvalue magnitude $\abs{\lambda_{2}}$ governs
+the mixing time, approximately $1/(1 - \abs{\lambda_{2}})$. For the
+specified chain the leak is $0.1$, so the mixing time is on the
+order of $10$ steps. Reducing the leak to $0.01$ would push the
+mixing time toward $100$ and bring power iteration close to the
+useful-iteration boundary.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1241,6 +1755,23 @@ scree-plot elbow, and the downstream task's sensitivity to
 truncation noise. State the criteria used and justify each.
 \end{exercise}
 
+\paragraph{Discussion.}
+Three criteria, applied jointly. First, the explained-variance
+threshold: pick $k$ such that the cumulative explained-variance
+ratio reaches a chosen level (typical engineering defaults are
+$90\%$ for visualisation, $95\%$ for storage, $99\%$ for downstream
+predictive modelling). Second, the scree-plot elbow: plot
+$\sigma_{i}^{2}$ versus $i$ and pick $k$ at the visual elbow where
+the curve transitions from steep decay to slow tail. Third, the
+downstream task's sensitivity: run the downstream task (classifier,
+regressor, controller) at several candidate $k$ values and pick the
+smallest $k$ that does not degrade the task metric beyond a chosen
+tolerance. Justify each criterion: the first is a global energy
+argument; the second is a structural argument about the data's
+intrinsic rank; the third is an empirical guarantee that the
+truncation does not lose downstream information. In tension, the
+third dominates: the goal is the task, not the variance ratio.
+
 \begin{exercise}
 Design a power-iteration variant for the case where the dominant
 eigenvalue is negative or complex. State the modification (shift
@@ -1248,6 +1779,25 @@ to make all eigenvalues positive, or work with $\mat{A}\transpose
 \mat{A}$ instead of $\mat{A}$) and the trade-offs in convergence
 rate and computational cost.
 \end{exercise}
+
+\paragraph{Discussion.}
+Two principled variants. (a) Shifted iteration: pick $\sigma$
+larger than the spectral radius of $-\mat{A}$ and iterate
+$(\mat{A} + \sigma \mat{I})$. All eigenvalues of the shifted matrix
+are positive and the dominant one is now reliably the largest in
+magnitude. The cost is one extra addition per iteration; the
+convergence rate is $\abs{(\lambda_{2} + \sigma)/(\lambda_{1} +
+\sigma)}$, which approaches $1$ as $\sigma$ grows large, so $\sigma$
+should be the smallest value that makes all eigenvalues positive.
+(b) Iterate on $\mat{A}\transpose \mat{A}$: the eigenvalues are
+squared and all positive, the eigenvectors are the right singular
+vectors of $\mat{A}$. The cost is one extra matrix-vector multiply
+per iteration (two instead of one) and squaring of the spectral
+gap; the convergence rate is $(\lambda_{2}/\lambda_{1})^{2}$, which
+is faster than the original whenever $\abs{\lambda_{2}/\lambda_{1}}
+< 1$. For complex dominant eigenvalues the second variant is
+preferred because it recovers a real iterate; the first variant
+still leaves a complex dominant pair.
 
 \begin{exercise}
 Design a numerical pipeline for computing the matrix exponential
@@ -1257,6 +1807,23 @@ use and why: scaling-and-squaring with Pad\'e approximation,
 diagonalisation, Schur-based function evaluation, or Krylov
 subspace projection.
 \end{exercise}
+
+\paragraph{Discussion.}
+Use scaling-and-squaring with Pad\'e approximation. The reasoning:
+diagonalisation amplifies error by $\kappa(\mat{S})$ where
+$\mat{S}$ is the eigenvector matrix, and a near-defective $\mat{A}$
+gives $\kappa(\mat{S})$ much larger than $\kappa(\mat{A})$. Schur-
+based function evaluation (Parlett recurrence) works for general
+matrices but is more expensive at $\oom{n^{3}}$ per matrix-function
+call and has its own conditioning issues at close eigenvalues.
+Krylov subspace projection is the right tool for $\mat{A}$ very
+large and sparse with the action $e^{\mat{A} t} \vect{b}$ on a
+single vector $\vect{b}$ needed; at $n = 1000$ the dense
+scaling-and-squaring is competitive. Scaling-and-squaring with Pad\'e
+approximation is the Higham-recommended default
+\cite[ch.~10]{text:v2ch10-higham-functions2008}; it is what
+\texttt{expm} in NumPy and MATLAB call by default, with conditioning
+robust to near-defective matrices.
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
 
@@ -1268,6 +1835,22 @@ where the trouble is hiding and propose two diagnostics that would
 locate it.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Condition number measures singular-value ratio, not
+eigenvalue-ratio. The matrix can have well-separated eigenvalues
+but a poorly conditioned eigenvector matrix $\mat{S}$: the trouble
+is non-normality, $\mat{A}\transpose \mat{A} \neq \mat{A}\mat{A}
+\transpose$. Two diagnostics: (i) compute $\norm{\mat{A}\transpose
+\mat{A} - \mat{A} \mat{A}\transpose}_{F}/\norm{\mat{A}}_{F}^{2}$;
+if the ratio exceeds machine precision, the matrix is non-normal
+and the eigenvalues under-describe its behaviour. (ii) compute the
+condition number of $\mat{S}$ itself,
+$\kappa(\mat{S})$; if it is large (say $\geq 10^{6}$), the
+eigenvectors are nearly parallel and the diagonalisation
+$\mat{A} = \mat{S} \mat{\Lambda} \mat{S}\inv$ amplifies error by
+$\kappa(\mat{S})$. Use the Schur decomposition for downstream
+computations instead.
+
 \begin{exercise}
 A PageRank computation on a web graph of $10^{6}$ nodes appears to
 diverge: the iterate norm grows by a small factor each step.
@@ -1276,6 +1859,22 @@ components, off-by-one in the teleportation correction, or
 floating-point overflow in a large entry) and propose the test
 that distinguishes them.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Most likely cause: dangling-node correction not applied. Without
+the correction $\mat{H}$ has rows summing to less than one, so
+$\mat{H}$ is sub-stochastic and the iterate loses mass each step.
+Diagnostic: compute the row sums of the transition matrix being
+iterated; if any row sums to anything other than $1$ (to machine
+precision), the dangling correction is missing or the
+teleportation has an off-by-one. Floating-point overflow in a large
+entry is unlikely at the scale described because the iterate is
+normalised at each step in any sane implementation. Disconnected
+components would not cause divergence but would produce multiple
+stationary distributions or block-diagonal structure; check by
+running a strongly-connected-components algorithm on the graph and
+verifying it returns a single component (with the teleportation
+correction applied).
 
 \begin{exercise}
 A modal-analysis software returns two natural frequencies of a
@@ -1286,6 +1885,22 @@ modelling error in the input file. Propose three checks to
 distinguish.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Three checks. (i) Inspect the mode shapes. A genuine near-
+degenerate pair has two distinct mode shapes that are orthogonal;
+a numerical artefact produces two near-parallel shapes (the solver
+has split a single mode in two). Compute
+$\vect{v}_{i}\transpose \vect{v}_{j}/(\norm{\vect{v}_{i}}
+\norm{\vect{v}_{j}})$; if it is near zero the modes are genuine. (ii)
+Perturb the stiffness matrix by a small symmetry-breaking term and
+re-solve; the two frequencies should move continuously. If they
+collapse to one mode the original split was a numerical artefact.
+(iii) Inspect the input file for accidental symmetries (mirror
+geometry, equal material properties in both directions) that the
+``asymmetric'' label did not capture; modelling error often hides
+in repeated material constants. The combination of mode-shape
+orthogonality and perturbation continuity is the conclusive test.
+
 \begin{exercise}
 A PCA on a dataset reports the first principal component captures
 $99.9\%$ of variance, but the second through fifth principal
@@ -1293,6 +1908,20 @@ directions appear to be permutations of the same vector with sign
 flips. Identify the most likely data-quality problem and propose
 the diagnostic check.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Most likely cause: one feature has variance many orders of
+magnitude larger than the others, dominating the covariance matrix
+and producing one strong PC with the remaining components being
+numerical noise. (Equivalently: PCA was applied to unscaled
+heterogeneous-unit features, e.g.\ mixing kilograms and millimetres
+in one matrix.) Diagnostic: compute the per-feature variance
+$\Var(\mat{X}_{c}[:, j])$; if one variance dominates the others by
+$\geq 10^{4}\times$, the explained-variance ratio is a unit-
+sensitivity artefact rather than a structural finding. The standard
+remedy is to standardise: divide each feature by its standard
+deviation before centring, so the covariance becomes the correlation
+matrix and the PCs reflect linear structure rather than unit choice.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1304,6 +1933,29 @@ eigenvalues. Identify the specific error-amplification mechanism
 and the production-grade alternative.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+A near-defective matrix has nearly parallel eigenvectors. The
+eigenvector matrix $\mat{S}$ then has $\kappa_{2}(\mat{S}) \gg 1$,
+even though the eigenvalues themselves are well separated and
+look clean. The matrix exponential by diagonalisation evaluates
+$e^{\mat{A} t} = \mat{S} e^{\mat{\Lambda} t} \mat{S}\inv$. The
+forward-error analysis of this computation has a multiplicative
+factor of $\kappa(\mat{S})$ on the floating-point error of each
+component. A matrix with $\kappa(\mat{S}) = 10^{10}$ amplifies
+single-precision noise ($\sim 10^{-7}$) to magnitude $10^{3}$,
+swamping the true exponential. The eigenvalues' cleanness gives no
+warning; the error lives in the change-of-basis, not in the
+spectrum. The production-grade alternative is scaling-and-squaring
+with Pad\'e approximation \cite[ch.~10]{text:v2ch10-higham-functions2008},
+which works on $\mat{A}$ directly via the identity $e^{\mat{A}} =
+(e^{\mat{A}/2^{s}})^{2^{s}}$ and the Pad\'e approximation to
+$e^{\mat{B}}$ for $\mat{B}$ with small norm. The algorithm has
+backward stability comparable to working precision regardless of the
+defectiveness of $\mat{A}$. It is what \texttt{scipy.linalg.expm}
+and \texttt{expm} in MATLAB call by default. The engineer should
+treat the existence of $\mat{S}\inv$ as a precondition to be
+checked, not assumed.
+
 \begin{exercise}
 A control system's closed-loop transfer matrix has eigenvalues that
 the engineer computes as $-0.01 \pm 0.5 i$, classifying the system
@@ -1314,6 +1966,33 @@ unstable system, and propose three checks the engineer should have
 performed before deployment.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Three plausible causes. (a) Non-normality and large transient
+growth: even with eigenvalues in the left half-plane, a strongly
+non-normal closed-loop matrix can produce transient growth of
+$\norm{e^{\mat{A} t} \vect{x}_{0}}$ by orders of magnitude before
+decay sets in. If the plant's saturation or actuator limits are
+exceeded during the transient, the linear analysis no longer
+predicts behaviour and a nonlinear instability ensues. (b) Modelling
+mismatch: the closed-loop transfer matrix used for eigenvalue
+analysis was the nominal model, but the deployed plant differs
+(parameter drift, sensor latency, unmodelled mechanical mode). The
+true eigenvalues are then different and may sit in the right half-
+plane. (c) Discretisation error: a continuous-time stability
+analysis was applied to a system that is digitally controlled at a
+sampling rate where the discrete-time eigenvalues sit outside the
+unit disc even when the continuous eigenvalues are in the left half-
+plane.
+
+Three pre-deployment checks. First, compute the pseudospectrum of
+the closed-loop matrix and verify the $\epsilon$-pseudospectrum for
+realistic $\epsilon$ stays in the left half-plane. Second, run a
+robustness analysis: perturb the plant parameters by their stated
+tolerances and recompute the spectrum; report worst-case eigenvalue
+locations. Third, simulate the closed loop in discrete time at the
+intended sampling rate and verify the discrete-time eigenvalues sit
+inside the unit disc with adequate margin.
+
 \begin{exercise}
 A finite-element analysis of a three-dimensional truss uses
 diagonalisation of the stiffness matrix to compute modal responses.
@@ -1322,6 +2001,35 @@ The analysis returns six natural frequencies at exactly zero
 zeros mean physically, why they are not a numerical bug, and how
 the engineer should treat them in the modal superposition.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+A free-floating three-dimensional rigid body has six rigid-body
+modes: three translations and three rotations. The stiffness matrix
+in the global coordinates is singular along these modes because
+rigid-body motion produces zero strain and thus zero restoring
+force. Six zero eigenvalues are exactly the right answer; the
+truss is not yet attached to anything.
+
+The zeros are not a numerical bug because the algorithm has
+returned the exact mathematical answer: $\det \mat{K} = 0$, with
+nullity six (rigid translations and rotations form a
+six-dimensional null space). A floating-point computation will
+return them as values on the order of $\norm{\mat{K}}_{2} \cdot
+\epsilon_{\text{machine}}$, which is the algorithm's correct
+expression of ``zero.''
+
+In modal superposition the rigid-body modes carry the truss as a
+whole through space and contribute no oscillation. The engineer
+should treat them in one of two ways. (a) Apply boundary conditions
+that pin enough degrees of freedom to remove the rigid-body modes
+(typically three constrained translations plus three rotations).
+$\mat{K}$ becomes positive definite and the modal analysis returns
+only oscillatory modes. (b) Retain the rigid-body modes and project
+the loading onto the elastic modes only, computing the truss's
+elastic response in the centre-of-mass frame; the rigid-body
+response is then computed separately by Newton-Euler dynamics. Both
+are standard; the first is more common in structural codes, the
+second in multibody dynamics.
 
 \subsection*{Judgment}\pathtag{standard}
 
@@ -1333,6 +2041,23 @@ report is meaningful as stated and what the engineer should ask
 the vendor before adopting the pipeline for downstream design.
 \end{exercise}
 
+\paragraph{Discussion.}
+The claim is not meaningful as stated. Variance retention depends
+on the units of the features. A dataset with one
+high-variance feature in pascals and 99 low-variance features in
+millimetres will produce a one-PC pipeline that captures $99\%$ of
+variance trivially, with no genuine compression of the underlying
+structure. The engineer should ask: (i) Were the features
+standardised (zero mean, unit variance) before PCA? If not, the
+$99\%$ figure is a unit artefact. (ii) What is the explained-variance
+ratio at $k = 1, 2, 3, 4$ separately, not just the cumulative at
+$k = 5$? A sharp drop after $k = 1$ means one dominant feature;
+a smooth decay means $k = 5$ is doing real compression. (iii) Was the
+PCA fit on the training set only and applied to test data, or were
+both pooled? Information leakage inflates apparent retention. (iv) Does
+the downstream task degrade if $k$ is reduced further, and by how
+much? The right metric is task degradation, not variance retention.
+
 \begin{exercise}
 A research paper reports that a large language model's
 embedding matrix has effective rank around $300$, based on the
@@ -1341,6 +2066,35 @@ words, what claims this rank estimate supports, what claims it does
 not support, and what additional evidence would be needed to make
 the claim load-bearing for downstream design.
 \end{exercise}
+
+\paragraph{Discussion.}
+What the claim supports. The embedding matrix is approximately
+captured to $99\%$ Frobenius energy by a rank-$300$ truncated SVD;
+storing the rank-$300$ approximation costs about $300 (m + n)$
+floats instead of $mn$; downstream operations whose accuracy
+depends on Frobenius-norm proximity (some retrieval applications,
+some unsupervised clustering schemes) can use the rank-$300$
+approximation with bounded loss.
+
+What the claim does not support. The embedding matrix is not
+literally rank $300$; the tail $1\%$ of energy may carry essential
+information for tasks that depend on small-magnitude directions.
+Tasks sensitive to spectral norm (some optimisation routines, some
+robustness analyses) are not bounded by the Frobenius-norm energy
+threshold and may degrade much more than $1\%$. The figure does not
+say anything about the embedding's expressiveness, semantic
+content, or capacity for downstream fine-tuning.
+
+Additional evidence needed. (i) Task-degradation curves on a panel
+of downstream evaluations, plotting accuracy as a function of $k$.
+The relevant $k$ is the smallest at which the panel does not
+degrade beyond a chosen tolerance, not the one with $99\%$ energy.
+(ii) Spectral-norm error $\sigma_{k+1}$ alongside Frobenius energy,
+to detect spectral-norm-sensitive failures. (iii) Per-class or
+per-token error analysis on the truncated embedding; rare tokens
+often live in low-energy directions and are first to be lost. The
+energy-threshold heuristic is a starting point, not a deployment
+criterion.
 
 \begin{exercise}
 An engineer is offered two implementations of an eigensolver: a
@@ -1351,6 +2105,31 @@ implementation the engineer should choose, and state the matrix
 size and density at which the choice would flip.
 \end{exercise}
 
+\paragraph{Discussion.}
+Choose Lanczos. The matrix has $10^{6}$ nonzeros out of $10^{10}$
+possible entries, a density of $10^{-4}$: it is sparse. The dense
+QR algorithm costs $\oom{n^{3}} = 10^{15}$ flops and $\oom{n^{2}} =
+10^{10}$ floats of storage to materialise the dense matrix, which
+alone exceeds typical RAM. Lanczos uses only matrix-vector products
+on the sparse structure, costing $\oom{\text{nnz}}$ per iteration
+and converging in a small multiple of the desired number of
+eigenvalues. For computing the lowest few or highest few
+eigenvalues (the usual interest), Lanczos finishes in seconds; the
+dense QR cannot start.
+
+The choice flips when the matrix becomes dense enough that storing
+it densely is comparable to its sparse representation, and when
+asking for many eigenvalues (most or all). The crossover density is
+roughly $\rho \sim 1/n$: at $n = 10^{5}$ this is $10^{-5}$, so
+densities above $10^{-5}$ favour the dense solver if all
+eigenvalues are needed. The crossover in matrix size is around
+$n \sim 10^{3}$ for dense matrices on commodity hardware: a $10^{3}
+\times 10^{3}$ dense eigendecomposition takes seconds and dense
+solvers are simpler; below that, the algorithm choice is dominated
+by implementation overhead and the dense path is usually preferred.
+For very large sparse matrices ($n \geq 10^{5}$) Lanczos or one of
+its restarted variants is the only viable option.
+
 \begin{exercise}
 A reader of this chapter argues that, since the SVD covers every
 matrix and the Eckart-Young theorem makes truncation optimal in two
@@ -1359,3 +2138,22 @@ problem. Argue, in one paragraph, why this is wrong, identifying at
 least two situations where a different decomposition (LU, QR, Schur,
 Cholesky) is the right default and stating why the SVD is not.
 \end{exercise}
+
+\paragraph{Discussion.}
+SVD is universal but expensive: $\oom{n^{3}}$ flops with a constant
+several times that of competing decompositions. For solving linear
+systems $\mat{A} \vect{x} = \vect{b}$ on a square invertible matrix,
+LU factorisation with partial pivoting is the default: it costs
+$\oom{n^{3}}/3$ flops (less than half of SVD), is backward stable
+in practice, and produces a sparse factorisation when $\mat{A}$ is
+sparse with good ordering. For overdetermined least squares with
+$\mat{A}$ tall and full column rank, QR factorisation is the
+default: $\oom{mn^{2}}$ flops, no squaring of conditioning, direct
+production of $\mat{R}$ from which $\vect{x}$ is recovered by back
+substitution. For symmetric positive-definite systems, Cholesky is
+the default: half the work of LU, half the storage, and a clear
+failure signal (a non-positive pivot detects a non-PD matrix
+mid-factorisation). For matrix functions on non-symmetric matrices,
+Schur is the default. SVD is the right tool when rank, conditioning,
+optimal low-rank approximation, or the four fundamental subspaces
+matter; for plain solves it is overkill.

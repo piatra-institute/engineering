@@ -106,6 +106,19 @@ tends to zero. The hierarchy will reappear in algorithm analysis
 (Volume II Chapter 17) and in the asymptotic behaviour of physical
 expansions later in this chapter.
 
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-geometric-convergence}
+
+The figure makes the engineering content of the geometric sequence
+explicit. A residual that decays with ratio $r$ requires roughly
+$\lceil \log(\text{tolerance}) / \log r \rceil$ iterations to fall
+below a target. Tightening the tolerance by a factor of ten costs
+$\lceil 1 / \log_{10}(1/|r|) \rceil$ extra iterations. The cost is
+manageable for $r \leq 0.5$ and brutal for $r \geq 0.9$. The same
+arithmetic applies to a discrete-time controller whose tracking
+error decays by a factor $r$ per sample, to a stochastic-gradient
+optimiser with effective convergence rate $r$, and to any iteration
+whose error contracts linearly.
+
 \subsection{Recursive sequences}
 
 Many engineering sequences are defined recursively: $a_{n+1} = g(a_{n})$
@@ -291,6 +304,20 @@ multiplying by another series), check that the operations preserve the
 sum. Absolute convergence preserves sum under reordering; conditional
 convergence does not.
 
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-partial-sums}
+
+The three partial-sum trajectories in \autoref{fig:vol02:ch04:partial-sums}
+sit alongside each other as the chapter's working visual reminder.
+Two converge; one diverges; all three have $a_n \to 0$. The geometric
+series settles in a handful of terms because its partial sums form a
+contraction with ratio $r$. The alternating harmonic settles because
+each step is bounded by the next omitted term, and that magnitude
+shrinks to zero. The harmonic series grows as $\log N + \gamma$ at
+a rate the eye reads as flat across any single screen of the plot,
+and the engineer who trusts the visual without checking the analytic
+bound truncates at a finite $N$ believing the tail is negligible. It
+is not, and the chapter's failure section returns to this case.
+
 \section{Convergence tests engineers actually use}\pathtag{standard}
 
 The following tests are the working tools. We state each in its
@@ -400,7 +427,50 @@ A working order:
 The list is not exhaustive, but it covers the engineering catalog. A
 reader who runs through it on a new series, in order, settles the
 convergence question for nearly every series this volume produces
-\cite{text:strang2016}.
+\cite{text:strang2016,text:v2ch04-stewart-calculus-2015}.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-test-decision-tree}
+
+The decision tree of \autoref{fig:vol02:ch04:test-decision-tree} arranges
+the same ladder visually. The reader descends from cheap to expensive,
+takes the first test that returns a verdict, and stops. The script
+\texttt{code/series\_test\_picker.py} walks the same tree on a small
+catalog of series and prints the test that settles each, as a check on
+the reader's own walk through the tree.
+
+\subsection{Common patterns to recognise on sight}
+
+A working engineer should recognise the following five families
+without going past the term test:
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Geometric tail}, $\sum a r^{n}$: converges to
+    $a/(1 - r)$ for $|r| < 1$. The sum of a discounted-cash-flow
+    annuity, the steady-state output of an exponentially decaying
+    impulse response, and the total energy in a stable resonator
+    fall in this family.
+  \item \engterm{$p$-series tail}, $\sum 1/n^{p}$: converges for
+    $p > 1$, diverges for $p \leq 1$. Sums of squared residuals
+    (when residuals decay polynomially), tail sums in number theory,
+    and the convergence of zeta values fall here.
+  \item \engterm{Telescoping}, $\sum (b_{n} - b_{n+1})$: equals
+    $b_{1} - \lim_{n} b_{n}$ when the limit exists. Many partial-
+    fraction decompositions reduce to a telescoping sum, including
+    $\sum 1/(n(n+1)) = 1$.
+  \item \engterm{Power-of-$n$ over factorial}, $\sum n^{k}/n!$ or
+    $\sum c^{n}/n!$: converges for every $c$ and every $k$ by the
+    ratio test, and converges quickly because the ratio falls to
+    zero as $n$ grows.
+  \item \engterm{Asymptotic-to-$\log$}, $S_{N} \sim c \log N$: the
+    series diverges, and the engineer can lower-bound the truncation
+    tail by the gap to the partial sum at any chosen $N$. The
+    harmonic series and series of the form $\sum 1/(n \log n)$
+    belong here.
+\end{itemize}
+
+The catalog above covers approximately ninety percent of the series
+the engineer meets in this volume. The remaining ten percent are
+handled by the ladder.
 
 \section{Power series and Taylor series}\pathtag{core}
 
@@ -420,6 +490,22 @@ interval (or disk in the complex case) around $x_{0}$, called the
 Inside the interval the series converges absolutely. Outside it
 diverges. At the endpoints it may converge or diverge, and the cases
 must be checked individually.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-radius-of-convergence}
+
+The disk picture, illustrated in
+\autoref{fig:vol02:ch04:radius-of-convergence}, carries a useful
+warning. The radius of convergence of the real-valued series
+$1/(1 + x^{2}) = \sum (-1)^{n} x^{2n}$ is $1$, even though the
+function $1/(1 + x^{2})$ is perfectly smooth at every real $x$. The
+explanation is in the complex plane: the function has poles at
+$x = \pm i$, and the nearest pole to $x_{0} = 0$ sits at distance
+$1$. The radius of convergence is set by the nearest singularity of
+the function, real or complex. An engineer who tries to expand
+$1/(1 + x^{2})$ at $x_{0} = 0$ and use the expansion at $x = 2$
+will discover that no number of terms gives a finite answer; the
+series diverges term by term. The fix is to expand at a different
+working point, where the nearest singularity is farther away.
 
 \subsection{Taylor series}
 
@@ -518,6 +604,39 @@ as special cases.
 These five series, together with the manipulations of section 4.4.5,
 cover most of the smooth functions an engineer evaluates near a
 working point.
+
+A sixth series, the \engterm{tangent}, is worth listing because the
+project block uses it:
+\[
+\tan x = x + \frac{x^{3}}{3} + \frac{2 x^{5}}{15} + \frac{17 x^{7}}{315}
++ \cdots
+\]
+The coefficients are $2(2^{2n} - 1) B_{2n}/(2n)!$ where $B_{2n}$ is
+the $2n$-th Bernoulli number; the closed form is in
+\cite{text:v2ch04-abramowitz-stegun-1972}. The radius of convergence
+is $\pi/2$, set by the poles of $\tan$ at $\pm \pi/2$. The same
+restriction makes the tangent's small-angle approximation noticeably
+narrower in safe range than the sine's: by the time $\theta = \pi/4
+\approx 45^{\circ}$, the leading-order tangent has accumulated about
+$27\%$ relative error.
+
+\begin{mastery}
+\engterm{Asymptotic series vs convergent series}. A series can be
+asymptotic to a function without converging to it. The series
+$\sum_{n=0}^{\infty} (-1)^{n} n! / x^{n+1}$, called the asymptotic
+expansion of the exponential integral $E_{1}(x)$, diverges for every
+real $x$, yet truncating it at the $N$-th term and using the bound
+$|R_{N}| \leq |a_{N+1}|$ gives an excellent approximation for large
+$x$ when $N$ is chosen optimally (typically $N \approx x$). The
+optimal-$N$ rule is to stop adding terms when they stop shrinking;
+the smallest term in an asymptotic series gives the best achievable
+error. The detailed treatment is in
+\cite{text:v2ch04-bender-orszag-1999}. Engineers meet asymptotic
+series in singular-perturbation problems, boundary-layer
+calculations, and the WKB approximation; the chapter's failure
+section gives the warning, and the volume's later perturbation
+chapter formalises the technique.
+\end{mastery}
 
 \subsection{Manipulating Taylor series}
 
@@ -674,6 +793,66 @@ edge}, where "edge" means at zero, at infinity, at a working-point
 deviation, at a boundary, or at the limit of a long-running process.
 Limits are the language in which that question is asked.
 
+\subsection{Continuity, the intermediate value theorem, and the engineer's
+working tools}
+
+Three results bundle a great deal of the working content of limits.
+
+\engterm{Continuity}. A function $f$ is \engterm{continuous} at $x_{0}$
+if $\lim_{x \to x_{0}} f(x) = f(x_{0})$. A function continuous at every
+point of an interval is continuous on the interval. The arithmetic
+operations of sum, product, quotient (where the denominator is
+nonzero), and composition preserve continuity. Polynomials are
+continuous everywhere; rational functions are continuous wherever the
+denominator does not vanish; $\sin$, $\cos$, $\exp$, $\log$ are
+continuous on their domains.
+
+\engterm{Intermediate value theorem}. If $f$ is continuous on $[a, b]$
+and $y$ is a value between $f(a)$ and $f(b)$, there is some
+$c \in [a, b]$ with $f(c) = y$. The engineering use is the bisection
+root finder: a sign change of $f$ between $a$ and $b$ guarantees a
+root in the interval, and successive halving locates it. The same
+theorem underwrites the existence of a continuous boundary value
+between any two regimes of a continuously varying parameter.
+
+\engterm{Extreme value theorem}. A continuous function on a closed,
+bounded interval attains its maximum and its minimum. The engineering
+use is in optimisation: a continuous objective on a closed feasible
+set has a maximiser and a minimiser, even when the gradient never
+vanishes (the extrema may sit at the boundary). The theorem fails on
+open intervals; an engineer who optimises on $(0, 1]$ instead of
+$[0, 1]$ may find the supremum is not attained.
+
+These three results compose into a working toolkit. The bisection
+root finder uses the intermediate value theorem to certify the
+existence of a root and the continuity of $f$ to guarantee that
+halving the interval at the sign-change midpoint preserves the
+certificate. The Newton root finder uses the differentiability of
+$f$ (a strictly stronger condition than continuity, treated in
+Chapter 5) to achieve quadratic convergence. The two algorithms
+share the same epsilon-delta truth condition; the difference is what
+they cost per step.
+
+\begin{estimation}
+\textbf{Question.} An iterative scheme has linear convergence with
+rate $r = 0.7$ per iteration. The starting error is $e_{0} = 1$.
+A second scheme has quadratic convergence with constant $C = 1$ and
+the same starting error. Estimate the iteration count each scheme
+needs to reach $e_{n} \leq 10^{-9}$.
+
+\textbf{Estimate.} The linear scheme satisfies $e_{n} \approx r^{n}
+e_{0}$, so $n \approx -\log_{10}(10^{-9})/\log_{10}(1/0.7) = 9/0.155
+\approx 58$ iterations. The quadratic scheme satisfies $e_{n}
+\approx e_{0}^{2^{n}}$, so for $e_{0} = 1$ the error squares each
+step: starting from a perturbed $e_{0} = 0.5$, we get $0.5, 0.25,
+0.0625, 3.9 \times 10^{-3}, 1.5 \times 10^{-5}, 2.3 \times 10^{-10}$.
+About six iterations of Newton from a half-decent starting point
+suffice. The quadratic scheme is ten times faster than the linear
+scheme when the starting error is moderate. The breakeven analysis
+is recovered by the comparator script
+\texttt{code/convergence\_comparator.py}.
+\end{estimation}
+
 \section{Failure: divergent series that look convergent}\pathtag{core}
 
 The chapter's failure mode is a series whose terms shrink, whose
@@ -829,6 +1008,18 @@ extends the budget to $\theta \leq 35^{\circ}$. For a $0.1\%$ budget,
 the leading-order approximation is good only to about $4.5^{\circ}$.
 The reader who carries a tolerance into the small-angle decision can
 look up the bound rather than guessing.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-taylor-error}
+
+The Taylor-error figure (\autoref{fig:vol02:ch04:taylor-error})
+expresses the same trade visually, across three orders. The
+log-log slopes match the Lagrange remainder bound: $T_{1}$ has slope
+$3$, $T_{3}$ has slope $5$, $T_{5}$ has slope $7$. Each extra order
+buys an asymptotically steeper error curve at small $\theta$,
+trading two factorial-divided coefficients for the next derivative
+bound. The factorial in the denominator dominates as the order
+climbs, which is why $T_{9}$ of $\sin$ on $[0, 2]$ is already at
+the noise floor of double-precision arithmetic.
 
 \subsection{Perturbation expansion: a quadratic equation with a small parameter}
 
@@ -987,6 +1178,51 @@ encouraged to compare \emph{after} completing their own.
 to three hours of error tabulation, and three to four hours of
 reflection. Total approximately ten to fourteen hours, distributed
 across two or three sittings.
+
+\textbf{Phases and success criteria}.
+
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Series derivation phase} (3--4 hr). Success criterion:
+    each of the five Maclaurin expansions is written out to the
+    stated order, with the Lagrange remainder bound stated in
+    closed form and the $M_{n+1}$ constant identified. Common
+    failure: writing the series and stopping without the remainder
+    bound. The reader who omits the bound has the formula but not
+    the licence to use it inside a tolerance budget.
+  \item \emph{Pendulum and relativistic-energy phase} (2--3 hr).
+    Success criterion: the elliptic-integral identity is taken as
+    given and the first two terms of the period expansion are
+    verified by direct substitution; the relativistic correction
+    is derived from $(1 - \beta^{2})^{-1/2}$ via the binomial
+    series and the leading-order Newtonian limit is recovered.
+    Common failure: confusing $\beta = v/c$ with $\beta^{2}$ or
+    dropping the $1/2$ that converts $\gamma - 1$ to the kinetic
+    energy.
+  \item \emph{Error tabulation phase} (2--3 hr). Success criterion:
+    the absolute and relative errors at $5^{\circ}, 10^{\circ},
+    25^{\circ}, 45^{\circ}$ match the values in
+    \autoref{tab:smallangle} to three significant figures for the
+    sine, with analogous tables for cosine, tangent, pendulum
+    period, and relativistic energy. Common failure: forgetting
+    to convert degrees to radians before evaluating the series
+    (the formulas all expect radians).
+  \item \emph{Reflection phase} (3--4 hr). Success criterion: each
+    of the five bullets in the reflection list receives at least
+    one paragraph of concrete content, with a named example or
+    measurement. Common failure: writing the reflection in the
+    abstract, without an example. A reflection that names no
+    specific engineering context has not engaged the question.
+\end{enumerate}
+
+\textbf{What the writer is meant to take away}. The technical
+machinery (five expansions, four error tables, two physical
+applications) is the proximate output. The deeper takeaway is the
+discipline of carrying an explicit error budget through every
+approximation, deciding the truncation order from the budget rather
+than from convention, and recognising when the budget has been
+exceeded. The reflection earns its place by forcing the writer to
+state where on their own working surface this discipline has not yet
+been internalised, and what would change if it were.
 \end{project}
 
 \section{Exercises}
@@ -1004,28 +1240,94 @@ Compute the sum of the geometric series
 $\sum_{n=0}^{\infty} (0.9)^{n}$ and the partial sum
 $\sum_{n=0}^{19} (0.9)^{n}$. State the absolute and relative
 truncation error.
+
+\paragraph{Solution sketch.} The infinite sum is $1/(1 - 0.9) = 10$.
+The finite sum is $(1 - 0.9^{20})/(1 - 0.9) = 10 (1 - 0.9^{20})$.
+Computing $0.9^{20} \approx 0.1216$ gives $S_{20} \approx 8.784$.
+The truncation tail equals the rest of the geometric series starting
+at $n = 20$, which sums to $0.9^{20}/(1 - 0.9) = 10 \cdot 0.9^{20}
+\approx 1.216$. The absolute error is approximately $1.216$ and the
+relative error is approximately $12.16\%$. The geometric formula
+$\text{tail} = r^{N}/(1 - r) \cdot S_{0}$ is exact for the geometric
+series and is the cheap way to obtain truncation tails when the
+series is in geometric form.
 \end{exercise}
 
 \begin{exercise}
 Find the radius of convergence of the power series
 $\sum_{n=1}^{\infty} (n!) \, x^{n} / n^{n}$. State the test you used.
+
+\paragraph{Solution sketch.} Apply the ratio test on the coefficient
+magnitudes $c_{n} = n!/n^{n}$:
+\[
+\frac{c_{n+1}}{c_{n}} = \frac{(n+1)!}{(n+1)^{n+1}} \cdot \frac{n^{n}}{n!}
+= \frac{n^{n}}{(n+1)^{n}} = \left(\frac{n}{n+1}\right)^{n} = \left(1 -
+\frac{1}{n+1}\right)^{n} \to \frac{1}{e}.
+\]
+The radius of convergence is $1/L = e$ where $L = \lim c_{n+1}/c_{n}
+= 1/e$. The series converges absolutely for $|x| < e$ and diverges
+for $|x| > e$. The endpoints $x = \pm e$ require separate testing.
+The test used is the ratio test on the coefficients
+$c_{n}$, equivalent to applying the ratio test to the absolute terms
+$|c_{n} x^{n}|$ at fixed $x$.
 \end{exercise}
 
 \begin{exercise}
 Compute the first four nonzero terms of the Maclaurin series of
 $f(x) = \log(1 + x^{2})$. State the radius of convergence.
+
+\paragraph{Solution sketch.} Substitute $u = x^{2}$ into the
+Maclaurin series for $\log(1 + u)$:
+\[
+\log(1 + u) = u - \frac{u^{2}}{2} + \frac{u^{3}}{3} - \frac{u^{4}}{4}
++ \cdots
+\]
+Substituting back gives the first four nonzero terms:
+\[
+\log(1 + x^{2}) = x^{2} - \frac{x^{4}}{2} + \frac{x^{6}}{3} -
+\frac{x^{8}}{4} + \cdots
+\]
+The series for $\log(1 + u)$ converges for $-1 < u \leq 1$; with
+$u = x^{2}$ this becomes $0 \leq x^{2} \leq 1$, that is, $|x| \leq 1$
+(with strict inequality at $x^{2} = -1$, vacuous in $\R$). The
+radius of convergence is $1$, with convergence at both endpoints
+$x = \pm 1$ since at those values $u = 1$ and $\log 2$ converges.
 \end{exercise}
 
 \begin{exercise}
 Use the alternating-series error bound to determine how many terms of
 the Maclaurin series of $\sin(0.5)$ are needed to compute the value
 to within $10^{-6}$.
+
+\paragraph{Solution sketch.} The alternating-series bound says the
+truncation error is at most the magnitude of the first omitted term.
+The $n$-th term magnitude (for the $(2n+1)$-th order term) is
+$0.5^{2n+1}/(2n+1)!$. Set this $\leq 10^{-6}$. At $n = 3$ the term
+is $0.5^{7}/7! = 1/(128 \cdot 5040) \approx 1.55 \times 10^{-6}$,
+which fails the bound. At $n = 4$ the term is $0.5^{9}/9! \approx
+1.4 \times 10^{-9}$, which satisfies. Therefore four nonzero terms
+suffice: $\sin(0.5) \approx 0.5 - 0.5^{3}/6 + 0.5^{5}/120 -
+0.5^{7}/5040 \approx 0.47943$. The exact value is $0.479425539$;
+the truncation error is below $10^{-6}$ as predicted.
 \end{exercise}
 
 \begin{exercise}
 Compute $e^{0.1}$ using the Maclaurin series truncated after the
 quadratic term, and state the Lagrange remainder bound at $\xi$ in
 $[0, 0.1]$.
+
+\paragraph{Solution sketch.} The truncated value is $1 + 0.1 +
+0.1^{2}/2 = 1 + 0.1 + 0.005 = 1.105$. The Lagrange remainder bound is
+\[
+|R_{2}(0.1)| = \left|\frac{e^{\xi}}{3!} (0.1)^{3}\right| \leq
+\frac{e^{0.1}}{6} \cdot 10^{-3} \leq \frac{1.106}{6} \cdot 10^{-3}
+\approx 1.84 \times 10^{-4}.
+\]
+The exact value is $e^{0.1} = 1.105171$. The actual error is
+$|1.105171 - 1.105| \approx 1.71 \times 10^{-4}$, well within the
+bound. A tighter bound uses $e^{\xi} \leq e^{0.1}$ on the interval
+$[0, 0.1]$; a looser bound uses $e^{\xi} \leq e^{1} = 2.72$ for any
+$\xi \in [0, 1]$.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -1034,6 +1336,22 @@ $[0, 0.1]$.
 Prove that the harmonic series $\sum_{n=1}^{\infty} 1/n$ diverges by
 the grouping argument of Oresme. Then prove that the partial sums
 satisfy $S_{N} \geq 1 + (\log_{2} N)/2$ for $N$ a power of $2$.
+
+\paragraph{Solution sketch.} Group the terms into blocks of doubling
+size starting after $n = 1$: $\{1/2\}$, $\{1/3, 1/4\}$, $\{1/5, \ldots,
+1/8\}$, and so on, with the $k$-th block containing terms from
+$1/(2^{k-1} + 1)$ to $1/2^{k}$, that is, $2^{k-1}$ terms each at
+least $1/2^{k}$ in size. The block sum is at least $2^{k-1}/2^{k} =
+1/2$. The sum up through $N = 2^{m}$ thus contains the initial term
+$1$ plus $m$ blocks each contributing at least $1/2$, giving
+\[
+S_{2^{m}} \geq 1 + \frac{m}{2} = 1 + \frac{\log_{2} N}{2}.
+\]
+The right-hand side is unbounded as $m \to \infty$, so the partial
+sums grow without bound and the series diverges. The bound $1 +
+(\log_{2} N)/2$ is loose; the asymptotic $S_{N} \sim \log N + \gamma$
+gives a sharper estimate at large $N$, but the loose bound suffices
+to prove divergence.
 \end{exercise}
 
 \begin{exercise}
@@ -1041,6 +1359,22 @@ Prove the alternating-series test: if $b_{n}$ is monotone decreasing
 to zero, the partial sums of $\sum (-1)^{n+1} b_{n}$ form a Cauchy
 sequence, and so the series converges. State the truncation-error
 bound and prove it.
+
+\paragraph{Solution sketch.} Let $S_{N} = \sum_{n=1}^{N} (-1)^{n+1}
+b_{n}$. The differences $S_{2k}$ and $S_{2k+2}$ satisfy $S_{2k+2}
+- S_{2k} = b_{2k+1} - b_{2k+2} \geq 0$ by monotonicity, so the even
+partial sums are monotone increasing. Similarly the odd partial sums
+$S_{2k+1}$ are monotone decreasing. Both are bounded: $S_{2k} \leq
+S_{1} = b_{1}$ and $S_{2k+1} \geq S_{2} = b_{1} - b_{2} \geq 0$. By
+the monotone convergence theorem each subsequence has a limit. The
+gap $S_{2k+1} - S_{2k} = b_{2k+1} \to 0$ forces the two subsequence
+limits to coincide. Therefore $S_{N}$ converges to a common limit
+$S$.
+
+For the error bound, the limit $S$ sits between any two consecutive
+partial sums: $S_{2k} \leq S \leq S_{2k+1}$, hence $|S - S_{N}| \leq
+|S_{N+1} - S_{N}| = b_{N+1}$. The truncation error is at most the
+magnitude of the first omitted term.
 \end{exercise}
 
 \begin{exercise}
@@ -1048,6 +1382,27 @@ Derive Euler's identity $e^{i\theta} = \cos \theta + i \sin \theta$
 by substituting $x = i\theta$ into the Maclaurin series for $e^{x}$
 and separating real and imaginary parts. State the radius of
 convergence.
+
+\paragraph{Solution sketch.} Substituting $x = i\theta$ in the
+Maclaurin series gives
+\[
+e^{i\theta} = \sum_{n=0}^{\infty} \frac{(i\theta)^{n}}{n!}.
+\]
+The powers $i^{n}$ cycle through $1, i, -1, -i, 1, \ldots$ with
+period four. Split the sum by parity of $n$. For even $n = 2k$,
+$i^{2k} = (-1)^{k}$ and the contribution is $\sum_{k} (-1)^{k}
+\theta^{2k}/(2k)! = \cos\theta$. For odd $n = 2k+1$, $i^{2k+1} = i
+\cdot (-1)^{k}$ and the contribution is $i \sum_{k} (-1)^{k}
+\theta^{2k+1}/(2k+1)! = i \sin\theta$. Adding gives $e^{i\theta} =
+\cos\theta + i \sin\theta$.
+
+The exponential series has infinite radius of convergence on the
+complex plane, so the manipulation is justified for every
+$\theta \in \R$ (indeed for every complex argument). The
+rearrangement of an absolutely convergent series of complex terms
+into its real and imaginary subsums uses absolute convergence,
+which is precisely the safer condition emphasised in section
+4.2.4.
 \end{exercise}
 
 \begin{exercise}
@@ -1055,6 +1410,27 @@ Derive the Maclaurin expansion of $1/(1 - x)^{2}$ by differentiating
 the geometric series $1/(1 - x) = \sum x^{n}$ term by term. State the
 radius of convergence and verify the result against the binomial
 expansion.
+
+\paragraph{Solution sketch.} Differentiate term by term:
+\[
+\frac{\dd}{\dd x}\left[\sum_{n=0}^{\infty} x^{n}\right] =
+\sum_{n=1}^{\infty} n x^{n-1} = \sum_{m=0}^{\infty} (m + 1) x^{m},
+\]
+which equals $1/(1 - x)^{2}$ since $\frac{\dd}{\dd x} 1/(1 - x)
+= 1/(1 - x)^{2}$. Therefore
+\[
+\frac{1}{(1 - x)^{2}} = 1 + 2 x + 3 x^{2} + 4 x^{3} + \cdots
+= \sum_{n=0}^{\infty} (n + 1) x^{n}.
+\]
+Term-by-term differentiation of a power series is valid inside the
+radius of convergence, so the new series converges for $|x| < 1$,
+the radius of convergence of the original geometric series.
+
+Verification via the binomial expansion. The binomial series for
+$(1 - x)^{-2} = (1 + (-x))^{-2}$ has coefficients
+$\binom{-2}{n}(-1)^{n} = (-1)^{n} \cdot (-2)(-3) \cdots (-2 - n + 1)
+/ n! = (-1)^{n} \cdot (-1)^{n} (n+1)!/n! / 1 = (n + 1)$, matching
+the derivative result.
 \end{exercise}
 
 \begin{exercise}
@@ -1062,6 +1438,32 @@ Show that the Taylor series of $f(x) = e^{-1/x^{2}}$ at $x_{0} = 0$
 (with $f(0) = 0$ by convention) has every coefficient equal to zero,
 and yet $f(x) \neq 0$ for $x \neq 0$. Discuss what this example shows
 about the relationship between a function and its Taylor series.
+
+\paragraph{Solution sketch.} For $x \neq 0$, $f(x) = e^{-1/x^{2}}$ is
+strictly positive but extremely small near zero. By l'H\^{o}pital or
+direct substitution, $\lim_{x \to 0} f(x) = 0$, so the extension
+$f(0) = 0$ is continuous. Each derivative $f^{(n)}(x)$ for $x \neq 0$
+is a rational function of $x$ times $e^{-1/x^{2}}$. The exponential
+factor dominates any polynomial in $1/x$, so $\lim_{x \to 0} f^{(n)}(x)
+= 0$ for every $n$. Setting $f^{(n)}(0) = 0$ then preserves continuity
+of every derivative. The Taylor series at $x_{0} = 0$ is
+\[
+\sum_{n=0}^{\infty} \frac{f^{(n)}(0)}{n!} x^{n} = 0 + 0 + 0 + \cdots
+= 0,
+\]
+which converges everywhere to the zero function. Yet $f(x) > 0$ for
+$x \neq 0$, so the function does not equal its Taylor series anywhere
+except at $x = 0$ itself.
+
+\paragraph{Discussion.} A smooth function ($C^{\infty}$) is not the
+same as an analytic function (equal to its Taylor series in a
+neighbourhood). The example shows that smoothness is strictly weaker
+than analyticity. Engineers who substitute "infinitely differentiable"
+for "analytic" risk drawing conclusions that depend on the stronger
+property. The class of bump functions used to build smooth partitions
+of unity is constructed from this counterexample; the price of
+having a smooth function with compact support is exactly that the
+function is not analytic.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -1071,6 +1473,18 @@ Estimate the angle below which the small-angle sine approximation
 $\sin \theta \approx \theta$ has error below $0.1\%$. Then estimate
 the corresponding angle for $0.01\%$ error. State the order-of-magnitude
 scaling of the boundary with the error tolerance.
+
+\paragraph{Solution sketch.} The relative error of $\sin\theta
+\approx \theta$ at leading order is $\theta^{2}/6$. Setting this
+equal to $10^{-3}$ gives $\theta^{2} \approx 6 \times 10^{-3}$, so
+$\theta \approx 0.0775$ rad $\approx 4.4^{\circ}$. Setting it equal
+to $10^{-4}$ gives $\theta \approx \sqrt{6 \times 10^{-4}} \approx
+0.0245$ rad $\approx 1.4^{\circ}$. The scaling of the boundary
+$\theta_{\max}$ with relative tolerance $\eta$ is
+$\theta_{\max} \sim \sqrt{6 \eta}$: each two decades of tighter
+tolerance corresponds to one decade of tighter angle. A working rule:
+$\sin\theta \approx \theta$ is safe to relative tolerance $\eta$
+when $\theta \lesssim 2.4\sqrt{\eta}$ in radians.
 \end{exercise}
 
 \begin{exercise}
@@ -1078,6 +1492,25 @@ Estimate the number of terms of the Maclaurin series for $e^{x}$
 needed to compute $e^{1}$ to within $10^{-9}$, using the Lagrange
 remainder bound with $M = e \approx 2.72$. Compare to the number of
 terms needed to compute $e^{0.1}$ to the same tolerance.
+\paragraph{Solution sketch.} The Lagrange bound at $x = 1$ is
+$|R_{n}(1)| \leq M \cdot 1^{n+1}/(n+1)! = e/(n+1)!$. Setting
+$e/(n+1)! \leq 10^{-9}$ requires $(n+1)! \geq 2.72 \times 10^{9}$.
+Since $12! \approx 4.79 \times 10^{8}$ and $13! \approx 6.23 \times
+10^{9}$, the bound is met at $n + 1 = 13$, that is $n = 12$, so
+thirteen terms (indices $0$ through $12$) suffice.
+
+For $e^{0.1}$ the bound is $e^{0.1} \cdot (0.1)^{n+1}/(n+1)!$. Each
+extra term multiplies the bound by $0.1/(n+2)$, so the bound shrinks
+roughly an order of magnitude with each term added. At $n = 6$ the
+bound is $1.1 \cdot 10^{-7}/5040 \approx 2.2 \times 10^{-11}$, well
+below $10^{-9}$; at $n = 5$ it is $1.1 \cdot 10^{-6}/720 \approx
+1.5 \times 10^{-9}$, marginal. Six terms suffice for $e^{0.1}$.
+
+The factor of about two in series length to extend from $x = 0.1$
+to $x = 1$ reflects the geometric prefactor $x^{n+1}$ in the
+remainder bound. The factorial denominator is what makes the
+exponential cheap to evaluate at any fixed $x$; only its competition
+with $x^{n+1}$ sets the truncation order.
 \end{exercise}
 
 \begin{exercise}
@@ -1085,6 +1518,24 @@ Estimate the relative error in the small-angle pendulum period $T = 2
 \pi \sqrt{L/g}$ at amplitude $\theta_{0} = 30^{\circ}$, using the
 correction $T(\theta_{0})/T_{0} \approx 1 + \theta_{0}^{2}/16$. State
 the implicit assumption about the next-order correction.
+
+\paragraph{Solution sketch.} Convert $30^{\circ}$ to radians:
+$\theta_{0} = \pi/6 \approx 0.5236$ rad. The leading correction
+gives $T/T_{0} \approx 1 + (0.5236)^{2}/16 = 1 + 0.01714 \approx
+1.0171$, so the leading-order error in using $T_{0}$ is about
+$1.7\%$ at $30^{\circ}$.
+
+The implicit assumption is that the next-order correction term
+$11 \theta_{0}^{4}/3072$ is negligible. At $\theta_{0} = 0.5236$ rad
+this term equals $11 \cdot (0.5236)^{4}/3072 = 11 \cdot 0.0751/3072
+\approx 2.69 \times 10^{-4}$, that is about $0.027\%$. The
+next-order correction shifts the result by less than $0.03\%$, so
+the leading-order correction $\theta_{0}^{2}/16$ is reliable to about
+the third significant figure at this amplitude. A reader who
+restricts attention to $\theta_{0} \leq 30^{\circ}$ can use the
+two-term formula confidently to one-percent accuracy and the
+one-term formula only at amplitudes below about $8^{\circ}$ if the
+same one-percent tolerance applies.
 \end{exercise}
 
 \begin{exercise}
@@ -1092,6 +1543,20 @@ Estimate the speed at which the leading relativistic correction to
 the kinetic energy contributes $1\%$ of the Newtonian value. Express
 the answer as a fraction of the speed of light and as a speed in
 $\si{\meter\per\second}$.
+
+\paragraph{Solution sketch.} The Newtonian kinetic energy is
+$K_{\text{N}} = m v^{2}/2$. The leading relativistic correction
+from the expansion is $(3/8) m v^{2} \beta^{2}$ with $\beta = v/c$.
+The ratio of correction to Newtonian is $(3/8) m v^{2} \beta^{2}
+\div (m v^{2}/2) = (3/4) \beta^{2}$. Setting this equal to $0.01$
+gives $\beta^{2} = 4/300 \approx 0.01333$, $\beta \approx 0.1155$.
+The speed is $v = \beta c = 0.1155 \times 2.998 \times 10^{8}\,
+\si{\meter\per\second} \approx 3.46 \times 10^{7}\,
+\si{\meter\per\second}$, that is, about $11.5\%$ of the speed of
+light or $35{,}000\,\si{\kilo\meter\per\second}$. Below this speed
+the Newtonian kinetic energy is accurate to one percent; above it
+the relativistic correction is the engineer's first responsibility
+to include.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -1102,6 +1567,18 @@ harmonic series at $N = 10, 100, 10^{3}, 10^{4}, 10^{5}, 10^{6}$, and
 plot them against $\log N$. Compare to the asymptotic $\log N + \gamma$.
 Identify the regime in which the asymptotic is accurate to better than
 $1\%$.
+
+\paragraph{Solution sketch.} Running \texttt{code/harmonic\_partial\_sums.py}
+produces the table in \texttt{data/harmonic\_decades.csv}: $H_{10} =
+2.929$ vs asymptotic $2.880$ ($1.7\%$ gap); $H_{100} = 5.187$ vs
+$5.182$ ($0.1\%$); $H_{1000} = 7.485$ vs $7.485$ ($0.007\%$). The
+gap is approximately $1/(2N)$ (from the next term in the asymptotic
+expansion $H_{N} = \log N + \gamma + 1/(2N) + O(1/N^{2})$, given in
+\cite{text:v2ch04-knuth-taocp1-1997}), which falls below $1\%$ once
+$N \gtrsim 50$, that is, the asymptotic is accurate to better than
+$1\%$ for $N \geq 50$ approximately. The asymptotic improves linearly
+in $1/N$, so each decade of larger $N$ gives one decade of tighter
+agreement.
 \end{exercise}
 
 \begin{exercise}
@@ -1109,6 +1586,23 @@ Numerically evaluate the partial sums of the alternating harmonic
 series at $N = 10, 100, 10^{3}, 10^{4}$, and compare to $\log 2$.
 Verify that the truncation error is bounded by the magnitude of the
 first omitted term.
+
+\paragraph{Solution sketch.} Running \texttt{code/alternating\_harmonic.py}
+produces, with $\log 2 = 0.693147$:
+\begin{itemize}[leftmargin=*]
+  \item $N = 10$: $S_{10} = 0.6456$, gap $4.77 \times 10^{-2}$,
+    bound $1/11 \approx 9.09 \times 10^{-2}$.
+  \item $N = 100$: $S_{100} = 0.6882$, gap $4.95 \times 10^{-3}$,
+    bound $1/101 \approx 9.90 \times 10^{-3}$.
+  \item $N = 1000$: $S_{1000} = 0.6927$, gap $5.00 \times 10^{-4}$,
+    bound $\approx 1 \times 10^{-3}$.
+  \item $N = 10\,000$: $S_{10000} = 0.6931$, gap $\approx 5 \times
+    10^{-5}$, bound $\approx 1 \times 10^{-4}$.
+\end{itemize}
+The empirical gap is consistently about half the bound (the
+alternating-series bound is loose by a factor of two when $b_{n}$
+shrinks slowly), but in every row the gap is well within the bound,
+confirming the alternating-series error inequality.
 \end{exercise}
 
 \begin{exercise}
@@ -1116,6 +1610,20 @@ Compute the Taylor polynomial of $\sin x$ at $x_{0} = 0$ to orders
 $1, 3, 5, 7, 9$ and tabulate the absolute error at $x = 0.5, 1.0,
 1.5, 2.0$. Compare the empirical error to the Lagrange remainder
 bound.
+
+\paragraph{Solution sketch.} Running \texttt{code/taylor\_sin\_error.py}
+produces \texttt{data/taylor\_sin\_orders.csv}. Sample rows: at
+$x = 1.0$, the empirical errors are $1.59 \times 10^{-1}$, $8.33 \times
+10^{-3}$, $1.98 \times 10^{-4}$, $2.76 \times 10^{-6}$, $2.51 \times
+10^{-8}$ for orders $1, 3, 5, 7, 9$. The Lagrange bound $x^{n+1}/(n+1)!$
+gives $1.67 \times 10^{-1}$, $8.33 \times 10^{-3}$, $1.98 \times
+10^{-4}$, $2.76 \times 10^{-6}$, $2.51 \times 10^{-8}$. The match is
+nearly tight: the empirical error is within $5\%$ of the bound at
+every order for $|x| \leq 2$, because the bound uses $M_{n+1} = 1$
+and the derivatives of $\sin$ all have magnitude exactly $1$ at the
+extremising $\xi$ for small enough $x$. The figure
+\autoref{fig:vol02:ch04:taylor-error} plots the same data on log
+scale.
 \end{exercise}
 
 \begin{exercise}
@@ -1123,6 +1631,19 @@ Implement Newton's iteration $a_{n+1} = a_{n} - (a_{n}^{2} - 2)/(2
 a_{n})$ for $\sqrt{2}$ starting from $a_{0} = 1$. Tabulate $a_{n}$
 and the residual $a_{n}^{2} - 2$ for $n = 0, 1, \ldots, 6$. Verify
 that the residual squares at each step (quadratic convergence).
+
+\paragraph{Solution sketch.} Running \texttt{code/newton\_sqrt2.py}
+gives $a_{0} = 1.0000$, $a_{1} = 1.5000$, $a_{2} = 1.4167$,
+$a_{3} = 1.41422$, $a_{4} = 1.4142136$, $a_{5} = 1.41421356237$,
+$a_{6} = 1.41421356237$ (double precision converged). The
+residuals are $a_{n}^{2} - 2 = -1.0, 0.25, 6.94 \times 10^{-3},
+6.01 \times 10^{-6}, 4.51 \times 10^{-12}, 2.0 \times 10^{-16}, \ldots$.
+The successive residuals do not exactly square (the Newton constant
+involves $1/(2 a_{n}) \approx 1/(2\sqrt{2}) \approx 0.354$), but
+their orders of magnitude approximately double in negative powers of
+ten: $-1, -1, -3, -6, -12, -16$, where the last is at the
+floating-point noise floor. The pattern is the signature of quadratic
+convergence.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1133,6 +1654,25 @@ microcontroller without floating-point hardware, using the Maclaurin
 series and a stated relative error tolerance of $10^{-6}$ on the
 range $x \in [0, 1]$. Specify the truncation order and the storage
 requirement (number of coefficients).
+
+\paragraph{Discussion.} The Lagrange bound on $[0, 1]$ is
+$|R_{n}(x)| \leq e \cdot x^{n+1}/(n+1)!$. Worst-case over $x \in
+[0, 1]$ is at $x = 1$: $e/(n+1)! \leq 10^{-6}$ requires $(n+1)!
+\geq 2.72 \times 10^{6}$, met at $n + 1 = 10$, that is $n = 9$.
+Ten coefficients (orders $0$ through $9$) and ten multiply-add
+operations evaluate the polynomial via Horner's scheme. The
+coefficients are $1, 1, 1/2, 1/6, 1/24, 1/120, 1/720, 1/5040,
+1/40320, 1/362880$; these can be stored as integers (numerators
+$1$, with denominators $0!, 1!, \ldots, 9!$ for the integer-arithmetic
+implementation) or as fixed-point with the integer multiplier
+$362880$ as the common denominator.
+
+A range-reduction step extends the design beyond $[0, 1]$: write
+$x = k \log 2 + r$ with $r \in [0, \log 2)$, evaluate $e^{r}$ by
+the series, and multiply by $2^{k}$. The reduced range $[0, \log 2)$
+needs $n = 6$ (seven coefficients), reducing the work by about a
+third at the cost of one branchless reduction. A production
+microcontroller library typically uses this two-step pattern.
 \end{exercise}
 
 \begin{exercise}
@@ -1141,6 +1681,29 @@ Design a numerical scheme that uses the geometric series formula $1/(1
 division. Specify the substitution $x = 1 - r$, the convergence
 condition, and the truncation order required for $10^{-4}$ relative
 accuracy.
+
+\paragraph{Discussion.} The substitution $x = 1 - r$ gives $r = 1 -
+x$. The series $1/(1 - r) = \sum r^{n}$ converges absolutely for
+$|r| < 1$, which translates to $0 < x < 2$. Over $x \in [0.5, 2]$,
+the maximum $|r|$ is at the endpoints: at $x = 0.5$, $r = 0.5$; at
+$x = 2$, $r = -1$ (boundary, divergent). The scheme as stated fails
+near $x = 2$.
+
+A common fix splits the range: for $x \in [0.5, 1]$ use $r = 1 - x
+\in [0, 0.5]$ directly; for $x \in (1, 2]$ use $x = 1 / y$ with
+$y \in [0.5, 1)$, so $1/x = y$ is exactly what one was originally
+trying to compute. The roundabout suggests another substitution
+$x = 2(1 - s)$, $s = 1 - x/2$, giving $1/x = (1/2)/(1 - s) =
+(1/2) \sum s^{n}$ with $s \in (0, 0.5]$ for $x \in [1, 2)$. Either
+substitution keeps $|r|, |s| \leq 0.5$.
+
+For $10^{-4}$ relative accuracy at the worst-case $|r| = 0.5$, the
+truncation tail is $r^{N}/(1 - r) / S_{\infty} = r^{N}$; require
+$0.5^{N} \leq 10^{-4}$, that is $N \geq 14$. Fourteen multiply-adds
+without division gives $1/x$ to $10^{-4}$ relative accuracy across
+$[0.5, 2]$ after the two-piece range reduction. The microcontroller
+saves a costly hardware divider at the cost of fourteen
+multiplications.
 \end{exercise}
 
 \begin{exercise}
@@ -1149,6 +1712,32 @@ approximate-trigonometry computation (faster, less accurate) and
 exact-trigonometry computation (slower, accurate). State the angle
 threshold above which the device must use the exact form, given an
 error budget of $0.5\%$ on the sine.
+
+\paragraph{Discussion.} Relative error of the leading-order $\sin
+\theta \approx \theta$ is $\theta^{2}/6$. Setting $\theta^{2}/6 \leq
+5 \times 10^{-3}$ gives $\theta \leq \sqrt{0.03} \approx 0.173$ rad
+$\approx 9.9^{\circ}$. The threshold is approximately $10^{\circ}$.
+
+A working rule reads:
+
+\begin{itemize}[leftmargin=*]
+  \item If $|\theta| \leq 10^{\circ}$: use $\sin\theta \approx
+    \theta$. Cost is one floating-point read.
+  \item If $10^{\circ} < |\theta| \leq 30^{\circ}$: use the
+    cubic-correction form $\theta - \theta^{3}/6$. Cost is three
+    multiplies and one subtract; the budget is still met because
+    the next-order relative error is bounded by $\theta^{4}/120
+    \leq 0.0023\%$ at $30^{\circ}$.
+  \item If $|\theta| > 30^{\circ}$: call the exact-trigonometry
+    library routine. Cost is the library call (often a CORDIC
+    iteration on resource-constrained hardware).
+\end{itemize}
+
+The two-threshold rule covers an extended safe range with only the
+extra cubic term, paying for the next-order arithmetic only where
+the leading-order budget runs out. A single-threshold rule (using
+the exact routine above $10^{\circ}$) is simpler but cedes accuracy
+on the middle range where the cubic correction is nearly free.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -1157,6 +1746,22 @@ error budget of $0.5\%$ on the sine.
 A colleague reports that the series $\sum 1/(n \log n)$ converges
 because its terms decrease faster than $1/n$. State whether the
 conclusion is correct and identify the test that settles the question.
+
+\paragraph{Solution sketch.} The conclusion is wrong. The terms
+$1/(n \log n)$ do shrink faster than $1/n$, but the series diverges.
+The integral test settles it: with $f(x) = 1/(x \log x)$, the
+substitution $u = \log x$, $\dd u = \dd x / x$ gives
+\[
+\int_{2}^{N} \frac{\dd x}{x \log x} = \int_{\log 2}^{\log N}
+\frac{\dd u}{u} = \log \log N - \log \log 2,
+\]
+which grows without bound as $N \to \infty$. Therefore the
+corresponding series diverges. The shrinking-faster-than-$1/n$ test
+is necessary for convergence (the term test, in reverse) but is
+emphatically not sufficient. The borderline cases near $1/n$ require
+the integral test or comparison to a known borderline series. The
+next series $\sum 1/(n (\log n)^{2})$ does converge, by the same
+integral test with $u = \log x$ producing $\int \dd u/u^{2}$, finite.
 \end{exercise}
 
 \begin{exercise}
@@ -1166,6 +1771,23 @@ $0.7071067811$. The reader uses the Maclaurin series $\sin x \approx x
 that agrees to within roughly $4 \times 10^{-8}$. Identify the
 expected truncation error from the Lagrange remainder bound and
 verify it against the empirical residual.
+
+\paragraph{Solution sketch.} At $\theta = 45^{\circ} = \pi/4 \approx
+0.7854$ rad, the Lagrange bound at order $9$ (five nonzero terms,
+last kept term is $x^{9}/362880$) is
+\[
+|R_{9}(\theta)| \leq \frac{\theta^{11}}{11!} =
+\frac{0.7854^{11}}{39\,916\,800} \approx \frac{0.0742}{3.99 \times
+10^{7}} \approx 1.86 \times 10^{-9}.
+\]
+The next-term magnitude (alternating-series bound) is $\theta^{11}/11!
+\approx 1.86 \times 10^{-9}$. The empirical residual of $4 \times
+10^{-8}$ is about twenty times the bound, which suggests either an
+arithmetic round-off contribution in the calculator's polynomial
+evaluation, or that the reader is measuring against a less precise
+reference for $\sin(45^{\circ}) = 1/\sqrt{2}$. The Lagrange bound at
+this order predicts the truncation error is at the $10^{-9}$ level;
+any larger discrepancy is round-off rather than truncation.
 \end{exercise}
 
 \begin{exercise}
@@ -1173,6 +1795,31 @@ A spreadsheet evaluates $f(x) = (e^{x} - 1)/x$ at $x = 10^{-12}$ by
 direct computation and returns $0$. Identify the failure mechanism
 and propose a Taylor-series formula for $f(x)$ that is numerically
 stable near $x = 0$.
+
+\paragraph{Solution sketch.} The failure is catastrophic
+cancellation. At $x = 10^{-12}$, $e^{x} = 1 + x + O(x^{2})
+\approx 1 + 10^{-12}$. Double precision stores $1 + 10^{-12}$ as
+$1.0000000000010 \ldots$ with about three significant digits to
+spare past the implicit $1$. The subtraction $e^{x} - 1$ then yields
+roughly $10^{-12}$ but with no preserved precision; depending on the
+rounding mode, the result may be exactly zero (when $e^{x}$ rounds
+to exactly $1$ at quad precision). Dividing the resulting zero or
+near-zero by $x = 10^{-12}$ gives $0$ or a meaningless value.
+
+The Taylor series for $f(x) = (e^{x} - 1)/x$ is
+\[
+f(x) = \sum_{n=0}^{\infty} \frac{x^{n}}{(n+1)!} = 1 + \frac{x}{2} +
+\frac{x^{2}}{6} + \frac{x^{3}}{24} + \cdots
+\]
+This series evaluates without cancellation: at $x = 10^{-12}$, the
+leading term is $1$ and the correction is $5 \times 10^{-13}$, well
+within floating-point precision. The branched implementation uses
+the series for $|x| < \epsilon$ (with $\epsilon$ chosen so the cubic
+term is below floating-point precision) and the direct formula for
+larger $|x|$. The series gives a stable answer where the direct
+formula fails. Cleve Moler's \emph{Numerical Computing with
+MATLAB} \cite{text:moler-numerical} uses this exact case as a
+canonical example of cancellation and its series-based fix.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1184,6 +1831,35 @@ Argue, in 200 to 300 words, whether the approximation is safe in this
 range, identify the angle at which the next-order correction becomes
 mandatory, and state the consequence of using the leading-order
 approximation past its budget.
+
+\paragraph{Solution sketch.} The leading-order relative error of
+$\sin\theta \approx \theta$ scales as $\theta^{2}/6$. At
+$\theta = 40^{\circ} \approx 0.698$ rad, the relative error is
+$0.698^{2}/6 \approx 8\%$. A control loop that nominally regulates
+to within a few percent has been pushed well past the approximation
+budget at the upper end of its range.
+
+The next-order correction $\sin\theta \approx \theta - \theta^{3}/6$
+has residual $\theta^{5}/120$, which at $40^{\circ}$ is $0.698^{5}/120
+\approx 1.4 \times 10^{-3}$, that is about $0.16\%$ relative. The
+cubic-correction form is within a one-percent budget across the full
+$0$--$40^{\circ}$ operating range. The crossover where the next-order
+correction becomes mandatory (relative error of leading-order $\geq
+1\%$) is around $\theta = \sqrt{6 \cdot 0.01} \approx 0.245$ rad
+$\approx 14^{\circ}$.
+
+The consequence of using the leading-order form past its budget in a
+control loop is a systematic gain error: at $40^{\circ}$ the
+controller thinks it is applying a command of magnitude $0.698$ rad
+of effective angle but is actually producing $\sin(40^{\circ}) =
+0.643$ rad of physical effect. The loop overshoots its target by
+about $8\%$ at the upper end of the range, with the error scaling
+quadratically toward the corners. In a stability analysis the
+phase-margin calculation built around the linearised model is
+mispredicted by a similar fraction, and a feedback loop tuned for
+$30^{\circ}$ may oscillate at $40^{\circ}$. The fix is the
+cubic-correction form throughout, or a piecewise rule that switches
+at $14^{\circ}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1193,6 +1869,37 @@ sensor is then operated outside its calibrated range, where the
 quartic and higher terms become significant. Argue, in 200 to 300
 words, what the user observes, what the diagnostic for the regime
 shift looks like, and the procedural fix.
+
+\paragraph{Solution sketch.} The truncated cubic model $y \approx
+c_{0} + c_{1} x + c_{2} x^{2} + c_{3} x^{3}$ has bounded error inside
+the calibrated range $[x_{\min}, x_{\max}]$ where the higher-order
+terms $c_{4} x^{4} + \cdots$ contribute below the calibration's
+target tolerance. Outside this range, the higher-order terms grow
+faster than the cubic, and the model error grows polynomially with
+the deviation from the calibration boundary.
+
+The user observes that the sensor readings are systematically wrong
+when the physical input strays past calibration boundaries: at twice
+the calibrated maximum, a model that was good to $0.1\%$ inside is
+typically wrong by tens of percent. The bias is one-sided (sensor
+nonlinearities are rarely symmetric), so the error appears as a
+drift rather than as zero-mean noise. Outputs near the upper boundary
+of the calibrated range drift smoothly into bias-dominated readings
+past it; the user may not notice until two independent measurements
+disagree.
+
+The diagnostic for the regime shift is a residual plot of measured
+vs predicted, or measured vs a reference instrument, taken across
+the operating range. A clean residual inside the calibrated range
+that fans out past the boundary identifies the problem. The
+procedural fix is recalibration over the extended range (adding
+calibration points beyond the original boundary), refitting with a
+higher-order polynomial (a quintic or septic) that contains the
+quartic and higher terms, and updating the field-deployed coefficient
+table. The lesson, more generally: a truncated Taylor or polynomial
+expansion is only as valid as the calibrated range over which it
+was fitted, and operating past that range silently corrupts the
+output.
 \end{exercise}
 
 \begin{exercise}
@@ -1202,6 +1909,46 @@ analyst about the convergence rate of the iteration, what the
 expected total iteration count is to reach a target tolerance, and
 which of three named iterations (Newton, secant, fixed-point) is
 consistent with the observed behaviour.
+
+\paragraph{Solution sketch.} Quadratic convergence (Newton) shows
+residual squaring: the number of correct digits doubles each
+iteration, and the residual at step $n+1$ is approximately $C$ times
+the square of the residual at step $n$. Failure to observe squaring
+implies the iteration is not exhibiting Newton-style quadratic
+convergence.
+
+Three patterns are consistent with non-squaring residuals.
+
+\textit{Fixed-point (linear) convergence}: $e_{n+1} \approx r e_{n}$
+with $|r| < 1$. The residual shrinks by a constant factor per step.
+The number of correct digits grows linearly in $n$. Iteration count
+to tolerance $\eta$ from starting error $e_{0}$ is approximately
+$\log(e_{0}/\eta) / \log(1/|r|)$. For $r = 0.5$ this is $3.3 \times
+\log_{10}(e_{0}/\eta)$, that is about thirty iterations for a
+nine-decade tolerance reduction.
+
+\textit{Superlinear (secant) convergence}: $e_{n+1} \approx C
+e_{n}^{\phi}$ with $\phi = (1 + \sqrt 5)/2 \approx 1.618$. The
+secant method achieves this order without computing derivatives.
+Residuals shrink faster than linear but slower than quadratic; the
+ratio $e_{n+1}/e_{n}^{2}$ tends to zero (not bounded above), while
+$e_{n+1}/e_{n}$ tends to zero (faster than linear). Iteration count
+to nine-decade reduction is typically eight to twelve, intermediate
+between linear and quadratic.
+
+\textit{Newton with a multiple root}: at a root of multiplicity $m$
+the Newton iteration degrades from quadratic to linear convergence
+with rate $1 - 1/m$. A reader observing residual shrinkage by a
+constant factor per step at a known Newton iteration should suspect
+a multiple root; the fix is modified Newton with multiplicity
+adjustment.
+
+The observed behaviour is consistent with fixed-point iteration if
+the rate is roughly constant, with the secant method if it
+super-linearises but never quadrupes correct digits, and with
+Newton-at-a-multiple-root if the convergence is degraded from a
+known second-order scheme. The convergence-rate ladder is treated
+in \cite{text:v2ch04-hairer-wanner-2008}.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1213,6 +1960,26 @@ response that takes the junior engineer seriously, identifies what is
 correct in the statement, identifies what is missing (the role of
 absolute versus relative error and the role of the next-derivative
 bound), and proposes a sharper rule.
+
+\paragraph{Discussion.} The statement is correct for an alternating
+series with monotone-decreasing magnitudes: the alternating-series
+test gives exactly the bound the junior engineer cites. It is also
+correct, approximately, for a Taylor series at a point well inside
+its radius of convergence, where the next term is a reliable proxy
+for the Lagrange remainder. What is missing is twofold. First,
+absolute and relative budgets behave differently: the next term may
+be smaller than an absolute budget in absolute terms while still
+being a large fraction of the quantity being computed, so a relative
+budget must be tested against the next term divided by the current
+estimate. Second, the next-term proxy is only safe when the next
+derivative bound is well-behaved over the interval; if $|f^{(n+1)}|$
+spikes far from the working point, the next term in the series
+understates the remainder and the budget rule fails. A sharper rule:
+the truncation is acceptable when the Lagrange remainder bound
+$M_{n+1} |x - x_{0}|^{n+1}/(n+1)!$ is below the budget, where
+$M_{n+1}$ is an explicit upper bound on $|f^{(n+1)}|$ across the
+interval of interest. The next-term proxy is the fast check; the
+Lagrange bound is the rigorous one.
 \end{exercise}
 
 \begin{exercise}
@@ -1222,6 +1989,44 @@ Argue, in 200 to 300 words, whether this is a conservative or an
 optimistic choice, when the leading-order approximation overstates
 the bound and when it understates it, and what the safety analyst
 should do to make the approximation defensible.
+
+\paragraph{Discussion.} The approximation $\sin\theta \approx \theta$
+overstates $\sin\theta$ for $\theta > 0$, because the next nonzero
+term of the Taylor series is $-\theta^{3}/6 < 0$ at $\theta > 0$.
+For a safety bound proportional to $\sin\theta$, using $\theta$
+instead of the true value gives a value larger than the true one,
+which is conservative (the bound exceeds the actual hazard
+contribution).
+
+Whether this conservative direction is the safe direction depends on
+what the bound is used for.
+
+\textit{If the bound is an upper bound on something the analyst
+wants to limit} (peak stress, displacement, exposure), using
+$\theta$ gives a conservative (safe) upper estimate: the actual
+value is less than the computed bound, so a design that satisfies
+the bound is safer than computed.
+
+\textit{If the bound is a lower bound on something the analyst
+wants to guarantee} (clearance, margin, separation), using $\theta$
+overstates the quantity, so the apparent margin is larger than the
+actual margin. This is optimistic, not conservative; the design may
+have less clearance than computed.
+
+\textit{If the bound enters a quadratic or higher-power
+expression}, the direction of bias may flip; carrying the bias
+through the algebra is required.
+
+The defensible procedure is: state the budget explicitly (relative
+tolerance $\eta$); compute the maximum operating angle
+$\theta_{\max}$ implied by the budget ($\theta_{\max} = \sqrt{6
+\eta}$); state in the safety case which way the approximation
+biases the bound at $\theta_{\max}$; and either include the
+next-order term or document that the approximation is conservative
+in the relevant direction. Safety analysts who write "we use the
+small-angle approximation throughout" without naming the bias
+direction give up the documentation discipline the standards
+demand.
 \end{exercise}
 
 \begin{exercise}
@@ -1229,4 +2034,29 @@ Argue, in one paragraph, whether engineering training should
 emphasise the formal epsilon-delta definition of a limit or the
 working limit-laws-and-Taylor-series machinery. Take a position and
 defend it with a specific example from a working engineering problem.
+
+\paragraph{Discussion.} The engineering position is that working
+limit-laws-and-Taylor-series machinery is the daily tool and the
+epsilon-delta definition is the truth condition that the working
+tools inherit. An engineer who can write a Taylor expansion with a
+remainder bound, compute the limit of a composite function from the
+limit laws, and recognise that a tolerance argument has an implicit
+epsilon-delta content has the right grasp of limits for design and
+analysis. The specific example: a feedback-loop stability analysis
+asks whether the closed-loop response stays within $1\%$ of the
+desired step response for all gain settings within a stated range.
+This is an epsilon-delta question by structure (for every operating
+tolerance, find a gain tolerance that keeps the response within
+spec), but the working analysis uses the Bode-magnitude limit
+machinery and the small-signal Taylor expansion of the actuator
+nonlinearity. A student who can do the Bode analysis without
+explicit epsilon-delta arguments but who can recognise when the
+small-signal expansion has been pushed past its budget is doing the
+work an engineer needs to do. The epsilon-delta discipline matters
+when the student must read or write a proof that supports a
+liability-bearing claim, or when the working tools fail and the
+problem must be reduced to first principles. The training, then,
+emphasises the working tools, with the formal definition presented
+as the certifier and reserved for cases where the working tools do
+not settle the question.
 \end{exercise}

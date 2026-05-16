@@ -1,0 +1,76 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=1cm, y=1cm, font=\small]
+
+% Log-log error vs h, central difference, double precision
+% h axis: 10^-15 to 10^0, mapped to plot x from 0 to 12 (each decade = 0.8)
+% error axis: 10^-15 to 10^0, mapped to plot y from 0 to 9 (each decade = 0.6)
+
+% Axes
+\draw[->, thick] (0, 0) -- (12.5, 0) node[right] {$h$};
+\draw[->, thick] (0, 0) -- (0, 9.5) node[above] {absolute error $|D_{0}(x;h) - f'(x)|$};
+
+% x-axis log decade ticks (h = 10^-15 ... 10^0, plotx = (15 + log10(h)) * 0.8)
+\foreach \k in {-15, -12, -9, -6, -3, 0} {
+  \pgfmathsetmacro{\px}{(15 + \k)*0.8}
+  \draw (\px, 0) -- (\px, -0.15);
+  \node[anchor=north, font=\scriptsize] at (\px, -0.15) {$10^{\k}$};
+}
+
+% y-axis log decade ticks
+\foreach \k in {-15, -12, -9, -6, -3, 0} {
+  \pgfmathsetmacro{\py}{(15 + \k)*0.6}
+  \draw (0, \py) -- (-0.15, \py);
+  \node[anchor=east, font=\scriptsize] at (-0.15, \py) {$10^{\k}$};
+}
+
+% Round-off branch: error_round ~ eps / h, eps = 1e-16
+% log10(error) = log10(eps) - log10(h) = -16 - log10(h)
+% h goes from 10^-15 to 10^-5 for visible round-off branch
+% plotx = (15 + log10(h))*0.8; ploty = (15 + (-16 - log10(h)))*0.6 = (-1 - log10(h))*0.6
+% For log10(h) = -15: plotx = 0, ploty = 14*0.6 = 8.4
+% For log10(h) = -5: plotx = 8, ploty = 4*0.6 = 2.4
+\draw[thick, engred]
+  plot[domain=-15:-5, samples=50] ({(15 + \x)*0.8}, {(-1 - \x)*0.6});
+
+% Truncation branch: error_trunc ~ (1/6) h^2 |f'''|, take |f'''| ~ 1
+% log10(error) = -0.78 + 2 log10(h)
+% h goes from 10^-6 to 10^0
+% For log10(h) = -6: plotx = 9*0.8 = 7.2, ploty = (15 + (-0.78 - 12))*0.6 = 2.22*0.6 = 1.33
+% For log10(h) = 0:  plotx = 15*0.8 = 12, ploty = (15 - 0.78)*0.6 = 14.22*0.6 = 8.5
+\draw[thick, engblue]
+  plot[domain=-6:0, samples=20] ({(15 + \x)*0.8}, {(15 + (-0.78 + 2*\x))*0.6});
+
+% Optimal point: h* = (eps / |f'''|)^(1/3) ~ 10^(-16/3) ~ 10^-5.33
+% error at optimum ~ eps^(2/3) ~ 10^(-10.67)
+\fill[engblack] ({(15 - 5.33)*0.8}, {(15 - 10.67)*0.6}) circle (2.5pt);
+\node[engblack, anchor=south west, font=\scriptsize, align=left]
+  at ({(15 - 5.33)*0.8 + 0.2}, {(15 - 10.67)*0.6 + 0.1})
+  {$h^{*} \sim \varepsilon^{1/3}$\\ error $\sim \varepsilon^{2/3}$};
+
+% Label the two branches
+\node[engred, anchor=west, font=\scriptsize] at (1.0, 7.5)
+  {round-off $\sim \varepsilon/h$};
+\node[engblue, anchor=east, font=\scriptsize] at (11.0, 5.5)
+  {truncation $\sim h^{2} |f'''|/6$};
+
+% Floor annotation
+\draw[thin, gray, dashed]
+  (0, {(15 - 10.67)*0.6}) -- (12, {(15 - 10.67)*0.6});
+\node[gray, anchor=west, font=\tiny] at (10, {(15 - 10.67)*0.6 - 0.3})
+  {optimum};
+
+\end{tikzpicture}
+\caption[Bias-variance tradeoff in numerical differentiation]{Total
+error of the central-difference estimate $D_{0}(x; h)$ for $f'(x)$
+in double precision ($\varepsilon \approx 10^{-16}$). The round-off
+branch (red) scales as $\varepsilon / h$ and dominates for small $h$;
+the truncation branch (blue) scales as $h^{2} |f'''|/6$ and dominates
+for large $h$. The total error is minimised at $h^{*} \sim
+\varepsilon^{1/3} \approx 10^{-5}$ (for $|f'''| \sim 1$), with
+optimum error of order $\varepsilon^{2/3} \approx 10^{-11}$. The
+plot collapses the entire tradeoff onto a single V-shaped curve;
+the engineer reads $h^{*}$ off the bottom and the achievable
+precision off the left axis.}
+\label{fig:vol02:ch05:bias-variance}
+\end{figure}

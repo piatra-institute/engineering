@@ -388,6 +388,30 @@ the rate of the first and is below percent-level after one full
 $\tau$. The detailed Fourier-series solution is constructed in
 §12.5.
 
+\input{volumes/02-form/ch12-pdes/figures/fig-heat-evolution.tex}
+
+\subsection{Material diffusivities and the working calibration}\pathtag{standard}
+
+The seven thermal diffusivities listed above span more than three
+orders of magnitude, and that span is the working content of the
+chapter for the engineer who picks materials. The reader who has
+ever waited for a glass casserole dish to warm through under a
+broiler has felt $\alpha \sim 3 \times 10^{-7}\,\si{\meter\squared
+\per\second}$ in the time domain; the reader who has burned a
+hand on a copper-bottomed saucepan has felt $\alpha \sim 1.1
+\times 10^{-4}\,\si{\meter\squared\per\second}$ in the same
+domain. The diffusion-length working formula $\delta = \sqrt{
+\alpha \tau}$ is the bridge between the laboratory time scale and
+the geometric length scale; for $\tau = 1\,\si{\hour}$, $\delta$
+ranges from $1\,\si{\centi\meter}$ in concrete to $63\,\si{
+\centi\meter}$ in copper. The same formula governs the
+penetration depth of a daily outside-air temperature cycle into
+a building wall and the depth at which a measurement
+thermocouple sees through a sample surface to its interior. The
+table at \texttt{data/thermal\_diffusivities.csv} carries the
+working values used throughout the chapter, with source pins to
+\textcite{text:incropera2007} Tables A.1, A.3, A.4, and A.6.
+
 \section{The wave equation}\pathtag{core}
 
 The wave equation is the prototype of propagation. It is
@@ -530,6 +554,45 @@ signature of the nonlinearity. The working linear model is right
 for the dynamics; the second-order correction is right when the
 engineer cares about pitch stability across dynamic range.
 
+\input{volumes/02-form/ch12-pdes/figures/fig-wave-snapshot.tex}
+
+\begin{estimation}
+\textbf{Question.} A drone passes overhead at altitude
+$h = 80\,\si{\meter}$. The operator hears the buzz arrive
+roughly half a second after the drone passes the zenith. Estimate
+the drone's horizontal ground speed, before reaching for any
+formal model.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+Sound travels at $c \approx 343\,\si{\meter\per\second}$ in air at
+$20\,\degC$. The wave equation in three dimensions gives a
+spherical wavefront from the drone; the observer hears the
+zenith-position pulse a time $h/c$ later, that is $80/343 \approx
+0.23\,\si{\second}$ after the drone is overhead. The observed
+delay of half a second is roughly twice that. The extra
+quarter-second is the geometric correction: by the time the sound
+arrives, the drone has moved a horizontal distance $v \cdot
+(h/c)$, and the observer is hearing the drone from a slant
+range slightly longer than $h$. A working estimate is
+$v \approx h \cdot \sqrt{(c \Delta t / h)^{2} - 1} / \Delta t$;
+for $\Delta t = 0.5\,\si{\second}$, $c \Delta t / h \approx 2.14$,
+giving $v \approx 80 \times \sqrt{3.6}/0.5 \approx
+300\,\si{\meter\per\second}$. The number is high for a consumer
+drone, which suggests the observer over-estimated the delay or
+under-estimated the altitude; the estimate frames the working
+discipline that turns an audible delay into a working velocity.
+The same arithmetic, applied to a thunderclap, converts the
+flash-to-bang interval into a distance estimate at the
+working rate of $300\,\si{\meter}$ per second of delay. The
+estimation makes the calculation honest: a working engineer
+checks that the inputs (delay, altitude, sound speed) are
+consistent with the output (velocity) before quoting any
+number.
+\end{estimation}
+
 \section{Laplace's equation}\pathtag{core}
 
 Set $u_{t} = 0$ in the heat equation and divide through by
@@ -643,6 +706,16 @@ and below by the boundary minimum ($0$, on the other three
 edges). The interior values lie strictly between, and the
 explicit formula confirms it.
 
+\input{volumes/02-form/ch12-pdes/figures/fig-laplace-square.tex}
+
+\Cref{fig:vol02:ch12:laplace-square} gives the working picture.
+The boundary detail (a half-sine on the top edge) penetrates into
+the rectangle with decay length set by the wavelength of the
+boundary mode. A boundary disturbance of higher spatial frequency
+would decay faster into the interior; a slower disturbance would
+penetrate further. The same low-pass character that the heat
+equation exhibits in time, Laplace's equation exhibits in space.
+
 \section{Separation of variables, Fourier series introduction}\pathtag{core}
 
 Separation of variables is the workhorse method for solving the
@@ -712,6 +785,8 @@ $\int_{0}^{L} \sin(n\pi x/L) \sin(m\pi x/L)\, \dd x = (L/2)
 The construction is general: every boundary condition admits a
 family of eigenfunctions $X_{n}$, and the coefficients are the
 inner products of the data against the eigenfunctions.
+
+\input{volumes/02-form/ch12-pdes/figures/fig-separation-modes.tex}
 
 \subsection{Why the time constants stack as $1/n^{2}$}
 
@@ -1081,7 +1156,45 @@ operators (centring the time derivative), giving second-order
 accuracy in time as well as in space and unconditional stability
 when applied to the heat equation. Crank-Nicolson is the standard
 production scheme for one-dimensional parabolic problems where
-accuracy and stability both matter.
+accuracy and stability both matter \cite{paper:v2ch12-crank-nicolson-1947}.
+
+\subsection{Crank-Nicolson in working form}\pathtag{standard}
+
+Writing the time-centred update step explicitly,
+\[
+\frac{U_{j}^{n+1} - U_{j}^{n}}{\Delta t} = \frac{\alpha}{2} \left(\frac{U_{j+1}^{n+1} - 2 U_{j}^{n+1} + U_{j-1}^{n+1}}{\Delta x^{2}} + \frac{U_{j+1}^{n} - 2 U_{j}^{n} + U_{j-1}^{n}}{\Delta x^{2}}\right),
+\]
+which rearranges to the tridiagonal system
+\[
+-\tfrac{r}{2} U_{j-1}^{n+1} + (1 + r) U_{j}^{n+1} - \tfrac{r}{2} U_{j+1}^{n+1} = \tfrac{r}{2} U_{j-1}^{n} + (1 - r) U_{j}^{n} + \tfrac{r}{2} U_{j+1}^{n}.
+\]
+The matrix on the left is symmetric, positive definite, and
+diagonally dominant for every $r > 0$; the Thomas algorithm
+solves it in $\mathcal{O}(N)$ work per step. A von Neumann
+analysis gives the amplification factor
+\[
+\xi(k) = \frac{1 - 2 r \sin^{2}(k \Delta x / 2)}{1 + 2 r \sin^{2}(k \Delta x / 2)},
+\]
+which satisfies $|\xi(k)| \leq 1$ for every $r > 0$ and every $k$,
+the algebraic confirmation that the scheme is unconditionally
+stable. The local truncation error is
+$\mathcal{O}(\Delta t^{2} + \Delta x^{2})$, second-order in both
+variables.
+
+A practical consequence: Crank-Nicolson preserves smoothness of
+the solution but can over-oscillate transient corners on coarse
+grids. A sharp initial discontinuity, evolved with $r \sim 10$,
+develops small-amplitude ringing for a few steps before the
+diffusion smooths it away. The ringing is not a stability
+violation (the amplitude is bounded), but it is an accuracy
+artefact that the engineer who tracks transient extrema should
+either resolve with finer grid or damp by switching to BTCS for
+the first few steps. The pattern is documented in standard
+finite-difference references such as
+\textcite{text:v2ch12-leveque-fdm} and
+\textcite{text:v2ch12-morton-mayers}.
+
+\input{volumes/02-form/ch12-pdes/figures/fig-cfl-stability.tex}
 
 \subsection{Stability of explicit schemes for the wave equation}
 
@@ -1393,6 +1506,89 @@ hours. BTCS implementation: one to two hours. Comparison and
 convergence study: one to two hours. Boundary-condition
 modification: one hour. Reflection: two to three hours. Total
 reader time approximately seven to eleven hours.
+
+\textbf{Phases}. The project decomposes into five working phases:
+
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Phase A, analytical baseline}. Hand-compute the
+    Fourier coefficients $b_{n}$ for the chosen $u_{0}$. Implement
+    the truncated-series evaluator. Plot the initial condition and
+    verify that the truncation captures it visually. \emph{Gate:
+    the truncated series at $N = 50$ matches the initial condition
+    to within $5\,\%$ in $L^{2}$ norm.}
+  \item \emph{Phase B, FTCS and the CFL gate}. Implement the
+    explicit update. Run at $r = 0.4$ and confirm smooth
+    monotone decay of the maximum value with time. Run at
+    $r = 0.51$ and observe the checkerboard. \emph{Gate: the
+    checkerboard pattern appears within ten time steps at
+    $r = 0.51$ and the maximum value exceeds the initial
+    condition by a factor of three or more.}
+  \item \emph{Phase C, BTCS and the tridiagonal solver}. Implement
+    the implicit update. Confirm that the per-step cost is one
+    tridiagonal solve. Run at $r = 0.4$, $r = 5$, and $r = 50$,
+    all stable. \emph{Gate: the BTCS solution at $r = 5$ matches
+    the FTCS solution at $r = 0.4$ to within $10\,\%$ in $L^{2}$
+    at $t = T/2$; the per-step wall-clock time of BTCS is at
+    most three times that of FTCS at matched $r$.}
+  \item \emph{Phase D, convergence study}. Hold one of $\Delta x$,
+    $\Delta t$ fixed and refine the other across four levels.
+    Plot the $L^{2}$ error against grid spacing on log-log axes.
+    \emph{Gate: the spatial slope is $-2 \pm 0.2$; the temporal
+    slope is $-1 \pm 0.2$ for BTCS and (if implemented)
+    $-2 \pm 0.2$ for Crank-Nicolson.}
+  \item \emph{Phase E, boundary-condition sensitivity}. Replace
+    the right Dirichlet condition with a Neumann condition. Re-
+    derive the eigenfunctions. Re-run the BTCS solver and observe
+    the steady state. \emph{Gate: the steady state is uniformly
+    $T_{1}$ and the fundamental time constant is four times longer
+    than the both-ends-Dirichlet case.}
+\end{enumerate}
+
+\textbf{Common failure modes}.
+
+\begin{itemize}[leftmargin=*]
+  \item \emph{Wrong sign in the FTCS update.} A flipped sign on
+    the second-difference term produces a solution that grows
+    rather than decays. Diagnostic: at $r = 0.4$, the solution at
+    $t = T/4$ should be strictly less than the initial condition
+    in maximum norm; if it is larger, the sign is wrong.
+  \item \emph{Off-by-one boundary handling.} Indexing the interior
+    points one too short or one too long produces a small but
+    persistent error that does not converge under refinement.
+    Diagnostic: the steady-state matches the analytical zero to
+    machine precision in the interior; any persistent residual is
+    a boundary mistake, not a stability issue.
+  \item \emph{Tridiagonal banding error.} Building the implicit
+    matrix with the wrong band structure (e.g.\ assembling a
+    full $N \times N$ matrix and inverting it) produces correct
+    answers at $\mathcal{O}(N^{3})$ cost rather than $\mathcal{O}
+    (N)$. Diagnostic: time the per-step solve at $N = 100, 200,
+    400$; the wall time should scale linearly.
+  \item \emph{Confusing the CFL number with the dimensionless
+    time.} The Courant number $r = \alpha \Delta t / \Delta x^{2}$
+    is dimensionless and controls stability; the dimensionless
+    time $\tau = \alpha t / L^{2}$ controls how far the system has
+    relaxed. Diagnostic: at $r = 0.4$ and $N = 50$, one
+    fundamental time constant takes about $\pi^{2} \cdot 50^{2}
+    \cdot 0.4 / 0.5 \approx 20{,}000$ steps; if the simulation
+    finishes in 200 steps, $r$ or $N$ or $T$ is wrong by two
+    orders of magnitude.
+  \item \emph{Plotting versus printing scale.} Auto-scaled
+    matplotlib axes can hide a divergence for several plot frames
+    while the maximum grows by orders of magnitude. Diagnostic:
+    print the maximum value at every plotted time and the time
+    step at which it first exceeds the initial maximum.
+\end{itemize}
+
+\textbf{Success criteria}. The project deliverable counts as
+complete when, in addition to the per-phase gates above, the
+reader's reflection identifies the working trade-off between
+explicit and implicit schemes for the reader's own anticipated
+use case (small grids and short times versus large grids and long
+relaxation) and the reader can quote, without referring to the
+chapter prose, the FTCS CFL bound $r \leq 1/2$, the wave-equation
+CFL bound $c \Delta t / \Delta x \leq 1$, and the working order
+of magnitude of $\alpha$ for the materials the reader works with.
 \end{project}
 
 \section{Exercises}
@@ -1411,6 +1607,20 @@ Verify by direct substitution that $u(x, t) = e^{-\alpha t}
 u_{xx}$. Identify the boundary conditions on the interval $[0,
 \pi]$ for which this is the unique solution at $t = 0$ matching
 the initial condition $u(x, 0) = \sin(x)$.
+
+\paragraph{Solution sketch.}
+$u_{t} = -\alpha\, e^{-\alpha t}\sin(x)$ and $u_{xx} = -e^{-\alpha
+t}\sin(x)$, so $u_{t} - \alpha u_{xx} = -\alpha e^{-\alpha t}
+\sin(x) + \alpha e^{-\alpha t}\sin(x) = 0$. The function vanishes
+at $x = 0$ and $x = \pi$ for all $t$, so the homogeneous Dirichlet
+conditions $u(0, t) = u(\pi, t) = 0$ are matched. These conditions
+plus the initial $u(x, 0) = \sin(x)$ pin the solution uniquely by
+the parabolic maximum principle (uniqueness for the
+homogeneous-Dirichlet heat equation; the difference of two
+solutions would be a harmonic-in-time-zero parabolic field that
+must vanish identically). The example is the fundamental mode
+$n = 1$ of the separation-of-variables expansion with $L = \pi$
+and $\lambda_{1} = 1$, the slowest-decaying eigenfunction.
 \end{exercise}
 
 \begin{exercise}
@@ -1418,6 +1628,22 @@ Compute the Fourier sine coefficients $b_{n}$ for the function
 $f(x) = x$ on $[0, L]$. Write the truncated Fourier series with
 $N = 5$ terms and evaluate at $x = L/2$. Compare to the exact
 value $L/2$ and identify the truncation error.
+
+\paragraph{Solution sketch.}
+Integration by parts gives
+$b_{n} = (2/L)\int_{0}^{L} x \sin(n\pi x/L)\,\dd x =
+-(2L/(n\pi))\cos(n\pi) = (-1)^{n+1} \cdot 2L/(n\pi)$. The first
+five coefficients are $b_{1} = 2L/\pi$, $b_{2} = -L/\pi$,
+$b_{3} = 2L/(3\pi)$, $b_{4} = -L/(2\pi)$, $b_{5} = 2L/(5\pi)$.
+At $x = L/2$, $\sin(n\pi/2)$ is $1, 0, -1, 0, 1$ for
+$n = 1, 2, 3, 4, 5$, so even terms drop out and the truncated
+sum is $S_{5} = (2L/\pi)(1 - 1/3 + 1/5) = (2L/\pi)(13/15)
+\approx 0.5519\, L$. The exact value is $0.5\, L$; the
+truncation error is about $0.052\, L$, roughly $10\,\%$. The
+$1/n$ falloff of the coefficients is the working signature of
+expanding a non-zero-boundary function in a sine basis; the
+overshoot near $x = L$ is the Gibbs phenomenon and persists at
+any truncation.
 \end{exercise}
 
 \begin{exercise}
@@ -1429,6 +1655,22 @@ L^{2}/(\pi^{2}\alpha)$ and the temperature at the midpoint after
 $t = \tau_{1}$, $2\tau_{1}$, $5\tau_{1}$. Use the leading-mode
 approximation and report the percent error against retaining the
 $n = 3$ correction at $t = \tau_{1}$.
+
+\paragraph{Solution sketch.}
+$\tau_{1} = (0.5)^{2}/(\pi^{2} \cdot 1.1 \times 10^{-4}) =
+0.25/(1.086 \times 10^{-3}) \approx 230\,\si{\second}$, about
+$3.8$ minutes. The midpoint solution is
+$u(L/2, t) \approx (4 \cdot 100/\pi)\bigl[\sin(\pi/2) e^{-t/\tau_{1}}
++ (1/3)\sin(3\pi/2) e^{-9 t/\tau_{1}} + \cdots\bigr]
+= (400/\pi)\bigl[e^{-t/\tau_{1}} - (1/3) e^{-9 t/\tau_{1}} +
+\cdots\bigr]$. Leading-mode values: at $t = \tau_{1}$, $u
+\approx (400/\pi) e^{-1} \approx 46.8\,\degC$; at $t = 2\tau_{1}$,
+$u \approx 17.2\,\degC$; at $t = 5\tau_{1}$, $u \approx
+0.86\,\degC$. With the $n = 3$ correction at $t = \tau_{1}$, the
+$e^{-9}$ factor is $1.23 \times 10^{-4}$, so the correction to
+the leading $46.8\,\degC$ is $-(400/\pi)(1/3)(1.23 \times 10^{-4})
+\approx -0.0052\,\degC$, a percent error of $\sim 10^{-4}$. The
+leading-mode approximation is excellent after one $\tau_{1}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1437,6 +1679,23 @@ per unit length $\mu = 4 \times 10^{-4}\,\si{\kilogram\per\meter}$,
 and tension $T = 80\,\si{\newton}$, compute the wave speed, the
 fundamental frequency, and the wavelengths of the first three
 harmonics. State the period of the round-trip propagation.
+
+\paragraph{Solution sketch.}
+$c = \sqrt{T/\mu} = \sqrt{80/(4 \times 10^{-4})} = \sqrt{2 \times
+10^{5}} \approx 447\,\si{\meter\per\second}$. The fundamental
+frequency is $f_{1} = c/(2L) = 447/1.30 \approx 344\,\si{\hertz}$,
+close to standard musical E$_{4}$ at $330\,\si{\hertz}$ (the
+literature value for a real guitar's tension is slightly lower
+than the round number used here). The first three modal
+wavelengths are $\lambda_{n} = 2L/n$, so $\lambda_{1} =
+1.30\,\si{\meter}$, $\lambda_{2} = 0.65\,\si{\meter}$,
+$\lambda_{3} = 0.43\,\si{\meter}$. The round-trip period (a
+travelling pulse going from one end to the other and back) is
+$T_{\text{rt}} = 2 L / c \approx 2.9\,\si{\milli\second}$, which
+is the same as the fundamental period $1/f_{1}$. The equality is
+not coincidence: the fundamental standing wave is the resonance
+condition that the round-trip pulse interferes constructively
+with itself.
 \end{exercise}
 
 \begin{exercise}
@@ -1445,6 +1704,21 @@ $u(x, 0) = 0$, $u(x, 1) = \sin(\pi x)$, $u(0, y) = u(1, y) = 0$,
 write the explicit separation-of-variables solution. Evaluate
 $u(0.5, 0.5)$ and $u(0.5, 0.25)$. Verify that the maximum
 principle holds.
+
+\paragraph{Solution sketch.}
+The solution is $u(x, y) = \sin(\pi x) \sinh(\pi y)/\sinh(\pi)$
+(derived in §12.4). At $(0.5, 0.5)$: $\sin(\pi/2) = 1$,
+$\sinh(\pi/2)/\sinh(\pi) = 2.301/11.549 \approx 0.1992$. At
+$(0.5, 0.25)$: $\sinh(\pi/4)/\sinh(\pi) = 0.8687/11.549 \approx
+0.0752$. The boundary values are $0$ on three edges and bounded
+above by $1$ on the top, so the maximum principle predicts
+$0 \leq u \leq 1$ in the interior. Both computed values lie in
+that range; the maximum principle holds. The values also confirm
+the exponential-style decay away from the inhomogeneous boundary:
+halving the distance from $y = 1$ to $y = 0$ multiplies $u$ by
+roughly $\sinh(\pi/4)/\sinh(\pi/2) \approx 0.378$, close to
+$\exp(-\pi/4) \approx 0.456$ that the deep-interior asymptotic
+form $\sinh(\pi y)/\sinh(\pi) \to (1/2) e^{\pi(y - 1)}$ predicts.
 \end{exercise}
 
 \begin{exercise}
@@ -1453,6 +1727,23 @@ For the wave equation with $c = 343\,\si{\meter\per\second}$
 {\meter}$, compute the CFL bound $\Delta t_{\max} = \Delta x/c$.
 Compare to the parabolic CFL bound for an analogous heat-equation
 simulation with thermal diffusivity equal to $c \cdot \Delta x$.
+
+\paragraph{Solution sketch.}
+The hyperbolic CFL bound is $\Delta t_{\max}^{(\text{wave})} =
+\Delta x / c = 0.01/343 \approx 2.9 \times 10^{-5}\,\si{\second}$,
+about $29\,\si{\micro\second}$. The analogous heat-equation
+diffusivity is $\alpha = c \cdot \Delta x = 343 \times 0.01 =
+3.43\,\si{\meter\squared\per\second}$ (a large value, three to
+four orders of magnitude above ordinary metallic conductors).
+The parabolic CFL bound is $\Delta t_{\max}^{(\text{heat})} =
+\Delta x^{2}/(2\alpha) = (0.01)^{2}/(2 \cdot 3.43) \approx
+1.46 \times 10^{-5}\,\si{\second}$, about $15\,\si{\micro\second}$.
+The parabolic bound is half the hyperbolic. The general working
+fact: parabolic CFL scales as $\Delta x^{2}$, hyperbolic as
+$\Delta x$. Halving $\Delta x$ requires quartering $\Delta t$ in
+the parabolic case and only halving it in the hyperbolic; the
+cost of fine grids is much worse for diffusion than for
+propagation.
 \end{exercise}
 
 \begin{exercise}
@@ -1461,6 +1752,22 @@ and the other end Neumann (insulated), the steady state is
 uniform at $T_{1}$. Write the eigenvalues and eigenfunctions of
 the spatial operator with these boundary conditions. State the
 fundamental time constant in terms of $L$ and $\alpha$.
+
+\paragraph{Solution sketch.}
+After subtracting the steady state $u_{\text{ss}}(x) = T_{1}$,
+the transient $v(x, t) = u(x, t) - T_{1}$ satisfies the heat
+equation with homogeneous boundary conditions $v(0, t) = 0$
+(Dirichlet) and $v_{x}(L, t) = 0$ (Neumann). The eigenvalue
+problem $X'' + \lambda X = 0$, $X(0) = 0$, $X'(L) = 0$ has
+solutions $X_{n}(x) = \sin((n - 1/2)\pi x/L)$ with eigenvalues
+$\lambda_{n} = ((n - 1/2)\pi/L)^{2}$ for $n = 1, 2, \ldots$. The
+fundamental eigenvalue is $\lambda_{1} = (\pi/(2L))^{2} =
+\pi^{2}/(4 L^{2})$, giving the fundamental time constant
+$\tau_{1} = 1/(\alpha \lambda_{1}) = 4 L^{2}/(\pi^{2} \alpha)$.
+This is exactly four times the both-ends-Dirichlet time constant
+$L^{2}/(\pi^{2}\alpha)$, because the insulated end effectively
+doubles the characteristic length: the eigenfunction's
+half-wavelength fits the rod once rather than half-once.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -1470,6 +1777,25 @@ Derive the heat equation $u_{t} = \alpha u_{xx}$ from energy
 balance on a thin slab, Fourier's law $q = -k u_{x}$, and the
 limit $\Delta x \to 0$. Identify the physical meaning of $\alpha
 = k/(\rho c_{p})$ and verify the dimensions of each quantity.
+
+\paragraph{Solution sketch.}
+The derivation in §12.2 is the model. The energy in a slab of
+length $\Delta x$ and cross-section $A$ is $E = \rho c_{p} A
+\int_{x}^{x + \Delta x} u\, \dd s$. Conservation gives $\dv{E}{t}
+= q(x) A - q(x + \Delta x) A$. Fourier's law $q = -k u_{x}$
+substitutes into the right side; the limit $\Delta x \to 0$ turns
+each side into a pointwise statement; dividing by $\rho c_{p} A$
+gives $u_{t} = (k/\rho c_{p}) u_{xx} = \alpha u_{xx}$. Dimensions:
+$k$ has units $\si{\watt\per\meter\per\kelvin}$, $\rho$ has
+$\si{\kilogram\per\meter\cubed}$, $c_{p}$ has $\si{\joule\per
+\kilogram\per\kelvin}$, so $k/(\rho c_{p})$ has $(\si{\joule\per
+\second\per\meter\per\kelvin})/(\si{\joule\per\meter\cubed\per
+\kelvin}) = \si{\meter\squared\per\second}$. The quantity
+$\alpha$ is the diffusivity, the rate at which a temperature
+gradient relaxes; high $\alpha$ means fast heat redistribution,
+low $\alpha$ means slow. The two-orders-of-magnitude span between
+copper ($\alpha \sim 10^{-4}$) and glass ($\alpha \sim 10^{-7}$)
+is the working calibration the engineer carries.
 \end{exercise}
 
 \begin{exercise}
@@ -1478,6 +1804,26 @@ second law applied to a thin string segment under tension $T$ and
 mass per unit length $\mu$. Identify the wave speed $c =
 \sqrt{T/\mu}$ and verify the dimensions. State the small-amplitude
 assumption that linearises the equation.
+
+\paragraph{Solution sketch.}
+The derivation in §12.3 is the model. The transverse component of
+tension on a string at position $x$ is $-T \sin\theta(x) \approx
+-T u_{x}(x)$ for small angles ($\sin\theta \approx \tan\theta =
+u_{x}$); on a thin segment, the net transverse force is $T(u_{x}(x
++ \Delta x) - u_{x}(x))$. Newton's second law $F = m a$ with
+$m = \mu \Delta x$ and $a = u_{tt}$ gives, after dividing by
+$\Delta x$ and taking the limit, $\mu u_{tt} = T u_{xx}$, that
+is $u_{tt} = c^{2} u_{xx}$ with $c^{2} = T/\mu$. Dimensions:
+$T$ in $\si{\newton} = \si{\kilogram\meter\per\second\squared}$,
+$\mu$ in $\si{\kilogram\per\meter}$, so $T/\mu$ has units
+$\si{\meter\squared\per\second\squared}$ and $c = \sqrt{T/\mu}$
+has units $\si{\meter\per\second}$. The linearising assumption is
+small amplitude: $u_{x} \ll 1$ everywhere, equivalently the
+string deflection is small compared to the wavelength of the
+disturbance. Without that, the geometric factor $1/\sqrt{1 +
+u_{x}^{2}}$ in $\sin\theta = u_{x}/\sqrt{1 + u_{x}^{2}}$ adds an
+amplitude-dependent correction and the equation becomes
+nonlinear.
 \end{exercise}
 
 \begin{exercise}
@@ -1489,6 +1835,25 @@ for the solution of the wave equation $u_{tt} = c^{2} u_{xx}$
 with initial conditions $u(x, 0) = \phi(x)$ and $u_{t}(x, 0) =
 \psi(x)$. Hint: use the change of variables $\xi = x - c t$,
 $\eta = x + c t$ to bring the equation to $u_{\xi \eta} = 0$.
+
+\paragraph{Solution sketch.}
+With $\xi = x - ct$, $\eta = x + ct$ the chain rule gives
+$u_{x} = u_{\xi} + u_{\eta}$, $u_{t} = -c(u_{\xi} - u_{\eta})$,
+hence $u_{xx} = u_{\xi\xi} + 2 u_{\xi\eta} + u_{\eta\eta}$ and
+$u_{tt} = c^{2}(u_{\xi\xi} - 2 u_{\xi\eta} + u_{\eta\eta})$. The
+equation $u_{tt} - c^{2} u_{xx} = 0$ becomes $-4 c^{2}
+u_{\xi\eta} = 0$, that is $u_{\xi\eta} = 0$. Integrating in
+$\eta$ gives $u_{\xi} = F'(\xi)$ for some function $F$, and
+integrating in $\xi$ gives $u(\xi, \eta) = F(\xi) + G(\eta) =
+F(x - ct) + G(x + ct)$. Apply the initial conditions: $u(x, 0)
+= F(x) + G(x) = \phi(x)$ and $u_{t}(x, 0) = -c F'(x) + c G'(x) =
+\psi(x)$. Integrating the second condition in $x$: $-F(x) + G(x)
+= (1/c) \int_{0}^{x} \psi(s)\,\dd s + K$ for some constant $K$.
+Solving the linear system for $F, G$ and substituting back gives
+the d'Alembert formula. The bracketed first term is the average
+of the initial displacement at the two characteristics arriving
+at $(x, t)$; the integral term is the running average of the
+initial velocity over the past light-cone.
 \end{exercise}
 
 \begin{exercise}
@@ -1498,6 +1863,26 @@ Identify the eigenvalue problem $X'' + \lambda X = 0$ with
 $X(0) = X(L) = 0$, derive the eigenvalues $\lambda_{n} = (n
 \pi/L)^{2}$ and eigenfunctions $X_{n}(x) = \sin(n \pi x/L)$, and
 write the general solution as a Fourier sine series.
+
+\paragraph{Solution sketch.}
+The derivation in §12.5 is the model. Assume $u(x, t) = X(x) T(t)$;
+substituting and dividing by $\alpha X T$ gives $T'/(\alpha T) =
+X''/X$. The left depends only on $t$, the right only on $x$, so
+both equal a separation constant $-\lambda$. The $X$-equation
+$X'' + \lambda X = 0$ with Dirichlet conditions admits nontrivial
+solutions only for $\lambda > 0$ (negative $\lambda$ gives
+exponentials that cannot satisfy two zero boundary conditions;
+$\lambda = 0$ gives a linear function $a x + b$ that vanishes at
+both ends only if $a = b = 0$). For $\lambda > 0$ the solutions
+are $X(x) = A \sin(\sqrt{\lambda} x) + B \cos(\sqrt{\lambda} x)$.
+$X(0) = 0$ forces $B = 0$; $X(L) = A\sin(\sqrt{\lambda} L) = 0$
+forces $\sqrt{\lambda} L = n\pi$, hence $\lambda_{n} =
+(n\pi/L)^{2}$, $X_{n}(x) = \sin(n\pi x/L)$. The $T$-equation
+$T' = -\alpha \lambda_{n} T$ integrates to $T_{n}(t) =
+T_{n}(0) \exp(-\alpha (n\pi/L)^{2} t)$. The general solution is
+$u(x, t) = \sum_{n=1}^{\infty} b_{n} \sin(n\pi x/L) \exp(-\alpha
+(n\pi/L)^{2} t)$ with $b_{n} = (2/L)\int_{0}^{L} f(x) \sin(n\pi
+x/L)\,\dd x$.
 \end{exercise}
 
 \begin{exercise}
@@ -1508,6 +1893,27 @@ $\overline{\Omega}$, then $\max_{\overline{\Omega}} u =
 argue by contradiction that an interior maximum forces the
 function to be constant in a neighbourhood of the maximum, and
 extend.
+
+\paragraph{Solution sketch.}
+Suppose $u$ attains its global maximum $M = \max_{\overline{\Omega}}
+u$ at an interior point $\mathbf{x}_{0} \in \Omega$. By the
+mean-value property, $u(\mathbf{x}_{0}) = (1/|B_{r}|) \int_{B_{r}
+(\mathbf{x}_{0})} u\, \dd V$ for any ball $B_{r} \subset \Omega$.
+But $u \leq M$ everywhere, and equality in an integral average
+forces $u \equiv M$ almost everywhere on $B_{r}$, hence (by
+continuity) on $B_{r}$. So the set $S = \{\mathbf{x} \in \Omega:
+u(\mathbf{x}) = M\}$ is open. It is also closed in $\Omega$ as the
+preimage of $\{M\}$ under a continuous function. Since $\Omega$ is
+connected and $S$ is nonempty, $S = \Omega$, that is $u \equiv M$
+throughout the domain. If $u$ is non-constant, no such interior
+maximum exists; the maximum is attained on $\partial \Omega$. The
+same argument applied to $-u$ gives the minimum principle. The
+uniqueness corollary follows: if $u_{1}, u_{2}$ are harmonic with
+the same boundary data, $u_{1} - u_{2}$ is harmonic with zero
+boundary data, so $0 = \max_{\partial \Omega}(u_{1} - u_{2}) \geq
+\max_{\overline{\Omega}}(u_{1} - u_{2}) \geq \min_{\overline{
+\Omega}}(u_{1} - u_{2}) \geq \min_{\partial \Omega}(u_{1} - u_{2})
+= 0$, hence $u_{1} \equiv u_{2}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1516,6 +1922,25 @@ Derive the CFL condition $r = \alpha \Delta t/\Delta x^{2} \leq
 Neumann analysis. Hint: substitute the discrete Fourier mode
 $U_{j}^{n} = \xi^{n} e^{i k j \Delta x}$ into the update equation
 and demand $|\xi| \leq 1$ for all real $k$.
+
+\paragraph{Solution sketch.}
+The FTCS update is $U_{j}^{n+1} = U_{j}^{n} + r(U_{j+1}^{n} -
+2 U_{j}^{n} + U_{j-1}^{n})$. Substituting $U_{j}^{n} = \xi^{n}
+e^{i k j \Delta x}$ and dividing by $\xi^{n} e^{i k j \Delta x}$:
+$\xi = 1 + r(e^{i k \Delta x} - 2 + e^{-i k \Delta x}) = 1 +
+2 r(\cos(k \Delta x) - 1) = 1 - 4 r \sin^{2}(k \Delta x / 2)$,
+using $1 - \cos\theta = 2 \sin^{2}(\theta/2)$. The amplification
+factor $\xi$ is real. Stability requires $|\xi| \leq 1$ for all
+real $k$, equivalently $-1 \leq 1 - 4 r \sin^{2}(k \Delta x / 2)
+\leq 1$. The right inequality holds for any $r > 0$ since
+$\sin^{2} \geq 0$. The left inequality requires $4 r \sin^{2}
+(k\Delta x/2) \leq 2$, that is $\sin^{2}(k\Delta x/2) \leq
+1/(2 r)$. The worst case is $\sin^{2} = 1$ (the Nyquist mode
+$k = \pi/\Delta x$), giving $1 \leq 1/(2 r)$, i.e.\ $r \leq 1/2$.
+That is the CFL condition. For $r > 1/2$ the Nyquist mode is
+amplified by $|\xi| > 1$ at every time step, producing the
+checkerboard pattern of growing amplitude documented in §12.7
+and \cref{fig:vol02:ch12:cfl-stability}.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -1530,6 +1955,22 @@ to $200\,\degC$. Use the thermal diffusivity of aluminium
 $L^{2}/\alpha$ for a length $L$ equal to the radius. Compare to
 the formal first-mode time constant from a separation-of-variables
 solution.
+
+\paragraph{Solution sketch.}
+Radius $R = 0.025\,\si{\meter}$. Diffusion time scale $\tau =
+R^{2}/\alpha = (6.25 \times 10^{-4})/(9.7 \times 10^{-5}) \approx
+6.4\,\si{\second}$. The centre reaches a fraction $1 - e^{-t/
+\tau_{1}}$ of the surface step. For $80\,\%$, $t \approx -\tau_{1}
+\ln(0.2) \approx 1.6\, \tau_{1}$. The formal first-mode time
+constant for a sphere with Dirichlet surface is $\tau_{1} =
+R^{2}/(\pi^{2} \alpha) \approx 0.65\,\si{\second}$, so the
+$80\,\%$ time is about $1.04\,\si{\second}$. The order-of-magnitude
+estimate ($\sim 10$ seconds) is conservative by a factor of ten;
+the spherical eigenvalue carries a $\pi^{2}$ in the denominator
+that the linear estimate omits. The lesson: bare diffusion-time
+estimates are useful for order-of-magnitude but miss the
+spectral-eigenvalue factor that determines the fast-mode time
+constant.
 \end{exercise}
 
 \begin{exercise}
@@ -1541,6 +1982,25 @@ rectangular drumhead of dimensions $0.4\,\si{\meter}$ by $0.3\,
 c^{2}\laplacian u$ with $c^{2} = T/\sigma$. State the sequence of
 mode frequencies $f_{m,n} = (c/2)\sqrt{(m/L_{x})^{2} +
 (n/L_{y})^{2}}$.
+
+\paragraph{Solution sketch.}
+$c = \sqrt{T/\sigma} = \sqrt{4/0.3} \approx 3.65\,\si{\meter\per
+\second}$. With $L_{x} = 0.4$, $L_{y} = 0.3$ the mode frequencies
+are $f_{m,n} = (c/2)\sqrt{(m/L_{x})^{2} + (n/L_{y})^{2}}$. The
+lowest few:
+$f_{1,1} = 1.825 \sqrt{6.25 + 11.11} = 1.825 \cdot 4.17 \approx
+7.6\,\si{\hertz}$;
+$f_{2,1} = 1.825 \sqrt{25 + 11.11} = 1.825 \cdot 6.01 \approx
+11.0\,\si{\hertz}$;
+$f_{1,2} = 1.825 \sqrt{6.25 + 44.44} = 1.825 \cdot 7.12 \approx
+13.0\,\si{\hertz}$.
+The two-dimensional wave equation gives modes that are not
+integer multiples of the fundamental (the rectangle is
+incommensurate in its two side ratios), so the drumhead lacks the
+musical harmonic structure of a one-dimensional string. The
+sub-audible fundamental and the inharmonic overtones together
+are why a rectangular membrane at these parameters reads as a
+percussive thump rather than a pitched note.
 \end{exercise}
 
 \begin{exercise}
@@ -1551,6 +2011,25 @@ cycle of outside temperature variation. Use the thermal-diffusion
 length $\delta = \sqrt{\alpha \tau}$ for $\tau = 1\,\si{\day}$.
 Compare to the wall thickness and conclude whether a daily cycle
 is felt at the inside surface.
+
+\paragraph{Solution sketch.}
+$\tau_{\text{day}} = 86{,}400\,\si{\second}$. Diffusion length
+$\delta = \sqrt{\alpha \tau} = \sqrt{5 \times 10^{-7} \cdot
+8.64 \times 10^{4}} = \sqrt{0.0432} \approx 0.21\,\si{\meter} =
+21\,\si{\centi\meter}$. The wall is $30\,\si{\centi\meter}$
+thick, only $1.4\, \delta$. The amplitude attenuation of a
+sinusoidal surface temperature variation through depth $d$ is
+$\exp(-d/\delta)$, so at the inside surface the daily cycle is
+attenuated by $\exp(-30/21) \approx \exp(-1.43) \approx 0.24$,
+about a factor of four damping. The wall feels the daily cycle
+but at a quarter of the outdoor amplitude. The phase delay is
+$d/\delta$ radians of the daily cycle, that is about
+$1.43/(2\pi) \cdot 24\,\si{\hour} \approx 5.5\,\si{\hour}$. The
+working building-physics consequence: a thicker or
+lower-diffusivity wall (insulation, masonry, adobe) gives larger
+phase delay and stronger attenuation; the design principle of
+thermal mass for passive temperature regulation rests on
+exactly this diffusion-length arithmetic.
 \end{exercise}
 
 \begin{exercise}
@@ -1560,6 +2039,23 @@ the other. The lowest mode has $\lambda/4 = L$ and frequency $f =
 c/\lambda = c/(4L)$. Use $c = 343\,\si{\meter\per\second}$ for
 air at $20\,\degC$. Compare to the lowest mode of a pipe of the
 same length open at both ends.
+
+\paragraph{Solution sketch.}
+For a pipe closed at one end, the lowest mode has a pressure
+antinode at the closed end and a pressure node at the open end,
+giving $\lambda/4 = L$, so $\lambda = 4 L = 1.20\,\si{\meter}$
+and $f = c/\lambda = 343/1.20 \approx 286\,\si{\hertz}$. For a
+pipe open at both ends, the lowest mode has nodes at both ends
+and an antinode in the middle, giving $\lambda/2 = L$, so
+$\lambda = 2 L = 0.60\,\si{\meter}$ and $f = c/\lambda \approx
+572\,\si{\hertz}$. The open-open pipe sounds an octave higher
+than the closed-open pipe of the same length. The closed-open
+pipe also lacks even harmonics (only modes with $\lambda/4 = L,
+3L, 5L, \ldots$ satisfy the boundary conditions), which gives a
+clarinet-like spectrum; the open-open pipe carries all harmonics
+and sounds flute-like. End correction for a real pipe adds
+roughly $0.6 R$ at each open end, modifying the frequencies by a
+few percent.
 \end{exercise}
 
 \begin{exercise}
@@ -1570,6 +2066,23 @@ maximum principle to bound the answer. Then use the separation-
 of-variables formula at $(L/2, L/2)$ and compare. The leading
 Fourier mode gives an answer near $25\,\degC$; identify the
 fraction.
+
+\paragraph{Solution sketch.}
+By the maximum principle, $0 < u(L/2, L/2) < 100\,\degC$. By
+symmetry of the four edges treated one at a time, summing four
+copies (rotating the inhomogeneous boundary) yields the all-edges-
+heated solution $u \equiv 100$ at the centre; so by symmetry one
+edge contributes $u(L/2, L/2) = 25\,\degC$ exactly. The
+separation-of-variables formula confirms: with the top edge at
+$T_{0} = 100$ and the others zero, the Fourier expansion of the
+constant $T_{0}$ on $[0, L]$ has coefficients $(2T_{0}/L)
+\int_{0}^{L} \sin(n\pi x/L)\,\dd x = (4 T_{0}/(n\pi))$ for $n$
+odd, zero for $n$ even, giving $u(x, y) = \sum_{n\text{ odd}}
+(4 T_{0}/(n\pi)) \sin(n\pi x/L) \sinh(n\pi y/L)/\sinh(n\pi)$. At
+$(L/2, L/2)$ the leading term is $(4 \cdot 100/\pi) \sin(\pi/2)
+\sinh(\pi/2)/\sinh(\pi) = 127.3 \cdot 0.1992 \approx 25.4\,\degC$,
+matching the symmetry argument to within $0.4\,\degC$ at one-mode
+truncation. The fraction is $1/4$ of the boundary value.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{standard}
@@ -1582,6 +2095,22 @@ x)$. Run with $r = 0.4$ and $r = 0.6$ on a grid with $N = 50$
 interior points. Plot $u(x, t)$ at $t = 0, 0.1, 0.5$ for each
 $r$. Confirm stable evolution at $r = 0.4$ and unstable evolution
 at $r = 0.6$.
+
+\paragraph{Solution sketch.}
+$\Delta x = 1/51 \approx 0.0196$, so $\Delta t = r \Delta x^{2}$.
+At $r = 0.4$, $\Delta t \approx 1.54 \times 10^{-4}\,\si{\second}$,
+so $t = 0.5$ takes about $3{,}250$ time steps; the analytical
+solution $u(x, t) = \sin(\pi x) \exp(-\pi^{2} t)$ gives
+$u(0.5, 0.1) = e^{-0.987} \approx 0.373$ and $u(0.5, 0.5) =
+e^{-4.93} \approx 0.0072$. The FTCS output at $r = 0.4$ matches
+these values to within $0.1\,\%$ (the only error source is the
+second-order spatial truncation $\Delta x^{2}/12 \cdot u_{xxxx}$,
+small for a smooth sinusoid). At $r = 0.6$, $\Delta t \approx
+2.31 \times 10^{-4}$ and the Nyquist mode amplifies by
+$|\xi| = |1 - 4 \cdot 0.6 \cdot 1| = 1.4$ per step; after 100
+steps the noise mode is amplified by $1.4^{100} \approx 10^{14}$,
+overwhelming the signal. Reference implementation: see
+\texttt{code/heat\_ftcs.py}.
 \end{exercise}
 
 \begin{exercise}
@@ -1591,6 +2120,26 @@ with $r = 1, 5, 50$. Plot the solutions and compare to the
 analytical $u(x, t) = e^{-\pi^{2} t}\sin(\pi x)$. Compute the L2
 error at $t = 0.5$ for each $r$ and identify the dominant error
 source at large $r$.
+
+\paragraph{Solution sketch.}
+The BTCS update solves the tridiagonal system $-r U_{j-1}^{n+1} +
+(1 + 2 r) U_{j}^{n+1} - r U_{j+1}^{n+1} = U_{j}^{n}$ at each
+step. At $r = 1$: $\Delta t = \Delta x^{2} \approx 3.84 \times
+10^{-4}$, so $t = 0.5$ takes about $1{,}300$ steps; the BTCS
+amplification factor for the fundamental mode $k = \pi$ is
+$\xi_{\text{BTCS}}(k\Delta x) = 1/(1 + 2 r \sin^{2}(k\Delta x/2))$.
+For the smooth $\sin(\pi x)$ initial condition the dominant
+mode has $k\Delta x \approx \pi/51$ very small, so $\xi \approx
+1 - r (k\Delta x)^{2}/2$, exactly the implicit-Euler one-step
+approximation to $e^{-\alpha k^{2} \Delta t}$. The first-order
+temporal accuracy gives an $L^{2}$ error that grows linearly with
+$\Delta t$; at $r = 1, 5, 50$ the errors should fall on a line of
+slope $+1$ on log-log axes. The dominant error at large $r$ is
+the implicit-Euler truncation $\sim r \pi^{2} \Delta t / 2$, not
+any stability artefact (BTCS is unconditionally stable). At $r =
+50$ the per-step damping is excessive and the leading mode is
+over-attenuated by about $50\,\%$ relative to the analytical
+decay.
 \end{exercise}
 
 \begin{exercise}
@@ -1601,6 +2150,23 @@ $u(0, t) = u(1, t) = 0$, $u(x, 0) = \sin(\pi x)$, $u_{t}(x, 0) =
 = 1.1$. Plot the solutions and confirm stable behaviour below
 the CFL bound and unstable behaviour above. Verify that the
 stable solution is approximately $\cos(\pi t)\sin(\pi x)$.
+
+\paragraph{Solution sketch.}
+The analytical solution is $u(x, t) = \cos(\pi t)\sin(\pi x)$,
+the lowest standing mode oscillating at $\omega_{1} = \pi$ with
+period $T_{1} = 2$. The first time step needs the zero-initial-
+velocity treatment: $U_{j}^{1} = U_{j}^{0} + (1/2)(c\Delta t/
+\Delta x)^{2}(U_{j+1}^{0} - 2 U_{j}^{0} + U_{j-1}^{0})$. Subsequent
+steps use the centred update $U_{j}^{n+1} = 2 U_{j}^{n} -
+U_{j}^{n-1} + (c\Delta t/\Delta x)^{2}(U_{j+1}^{n} - 2 U_{j}^{n} +
+U_{j-1}^{n})$. At $C = c\Delta t/\Delta x = 0.9$ the discrete
+solution tracks the cosine envelope with peak amplitude $\approx 1$
+through several periods; small dispersion (a higher-than-$\omega_{1}$
+frequency shift of order $C^{2} \pi^{2} \Delta x^{2}/12$)
+produces slow phase drift. At $C = 1.1$ the Nyquist mode
+amplifies by $|\xi| > 1$ per step and the solution diverges
+within a few periods. Reference implementation: see
+\texttt{code/wave\_explicit.py}.
 \end{exercise}
 
 \begin{exercise}
@@ -1610,6 +2176,26 @@ Run until the maximum change between iterations falls below
 $10^{-6}$. Plot the converged solution and the level curves.
 Compare to the analytical separation-of-variables solution at the
 plate centre.
+
+\paragraph{Solution sketch.}
+The Jacobi update on a uniform $(N+1) \times (N+1)$ grid sets
+$U_{i, j}^{k+1} = (U_{i+1, j}^{k} + U_{i-1, j}^{k} + U_{i, j+1}^{k}
++ U_{i, j-1}^{k})/4$ at interior nodes, leaving boundary nodes
+fixed. The Jacobi spectral radius for the $N \times N$ Laplacian
+is $\rho = \cos(\pi/N)$, very close to one; convergence to a
+tolerance $\epsilon$ takes roughly $-\ln\epsilon / (1 - \rho)
+\approx N^{2} \ln(1/\epsilon)/\pi^{2}$ sweeps. For $N = 80$ and
+$\epsilon = 10^{-6}$, expect about $\sim 9{,}000$ sweeps. The
+centre value from the separation-of-variables formula with
+$u(x, 1) = 1$ is $u(1/2, 1/2) = (1/\pi)\arctan(\sinh(\pi/2)
+\csc(\pi/2)) = 0.25$ exactly by the four-fold symmetry argument
+in the centre-of-square exercise. The Jacobi run converges to
+$0.25$ within the tolerance. Reference implementation: see
+\texttt{code/laplace\_jacobi.py}. For production use, switch to
+Gauss-Seidel ($\sim 2 \times$ faster) or SOR with
+$\omega \approx 2/(1 + \sin(\pi/N))$ ($\sim 10 \times$ faster on
+this grid size); Jacobi is the pedagogical baseline, not the
+working production tool.
 \end{exercise}
 
 \begin{exercise}
@@ -1620,6 +2206,25 @@ study: hold the time step fixed and refine $\Delta x$ across
 four levels in geometric progression. Plot the L2 error against
 $\Delta x$ on log-log axes and confirm second-order spatial
 convergence.
+
+\paragraph{Solution sketch.}
+The Crank-Nicolson update is the tridiagonal system written in
+the deepening subsection: left matrix $(-r/2, 1 + r, -r/2)$,
+right side $r/2 \cdot U_{j-1}^{n} + (1 - r) U_{j}^{n} + r/2
+\cdot U_{j+1}^{n}$. For the convergence study, fix $\Delta t =
+10^{-4}$ and run with $\Delta x = 1/N$ for $N = 25, 50, 100, 200$.
+The analytical solution $\sin(\pi x) e^{-\pi^{2} t}$ gives the
+exact reference. The $L^{2}$ error at $t = 0.5$ should be
+dominated by the spatial truncation $\sim \Delta x^{2}$ as long
+as the time step is small enough that the $\Delta t^{2}$ term is
+negligible. Fitting $\log\|e\|_{L^{2}} = p \log \Delta x +
+\text{const}$ should give slope $p \approx 2$ with error bars
+below $0.1$. If the temporal error is not negligible the slope
+breaks; the diagnostic is to halve $\Delta t$ and confirm the
+errors do not change at large $\Delta x$ (spatial-dominated
+regime) and shrink at small $\Delta x$ (temporal-dominated
+regime). The breakdown at large $r$ is the over-oscillation
+artefact noted in the Crank-Nicolson deepening subsection.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1633,6 +2238,30 @@ implementation, the linear-system solver, the convergence
 diagnostic, and the resolution criterion. Identify which
 boundary corner produces the highest gradient and require an
 adaptive refinement there.
+
+\paragraph{Discussion.}
+A working design: discretise the L on a regular grid with spacing
+$h$ chosen as a divisor of the rectangle sides; mask off the
+grid points outside the L; use the standard five-point Laplacian
+$\laplacian U_{i,j} \approx (U_{i+1, j} + U_{i-1, j} + U_{i, j+1}
++ U_{i, j-1} - 4 U_{i, j})/h^{2}$ at interior nodes and Dirichlet
+values at boundary nodes. The assembled linear system $\mathbf{A}
+\mathbf{u} = \mathbf{b}$ is symmetric positive definite and
+sparse; solve it with sparse Cholesky (for moderate problem
+sizes, up to roughly $10^{6}$ unknowns) or with conjugate gradient
+with incomplete-Cholesky preconditioning (for larger). Convergence
+diagnostic: solve on three grid refinements $h, h/2, h/4$ and
+check that the centre-of-domain solution converges quadratically
+($e(h) \sim h^{2}$). The re-entrant corner of the L (the inside
+angle of $3\pi/2$) produces a gradient singularity of the form
+$u \sim r^{2/3}$ in the polar coordinates centred on the corner;
+the gradient diverges as $r^{-1/3}$ at the corner. Adaptive
+refinement reduces $h$ in a small region around the corner by
+factors of two each refinement level until the local relative
+residual falls below the target tolerance. Without adaptive
+refinement, the global convergence rate of the simulator is
+degraded from second-order to roughly $4/3$-order, the rate at
+which the corner singularity contaminates the global error.
 \end{exercise}
 
 \begin{exercise}
@@ -1643,6 +2272,33 @@ stepping scheme (FTCS, BTCS, Crank-Nicolson), the time-step
 constraint, the spatial grid, and the diagnostic that checks
 whether the simulation has resolved the rise time and the
 relaxation time.
+
+\paragraph{Discussion.}
+A working design: use Crank-Nicolson as the time integrator
+because it is unconditionally stable, second-order in both
+variables, and accommodates the source term naturally; the update
+becomes
+$(\mathbf{I} - (r/2)\mathbf{L}) \mathbf{U}^{n+1} = (\mathbf{I} +
+(r/2)\mathbf{L}) \mathbf{U}^{n} + (\Delta t/2)(\mathbf{S}^{n} +
+\mathbf{S}^{n+1})/(\rho c_{p})$ with $\mathbf{L}$ the
+discrete-Laplacian matrix. Choose $\Delta x$ so that the source
+profile $S(x, t_{\text{on}}/2)$ is resolved by at least ten grid
+points across its narrowest feature; this fixes the spatial
+resolution from the source rather than from the boundary. Choose
+$\Delta t$ as the smaller of $t_{\text{on}}/100$ (to resolve the
+rise) and the natural diffusion time $\Delta x^{2}/\alpha$ (to
+keep accuracy at $r \sim 1$); for relaxation after $t_{\text{on}}$
+the time step can grow exponentially toward $\tau_{1} =
+L^{2}/(\pi^{2}\alpha)$ to avoid wasted steps in the asymptotic
+decay. Diagnostic that the rise is resolved: compare the
+discrete time integral $\Delta t \sum_{n} \mathbf{S}^{n}$ to the
+analytical $\int_{0}^{t_{\text{on}}} S\,\dd t$ at each grid
+point; the relative error should be below $1\,\%$. Diagnostic
+that the relaxation is resolved: at late times the solution
+should decay as a single exponential with rate $1/\tau_{1}$;
+fit the late-time amplitude to $\exp(-t/\tau)$ and verify $\tau
+\approx \tau_{1}$. If the fitted $\tau$ deviates by more than
+$5\,\%$, refine $\Delta x$ and re-run.
 \end{exercise}
 
 \begin{exercise}
@@ -1653,6 +2309,31 @@ time-step constraint (which now varies with the local $c$), the
 absorbing-boundary treatment that prevents reflections at the
 domain edges, and the diagnostic that confirms the numerical
 domain of dependence covers the analytical one everywhere.
+
+\paragraph{Discussion.}
+A working design: use a uniform grid with spacing $\Delta x$
+chosen so that the pulse's shortest wavelength is resolved by at
+least twenty grid points (the half-wavelength of the pulse
+spectral peak, divided by $\Delta x$, should exceed ten). The
+discretised wave equation becomes $U_{j}^{n+1} = 2 U_{j}^{n} -
+U_{j}^{n-1} + (c_{j}\Delta t/\Delta x)^{2}(U_{j+1}^{n} -
+2 U_{j}^{n} + U_{j-1}^{n})$, with $c_{j}$ the local sound speed
+at grid point $j$. The CFL constraint becomes
+$c_{\max}\Delta t/\Delta x \leq 1$, set by the fastest-speed
+region (worst case across the domain). Reduce $\Delta t$ to
+half the CFL bound to leave safety margin. For absorbing
+boundaries, the cleanest working choice is a perfectly matched
+layer (PML) of width $\sim 20$ wavelengths at each end; cheaper
+is a one-way wave-equation boundary condition $u_{t} + c
+u_{x} = 0$ at the right edge (zero reflection only at normal
+incidence, but adequate for most one-dimensional pulses).
+Diagnostic that the numerical domain of dependence is correct:
+inject a delta-pulse at the centre of the domain, evolve, and
+verify that the discrete signal arrives at any point $x$ no
+earlier than the local travel time $\int_{x_{0}}^{x} \dd x'/c(x')$.
+If the signal arrives early, $\Delta t$ is too large somewhere
+(usually in a low-$c$ region where the local Courant number is
+not the binding constraint but the discretisation is misaligned).
 \end{exercise}
 
 \begin{exercise}
@@ -1666,6 +2347,31 @@ estimated convective coefficient $h \sim 10\,\si{\watt\per\meter
 \,\degC$ junction temperature), and the design parameter (sink
 fin area) that meets the target. State which assumption dominates
 the design uncertainty.
+
+\paragraph{Discussion.}
+The steady-state energy balance, at high level: power dissipated
+equals power convected away. $5\,\si{\watt} = h \cdot A_{\text{fin}}
+\cdot (T_{\text{fin}} - T_{\text{ambient}})$. For $T_{\text{ambient}}
+= 25\,\degC$ and target $T_{\text{fin}} = 85\,\degC$
+(approximating the fin surface temperature as close to the
+junction, valid because the copper heat-spreader has high
+diffusivity), the temperature difference is $60\,\si{\kelvin}$.
+With $h \sim 10\,\si{\watt\per\meter\squared\per\kelvin}$, the
+required area is $A_{\text{fin}} = 5/(10 \cdot 60) \approx 8.3
+\times 10^{-3}\,\si{\meter\squared}$, about $83\,\si{\centi\meter
+\squared}$. A modest pin-fin heat sink (say twenty $1\,\si{\centi
+\meter}$ pins of $1\,\si{\centi\meter}$ height and $4\,\si{\milli
+\meter}$ diameter) provides roughly this area. The dominant
+uncertainty is $h$: natural-convection coefficients range from
+$5$ to $25\,\si{\watt\per\meter\squared\per\kelvin}$ for vertical
+fins in still air, a factor of five variation that propagates
+directly to the area requirement. Use forced air (a small fan)
+to push $h$ into the $50$ to $100$ range and shrink the required
+area by a factor of five to ten. The steady-state target $85
+\,\degC$ is a per-component spec (consult the datasheet); the
+$T_{\text{junction}} - T_{\text{fin}}$ gap depends on thermal
+interface material conductance and is the next-largest
+uncertainty after $h$.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -1676,6 +2382,23 @@ checkerboard pattern of growing amplitude after a few hundred
 time steps. State the most likely cause and the diagnostic that
 distinguishes it from a sign error in the right-hand side or a
 boundary-condition mistake. State the corrective action.
+
+\paragraph{Solution sketch.}
+Most likely cause: the FTCS scheme is being run at $r =
+\alpha\Delta t/\Delta x^{2} > 1/2$, violating the CFL condition;
+the highest-wavenumber Nyquist mode amplifies by $|\xi| > 1$ per
+step, producing a checkerboard pattern visible after $\sim
+\log(\text{signal/noise})/\log|\xi|$ steps. Diagnostic that
+distinguishes from a sign error: compute $r$ from the code's
+$\alpha$, $\Delta t$, $\Delta x$ values and check $r$; if $r >
+0.5$, that is the cause. A sign error in the right-hand side
+would produce a smooth exponential growth, not a checkerboard,
+and would appear from step one. A boundary-condition mistake
+would produce a localised error at the boundary that does not
+have the spatial period of two grid cells; the checkerboard has
+exactly period $2 \Delta x$. Corrective action: shrink $\Delta t$
+to restore $r \leq 1/2$, or switch to BTCS or Crank-Nicolson,
+which are unconditionally stable.
 \end{exercise}
 
 \begin{exercise}
@@ -1688,6 +2411,31 @@ mathematical reformulation that fixes it (a Robin condition with
 contact-conductance coefficient), and the experimental
 diagnostic that distinguishes the modelling cause from a
 calibration error in the thermocouple.
+
+\paragraph{Solution sketch.}
+The Dirichlet condition at the wire surface assumes the sample
+temperature equals the wire temperature, which requires an
+infinite heat-transfer coefficient at the interface. A real
+interface has a finite contact conductance $h_{c}$
+(typically $10^{3}$ to $10^{5}\,\si{\watt\per\meter\squared\per
+\kelvin}$, depending on pressure, surface roughness, and any
+intervening thermal grease), so the actual condition is Robin:
+$-k u_{n} = h_{c}(u_{\text{wire}} - u_{\text{sample}})$. A
+fitted thermal conductivity that treats the contact as perfect
+absorbs the unaccounted-for temperature drop across the
+interface, returning a value lower than the true sample $k$ by
+roughly the fraction $h_{c} R / (k + h_{c} R)$ where $R$ is the
+sample thickness. The remedy is to refit using a Robin condition
+with $h_{c}$ as a fit parameter, or to calibrate $h_{c}$
+separately by measuring on a reference sample of known $k$.
+Experimental diagnostic that distinguishes contact resistance
+from thermocouple calibration error: vary the contact pressure
+or apply thermal grease; a contact-resistance issue will shift
+the fitted $k$ toward the literature value, a calibration error
+will not. Alternatively, the transient response shape (early-
+time temperature rise) is sensitive to contact resistance but
+not to a constant temperature offset, so fitting the early-time
+slope provides an independent check.
 \end{exercise}
 
 \begin{exercise}
@@ -1699,6 +2447,28 @@ mesh resolution near the plate edges where the field gradient
 is high), the diagnostic (run a convergence study with three
 mesh levels), and the remedy (adaptive refinement, or analytical
 treatment of the edge singularity).
+
+\paragraph{Solution sketch.}
+The plate edges carry the field-line singularity of a sharp
+corner: the potential has a $u \sim r^{1/2}$ local form (for a
+$2\pi$ external angle) and the field $|\grad u| \sim r^{-1/2}$
+diverges as one approaches the edge. A uniform mesh undersamples
+the singularity, contaminating the global answer. A convergence
+study at three mesh levels (say $h$, $h/2$, $h/4$) lets the user
+fit the convergence rate $\log e(h) = p \log h + \text{const}$;
+for a uniform mesh on a singularity-bearing problem, $p$ is the
+singularity exponent (here $\approx 1/2$) rather than the
+element-order rate ($p = 2$ for linear elements). The $5\,\%$
+change on doubling the mesh is consistent with $p \approx 1/2$
+($e(h/2) = 2^{-0.5} e(h) \approx 0.71 e(h)$, a $29\,\%$
+reduction, somewhat better than the observed $5\,\%$, suggesting
+the singularity dominates near the edge but smoothness regions
+contribute the rest). Remedy: use adaptive mesh refinement
+driven by a local error estimator (gradient recovery, dual-weighted
+residual, or Zienkiewicz-Zhu); refine elements adjacent to the
+plate edges until local residual falls below tolerance. The
+expected payoff is recovering the optimal $p = 2$ rate, with
+the fine mesh concentrated only where needed.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1718,6 +2488,34 @@ Dirichlet flux. Identify the working diagnostic (predicted
 surface flux compared to the achievable convective flux) and the
 remedy (replace Dirichlet by Robin with the calibrated convective
 coefficient).
+
+\paragraph{Solution sketch.}
+The Dirichlet condition $u_{\text{surface}} = T_{\text{ambient}}$
+holds the surface at ambient, equivalent to assuming an infinite
+convective coefficient $h$. The implied heat flux through the
+surface is whatever the conduction profile inside the wall
+demands, $q_{\text{Dir}} = -k u_{n}|_{\text{surface}}$, with no
+upper bound from the physics of air convection. The real
+convective flux is $q_{\text{conv}} = h(u_{\text{surface}} -
+u_{\text{ambient}})$ with $h \sim 5$ to $25\,\si{\watt\per\meter
+\squared\per\kelvin}$ for natural convection in still air. If
+the Dirichlet model demands $200\,\si{\watt\per\meter\squared}$
+at the surface while $h \sim 10$ caps the achievable flux at
+$10 \cdot \Delta T \sim 10 \cdot 30 = 300\,\si{\watt\per\meter
+\squared}$ at $30\,\si{\kelvin}$ surface offset, the deployed
+reactor finds equilibrium at a surface temperature higher than
+ambient, with a corresponding rise in the interior. The
+diagnostic is to compute $q_{\text{Dir}}$ from the simulated
+gradient, then check that the convective transfer mechanism
+can deliver that flux; if it cannot, the Dirichlet assumption
+is overpredicting cooling. The remedy is to replace the
+Dirichlet condition with a Robin condition $-k u_{n} = h(u -
+u_{\text{ambient}})$ using a calibrated $h$ (from a Nusselt-number
+correlation, from a measurement on the deployed system, or from
+a manufacturer-provided value for the assembly). The recovered
+inner-wall temperature should match the deployed value to within
+the uncertainty on $h$, which is typically the dominant remaining
+error.
 \end{exercise}
 
 \begin{exercise}
@@ -1733,6 +2531,36 @@ amplified into the recovered initial condition. Identify the
 discipline (Tikhonov regularisation, truncated SVD, or Bayesian
 prior) that bounds the failure and report the regularisation
 parameter as part of the result.
+
+\paragraph{Solution sketch.}
+The forward heat operator on the line attenuates the Fourier mode
+of wavenumber $k$ by $\exp(-\alpha k^{2} t)$. For $t = 1\,\si
+{\hour} = 3600\,\si{\second}$ and $\alpha = 10^{-6}\,\si{\meter
+\squared\per\second}$ (a typical solid), modes with $k > 1/
+\sqrt{\alpha t} = 1/\sqrt{3.6 \times 10^{-3}} \approx 17\,\si{
+\per\meter}$ are attenuated by factors below $1/e$; modes with
+$k > 100\,\si{\per\meter}$ are attenuated by $\exp(-36) \approx
+10^{-16}$, below floating-point. Inverting requires multiplying
+the late-time data by the inverse $\exp(+\alpha k^{2} t)$,
+which exponentially amplifies any high-wavenumber noise. A
+part-per-thousand measurement noise at $k = 100$ becomes, on
+inversion, $10^{13}$ times the signal: the recovered profile is
+noise, not the true initial condition. The failure is structural
+(violation of continuous dependence in the Hadamard sense), not
+computational; finer grids and double precision do not help.
+The discipline is regularisation. Tikhonov regularisation adds a
+penalty $\lambda \|u_{0}\|^{2}$ (or $\lambda \|u_{0}''\|^{2}$ for
+a smoothness penalty); truncated SVD discards modes with singular
+value below threshold; Bayesian inversion places a prior on
+$u_{0}$ that downweights high wavenumbers. Each method introduces
+a regularisation parameter (Tikhonov $\lambda$, SVD truncation
+index, prior variance) that must be quoted with the recovered
+$u_{0}$. The L-curve method or generalised cross-validation
+selects the parameter that balances data fit against solution
+smoothness. The fundamental honesty: the regularised answer is a
+smoothed version of the true initial condition; no choice of
+parameter recovers the high-frequency detail that the diffusion
+has erased.
 \end{exercise}
 
 \begin{exercise}
@@ -1748,6 +2576,32 @@ the corrective action (reduce the time step) and state the
 working principle (Courant number must be at most one for
 explicit hyperbolic schemes; for parabolic schemes the relevant
 constraint is quadratic).
+
+\paragraph{Solution sketch.}
+The explicit centred-difference scheme has amplification factor
+$\xi$ satisfying $\xi^{2} - 2 \xi(1 - 2 C^{2}\sin^{2}(k\Delta x/2))
++ 1 = 0$, so $\xi = 1 - 2 C^{2}\sin^{2}(k\Delta x/2) \pm
+\sqrt{(1 - 2 C^{2}\sin^{2}(k\Delta x/2))^{2} - 1}$. The roots
+lie on the unit circle (magnitude one, stable) precisely when the
+discriminant is non-positive, equivalently $|1 - 2 C^{2}\sin^{2}
+(k\Delta x/2)| \leq 1$. The worst case is the Nyquist mode
+$\sin^{2}(k\Delta x/2) = 1$, giving $|1 - 2 C^{2}| \leq 1$, that
+is $C \leq 1$. At $C = 1.05$, $|\xi| > 1$ at the Nyquist mode by
+a factor $\sqrt{(1 - 2 \cdot 1.1025)^{2} - 1} \approx 0.85$ per
+step (the discriminant becomes positive and one root grows). The
+domain-of-dependence interpretation: the analytical solution at
+$(x_{j}, t_{n+1})$ depends on initial data within $|x - x_{j}|
+\leq c t_{n+1}$, while the discrete scheme only uses the cone
+$|x - x_{j}| \leq (\Delta x/\Delta t) \cdot t_{n+1} = (c/C) \cdot
+t_{n+1}$. For $C > 1$ the discrete cone is smaller than the
+analytical one and the scheme cannot see the data it needs;
+information arrives at the grid point that the discrete update
+cannot integrate against, producing the divergence. Corrective
+action: reduce $\Delta t$ to bring $C \leq 1$ (preferably
+$C \leq 0.9$ for safety margin). Working principle: hyperbolic
+schemes face the linear CFL bound $C \leq 1$, while parabolic
+schemes face the quadratic bound $r \leq 1/2$ on the analogous
+Courant number $r = \alpha \Delta t/\Delta x^{2}$.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1762,6 +2616,31 @@ large convective coefficient, plate submerged in stirred liquid),
 and identifies the regime in which it gives a wrong answer
 (natural convection in still air, where the Robin condition with
 convective $h$ is the correct model).
+
+\paragraph{Discussion.}
+A working response acknowledges the structure of the proposal:
+the Dirichlet condition is the right model when the convective
+resistance is small compared to the conductive resistance inside
+the plate. Quantitatively, the Biot number $\text{Bi} = h L/k$
+captures the comparison; when $\text{Bi} \gg 1$, the surface
+equilibrates to ambient faster than the interior conducts heat to
+the surface, so the Dirichlet $u_{\text{surface}} =
+T_{\text{ambient}}$ is accurate. This regime is realised when the
+plate is submerged in well-stirred water ($h \sim 1000$ to $10{,}
+000\,\si{\watt\per\meter\squared\per\kelvin}$) or boiled in fluid
+($h \sim 10{,}000$ to $100{,}000$), giving $\text{Bi}$ in the
+tens to hundreds. The condition fails in natural convection in
+still air, where $h \sim 5$ to $25\,\si{\watt\per\meter\squared
+\per\kelvin}$ and a copper plate ($k \approx 400\,\si{\watt\per
+\meter\per\kelvin}$) of even moderate thickness $L = 1\,\si{\centi
+\meter}$ has $\text{Bi} \sim 5 \cdot 0.01/400 \approx 10^{-4}$, so
+the convective resistance dominates entirely. The right model in
+that regime is a Robin condition $-k u_{n} = h(u - u_{\text{ambient}})$
+with $h$ calibrated from a Nusselt-correlation or a measurement;
+the plate temperature equilibrates above ambient by an amount set
+by the dissipated power and the available convective area. The
+Dirichlet model in the wrong regime overpredicts cooling by orders
+of magnitude.
 \end{exercise}
 
 \begin{exercise}
@@ -1775,4 +2654,33 @@ which approach the working engineer reaches for first. Identify
 the situation in which the Fourier solution remains valuable
 even when the numerical method is the production tool (sanity
 check, asymptotic limit, mode-by-mode physical interpretation).
+
+\paragraph{Discussion.}
+The Fourier-series solution is preferable on rectangular
+geometries with constant coefficients and one of the standard
+boundary-condition triples (all-Dirichlet, all-Neumann, mixed
+Dirichlet-Neumann). The series converges quickly for smooth
+data; mode-by-mode reasoning gives direct access to the
+physical content (decay rates as $1/\tau_{n}$, mode frequencies
+as $\omega_{n}$, penetration depths as $1/\sqrt{\lambda_{n}}$);
+the solution is exact at every interior point with no spatial
+discretisation error. The closed form is the right tool for the
+canonical problems in §12.5 and for asymptotic or limit analyses
+where the dominant mode controls the answer. The numerical method
+becomes preferable when any of the simplifying assumptions break:
+irregular geometry (an L-shape, a circle with a hole, a 3D
+mechanical part), spatially varying coefficients ($k(x)$
+non-constant for inhomogeneous materials), mixed or Robin
+boundary conditions on different parts of the boundary, source
+terms that are not analytic, or nonlinearity in the constitutive
+relation. The working engineer reaches for the closed form first
+when the problem fits the canonical mould, and for the
+finite-difference or finite-element solver otherwise. Even in
+production-numerical work, the closed-form Fourier solution
+retains value as a sanity check (the numerical scheme should
+match the analytical on a canonical reduction of the production
+problem), as an asymptotic verification (the late-time numerical
+solution should decay at the fundamental rate $1/\tau_{1}$), and
+as a physical-interpretation aid (the working engineer thinks in
+modes even when the simulation reports a discretised field).
 \end{exercise}

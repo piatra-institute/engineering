@@ -157,6 +157,18 @@ f(x))$, and the difference quotient becomes the slope of the
 tangent. The derivative $f'(x)$ is the slope of the tangent line
 to the graph at the point $x$.
 
+\input{volumes/02-form/ch05-differentiation/figures/fig-tangent-secant.tex}
+
+\Cref{fig:vol02:ch05:tangent-secant} shows the construction. The
+secant for a large step misses the tangent's direction by a visible
+amount; the secant for a smaller step is closer; the limit recovers
+the tangent exactly. The construction is symmetric in the sense
+that the same limit is obtained whether the second point approaches
+from the right or from the left (when the limit exists). When the
+two one-sided limits differ, the function has a kink at the point,
+and the tangent line is not defined; section~5.8 takes up that
+failure case.
+
 The geometric reading is more than decoration. It tells the
 engineer where the function is increasing (positive slope), where
 it is decreasing (negative slope), where it is locally flat (zero
@@ -203,6 +215,34 @@ constraint forces the car to spend more energy per unit
 acceleration as the velocity rises. The estimate matches what a
 working driver knows: a constant-power car accelerates fastest at
 low speed.
+\end{estimation}
+
+\begin{estimation}
+\textbf{Question.} A reader computes the central difference
+$D_{0}(x; h) = (f(x + h) - f(x - h)) / (2 h)$ for a function whose
+typical value is order unity, using double-precision arithmetic
+($\varepsilon \approx 10^{-16}$ in each function evaluation).
+Estimate the relative error in the derivative as $h$ shrinks from
+$10^{-2}$ to $10^{-12}$, and predict the value of $h$ at which the
+error is smallest.
+
+\textbf{Estimate.} The two contributions to the error in $D_{0}$
+are the truncation bias of order $|f'''| h^{2} / 6$ and the
+round-off variance of order $\varepsilon / h$. Set $|f'''| \sim 1$
+for an order-of-magnitude estimate. At $h = 10^{-2}$ the truncation
+term is $\sim 1.7 \times 10^{-5}$ and the round-off term is
+$\sim 10^{-14}$; truncation dominates. At $h = 10^{-12}$ the
+truncation term is $\sim 1.7 \times 10^{-25}$ and the round-off
+term is $\sim 10^{-4}$; round-off dominates. The minimum total
+error occurs near $h^{*} = (\varepsilon)^{1/3} \approx 10^{-5}$
+where the two contributions cross. The minimum error is of order
+$\varepsilon^{2/3} \approx 2 \times 10^{-11}$. A reader who picks
+$h = 10^{-8}$ (the naive choice, half the precision of a
+double) lands on the round-off branch and loses about three
+decades of accuracy compared with the optimum. The estimate is
+borne out by direct computation; the chapter's code repository
+contains \texttt{finite\_diff\_accuracy.py}, which tabulates the
+sweep for $f(x) = e^{x}$ at $x = 1$.
 \end{estimation}
 
 \subsection{Examples computed from the definition}
@@ -402,6 +442,16 @@ x$, so $h'(x) = 5 (3 x^{2} + 1)^{4} \cdot 6 x = 30 x (3 x^{2} +
 A nested case. Let $h(x) = \sin(\cos(x))$. Two applications of
 the chain rule give $h'(x) = \cos(\cos(x)) \cdot (-\sin(x)) =
 -\sin(x) \cos(\cos(x))$.
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-chain-rule.tex}
+
+\Cref{fig:vol02:ch05:chain-rule} pictures the composition as a
+two-stage transformation and tracks the propagation of a small
+increment through both stages. The bottom panel shows the worked
+example $h(x) = \sin(x^{2})$ and its derivative; the derivative
+passes through zero at every extremum of $h$, and the amplitude
+of the derivative grows linearly in $x$ because the inner factor
+$2x$ amplifies whatever the outer cosine returns.
 
 \subsection{The quotient rule}
 
@@ -655,6 +705,15 @@ derivative. A function that is gently curving (small $f''$) admits
 a wide working range; a function that curves sharply (large
 $f''$) admits a narrow working range.
 
+\input{volumes/02-form/ch05-differentiation/figures/fig-taylor-approximation.tex}
+
+\Cref{fig:vol02:ch05:taylor-approximation} compares the first
+two Taylor approximations of $e^{x}$ at $a = 0$ against the curve
+itself. Each successive Taylor term reduces the error by a factor
+of order $h$: the linear term is correct to $O(h)$, the quadratic
+to $O(h^{2})$, the cubic to $O(h^{3})$. The engineer's choice of
+order is set by the desired accuracy at the working range.
+
 \subsection{Worked examples}
 
 We linearise three functions at three working points and report
@@ -720,6 +779,33 @@ algebraic-propagation rule for uncertainty $(u(y)/y)^{2} =
 \sum_{i} p_{i}^{2} (u(x_{i})/x_{i})^{2}$ for products of powers
 (Volume I chapter~4). Each is a Taylor approximation to first
 order, and each acquires its remainder bound here.
+
+\subsection{Linearisation in action: Newton's iteration for roots}
+
+The most heavily used application of the linear approximation in
+working engineering is Newton's iteration for the root of a
+nonlinear equation. Given a differentiable function $g$ and an
+initial guess $x_{0}$ near a root of $g$, replace $g$ by its
+linear approximation at $x_{0}$,
+$L_{x_{0}}(x) = g(x_{0}) + g'(x_{0}) (x - x_{0})$, and solve the
+linearised equation $L_{x_{0}}(x) = 0$ for an improved estimate
+$x_{1} = x_{0} - g(x_{0})/g'(x_{0})$. Repeat from $x_{1}$ to
+generate the iteration
+\[
+x_{n+1} = x_{n} - \frac{g(x_{n})}{g'(x_{n})}.
+\]
+The convergence theorem (proved by Taylor expansion to second
+order) states that, when $g'$ is nonzero at the root and $g''$
+is bounded near it, the iteration converges quadratically: the
+error at step $n+1$ scales as the square of the error at step
+$n$. Each iteration roughly doubles the number of correct
+significant figures. Starting far from the root may produce
+chaotic or divergent iteration; the working discipline is to
+bracket the root by sign change, take a coarse first guess
+inside the bracket, and verify that the iteration stays inside.
+The accompanying script \texttt{code/newton\_root.py} runs the
+iteration for $g(x) = x^{3} - 2 x - 5$, illustrating the
+quadratic-convergence claim numerically.
 
 \section{Mean value theorem and L'H\^opital}\pathtag{core}
 
@@ -856,6 +942,17 @@ domain. The second derivative test selects among the interior
 critical points. The endpoint test compares values at the
 boundaries.
 \end{archetype}
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-optimisation-extrema.tex}
+
+\Cref{fig:vol02:ch05:optimisation-extrema} draws the catalogue: a
+single closed-interval optimisation contains every kind of
+candidate the chapter discusses. The interior critical points
+(Fermat's necessary condition) are classified by the second
+derivative; the endpoints enter without a derivative test. The
+multivariable analogue of the figure, with critical points
+replaced by gradient-zero conditions and the curvature
+information held in the Hessian matrix, appears in chapter~15.
 
 \subsection{First-order necessary condition}
 
@@ -1109,6 +1206,18 @@ operative noise mechanism of numerical differentiation, and it is
 the reason numerical differentiation is harder than numerical
 integration.
 
+\input{volumes/02-form/ch05-differentiation/figures/fig-bias-variance.tex}
+
+\Cref{fig:vol02:ch05:bias-variance} collapses the two error
+contributions onto a single log-log plot. The V-shape is universal:
+every numerical-differentiation rule has a truncation branch that
+falls as a power of $h$ and a round-off branch that rises as
+$\varepsilon / h$. The position of the V's apex slides with the
+order of the rule and with the precision of the arithmetic; the
+shape itself is invariant. The companion script
+\texttt{code/finite\_diff\_accuracy.py} produces the table that
+underlies the figure for $f(x) = e^{x}$ at $x = 1$.
+
 \subsection{The bias-variance tradeoff}
 
 The structure of the total error reveals a tradeoff that recurs
@@ -1286,41 +1395,116 @@ analogue}
 
 A clean engineering case where accumulated numerical error
 defeated a differentiation-like calculation is the Patriot missile
-system at Dhahran, Saudi Arabia, on 25 February 1991
-\cite{acc:gao-patriot-1992}. The Patriot's tracking software
-represented elapsed time as integer tenths of a second and
-converted to real seconds using a 24-bit fixed-point representation
-of $1/10$. The exact decimal $0.1$ has no exact binary
-representation; the truncation introduced a per-conversion error
-of about $9.5 \times 10^{-8}$ that accumulated linearly with the
-counter. After approximately $100\,\si{\hour}$ of continuous
-operation, the cumulative error had reached about $0.34\,\si
-{\second}$. The Patriot's range-gate prediction used the converted
-time to compute the incoming target's predicted position via,
-effectively, a velocity-times-elapsed-time formula; an incoming
-Scud at about $1{,}676\,\si{\meter\per\second}$ over a $0.34\,
-\si{\second}$ time error was predicted at a position offset by
-about $570\,\si{\meter}$ from the actual position, larger than the
-range gate, and the system reported "no track". An Iraqi Scud
-struck a US Army barracks; 28 service members died and
-approximately 100 were wounded. The accident is recorded in the
-named-cases registry at \repopath{docs/research/accidents/patriot
--dhahran-1991.md}.
+system at Dhahran, Saudi Arabia, on 25 February 1991. We treat the
+case in three parts: the technical mechanism, the organisational
+context, and the lesson for differentiation and rates. The accident
+is recorded in the named-cases registry at
+\repopath{docs/research/accidents/patriot-dhahran-1991.md}; the
+narrative below follows the registry's verified description, with
+all empirical numbers traceable to the GAO report
+\cite{acc:gao-patriot-1992}.
 
-The lesson for this chapter: a numerical calculation that subtracts
-or differences two large nearly-equal quantities is sensitive to
-the precision with which each is represented. The Patriot's
-integer counter accumulated for $100$ hours; the conversion factor
-multiplied by the counter accumulated the small per-conversion
-error to a large total; the differenced quantity (the predicted
-position) inherited the full accumulated error. Numerical
-differentiation has the same architecture: it differences nearby
-function values and divides by a small step. Each step is a
-chance for catastrophic cancellation. The defensive disciplines
-are the same: track the precision through every operation, choose
-the step size against the noise floor, validate the calculation
+\paragraph{Technical mechanism.}
+The Patriot's tracking software represented elapsed time as an
+integer counter incremented every tenth of a second since the
+system was started. When the tracking module needed the elapsed
+time in real seconds, it multiplied the counter by a stored
+constant intended to represent $1/10$. That constant was held in a
+$24$-bit fixed-point register, and the exact decimal $0.1$ has no
+exact binary representation; the $24$-bit truncation introduced a
+per-conversion error of about $9.5 \times 10^{-8}$ in the
+converted seconds value, accumulating linearly with the counter
+\cite{acc:gao-patriot-1992}. After approximately $100 \,\si{\hour}$
+of continuous operation the counter had reached approximately
+$3.6 \times 10^{6}$, and the cumulative conversion error had
+reached approximately $0.34 \,\si{\second}$.
+
+The Patriot's range-gate prediction used the converted time to
+forecast where an incoming target would be at the next radar
+look: predicted position equals last-known position plus velocity
+times elapsed time. An incoming Scud missile travelling at
+approximately $1{,}676 \,\si{\meter\per\second}$ over a
+$0.34 \,\si{\second}$ time error produces a predicted-position
+offset of approximately $570 \,\si{\meter}$. The Patriot's range
+gate, the radar search window around the predicted position, was
+narrower than $570 \,\si{\meter}$; the system therefore failed to
+find the target in the expected location, classified the
+detection as "no track", and did not engage \cite{acc:gao-patriot-1992}.
+A software patch correcting the conversion-truncation error had
+been developed and was being distributed to Patriot batteries at
+the time of the Dhahran incident. The patch arrived at the
+Dhahran battery on 26 February 1991, the day after the strike;
+an Iraqi Scud struck a US Army barracks at approximately 20:35
+local time on 25 February, killing 28 service members and wounding
+approximately 100 others.
+
+\paragraph{Organisational context.}
+The GAO report identified contributing institutional factors
+beyond the arithmetic defect \cite{acc:gao-patriot-1992}. The
+Patriot's original operational concept assumed that batteries
+would be cycled through restarts as part of normal duty, which
+would reset the counter and prevent the accumulated-error mode.
+Gulf War deployment doctrine instructed field operators to keep
+the systems running continuously to maintain readiness, an
+operationally rational choice given the threat environment but
+one that pushed the software outside its design envelope. The
+accumulated-error effect had been observed in field tests and
+reported through engineering channels, but the technical patch
+and the operational guidance ("restart every N hours pending
+patch deployment") moved through different distribution channels
+and arrived at deployed batteries inconsistently. A battery could
+hold the operational guidance without the patch, hold the patch
+without the operational guidance, hold neither, or hold both;
+the Dhahran battery on 25 February held neither.
+
+The case became canonical in software-engineering training for
+several reasons. It is one of the clearest documented examples of
+a numerical-precision software error producing a directly
+attributable loss of life. It illustrates the failure mode of
+accumulated arithmetic error in long-running continuous operation,
+a category that recurs in flight-control software, navigation
+systems, and physical-process control. It also illustrates the
+institutional pattern in which a technical patch and an operational
+workaround are distributed through different channels with no
+synchronisation, so that a deployed unit may have one without the
+other and the gap is not visible from any single vantage in the
+organisation.
+
+\paragraph{Lesson for differentiation and rates.}
+The chapter's apparatus turns on a small step $h$ in the input
+and the response of the function to that step. The Patriot's
+range-gate calculation is the same architecture: the relevant
+quantity is velocity times an elapsed time, a difference between
+two large position estimates divided implicitly by the time the
+target took to traverse them. The arithmetic that produced the
+elapsed-time figure carried a small per-conversion error that
+accumulated linearly with the counter. The differenced quantity
+(predicted minus measured position) inherited the full accumulated
+error, and the system's downstream decision (engage or do not
+engage) had no further input that could compensate. Numerical
+differentiation has the same architecture in miniature: it
+differences nearby function values and divides by a small step;
+each step is a chance for catastrophic cancellation or for
+accumulated representation error. The defensive disciplines are
+the same: track the precision through every operation, choose the
+step size against the noise floor, validate the calculation
 against an independent computation, and bound the operating
 regime against the assumptions of the model.
+
+The Patriot lesson generalises: a measurement chain whose output
+depends on a small difference of two large numbers is sensitive
+to the precision with which each is represented and to the time
+over which any per-operation error can accumulate. A reader who
+writes a control loop that subtracts a stored setpoint from a
+read sensor value, or a navigation system that integrates a
+velocity estimate over a long mission, or a financial system that
+discounts a small daily return over a long horizon, is in the
+same numerical territory the Patriot occupied. The engineering
+discipline is to compute the per-operation error explicitly, sum
+it over the working duration, compare the total to the operating
+tolerance, and choose either a higher-precision representation,
+a periodic reset, or a model that is insensitive to the
+accumulating quantity.
 
 \subsection{The principle, restated}
 
@@ -1567,6 +1751,59 @@ deployment.
 to three hours of writing. Total approximately five to seven
 hours, distributed across two or three days.
 
+\textbf{Phases.} The work decomposes into five phases. (1)
+Acquire and document the data: read the source, record sampling
+rate and units, and plot the raw signal. Confirm by inspection
+that the signal is not pathological (no constant zero windows, no
+unexplained gaps, no quantisation visible at the working scale).
+(2) Compute Method 1 (finite differences) at the native sample
+rate. Observe how the derivative looks; record the visible noise
+amplitude relative to any underlying signal feature. (3) Sweep
+the effective step size by sub-sampling; produce the step-size
+plot. Identify the truncation regime and the round-off (or
+noise) regime. (4) Apply Method 2 (smoothing) and Method 3
+(parametric fit). For each, record the parameter choice and the
+rationale. (5) Compose the comparison table and the reflection.
+
+\textbf{Success criteria.} The project is acceptable when each of
+the following is true. (1) The raw signal, the three method
+outputs, and the three diagnostic plots are present and labelled
+with units and time. (2) Each method's parameters (step size,
+filter window, polynomial order) are stated and the choice is
+defended in one or two sentences with reference to the
+bias-variance tradeoff. (3) The reflection identifies at least
+one disagreement among the three methods and proposes a
+defensible reading of the disagreement (the methods differ
+because the underlying signal has structure on a timescale that
+some methods are sensitive to and others smooth away, for
+example). (4) For synthesised data, the comparison table includes
+the absolute error of each method against the ground-truth
+derivative; for measured data, the table reports the
+inter-method spread as the working uncertainty floor of the
+derivative estimate.
+
+\textbf{Common failure modes.} (i) Picking the smallest available
+step size (the native sample interval) and reporting the
+finite-difference derivative without subsampling. The reader
+loses the bias-variance plot and cannot defend the step size.
+(ii) Choosing a Savitzky-Golay window that is much wider than
+the signal's feature scale; the derivative becomes a smooth
+nothing and disagrees catastrophically with the parametric fit.
+(iii) Fitting a parametric model whose structure does not match
+the signal (polynomial fit to oscillatory data, sinusoidal fit
+to monotone data), then differentiating; the model's bad fit
+shows up in residuals that the reader must inspect before
+trusting the derivative. (iv) Reporting only one method's
+derivative because "the methods all agreed" without computing
+the disagreement. The point of the comparison is the size of the
+inter-method spread; without that, the project has not done the
+chapter's work. (v) Treating the ground-truth derivative as an
+expected answer in the synthesised case rather than as a
+verification target. Different methods can produce different
+defensible derivatives even when the ground truth is known; the
+reflection should report what each method is sensitive to, not
+which method "got the right answer".
+
 \end{project}
 
 \section{Exercises}
@@ -1583,28 +1820,80 @@ reader-path tier.
 Compute the derivative of $f(x) = 3 x^{4} - 2 x^{3} + x - 7$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Linearity and the power rule give the derivative term by term.
+$f'(x) = 12 x^{3} - 6 x^{2} + 1$. The constant $-7$ contributes
+zero. A quick check: at $x = 0$, $f'(0) = 1$, agreeing with the
+linear term of $f$.
+
 \begin{exercise}
 Compute the derivative of $f(x) = x^{2} \sin x$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Product rule with $u = x^{2}$ and $v = \sin x$, $u' = 2 x$,
+$v' = \cos x$. $f'(x) = 2 x \sin x + x^{2} \cos x$. At
+$x = \pi$, $f'(\pi) = 0 + \pi^{2} \cdot (-1) = -\pi^{2}$.
+
 \begin{exercise}
 Compute the derivative of $f(x) = e^{-x^{2}/2}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Chain rule with outer $u \mapsto e^{u}$ and inner $x \mapsto
+-x^{2}/2$. The outer derivative is $e^{u}$, the inner derivative
+is $-x$, so $f'(x) = -x \, e^{-x^{2}/2}$. The derivative vanishes
+at $x = 0$ and is negative for $x > 0$, consistent with the bell
+shape of the Gaussian.
 
 \begin{exercise}
 Compute the derivative of $f(x) = (x^{2} + 1)/(x^{2} - 1)$ for
 $x \neq \pm 1$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Quotient rule with $g(x) = x^{2} + 1$, $h(x) = x^{2} - 1$,
+$g'(x) = h'(x) = 2 x$. Then
+\[
+f'(x) = \frac{2 x (x^{2} - 1) - (x^{2} + 1) \cdot 2 x}
+{(x^{2} - 1)^{2}} = \frac{2 x ((x^{2} - 1) - (x^{2} + 1))}
+{(x^{2} - 1)^{2}} = \frac{-4 x}{(x^{2} - 1)^{2}}.
+\]
+The derivative vanishes at $x = 0$ and diverges at $x = \pm 1$,
+where $f$ itself has vertical asymptotes.
+
 \begin{exercise}
 Compute $\dv{y}{x}$ at $(x, y) = (1, 2)$ for the implicit
 relation $x^{2} y + x y^{3} = 12$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Differentiate both sides with respect to $x$, treating $y$ as a
+function of $x$ and applying the product rule and chain rule:
+\[
+2 x y + x^{2} \dv{y}{x} + y^{3} + 3 x y^{2} \dv{y}{x} = 0.
+\]
+Substitute $(x, y) = (1, 2)$: $2 \cdot 1 \cdot 2 + 1 \cdot
+\dv{y}{x} + 8 + 3 \cdot 1 \cdot 4 \cdot \dv{y}{x} = 4 + \dv{y}{x}
++ 8 + 12 \dv{y}{x} = 12 + 13 \dv{y}{x} = 0$. Solving,
+$\dv{y}{x}\big|_{(1,2)} = -12/13$. A consistency check: the
+relation gives $12$ at the point, confirming the point is on the
+curve.
+
 \begin{exercise}
 Compute the second derivative of $f(t) = t e^{-\alpha t}$ with
 respect to $t$, where $\alpha > 0$ is a constant.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Product rule once: $f'(t) = e^{-\alpha t} + t \cdot (-\alpha)
+e^{-\alpha t} = (1 - \alpha t) e^{-\alpha t}$. Product rule
+again: $f''(t) = (-\alpha) e^{-\alpha t} + (1 - \alpha t) \cdot
+(-\alpha) e^{-\alpha t} = -\alpha e^{-\alpha t} (1 + 1 - \alpha t)
+= -\alpha (2 - \alpha t) e^{-\alpha t} = \alpha (\alpha t - 2)
+e^{-\alpha t}$. The second derivative is zero at $t = 2/\alpha$,
+which is the inflection point of $f$; the first derivative is
+zero at $t = 1/\alpha$, the location of the maximum.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1616,6 +1905,18 @@ $\lim_{h \to 0} \sin h / h = 1$, $\lim_{h \to 0} (1 - \cos h)/h
 = 0$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The difference quotient is
+\[
+\frac{\cos(x + h) - \cos x}{h} = \frac{\cos x \cos h - \sin x
+\sin h - \cos x}{h} = \cos x \cdot \frac{\cos h - 1}{h} -
+\sin x \cdot \frac{\sin h}{h}.
+\]
+Take the limit as $h \to 0$. The first factor approaches
+$\cos x \cdot 0 = 0$; the second factor approaches $\sin x \cdot
+1 = \sin x$, so the difference quotient approaches $0 - \sin x =
+-\sin x$. Thus $\dv{}{x} \cos x = -\sin x$.
+
 \begin{exercise}
 Derive the chain rule for $f(g(x))$ from the limit definition,
 assuming $g$ is differentiable at $x$ and $f$ is differentiable
@@ -1623,11 +1924,43 @@ at $g(x)$. State the assumptions explicitly and identify where
 the heuristic argument fails when $g$ is locally constant.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Let $u = g(x)$ and $\Delta u = g(x + \Delta x) - g(x)$. Write the
+difference quotient of the composite as
+\[
+\frac{f(g(x + \Delta x)) - f(g(x))}{\Delta x} =
+\frac{f(u + \Delta u) - f(u)}{\Delta u} \cdot
+\frac{\Delta u}{\Delta x},
+\]
+provided $\Delta u \neq 0$. As $\Delta x \to 0$, $\Delta u \to 0$
+(continuity of $g$), the first factor approaches $f'(u) = f'(g(x))$,
+and the second factor approaches $g'(x)$. The product approaches
+$f'(g(x)) g'(x)$, the chain-rule formula. The heuristic fails when
+$\Delta u = 0$ for some $\Delta x \neq 0$, which can happen if $g$
+is locally constant. The standard fix replaces $f(u + \Delta u) -
+f(u)$ by an expression $\phi(\Delta u) \Delta u$ where $\phi$ is
+continuous at $0$ with $\phi(0) = f'(u)$; the product
+$\phi(\Delta u) \Delta u / \Delta x$ then makes sense for all
+$\Delta u$, including zero, and the limit is unchanged.
+
 \begin{exercise}
 Derive the second-derivative test for a local maximum from
 Taylor's theorem to second order. State the assumption that
 fails when $f''(c) = 0$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Suppose $f'(c) = 0$ and $f''$ is continuous near $c$. Taylor's
+theorem to second order gives
+$f(c + h) = f(c) + f'(c) h + \tfrac{1}{2} f''(\xi) h^{2} =
+f(c) + \tfrac{1}{2} f''(\xi) h^{2}$ for some $\xi$ between $c$
+and $c + h$. If $f''(c) < 0$, then by continuity $f''(\xi) < 0$
+in a neighbourhood of $c$, so $f(c + h) - f(c) =
+\tfrac{1}{2} f''(\xi) h^{2} < 0$ for all small $h \neq 0$; $c$
+is a strict local maximum. The argument for $f''(c) > 0$ (local
+minimum) is symmetric. When $f''(c) = 0$, the leading-order term
+vanishes and the sign of $f(c + h) - f(c)$ is determined by the
+next nonzero derivative; the theorem above is silent.
 
 \begin{exercise}
 Derive the truncation error of the central difference formula
@@ -1635,6 +1968,20 @@ $D_{0}(x; h) = (f(x + h) - f(x - h))/(2 h)$ from Taylor's theorem,
 giving the leading-order term in $h$ and the conditions under
 which the next term is negligible.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Expand $f(x \pm h) = f(x) \pm f'(x) h + \tfrac{1}{2} f''(x) h^{2}
+\pm \tfrac{1}{6} f'''(x) h^{3} + \tfrac{1}{24} f''''(\xi^{\pm})
+h^{4}$. Subtract: $f(x + h) - f(x - h) = 2 f'(x) h +
+\tfrac{1}{3} f'''(x) h^{3} + \tfrac{1}{12} (f''''(\xi^{+}) +
+f''''(\xi^{-})) h^{4}/2$, with the even-order terms cancelling.
+Divide by $2 h$ to obtain $D_{0}(x; h) = f'(x) + \tfrac{1}{6}
+f'''(x) h^{2} + \oom{h^{4}}$. The leading-order truncation error
+is $\tfrac{1}{6} f'''(x) h^{2}$, of order $h^{2}$. The next term
+is negligible relative to the leading one when $h$ is small
+enough that $|f''''| h^{4}$ is much less than $|f'''| h^{2}$,
+that is, when $h^{2} \ll |f'''| / |f''''|$. For smooth functions
+this holds for any reasonably small $h$.
 
 \begin{exercise}
 Derive the optimal step size $h^{*}$ for the forward difference
@@ -1645,6 +1992,20 @@ Report $h^{*}$ and the optimal total error in terms of $|f''|$
 and $\varepsilon$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The truncation error of $D_{+}$ is $\tfrac{1}{2} f''(x) h +
+\oom{h^{2}}$, of order $h$. The round-off error is of order
+$\varepsilon / h$ (the difference of two near-equal numbers each
+known to absolute precision $\varepsilon$ divided by $h$). The
+total error has magnitude $E(h) \sim \tfrac{1}{2} |f''| h +
+\varepsilon / h$. Differentiate with respect to $h$ and set to
+zero: $\tfrac{1}{2} |f''| - \varepsilon / h^{2} = 0$, giving
+$h^{*} = \sqrt{2 \varepsilon / |f''|}$. Substituting,
+$E(h^{*}) \sim \sqrt{2 \varepsilon |f''|}$, of order
+$\varepsilon^{1/2}$. With double-precision $\varepsilon \approx
+10^{-16}$ and $|f''| \sim 1$, $h^{*} \approx 10^{-8}$ and the
+optimal error is about $10^{-8}$.
+
 \begin{exercise}
 Derive Newton's iteration for finding the root of a function $g$
 by linearising $g$ at the current iterate $x_{n}$ and setting the
@@ -1652,6 +2013,22 @@ linearisation to zero. Report the iteration $x_{n + 1} = x_{n} -
 g(x_{n})/g'(x_{n})$ and identify the conditions under which the
 iteration converges.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The linear approximation of $g$ at $x_{n}$ is $L_{x_{n}}(x) =
+g(x_{n}) + g'(x_{n}) (x - x_{n})$. Setting $L_{x_{n}}(x) = 0$ and
+solving for $x$ gives $x_{n + 1} = x_{n} - g(x_{n})/g'(x_{n})$,
+provided $g'(x_{n}) \neq 0$. The iteration converges quadratically
+when (i) $g'$ is continuous and nonzero in a neighbourhood of the
+root $x^{*}$, and (ii) the initial guess $x_{0}$ is close enough
+to $x^{*}$ that the iterates stay in the neighbourhood. The
+quadratic-convergence statement is $|x_{n+1} - x^{*}| \leq C
+|x_{n} - x^{*}|^{2}$ with $C$ proportional to $|g''(x^{*})| /
+|g'(x^{*})|$. Failure modes include $g'(x_{n}) \approx 0$ (the
+iterate flies far from the root), the initial guess being too
+far from $x^{*}$ (the iteration can wander chaotically), and
+multiple roots where $g'$ vanishes (the convergence becomes
+linear or breaks).
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1662,6 +2039,16 @@ Report your estimate in odometer-units per second, then propagate
 to the derivative the speedometer would read in metres per second.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Convert: $90 \,\si{\kilo\meter\per\hour} = 90 / 3600 \,\si{\kilo
+\meter\per\second} = 0.025 \,\si{\kilo\meter\per\second}$. The
+odometer reads in kilometres; its time derivative is the speed in
+kilometres per second, $0.025 \,\si{\kilo\meter\per\second}$. The
+speedometer reads in metres per second; multiply by $1000$:
+$25 \,\si{\meter\per\second}$. The two readings are the same
+quantity in different units; the chain rule converts between
+them.
+
 \begin{exercise}
 Estimate the maximum acceleration a person can comfortably tolerate
 for a few seconds, in units of $g \approx 9.8\,\si{\meter\per
@@ -1670,12 +2057,38 @@ stopping distance of a passenger car at $100\,\si{\kilo\meter\per
 \hour}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Comfortable deceleration for a few seconds is about $0.5 g \approx
+5 \,\si{\meter\per\second\squared}$ (firm braking; a panic stop
+in a passenger car can exceed $1 g$ but is uncomfortable). At
+$100 \,\si{\kilo\meter\per\hour} \approx 27.8 \,\si{\meter\per
+\second}$, deceleration at $5 \,\si{\meter\per\second\squared}$
+brings the car to rest in $27.8 / 5 \approx 5.6 \,\si{\second}$.
+The stopping distance is the integral $\tfrac{1}{2} v_{0}^{2} / a
+= \tfrac{1}{2} (27.8)^{2} / 5 \approx 77 \,\si{\meter}$. Real
+panic-stop distances (with a higher peak deceleration but a
+reaction-time delay) are also in the $75$ to $100 \,\si{\meter}$
+range.
+
 \begin{exercise}
 Estimate the rate at which the surface temperature of a hot cup
 of tea decreases at room temperature in the first minute of
 cooling. Use Newton's law of cooling with reasonable assumptions
 about the heat-transfer coefficient and the surface area.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Tea at $80 \,\si{\degreeCelsius}$ in a $20 \,\si{\degreeCelsius}$
+room has $\Delta T = 60 \,\si{\degreeCelsius}$. The chapter's
+worked cooling problem gave $k \approx 0.055 \,\si{\per\minute}$
+for a similar mug. Newton's law gives $\dv{T}{t}\big|_{t=0} =
+-k \Delta T = -0.055 \cdot 60 \approx -3.3 \,\si{\degreeCelsius
+\per\minute}$, or about $-0.055 \,\si{\degreeCelsius\per\second}$.
+Over the first minute the temperature drops about $3 \,\si{
+\degreeCelsius}$ (the rate falls slightly as the temperature
+difference narrows, but linearly to good approximation for the
+first minute). A reader who has measured a mug confirms the
+$3 \,\si{\degreeCelsius}$ per minute scale.
 
 \begin{exercise}
 Estimate the rate of change of the tide height at a coastal
@@ -1685,6 +2098,19 @@ tides. State whether your estimate is the peak rate or a typical
 rate.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Take a typical tidal range $\Delta H = 2 \,\si{\meter}$ and a
+period $T = 12.4 \,\si{\hour}$ (semidiurnal). The sinusoidal
+height $H(t) = (\Delta H / 2) \cos(2 \pi t / T) + H_{0}$ has
+peak rate $|H'|_{\max} = (\Delta H / 2) \cdot 2 \pi / T = \pi
+\Delta H / T = \pi \cdot 2 / 12.4 \approx 0.51 \,\si{\meter\per
+\hour}$. This is the peak rate, achieved when the tide is at
+half-amplitude (mid-flood and mid-ebb). The rate averaged over a
+full cycle is zero; the rate averaged over the rising half is
+$\Delta H / (T/2) = 4 / 12.4 \approx 0.32 \,\si{\meter\per\hour}$.
+At extreme locations (Bay of Fundy, around $15 \,\si{\meter}$
+range), the peak rate exceeds $3 \,\si{\meter\per\hour}$.
+
 \begin{exercise}
 Estimate the optimal step size for numerical differentiation of
 a measured signal whose noise standard deviation is $10^{-2}$
@@ -1692,6 +2118,21 @@ times the signal amplitude, assuming the underlying signal has
 $|f'''| \sim 1$ in the units of the problem. Compare your
 estimate to the double-precision floating-point optimum.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+For a noisy signal with noise standard deviation $\sigma$, the
+round-off-equivalent error floor in the central difference is
+$\sigma / h$. Balancing against the truncation error $|f'''| h^{2}
+/ 6$ gives $h^{*} \sim (\sigma / |f'''|)^{1/3}$. With
+$\sigma = 10^{-2}$ and $|f'''| \sim 1$, $h^{*} \approx
+(10^{-2})^{1/3} \approx 0.22$. The optimal derivative error is
+of order $\sigma^{2/3} \approx 10^{-4/3} \approx 0.05$. The
+double-precision floating-point optimum has $\varepsilon \sim
+10^{-16}$ and gives $h^{*} \sim 10^{-5}$ with optimum error
+about $10^{-11}$. Measurement noise dominates floating-point
+round-off by roughly fourteen decades in this case; the engineer
+should pick $h$ against the measurement noise, not against the
+floating-point $\varepsilon$.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1705,6 +2146,19 @@ derivative $y'(t) = 2\pi \cos(2\pi t)$, and report the root-mean-
 square error of the numerical derivative.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The companion script \texttt{code/noisy\_derivative.py} performs
+the calculation. Sample spacing $\Delta t = 1/200 = 0.005$, so
+the noise-induced floor of the central-difference derivative is
+$\sigma / \Delta t = 0.05 / 0.005 = 10$, an order of magnitude
+larger than the true derivative amplitude $2\pi \approx 6.3$. The
+naive estimate is therefore dominated by noise. Sub-sampling to
+stride $8$ gives effective $\Delta t = 0.04$ and noise floor
+$\sigma / \Delta t \approx 1.25$, comparable to the signal.
+Reported root-mean-square errors at strides $1, 2, 4, 8, 16, 32$
+fall from order $10$ to order $1$ and then begin to rise as the
+truncation bias becomes visible at the largest strides.
+
 \begin{exercise}
 For the same signal as above, compute the derivative by smoothing
 with a Savitzky-Golay filter of polynomial order $3$ and window
@@ -1712,12 +2166,36 @@ widths $w = 5, 11, 21, 41$. Plot the root-mean-square error of the
 derivative against window width, and identify the optimum.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+A Savitzky-Golay filter of polynomial order $p$ and window width
+$w$ fits a degree-$p$ polynomial to a sliding window of $w$ samples
+and reports the derivative of the polynomial at the window's
+centre \cite{text:v2ch05-savitzky-golay-1964}. For order $3$ and
+the given signal, narrow windows ($w = 5$) preserve the signal but
+admit noise; wide windows ($w = 41$) suppress noise but smear the
+$\sin(2\pi t)$ structure. The root-mean-square error against the
+true $2\pi \cos(2\pi t)$ typically shows a minimum near $w = 11$
+or $w = 21$, depending on $\sigma$. The reader should plot the
+error curve and report the value at the minimum.
+
 \begin{exercise}
 Implement Newton's iteration for solving $g(x) = 0$ where
 $g(x) = x^{3} - 2 x - 5$. Start from $x_{0} = 2$, run for ten
 iterations, and report the convergence rate empirically.
 Compare to the theoretical quadratic convergence.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The companion script \texttt{code/newton\_root.py} runs the
+iteration. The reference root is $x^{*} \approx 2.0945514815$.
+From $x_{0} = 2$ the iteration produces $x_{1} = 2.1$,
+$x_{2} \approx 2.0946$, $x_{3} \approx 2.09455148\ldots$, with
+each successive error about the square of the previous error.
+The number of correct decimal digits roughly doubles per step,
+matching the theoretical quadratic-convergence statement
+$|x_{n+1} - x^{*}| \leq C |x_{n} - x^{*}|^{2}$. The constant $C$
+is approximately $|g''(x^{*})| / (2 |g'(x^{*})|) =
+|6 x^{*}|/(2(3 (x^{*})^{2} - 2)) \approx 12.6 / 21.1 \approx 0.6$.
 
 \begin{exercise}
 Sweep the step size $h$ over the range $h = 10^{-1}, 10^{-2},
@@ -1727,6 +2205,19 @@ on log-log axes and identify the regime where truncation error
 dominates and the regime where round-off dominates. Estimate the
 optimal $h$ from the plot.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The companion script \texttt{code/finite\_diff\_accuracy.py}
+produces the table. The exact derivative is $e^{1} \approx 2.71828$.
+The truncation term is $\tfrac{1}{6} f'''(1) h^{2} = \tfrac{1}{6}
+e \cdot h^{2}$; the round-off term is of order $\varepsilon / h$
+with $\varepsilon \approx 10^{-16}$. The two cross at $h^{*} \sim
+(\varepsilon / |f'''|)^{1/3} \sim 10^{-5.5}$ with optimal error of
+order $10^{-11}$. The plot has the characteristic V-shape of
+\Cref{fig:vol02:ch05:bias-variance}, with the truncation arm
+falling at slope $2$ on the right and the round-off arm rising
+at slope $-1$ on the left. The empirical optimum is within a
+factor of two of the predicted $h^{*}$.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1740,6 +2231,26 @@ velocity, accelerating, turning) in which your strategy is
 defensible.
 \end{exercise}
 
+\paragraph{Discussion.}
+With sample spacing $\Delta t = 1 \,\si{\second}$ and position
+uncertainty $\sigma_{p} = 5 \,\si{\meter}$, a single-sample
+central difference yields velocity uncertainty $\sigma_{p} /
+\Delta t \cdot \sqrt{2} / (2) = 5 / 1 \cdot \sqrt{2}/2 \approx
+3.5 \,\si{\meter\per\second}$ per sample, or about $13 \,\si
+{\kilo\meter\per\hour}$. A stride-five central difference
+($\Delta t_{\text{eff}} = 5 \,\si{\second}$) reduces this to
+about $0.7 \,\si{\meter\per\second}$ but introduces a $5 \,\si
+{\second}$ lag in the estimate. A defensible default for
+quasi-constant-velocity cruising is a five-to-ten sample
+central window or a Savitzky-Golay filter of polynomial order
+$2$ with $w = 11$. The strategy is defensible for constant
+velocity and gentle accelerations (the polynomial fits the
+short-window trajectory cleanly); it fails for sharp turns or
+abrupt accelerations, where the smoothing smears the manoeuvre.
+A modern receiver typically uses Doppler-based velocity at
+higher accuracy when available; the position-derivative path is
+the fallback.
+
 \begin{exercise}
 Design a tank optimisation: a cylindrical hot-water storage tank
 must hold a fixed volume $V$ and minimise heat loss through its
@@ -1750,6 +2261,22 @@ in the chapter's worked example, and explain the qualitative
 difference.
 \end{exercise}
 
+\paragraph{Discussion.}
+The open-topped surface area is $A(r) = \pi r^{2} + 2 \pi r h$
+with constraint $\pi r^{2} h = V$, so $h = V/(\pi r^{2})$ and
+$A(r) = \pi r^{2} + 2 V / r$. Then $A'(r) = 2 \pi r - 2 V / r^{2}$,
+vanishing at $r^{*} = (V/\pi)^{1/3}$. At the optimum, $h^{*} =
+V/(\pi (r^{*})^{2}) = r^{*}$: the open tank is as tall as it is
+wide. The closed-cylinder case (the chapter's aluminium can) had
+$h^{*} = 2 r^{*}$. The qualitative difference: without a top, the
+penalty for adding height is lower (no extra top-circle area), so
+the optimum lengthens the cylinder relative to the closed case;
+without a top, the penalty for adding radius is also lower
+(the top circle no longer scales with $r^{2}$), so the optimum
+shrinks the radius in the right way to keep the side area in
+balance. The two opposing effects combine to give $h^{*} = r^{*}$
+in the open case versus $h^{*} = 2 r^{*}$ in the closed case.
+
 \begin{exercise}
 Design a one-variable optimisation for the resistance of an
 external load that maximises power transfer from a source with
@@ -1757,6 +2284,21 @@ internal resistance $R_{i}$ and an additional in-line wire
 resistance $R_{w}$. Find the optimal load resistance and the
 maximum power transferred.
 \end{exercise}
+
+\paragraph{Discussion.}
+The source delivers current $I = \mathcal{E} / (R + R_{w} + R_{i})$
+where $R$ is the load. Power dissipated in the load is
+$P(R) = I^{2} R = \mathcal{E}^{2} R / (R + R_{w} + R_{i})^{2}$.
+Setting $P'(R) = 0$ by the quotient rule gives $(R + R_{w} +
+R_{i})^{2} = 2 R (R + R_{w} + R_{i})$, that is, $R^{*} = R_{w} +
+R_{i}$: the optimal load matches the total of the source's
+internal resistance plus the in-line wire resistance. The
+maximum power transferred is $P^{*} = \mathcal{E}^{2} /
+(4 (R_{w} + R_{i}))$, and the fraction of source power that
+reaches the load is $R^{*} / (R^{*} + R_{w} + R_{i}) = 1/2$.
+The qualitative lesson: load matching is to the entire upstream
+impedance, not only to the source's internal impedance. The wire
+loss is irrecoverable and shrinks the deliverable maximum.
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
 
@@ -1768,6 +2310,17 @@ wildly between adjacent samples. Identify the most likely cause
 of the fluctuation and propose a correction.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The smallest available $h$ is the sample spacing, which places
+the estimator on the noise-dominated branch of the bias-variance
+tradeoff. The derivative carries amplified measurement noise
+(noise standard deviation in $y$ becomes $\sigma_{y} / h$ in the
+derivative). The fix is to sub-sample (use a larger effective
+$h$ by skipping samples), to smooth the data before
+differentiation, or to fit a parametric model and differentiate
+it. Each option moves the estimator off the noise branch and
+toward the truncation branch where the tradeoff is balanced.
+
 \begin{exercise}
 A control system computes the derivative of a process variable
 by central differences and uses the derivative in a feedback
@@ -1776,6 +2329,23 @@ differentiation defects that would produce instability and
 propose a diagnostic test for each.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+(1) Step size too small: the central difference is on the
+round-off or noise branch, amplifying sensor noise into the
+control loop. Test: report the derivative noise floor at several
+step sizes; the floor should fall as $h$ grows until the
+truncation branch takes over. (2) Group delay from a smoothing
+filter applied before differencing: the filtered derivative is
+lagged relative to the measurement, and the feedback adds the
+lag to its phase margin. Test: bode-plot the input-to-output
+phase versus frequency and confirm the delay is within the
+loop's tolerance. (3) Quantisation of the measurement: a sensor
+with a coarse least-significant bit produces a derivative that
+is mostly zero with occasional large jumps; the loop alternates
+between no correction and over-correction. Test: histogram the
+sequential differences $y_{n+1} - y_{n}$; a discrete sensor
+shows up as a discrete distribution.
+
 \begin{exercise}
 A chemistry laboratory computes a reaction rate by differencing
 two concentration measurements taken at $t_{1}$ and $t_{2}$. The
@@ -1783,6 +2353,23 @@ reported rate has a standard deviation $50\,\%$ of its mean.
 Identify the source of the noise and propose a measurement
 strategy that reduces it.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+A two-point forward difference of two noisy concentration
+measurements has noise standard deviation $\sigma_{r} =
+\sigma_{C} \sqrt{2} / (t_{2} - t_{1})$. A $50\,\%$ relative
+uncertainty in the rate means the measurement noise is
+comparable in magnitude to the concentration change over the
+interval $(t_{2} - t_{1})$. The fix is to widen the interval
+(so the true change $\Delta C$ grows while the noise stays the
+same), to repeat the measurement and average (so the noise per
+measurement is reduced by $\sqrt{N}$), or to fit a kinetic model
+to a longer time series and read the rate from the fit. The
+right choice depends on whether the reaction is slow enough to
+admit a longer interval without nonlinearity (in which case
+widen the interval) or fast enough to require averaging
+(in which case multiplexing or higher-precision instrumentation
+is the route).
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1798,6 +2385,34 @@ operational guidance) that would have caught the defect before
 deployment.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The conversion of the integer tick counter to real seconds used a
+$24$-bit fixed-point approximation of $1/10$ whose binary
+expansion is non-terminating; the truncation introduced about
+$9.5 \times 10^{-8}$ of error per conversion. After
+$100 \,\si{\hour} = 3.6 \times 10^{5} \,\si{\second}$ the counter
+had reached approximately $3.6 \times 10^{6}$ ticks, and the
+accumulated error reached approximately $0.34 \,\si{\second}$.
+The range-gate prediction used the converted time in a
+velocity-times-time forecast; at $1{,}676 \,\si{\meter\per
+\second}$ the time error mapped to a position error of about
+$570 \,\si{\meter}$, larger than the range gate, and the system
+declined to engage. Three disciplines would each have caught the
+defect. A numerical-precision audit at design time, by
+propagating the per-conversion error over the maximum intended
+continuous-operation duration, would have flagged the
+accumulated error and forced either a higher-precision
+representation, periodic reset, or different clock-handling
+algorithm. A restart procedure in operational doctrine, with a
+hard interval well below the accumulated-error threshold (say,
+restart every $24 \,\si{\hour}$), would have kept the system
+inside its design envelope regardless of the software defect. An
+operational guidance system that synchronised patches with
+operational doctrine (the patch and the restart guidance moved
+through different distribution channels) would have ensured
+every deployed battery had at least one of the two protections
+in place at any time.
+
 \begin{exercise}
 A consumer thermostat reports the rate of change of the
 temperature it is controlling. The thermostat's sensor has a
@@ -1807,6 +2422,29 @@ whether the thermostat's reported rate of change is meaningful at
 the minute scale, and identify the engineering correction that
 would make it meaningful.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The minute-scale derivative computed by differencing two
+consecutive sensor readings has a noise floor equal to the
+quantisation step divided by the time interval, that is, $0.1 /
+60 \approx 1.7 \times 10^{-3} \,\si{\degreeCelsius\per\second}$
+or $0.1 \,\si{\degreeCelsius\per\minute}$. A real household
+heating system changes temperature at perhaps
+$0.5$ to $5 \,\si{\degreeCelsius\per\hour} = 0.008$ to $0.08
+\,\si{\degreeCelsius\per\minute}$. The reported rate is therefore
+dominated by quantisation noise at the minute scale; the
+reported number alternates between $0$ and $\pm 0.1 \,\si{
+\degreeCelsius\per\minute}$ depending on whether the sensor
+flipped a bit during the minute. The fix is to widen the
+differencing interval (report a ten-minute or hourly rate,
+matching the system's actual time constant), to fit a slope to
+a sliding window of (say) ten samples and report the slope as
+the rate (Savitzky-Golay or weighted least squares), or to
+increase the sensor's effective resolution by oversampling and
+averaging (if the sensor admits faster reads). The minute-scale
+reported rate is not informative without one of these
+corrections; the temperature is changing slowly compared to the
+quantisation noise floor.
 
 \begin{exercise}
 A small-amplitude pendulum is modelled by simple harmonic motion
@@ -1818,6 +2456,25 @@ the leading-order correction). Identify the failure mode of the
 linearised derivative-based analysis at this amplitude.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The leading nonlinear correction to the pendulum period is
+$T = T_{0} (1 + \theta_{0}^{2} / 16 + \cdots)$. A $5\,\%$
+deviation corresponds to $\theta_{0}^{2}/16 = 0.05$, that is,
+$\theta_{0}^{2} = 0.8$, $\theta_{0} \approx 0.89 \,\si{\radian}
+\approx 51^{\circ}$. At this amplitude, the linear-approximation
+$\sin\theta \approx \theta$ used to derive simple harmonic
+motion fails by a margin that the period detects. The failure
+mode of the derivative-based linearisation is that the
+restoring-force differential equation $\ddot\theta = -(g/L)\sin
+\theta$ is approximated by $\ddot\theta = -(g/L)\theta$,
+discarding the higher-order Taylor terms of $\sin\theta$. The
+discarded terms produce a period that depends on amplitude (the
+isochronism of simple harmonic motion is itself a
+linearisation artefact), and the working engineer who needs
+sub-percent timing accuracy in a wide-swing pendulum must use
+the elliptic-integral expression for $T$ or work with the
+$5\,\%$-or-larger amplitude error in mind.
+
 \subsection*{Judgment}\pathtag{standard}
 
 \begin{exercise}
@@ -1828,6 +2485,22 @@ the specific information missing to interpret the result, and
 proposes a minimum acceptable form for the report.
 \end{exercise}
 
+\paragraph{Discussion.}
+The colleague has reported a single number whose uncertainty band
+is undefined. To interpret the derivative, the reader needs the
+differencing scheme (forward, central, higher order), the
+effective step size (raw sample spacing or a sub-sampled value),
+any smoothing applied before differencing (filter type, window
+width, polynomial order), and the noise standard deviation of
+the underlying measurement. A minimum acceptable report names the
+scheme, the effective step size, and the propagated noise floor
+of the derivative; for measured data the report adds the spread
+across at least two independent methods (a finite difference and
+a smoothed-then-differentiated estimate, for example) as a
+working uncertainty band. The response should be collegial: the
+colleague's derivative is probably right; the gap is documentation
+discipline.
+
 \begin{exercise}
 A regulatory agency requires a manufacturer to report the rate
 of change of a quantity but specifies neither the time scale nor
@@ -1835,6 +2508,27 @@ the differentiation method. Argue, in 200 to 300 words, whether
 the regulation is well-posed, and propose a specification that
 makes the requirement testable.
 \end{exercise}
+
+\paragraph{Discussion.}
+The regulation is not well-posed. A "rate of change" computed
+over a millisecond is a different quantity from one computed over
+an hour, even on the same underlying signal; the two can differ
+by orders of magnitude when the signal carries high-frequency
+components. Two manufacturers reporting their honest best
+estimates can produce numbers that disagree by factors that
+depend entirely on undisclosed implementation choices. A testable
+specification names: the time window over which the rate is
+computed (an averaging interval); the differentiation method (a
+specific formula, including any smoothing filter and its
+parameters); the sample rate of the underlying measurement; the
+procedure for handling edge effects at the start and end of the
+window; and the accepted uncertainty band of the reported rate.
+With these, two laboratories using two manufacturers' instruments
+produce comparable numbers, and the regulator's tolerance is a
+real test rather than a contest between implementations. The
+discipline mirrors the metrology tradition of Volume I: a
+quantity that is not traceable to a stated method is not a
+quantity that can be compared.
 
 \begin{exercise}
 A business publishes a chart showing the "rate of growth" of a
@@ -1844,12 +2538,58 @@ the reader without disclosure of the differentiation method, and
 identify the reader's defensive options.
 \end{exercise}
 
+\paragraph{Discussion.}
+Without disclosure, the chart cannot tell the reader (i) whether
+the displayed rate is an instantaneous derivative or an
+averaged-over-some-window quantity, (ii) whether the smoothing
+choice favours visual continuity over honest reporting of
+volatility, (iii) whether the rate is computed on the raw data
+or on a transformed quantity (logarithm, percent change), and
+(iv) whether the visual scale (linear or log axis on the rate
+itself) understates or overstates the swings the underlying
+signal exhibits. Two competent analysts presented with the same
+raw data can produce charts that tell visually different stories
+by varying these choices. The reader's defensive options
+include: ask for the raw data and reproduce the chart with
+disclosed methods; ask for the differentiation method and an
+uncertainty band on the displayed rate; treat the chart as
+illustrative rather than authoritative pending disclosure;
+compare the chart to a chart of the underlying quantity itself,
+where the visual integration removes some implementation
+artefacts. The general discipline: a rate is a derived quantity
+that depends on choices, and a rate published without those
+choices stated is a rate without a defensible interpretation.
+
 \begin{exercise}
 Argue, in one paragraph, whether engineering training should
 emphasise analytical or numerical differentiation. Take a
 position and defend it with a specific example from your own
 experience or a documented case.
 \end{exercise}
+
+\paragraph{Discussion.}
+The training has to develop both, in that order. Analytical
+differentiation gives the engineer the structure of how a
+quantity responds to its input: the chain rule reveals the
+multiplicative composition of sensitivities; the product and
+quotient rules reveal where small denominator errors blow up
+into large derivative errors; Taylor expansion gives the
+remainder bound that lets the engineer know when an
+approximation is admissible. Numerical differentiation gives the
+engineer the discipline of finite precision: the bias-variance
+tradeoff, the noise floor, the choice of step size, the
+catastrophic-cancellation failure mode. A training that provides
+only the analytical side produces engineers who derive a
+beautiful formula and apply it to floating-point data with no
+sense of why the result is garbage; a training that provides
+only the numerical side produces engineers who treat
+differentiation as a black-box subroutine and miss the
+structural information the analytical view delivers. The Patriot
+case is the canonical illustration: the failure was numerical,
+but the diagnosis required understanding that the differenced
+quantity inherited the full accumulated representation error of
+each input, which is a structural insight from analytical
+calculus applied to a finite-precision computation.
 
 \begin{exercise}
 A sensor manufacturer states the noise floor of a measurement at
@@ -1860,6 +2600,23 @@ quote, including the optimal step size and the resulting
 derivative noise floor.
 \end{exercise}
 
+\paragraph{Discussion.}
+For a central difference with effective step size $h$ and noise
+$\sigma$, the noise contribution to the derivative is $\sigma /
+h$, and the truncation contribution is $|f'''| h^{2}/6$. The
+optimal step size is $h^{*} \sim (\sigma / |f'''|)^{1/3}$ and
+the optimal derivative noise floor is $\sigma^{2/3}
+|f'''|^{1/3}$ times a constant of order unity. With $\sigma =
+10^{-3}$ and $|f'''| \sim 1$ in the measurement units, $h^{*}
+\approx 10^{-1}$ in the time units of the measurement: the
+smallest defensible step uses on the order of $0.1 \cdot f_{s}$
+samples. The derivative noise floor is approximately
+$\sigma^{2/3} \approx 10^{-2}$ in (measured units per time
+unit). The manufacturer should quote the signal-aware derivative
+rather than the instrument-resolution-limited one and should
+state the assumed $|f'''|$ scale, since the optimum depends on
+it.
+
 \begin{exercise}
 Compute the derivative of $f(x) = \ln(\sqrt{x^{2} + 1})$ by
 applying the chain rule and the logarithmic-derivative
@@ -1867,12 +2624,36 @@ manipulation. Compare the result to the answer obtained by first
 simplifying $\ln(\sqrt{x^{2} + 1}) = \tfrac{1}{2}\ln(x^{2} + 1)$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+By the chain rule with outer $u \mapsto \ln u$, inner $v \mapsto
+\sqrt{v}$, innermost $x \mapsto x^{2} + 1$:
+$f'(x) = (1/\sqrt{x^{2} + 1}) \cdot (1/(2\sqrt{x^{2} + 1})) \cdot
+2 x = x / (x^{2} + 1)$. By the simplification, $f(x) =
+\tfrac{1}{2} \ln(x^{2} + 1)$ and $f'(x) = \tfrac{1}{2} \cdot
+(2 x)/(x^{2} + 1) = x/(x^{2} + 1)$. The two routes agree, as
+they must. The simplification is shorter; the chain-rule route
+is more general and survives when the logarithm-of-square-root
+structure is not amenable to algebraic simplification.
+
 \begin{exercise}
 Compute, from the limit definition, the derivative of $f(x) =
 \sqrt{x}$ at an arbitrary point $x > 0$. Use the conjugate-
 multiplication trick to simplify the difference quotient
 $(\sqrt{x + h} - \sqrt{x})/h$ before taking the limit.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Multiply numerator and denominator by the conjugate $\sqrt{x + h}
++ \sqrt{x}$:
+\[
+\frac{\sqrt{x + h} - \sqrt{x}}{h} = \frac{(\sqrt{x + h} - \sqrt{x})
+(\sqrt{x + h} + \sqrt{x})}{h (\sqrt{x + h} + \sqrt{x})} =
+\frac{(x + h) - x}{h (\sqrt{x + h} + \sqrt{x})} =
+\frac{1}{\sqrt{x + h} + \sqrt{x}}.
+\]
+As $h \to 0$, the limit is $1/(2 \sqrt{x})$. So $f'(x) = 1/(2
+\sqrt{x})$ for $x > 0$, the same as the power rule applied to
+$x^{1/2}$.
 
 \begin{exercise}
 A photochemical reaction has rate $r = k [A]^{2} [B]$ where $k$
@@ -1884,6 +2665,19 @@ this chapter) to compute the relative uncertainty in $r$ assuming
 $[A]$ and $[B]$ are uncorrelated.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+For a product of powers $r = k [A]^{p} [B]^{q}$ the GUM formula
+for uncorrelated inputs gives $(u(r)/r)^{2} = p^{2}
+(u([A])/[A])^{2} + q^{2} (u([B])/[B])^{2}$. With $p = 2$,
+$q = 1$, $u([A])/[A] = 0.05$, $u([B])/[B] = 0.10$:
+$(u(r)/r)^{2} = 4 \cdot 0.0025 + 1 \cdot 0.01 = 0.01 + 0.01 =
+0.02$, so $u(r)/r \approx 0.141$, about $14\,\%$. The squared
+exponent on $[A]$ amplifies its relative uncertainty by a factor
+of two; the larger relative uncertainty in $[B]$ enters
+unamplified. The two contributions are comparable; reducing
+either improves the result, with $[A]$ giving the larger leverage
+because of the squared exponent.
+
 \begin{exercise}
 For the function $f(x) = \tan(x)$, identify all points in the
 interval $(-2\pi, 2\pi)$ where the derivative does not exist.
@@ -1892,6 +2686,23 @@ tangent, oscillation). Write a one-paragraph engineering
 implication: a control system that uses $\tan$ as part of its
 gain schedule must guard against operation near these points.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The function $\tan(x)$ has vertical asymptotes at the odd
+multiples of $\pi/2$ in the given interval: $x = -3\pi/2$,
+$-\pi/2$, $\pi/2$, $3\pi/2$. At each such point $\tan$ itself is
+undefined, and the derivative $\sec^{2} x$ diverges to
+$+\infty$ as $x$ approaches an asymptote from either side. The
+failure type is unbounded derivative (vertical-tangent character,
+with the function value itself missing), distinct from a jump
+(the function is unbounded near the asymptote) and from a kink
+(the function is smooth where defined). A control system whose
+gain schedule includes $\tan$ must clip the input away from
+these asymptotes; the gain becomes arbitrarily large near the
+asymptotes and the loop becomes unstable. A defensive design uses
+$\arctan$, which is bounded and has bounded derivative
+everywhere, or applies a saturating gain that caps the
+amplification before it reaches the asymptote.
 
 \begin{exercise}
 Estimate the central-difference derivative of a smartphone
@@ -1902,3 +2713,21 @@ difference noise floor in the derivative is comparable to a
 $0.5\,\si{\meter\per\second\cubed}$ jerk signal, and propose a
 filtering strategy that recovers a usable jerk estimate.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+At native sample interval $\Delta t = 10 \,\si{\milli\second}$
+the central-difference noise floor in the jerk estimate is
+$\sigma / \Delta t = 0.01 / 0.01 = 1.0 \,\si{\meter\per
+\second\cubed}$, above the target signal. To reach a noise floor
+of $0.5 \,\si{\meter\per\second\cubed}$ comparable to the
+signal, the effective sample spacing must grow to $\Delta t =
+\sigma / 0.5 = 0.02 \,\si{\second} = 20 \,\si{\milli\second}$,
+that is, a stride-two central difference. At this spacing the
+truncation bias depends on the signal's third derivative and on
+the size of the manoeuvre; for a smooth driving scenario it
+remains small. A defensible strategy uses a Savitzky-Golay
+filter of polynomial order $2$ with window width $11$ to $21$
+samples, producing a derivative whose noise floor is roughly
+$\sigma / (\sqrt{w/2} \cdot \Delta t) \approx 0.3 \,\si{
+\meter\per\second\cubed}$, comparable to the target signal,
+with a usable $100 \,\si{\milli\second}$ time resolution.

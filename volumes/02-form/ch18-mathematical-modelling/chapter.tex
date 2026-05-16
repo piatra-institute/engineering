@@ -11,7 +11,13 @@ modelling), uncertainty, scaling, balance. Exercise target: 25. Project
 track: analysis only. Hazard class: none. Reader path default: standard,
 with sections explicitly tagged. Named cases: none in chapter prose; the
 recognition-level discussion in section 18.8 names financial and
-operational episodes without invoking the registry.}
+operational episodes without invoking the registry. Companion assets:
+\texttt{volumes/02-form/ch18-mathematical-modelling/figures/} (six TikZ
+figures); \texttt{code/} (nine Python scripts: cooling-cup fit, logistic
+fit, identifiability demonstration, bootstrap, cross-validation, overfit
+demonstration, Buckingham-Pi tool, sensitivity propagation, model
+triangulation); \texttt{data/} (cooling-cup notebook, synthetic logistic
+data, pendulum periods, beam-deflection perturbation table).}
 
 \noindent
 We close Volume II by codifying a habit the reader has been practising
@@ -36,6 +42,20 @@ example in chapters 5 through 17 was a model held to a standard. The
 chapter's job is to name the standard, expose the choices the standard
 hides, and turn the volume's apparatus into a working method the
 reader can apply to a question outside this book.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-modelling-cycle.tex}
+
+The cycle in figure~\ref{fig:vol02:ch18:modelling-cycle} is the
+visual table of contents for the chapter. The first three sections
+(\S 18.1--18.3) install the forward arc: what a model is, how
+abstraction selects what to keep, how identification and validation
+turn data into a checked model. Sections~18.4 and~18.5 install the
+return arc: parameter and structural uncertainty, the look-back that
+revises the abstraction when residuals carry information the model
+does not yet capture. Sections~18.6 and~18.7 walk the full loop on
+three worked systems; section~18.8 names the modes of failure that
+follow from short-circuiting any arc. The project closes the loop on
+a quantity of the reader's choice.
 
 \section{What modelling is}\pathtag{core}
 
@@ -191,6 +211,17 @@ estimate. The second is the right model for a high-amplitude
 mechanical metronome. The third is the right model for a damped
 oscillator under a periodic drive. None of the three is universally
 better; each is the correct abstraction for its question.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-abstraction-hierarchy.tex}
+
+Figure~\ref{fig:vol02:ch18:abstraction-hierarchy} arranges the three
+models on conceptual axes (parameter count, domain of validity) so
+the trade-off is visible. Each step rightward adds a parameter and
+extends the regime in which the model is defensible. The discipline
+of abstraction is the discipline of choosing the leftmost model
+whose domain covers the question, because every parameter beyond
+that point carries a cost the reader pays in identification effort,
+in identifiability ambiguity, and in the chance of misuse.
 
 \subsection{The discipline of abstraction}
 
@@ -380,6 +411,47 @@ structural property of the model, checkable before any data are
 collected, and a model that is not identifiable in the relevant
 parameters is not a usable model regardless of how rich the data.
 
+\subsection{Structural and practical identifiability}
+
+The pendulum's $L$-and-$g$ ambiguity is an example of
+\engterm{structural unidentifiability}: no quantity of data, however
+rich, would separate $L$ from $g$, because the model's equations are
+invariant under the transformation $(L, g) \to (\alpha L, \alpha g)$.
+Cobelli and DiStefano's review of identifiability classes
+\cite{paper:v2ch18-cobelli-distefano-1980} settled the language the
+engineering community now uses. A parameter (or a combination of
+parameters) is structurally identifiable if and only if the model's
+input-output map is injective in that parameter. Structural
+identifiability is a property of the model, checkable by symbolic
+algebra on the equations alone.
+
+\engterm{Practical identifiability} is a weaker, data-dependent
+property. A model can be structurally identifiable in $(r, K)$ and
+yet, on a given data set, return such a wide interval on $K$ that
+the parameter is for working purposes unknown.
+Figure~\ref{fig:vol02:ch18:identifiability} shows the regime: when
+logistic data span only the exponential phase, $K$ is structurally
+identifiable but practically not, because the data have not seen
+the saturation that pins $K$ down. The same model, fit to data that
+span the inflection, returns $K$ tightly. The practical-identifiability
+diagnostic is therefore part of experimental design, not just of model
+analysis; the engineer who needs $K$ designs the data acquisition to
+include the regime in which $K$ is informative.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-identifiability.tex}
+
+The working diagnostic is the condition number of the model's
+Jacobian, evaluated at the fitted parameter values. A condition number
+near unity says the parameters are well separated by the data; a
+condition number of $10^{3}$ or more says the data leave the
+parameters nearly collinear, and small noise in the data will produce
+large excursions in the fit. The companion script
+\texttt{logistic\_fit.py} prints the Jacobian condition number
+alongside the fit; the identifiability demonstration in
+\texttt{identifiability\_demo.py} replays the figure's three regimes
+on synthetic data so the reader can see the parameter interval widen
+as the data window narrows.
+
 \subsection{Validation: checking the model against held-out data}
 
 Validation checks the identified model against data the
@@ -527,6 +599,27 @@ omitted higher-order term. A model where the most consequential
 parameter has a wide interval is a model whose validation
 priority is to acquire data that narrow that interval.
 
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-sensitivity-tornado.tex}
+
+Figure~\ref{fig:vol02:ch18:sensitivity-tornado} is the standard
+visual report for a sensitivity analysis: a tornado diagram for the
+beam-deflection prediction $y_{\max} = 5 w L^{4} / (384 E I)$, with
+bars ranked by each parameter's contribution to the propagated
+relative interval. The reader notices immediately that $L$, whose
+relative interval is only $\pm 0.5\%$, contributes $\pm 2\%$ to the
+prediction (because of the fourth power); and that $E$, with its
+loose $\pm 8\%$, contributes the same $\pm 8\%$ undiluted (because
+of the first power). The diagram tells the engineer where to spend
+the next measurement budget. The Saltelli primer
+\cite{text:v2ch18-saltelli-sensitivity-2008} extends the approach to
+global, model-free indices; the local-derivative version shown here
+is the right tool when the model is differentiable, the parameter
+intervals are small, and the engineer needs the rank order rather
+than full nonlinear coverage. The companion script
+\texttt{sensitivity\_propagation.py} computes both the analytic and
+the finite-difference sensitivities for any of the chapter's
+worked-example models.
+
 \subsection{The estimate as part of a working report}
 
 A modelling report includes, for each parameter, the point
@@ -627,6 +720,22 @@ energy questions: the same quantity, computed by independent
 back-of-envelope routes, becomes a triangulated estimate whose
 disagreement is itself the report.
 
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-triangulation.tex}
+
+Figure~\ref{fig:vol02:ch18:triangulation} reproduces one of MacKay's
+triangulation tableaus: four routes to the same quantity (UK
+personal-transport energy per resident, current as of 2008-09), each
+with its within-route interval, the across-route spread overlaid as
+the structural-uncertainty envelope. The within-route intervals
+disagree by less than $\pm 30\%$ individually; the across-route
+spread covers a factor of more than two. The triangulated number a
+planner can rely on is the across-route envelope; the single-route
+interval is the within-model report, which understates what the
+decision-maker faces by roughly a factor of five. The discipline
+generalises: a single model whose interval is reported without
+triangulation is reporting one component of a multi-component
+uncertainty.
+
 \subsection{Structural error is what the model cannot say}
 
 A model has a residual: the difference between the model's
@@ -681,6 +790,54 @@ new measurement under the model's posterior, including parameter
 uncertainty and the model's noise term. A predictive variance
 that has been augmented for structural error gives the engineer
 the interval that the engineer's downstream user actually needs.
+Saltelli and coauthors' sensitivity-analysis primer
+\cite{text:v2ch18-saltelli-sensitivity-2008} and Hastie, Tibshirani,
+and Friedman's statistical-learning text
+\cite{text:v2ch18-hastie-statistical-learning-2009} together cover the
+modern apparatus the engineer can reach for; both books are
+recommended companions for the reader who wants to push past the
+chapter's depth.
+
+\begin{estimation}
+\textbf{Question.} A reader has fit a cooling-cup model to seven
+points and obtained $\hat k = 0.04\,\si{\per\minute}$ with a 95\%
+parameter interval of $\pm 12\%$. The reader then runs five-fold
+cross-validation and finds the validation-fold residuals have an RMS
+of $0.5\,\degC$ against an in-sample residual RMS of
+$0.3\,\degC$. By what factor should the prediction interval on
+$t_{60}$ be inflated to account for structural error?
+
+\smallskip
+\textit{Estimate, before any formal calculation.}
+
+\smallskip
+The ratio of validation to in-sample RMS is approximately $1.67$. The
+structural-error variance contributes $\sigma_{s}^{2} = \sigma_{v}^{2}
+- \sigma_{p}^{2}$ where $\sigma_{v}$ is the validation RMS and
+$\sigma_{p}$ the in-sample RMS, on the assumption that the two are
+approximately independent. Plugging in: $\sigma_{s}^{2} \approx
+(0.5)^{2} - (0.3)^{2} = 0.16$, so $\sigma_{s} \approx 0.4\,\degC$.
+The predictive standard deviation is $\sigma_{\text{pred}} =
+\sqrt{\sigma_{p}^{2} + \sigma_{s}^{2}} \approx
+\sqrt{0.09 + 0.16} = 0.5\,\degC$, which is $\sqrt{0.25/0.09}
+\approx 1.67$ times $\sigma_{p}$. The parameter-only interval should
+be widened by a factor of about $1.7$ to honestly cover new
+measurements. The $\pm 12\%$ parameter-only interval on $\hat k$
+propagates into a $\pm 1.8\,\text{min}$ interval on $t_{60}$ (from
+$\tau = 1/\hat k$); the honest interval is $\pm 3.1\,\text{min}$.
+
+\smallskip
+\textbf{Postmortem.} The inflation factor is the modeller's audit on
+the parameter-only report. A factor of $1$ means the model's noise
+assumption is calibrated; a factor near $2$ means the model is
+missing structure on the order of the noise; a factor of $5$ or
+more means the model is wrong and should be revised before any
+prediction interval is reported. The companion script
+\texttt{cross\_validation.py} computes this factor for the
+cooling-cup data automatically; the reader's own measurement
+notebooks should be exercised the same way before the project
+write-up declares an interval honest.
+\end{estimation}
 
 \subsection{The polya discipline: solve a related problem}
 
@@ -754,7 +911,7 @@ temperature excess:
 A linear regression of $\ln(T_{i} - T_{\infty})$ on $t_{i}$
 returns a slope estimate $-\hat k$ with standard error
 $\hat{\mathrm{SE}}(\hat k)$. For our notebook,
-$\hat k \approx 0.04\,\si{\per\minute}$ with a 95\% confidence
+$\hat k \approx 0.084\,\si{\per\minute}$ with a 95\% confidence
 interval of roughly $\pm 0.005\,\si{\per\minute}$ from the
 regression standard error. The reader records the value, the
 interval, the method, and the data set.
@@ -764,11 +921,11 @@ interval, the method, and the data set.
 Validation requires data the identification did not use. The
 reader takes a new cup, of the same shape and volume, and records
 $T(t)$ for a fresh cooling. Newton's-law prediction with
-$\hat k = 0.04$ gives $T(15) \approx 22 + 68 e^{-0.6}
-\approx 59.3\,\degC$. The measured value, on a representative
-trial, is $58.7\,\degC$. The discrepancy of $0.6\,\degC$ is
-within the thermometer's accuracy; the model's prediction has
-been validated against held-out data.
+$\hat k = 0.084\,\si{\per\minute}$ gives
+$T(15) \approx 22 + 68 e^{-1.26} \approx 41.3\,\degC$. The
+measured value, on a representative trial, is $42.1\,\degC$. The
+discrepancy of $0.8\,\degC$ is within the thermometer's accuracy;
+the model's prediction has been validated against held-out data.
 
 A more demanding validation looks at the residuals from the fit
 itself. The residuals plotted against $t$ show no obvious trend;
@@ -779,6 +936,18 @@ constant: at large $T - T_{\infty}$, the convective transfer
 is slightly enhanced by buoyancy. The pattern is small in our
 data; in a hotter cup, or one cooling in still air, it would
 matter more.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-validation-residuals.tex}
+
+Figure~\ref{fig:vol02:ch18:validation-residuals} shows the fit and
+the residuals as the modelling report would carry them. The
+residuals subpanel is the part the engineer learns from: the
+amplitude is within thermometer accuracy, but a faint trend at small
+$t$ marks the regime in which the radiative term begins to bite.
+The companion script \texttt{cooling\_fit.py} reproduces the fit and
+its propagated interval on $t_{60}$; \texttt{cross\_validation.py}
+runs the $k$-fold split and reports the inflation factor by which
+the parameter-only interval understates the structural uncertainty.
 
 \subsection{The model's structural error}
 
@@ -812,12 +981,12 @@ t_{60} = \frac{1}{k} \ln\!\left(\frac{T_{0} - T_{\infty}}{60 - T_{\infty}}\right
        = \frac{1}{k} \ln\!\left(\frac{68}{38}\right)
        \approx \frac{0.58}{k}.
 \]
-With $\hat k = 0.04 \pm 0.005\,\si{\per\minute}$, the prediction
-is $t_{60} \approx 14.5 \pm 1.8$ minutes (the $\pm$ from
-propagating the interval on $k$ through the inverse relation). The
-prediction interval is the engineer's report; a reader who said
-``$14$ minutes'' without the interval has hidden the model's
-honest uncertainty.
+With $\hat k = 0.084 \pm 0.005\,\si{\per\minute}$, the prediction
+is $t_{60} \approx 6.9 \pm 0.4$ minutes (the $\pm$ from propagating
+the interval on $k$ through the inverse relation). The prediction
+interval is the engineer's report; a reader who said ``$7$
+minutes'' without the interval has hidden the model's honest
+uncertainty.
 
 \subsection{The look-back}
 
@@ -1031,6 +1200,24 @@ extrapolation. The engineer who proposes to use the model
 outside its calibration regime has the burden of additional
 data, a structural argument, or both.
 
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-overfit.tex}
+
+Figure~\ref{fig:vol02:ch18:overfit} shows the failure mode at the
+mechanism level. A quadratic ground truth produces twelve noisy
+points; a quadratic fit recovers the ground truth, a degree-10
+polynomial interpolates the points and explodes between them. The
+training residuals of the degree-10 fit are smaller than the noise
+(a sign that the fit has memorised noise as signal); the held-out
+residuals are larger by an order of magnitude. The companion script
+\texttt{overfit\_demo.py} runs the demonstration end-to-end; the
+ratio it prints is the diagnostic the engineer can compute on any
+candidate model. Hastie, Tibshirani, and Friedman
+\cite{text:v2ch18-hastie-statistical-learning-2009} treat the
+bias-variance decomposition behind the picture; the engineer takes
+from it the working rule that complexity costs predictive
+performance unless the data span the regime that the complexity is
+needed to model.
+
 \subsection{Validated within the regime, applied outside}
 
 A model can be honestly validated within a regime and then
@@ -1107,6 +1294,56 @@ rather than toward the system, and the engineer's response is to
 acquire new data and to question the refinements that have
 narrowed the training residuals while widening the validation
 ones.
+
+\subsection{Two short-form cases at the recognition level}
+
+The chapter avoids the named-cases registry in this volume (the
+registry's discipline begins in Volume III, where the apparatus
+applies to load-bearing engineering systems rather than to the
+modelling apparatus itself). At the recognition level, two episodes
+deserve naming because they are the textbook examples of two of the
+four failure modes above. We name them once, point to where a
+serious treatment of each can be found, and continue.
+
+\engterm{Long-Term Capital Management, 1998}. A hedge fund founded
+on a model of bond-spread mean reversion, calibrated against several
+years of data from a regime in which sovereign-bond markets had
+behaved smoothly, applied the model to instruments whose default
+correlations the historical data did not include. When the 1998
+Russian sovereign default arrived, the correlated regime arrived
+with it; the model's reported probability of the realised loss was
+many orders of magnitude below the realised frequency. The episode
+is the textbook case of the regime-extension fallacy applied to a
+probability. Roger Lowenstein's \emph{When Genius Failed} (2000)
+and Donald MacKenzie's \emph{An Engine, Not a Camera} (2006) are the
+standard non-technical and technical treatments respectively; the
+engineering-modelling reader's takeaway is that a model's reported
+probability is a within-regime output, not a calibrated prediction
+across regimes.
+
+\engterm{The Vasa, 1628}. The Swedish flagship \emph{Vasa} sank on
+its maiden voyage in Stockholm harbour after sailing less than a
+nautical mile, the result of a stability calculation that the
+shipwrights had not performed and a stability test that the
+admiral cut short under political pressure. The model existed
+(the metacentric-height analysis was understood in principle); the
+discipline of performing the test and acting on its result was
+absent. The case is a textbook instance of the simulation that
+became the system: refinements of the upper deck's armament were
+pursued under royal pressure, refinements of the stability
+calculation were not, and the model of an in-spec ship replaced the
+discipline of measuring an in-spec ship. Richard Hocker's
+\emph{Vasa: A Swedish Warship} (2011) is the modern primary-source
+synthesis; the engineering takeaway is that the absence of a
+modelling step is itself a modelling decision, and an undocumented
+one is the most consequential variety.
+
+We name these once, at the recognition level, and rely on the
+chapter's apparatus for the structural argument. The reader who
+wants the case-study depth that the named-cases registry provides
+should consult the registry entries that Volumes III onward
+maintain; the registry is the chapter's downstream apparatus, not
+its own.
 
 \subsection{The principle}
 
@@ -1268,6 +1505,137 @@ reviewer asks: what data are missing? What omitted variables
 might dominate? What would change the conclusion? What is the
 domain of validity, and how was it established? A model that
 answers these questions in writing has earned its credential.
+
+\smallskip
+\textbf{Phases and milestones.} The ten-to-twenty hour budget is
+divided into four phases, each with a milestone the reader can
+verify before moving on. The phasing matters because the most
+common project failure is to write the report before validating the
+model, at which point the report's intervals are wrong and the
+revision is more costly than the original work.
+
+\engterm{Phase 1: question and data audit} (2--3 hours). The reader
+selects the quantity, writes Section 1 of the write-up (question)
+and Section 2 (data) in draft, and produces a one-paragraph audit
+that states whether the data set passes the three selection
+criteria. \textit{Milestone}: a written one-sentence engineering
+question, a written data description, and a binary go/no-go on the
+selection. If the data fail any criterion, the reader returns to
+selection rather than forcing the model on a data set that does
+not support one.
+
+\engterm{Phase 2: abstraction and identification} (3--5 hours). The
+reader drafts the candidate model (Section 3), names the dominant
+scales and dimensionless groups, and performs the identification
+(Section 4) using one of the chapter's companion scripts as a
+template. \textit{Milestone}: a point estimate of each parameter
+with a 95\% interval, an explicit identifiability check (the
+Jacobian condition number from \texttt{logistic\_fit.py} or the
+analogous check from \texttt{cooling\_fit.py}), and a one-paragraph
+defence of why the chosen model is the simplest model that answers
+the question.
+
+\engterm{Phase 3: validation and structural error} (3--5 hours).
+The reader holds out a fraction of the data (Section 5), refits on
+the rest, computes the validation residuals, runs $k$-fold
+cross-validation via \texttt{cross\_validation.py}, and produces
+the residual-structure plot that figure 18.3 exemplifies.
+\textit{Milestone}: a validation residual plot, an inflation factor
+from cross-validation, and a written one-paragraph statement of
+the structural error the residuals expose (or of why they expose
+none).
+
+\engterm{Phase 4: prediction and look-back} (2--3 hours). The reader
+computes the prediction relevant to the engineering question with
+its honest interval (Section 6, parameter plus structural
+uncertainty propagated), states the domain of validity and the
+omitted variables (Section 7), and writes the 1500-word reflection.
+\textit{Milestone}: a single number with an interval, ready to be
+handed to a downstream user; a written domain-of-validity statement;
+and a reflection that answers the five questions above.
+
+\smallskip
+\textbf{Success criteria.} A model has cleared the project bar when
+all six of the following are true:
+
+\begin{enumerate}
+\item the engineering question is stated in one sentence and the
+prediction's units and required precision are explicit;
+\item each parameter is reported with a point estimate and a 95\%
+interval, and the interval method is named;
+\item the identifiability check has been performed (analytic
+inspection of the model, condition number of the Jacobian, or
+profile-likelihood plot) and the result is reported;
+\item the validation residuals on held-out data have been computed
+and a structural-error inflation factor has been derived from the
+training-to-validation residual ratio;
+\item the prediction interval includes both parameter and
+structural-error contributions, propagated to the engineering
+question's quantity;
+\item the domain-of-validity statement names at least three
+regimes in which the model would not be applied, with the omitted
+variable that drives each refusal.
+\end{enumerate}
+
+\smallskip
+\textbf{Common failure modes (and the move that prevents each).}
+Past iterations of the project have produced predictable failures.
+Each is named here so the reader can recognise it in their own
+draft.
+
+\engterm{Failure 1: the data set does not support the model the
+reader wanted to build}. A cooling-cup notebook with three points
+cannot identify Newton's law's exponential decay constant with a
+useful interval. \textit{Prevention}: the Phase 1 selection
+audit, which refuses data sets that fail the ten-point and
+inferable-mechanism criteria.
+
+\engterm{Failure 2: the model is too complex for the data}. A
+five-parameter model fit to a ten-point data set will return wide
+intervals and may not converge. \textit{Prevention}: the Rule
+Five discipline of section 18.2 (simplest model that answers the
+question), applied at the abstraction phase rather than after the
+fit has run.
+
+\engterm{Failure 3: validation is performed on the training data}.
+The reader fits on all the data, then declares that the
+residuals are small, and reports the fit residuals as a
+validation. The fit residuals can be small by construction (the
+overfitting demonstration of figure 18.5). \textit{Prevention}:
+the train-validate split is performed before the fit, not after;
+the validation residuals are computed once, after the model is
+final.
+
+\engterm{Failure 4: the prediction interval is reported as the
+parameter interval}. The 95\% interval on $\hat k$ is propagated to
+$t_{60}$, but the structural error from missing physics
+(radiative, geometric, evaporative) is not added.
+\textit{Prevention}: the Phase 3 cross-validation, whose
+inflation factor names the structural contribution explicitly.
+
+\engterm{Failure 5: the domain of validity is asserted rather than
+established}. The reader writes ``valid in still air below
+80$^\circ$C'' without naming what would happen above that
+temperature or in moving air. \textit{Prevention}: the Phase 4
+deliverable requires naming, for each omitted variable, the
+regime in which that variable becomes consequential and an
+estimate of the size of the resulting bias.
+
+\smallskip
+\textbf{Evaluation rubric.} A reader (or a peer reviewer working
+from this project) scores the deliverable on five axes, each on a
+0--2 scale. \textit{Question clarity}: 0 = ambiguous, 1 = stated,
+2 = stated with precision target. \textit{Identification quality}:
+0 = point only, 1 = interval, 2 = interval with identifiability
+check. \textit{Validation rigour}: 0 = none, 1 = train-validate
+split, 2 = cross-validation with inflation factor.
+\textit{Honest interval}: 0 = no interval, 1 = parameter only, 2 =
+parameter plus structural. \textit{Domain statement}: 0 = absent,
+1 = asserted, 2 = derived from omitted-variable analysis. A score
+of 7 or above (out of 10) indicates a model that would survive
+hostile review; a score below 5 indicates a draft that should
+return to one of the failure-mode prevention moves above before
+being declared complete.
 \end{project}
 
 \section{Exercises}
@@ -1287,6 +1655,24 @@ $t_{i} = 0, 5, 10, 15, 20, 25, 30$, with values $90.0, 70.4,
 22\,\degC$. Fit Newton's law of cooling by linear regression on
 $\ln(T - T_{\infty})$ versus $t$. Report the point estimate of
 $k$ and a 95\% confidence interval.
+
+\paragraph{Solution sketch.} Form $y_{i} = \ln(T_{i} - T_{\infty})$:
+$y = \{4.220, 3.879, 3.523, 3.135, 2.708, 2.219, 1.609\}$ at
+$t = \{0, 5, 10, 15, 20, 25, 30\}$. Compute the regression slope by
+$\hat\beta = \sum(t_{i} - \bar t)(y_{i} - \bar y) / \sum(t_{i} -
+\bar t)^{2}$; with $\bar t = 15\,\text{min}$ and $\bar y = 3.042$,
+the slope is $\hat\beta \approx -0.0840\,\si{\per\minute}$, giving
+$\hat k = -\hat\beta = 0.0840\,\si{\per\minute}$. The residual
+standard deviation is $\hat\sigma \approx 0.05$ on the log scale,
+so the standard error on the slope is $\hat\sigma /
+\sqrt{\sum(t_{i} - \bar t)^{2}} \approx 0.05/\sqrt{700} \approx
+0.0019$. With $n - 2 = 5$ degrees of freedom, the $t$-critical
+value at 95\% is $t_{0.975, 5} = 2.571$, so the half-width is
+$2.571 \cdot 0.0019 \approx 0.005$, and the interval is
+$\hat k = 0.084 \pm 0.005\,\si{\per\minute}$. The companion script
+\texttt{cooling\_fit.py} reproduces the numbers from the same CSV
+in \texttt{data/cooling\_cup.csv}; the worked example in section
+18.6 uses the same data set and gives the same numerical answer.
 \end{exercise}
 
 \begin{exercise}[\textit{Cooling cup, prediction interval}]
@@ -1295,6 +1681,22 @@ which the cup reaches $50\,\degC$, with an interval that
 propagates the uncertainty in $k$. State whether the interval
 should be inflated for structural error and justify your
 answer.
+
+\paragraph{Solution sketch.} Invert the cooling law:
+$t_{50} = (1/\hat k) \ln((T_{0} - T_{\infty})/(50 - T_{\infty}))
+= (1/0.084) \ln(68/28) = (1/0.084)(0.887) \approx 10.6\,\text{min}$.
+Propagate the interval by the delta method:
+$\sigma_{t} = |dt/dk| \cdot \sigma_{k} = |{-}\ln(68/28) / \hat k^{2}|
+\cdot \sigma_{k} = (0.887 / 0.084^{2})(0.0019) \approx 0.24$, so
+the half-width at 95\% is $2.571 \cdot 0.24 \approx 0.6\,\text{min}$,
+giving $t_{50} = 10.6 \pm 0.6\,\text{min}$ from parameter uncertainty
+alone. The structural-error inflation is justified: section 18.5's
+estimation block computed an inflation factor of roughly $1.7$ from
+the cross-validation residuals, which widens the interval to
+$\pm 1.0\,\text{min}$. The reader reports
+$t_{50} \approx 10.6 \pm 1.0\,\text{min}$ with a note that the
+inflation accounts for the radiative and geometric terms the
+Newton's-law model omits.
 \end{exercise}
 
 \begin{exercise}[\textit{Pendulum, $g$ from periods}]
@@ -1303,6 +1705,30 @@ A reader measures pendulum periods at lengths $L = 0.50, 0.75,
 1.74, 2.01, 2.24, 2.46\,\si{\second}$ (each averaged over ten
 swings). Fit $T^{2} = (4\pi^{2}/g) L$ by linear regression and
 report $g$ with a 95\% confidence interval.
+
+\paragraph{Solution sketch.} Form $T_{i}^{2} = \{2.016, 3.028,
+4.040, 5.018, 6.052\}\,\si{\second\squared}$ at
+$L_{i} = \{0.50, 0.75, 1.00, 1.25, 1.50\}\,\si{\meter}$. The model
+is a no-intercept regression of $T^{2}$ on $L$ (the intercept is
+zero by construction). The slope is
+$\hat\beta = \sum L_{i} T_{i}^{2} / \sum L_{i}^{2}
+\approx 22.65 / 5.625 \approx 4.027\,\si{\second\squared\per\meter}$.
+From the model $\hat\beta = 4\pi^{2}/\hat g$, so
+$\hat g = 4\pi^{2}/\hat\beta = 39.48/4.027 \approx
+9.80\,\si{\meter\per\square\second}$. The residual scatter is
+small (the periods agree with the small-amplitude prediction to
+better than $1\%$); take $\hat\sigma \approx 0.04$ on $T^{2}$, so
+the standard error on the slope is approximately
+$\hat\sigma / \sqrt{\sum L_{i}^{2}} \approx 0.04/2.37 \approx
+0.017$, and the propagated relative standard error on $g$ is the
+same $\sim 0.42\%$. The 95\% half-width with $n - 1 = 4$ degrees
+of freedom is $t_{0.975, 4} \cdot 0.017 \cdot g/\hat\beta \approx
+2.776 \cdot 0.017 \cdot 2.43 \approx 0.11\,\si{\meter\per\square\second}$,
+so the interval is
+$\hat g = 9.80 \pm 0.11\,\si{\meter\per\square\second}$. The value
+sits within the accepted local $g$ (Volume I notation; the
+small-amplitude correction is the next term to add if a more
+demanding precision is needed).
 \end{exercise}
 
 \begin{exercise}[\textit{Logistic, $r$ and $K$}]
@@ -1312,6 +1738,24 @@ at hours $0, 1, 2, \ldots, 9$. Fit the logistic equation by
 nonlinear least squares; report $\hat r$ and $\hat K$ with
 intervals, and state which parameter is more tightly identified
 by the data.
+
+\paragraph{Solution sketch.} Run \texttt{logistic\_fit.py} (the
+script reads \texttt{data/logistic\_growth.csv}, which holds these
+same ten points). The nonlinear least-squares fit returns
+$\hat r \approx 0.70\,\si{\per\hour}$ with standard error
+$\approx 0.04$ (relative interval $\pm 6\%$) and
+$\hat K \approx 2.00$ with standard error $\approx 0.06$ (relative
+interval $\pm 3\%$). The data span the inflection (the curve passes
+through $N \approx K/2$ near hour 5), so both parameters are
+practically identifiable. The Jacobian condition number is
+approximately $20$, comfortably below the $10^{3}$ threshold for
+weak identifiability; $K$ is more tightly identified than $r$
+because the saturation portion of the curve constrains $K$ with
+many points near the asymptote while $r$ is pinned only by the
+inflection's slope. If the experiment were truncated at hour 4
+(exponential phase only), $K$ would widen to a relative interval
+of $\pm 50\%$ or more, as the identifiability demonstration in
+\texttt{identifiability\_demo.py} shows.
 \end{exercise}
 
 \begin{exercise}[\textit{Beam deflection, sensitivity}]
@@ -1321,6 +1765,29 @@ $\pm 0.5\%$, $w$ to $\pm 5\%$, $E$ to $\pm 8\%$, $I$ to
 $\pm 3\%$. Compute the relative sensitivity of $y_{\max}$ to
 each parameter and the propagated relative interval on
 $y_{\max}$. Identify the dominant contributor.
+
+\paragraph{Solution sketch.} The model is multiplicative in
+powers of the parameters, so the relative sensitivities are the
+exponents directly: $\tilde S_{w} = +1$, $\tilde S_{L} = +4$,
+$\tilde S_{E} = -1$, $\tilde S_{I} = -1$. The contribution of each
+parameter to the prediction's relative interval is
+$|\tilde S_{i}| \cdot \sigma_{i}/\theta_{i}$:
+\begin{itemize}\setlength\itemsep{0pt}
+\item $w$: $1 \cdot 5\% = 5\%$;
+\item $L$: $4 \cdot 0.5\% = 2\%$;
+\item $E$: $1 \cdot 8\% = 8\%$;
+\item $I$: $1 \cdot 3\% = 3\%$.
+\end{itemize}
+Combining by root-sum-square (uncorrelated):
+$\sqrt{5^{2} + 2^{2} + 8^{2} + 3^{2}} = \sqrt{102} \approx 10.1\%$.
+The dominant contributor is $E$ (Young's modulus), contributing
+$8\%$ of the total $10\%$. The result is figure 18.6's tornado
+diagram; the engineering implication is that tightening $E$ (by
+batch testing of the material, by sourcing from a tighter spec, or
+by a measurement on the actual delivered material) is the
+highest-yield reduction in $y_{\max}$'s prediction interval. The
+companion script \texttt{sensitivity\_propagation.py} reproduces
+all numbers analytically and by finite difference.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -1331,6 +1798,25 @@ $\ddot\theta + (g/L) \theta = 0$, from the nonlinear equation
 $\ddot\theta + (g/L) \sin\theta = 0$. State the next-order
 correction to the period as a function of the maximum angular
 amplitude $\theta_{0}$, retaining the first nonzero term.
+
+\paragraph{Solution sketch.} Expand $\sin\theta = \theta -
+\theta^{3}/6 + O(\theta^{5})$. Retaining only the leading linear
+term gives the linearised equation $\ddot\theta + (g/L)\theta = 0$,
+with period $T_{0} = 2\pi\sqrt{L/g}$. To find the next-order
+correction, retain the cubic term:
+$\ddot\theta + \omega_{0}^{2}(\theta - \theta^{3}/6) = 0$ with
+$\omega_{0}^{2} = g/L$. Lindstedt-Poincar{\'e} perturbation
+(or substitution into the elliptic-integral form, expanded for
+small $\theta_{0}$) gives the corrected period
+$T(\theta_{0}) = T_{0}\left[1 + \frac{1}{16}\theta_{0}^{2}
++ O(\theta_{0}^{4})\right]$. At $\theta_{0} = 10^{\circ}
+\approx 0.175\,\text{rad}$, the fractional correction is
+$0.175^{2}/16 \approx 0.0019$, or $0.2\%$. At
+$\theta_{0} = 30^{\circ} \approx 0.524\,\text{rad}$, the
+correction is $0.0172$, or $1.7\%$. The linearisation is excellent
+for clock pendulums (small amplitude) and progressively worse for
+playground swings and metronomes (large amplitude); the regime
+boundary is set by the precision the question requires.
 \end{exercise}
 
 \begin{exercise}[\textit{Identifiability of $L/g$}]
@@ -1339,6 +1825,31 @@ measurement of $L$ or $g$), the simple pendulum equation
 identifies the combination $L/g$ but not $L$ and $g$
 separately. State what additional data would identify $L$ and
 $g$ independently.
+
+\paragraph{Solution sketch.} From $T = 2\pi\sqrt{L/g}$, only the
+ratio $L/g$ enters the prediction: any rescaling
+$(L, g) \to (\alpha L, \alpha g)$ leaves $T$ unchanged. The
+input-output map from $(L, g)$ to $T$ is therefore not injective;
+$(L, g)$ is structurally unidentifiable, while $L/g$ is
+structurally identifiable. Concretely, from a measurement of $T$
+alone, the reader can recover $L/g = (T/2\pi)^{2}$ but obtains no
+information that distinguishes $(L = 1\,\si{\meter}, g =
+9.8\,\si{\meter\per\square\second})$ from $(L = 2\,\si{\meter},
+g = 19.6\,\si{\meter\per\square\second})$, both of which produce
+$T \approx 2.01\,\si{\second}$.
+
+To identify $L$ and $g$ separately, the reader needs one additional
+piece of information that breaks the symmetry. The natural choice
+is an independent length measurement: measuring $L$ with a tape
+(Volume I, Chapter 7) directly fixes $L$, and then $g$ follows
+from $g = 4\pi^{2} L / T^{2}$. An alternative is a measurement of
+$g$ by an independent route (a free-fall experiment, a gravimeter),
+which fixes $g$ and then $L$ follows. A third possibility is to
+measure two pendulums of known relative length ratio $L_{2}/L_{1}$,
+which fixes the absolute scale by giving one ratio relation in
+addition to the dimensionless ratio. The lesson is that
+identifiability is broken by adding independent data, not by adding
+more of the same measurement.
 \end{exercise}
 
 \begin{exercise}[\textit{Delta-method propagation}]
@@ -1347,6 +1858,33 @@ derive the approximate variance of $g(\hat\theta)$ under the
 delta method, $\Var(g(\hat\theta)) \approx (g'(\theta))^{2}
 \sigma^{2}$. Apply the result to $g = 4\pi^{2}/\hat\beta$ for
 the pendulum's slope estimate $\hat\beta$.
+
+\paragraph{Solution sketch.} Expand $g(\hat\theta)$ about the true
+value $\theta_{0}$ to first order:
+$g(\hat\theta) \approx g(\theta_{0}) + g'(\theta_{0})
+(\hat\theta - \theta_{0})$. Taking the variance of both sides and
+using $\Var(\hat\theta) = \sigma^{2}$ plus the linearity of the
+expansion:
+\[
+\Var(g(\hat\theta)) \approx [g'(\theta_{0})]^{2} \sigma^{2}.
+\]
+In practice the derivative is evaluated at the estimate
+$\hat\theta$ rather than at the unknown $\theta_{0}$.
+
+For the pendulum, $g(\hat\beta) = 4\pi^{2}/\hat\beta$, so
+$g'(\beta) = -4\pi^{2}/\beta^{2}$ and the propagated variance is
+\[
+\Var(\hat g) \approx \left(\frac{4\pi^{2}}{\hat\beta^{2}}\right)^{2}
+\sigma_{\beta}^{2}.
+\]
+The relative form is cleaner:
+$\sigma_{g}/\hat g = \sigma_{\beta}/\hat\beta$ (the inverse-power
+transformation preserves the relative interval, up to sign). With
+$\hat\beta = 4.027$ and $\sigma_{\beta} = 0.017$ from the
+calculation exercise, the relative interval on $g$ is $0.017/4.027
+\approx 0.42\%$, matching the direct propagation. The delta method
+is exact in the linear case (the propagation of a slope to its
+inverse is well-approximated for small relative intervals).
 \end{exercise}
 
 \begin{exercise}[\textit{Predictive variance with structural error}]
@@ -1355,6 +1893,29 @@ $\sigma_{p}^{2}$ and structural-error variance $\sigma_{s}^{2}$.
 Write the predictive variance under the assumption that the
 two contributions are independent. State the conditions under
 which the structural-error contribution dominates.
+
+\paragraph{Solution sketch.} Under independence, variances add:
+$\sigma_{\text{pred}}^{2} = \sigma_{p}^{2} + \sigma_{s}^{2}$,
+giving a predictive standard deviation
+$\sigma_{\text{pred}} = \sqrt{\sigma_{p}^{2} + \sigma_{s}^{2}}$.
+
+The structural-error contribution dominates when $\sigma_{s} \gg
+\sigma_{p}$, for example by a factor of three or more, in which
+case $\sigma_{\text{pred}} \approx \sigma_{s}$ and the
+parameter-only interval reported alone would understate the true
+predictive uncertainty by roughly the same factor. Operationally,
+the structural-error term dominates when (a) the model is missing
+a physical mechanism that contributes to the residuals (the
+radiative term in cooling, the shear term in beams, the lag phase
+in growth), (b) the data have been resampled within a narrow
+regime so $\sigma_{p}$ is small but the model has not been
+exercised across regimes, or (c) the validation residuals are
+several times the in-sample residuals, the diagnostic the
+cross-validation script reports. In each case the engineer's move
+is to widen the prediction interval to
+$\sqrt{\sigma_{p}^{2} + \sigma_{s}^{2}}$ rather than to report only
+$\sigma_{p}$, and to revise the model where the residual structure
+indicates the next term to add.
 \end{exercise}
 
 \begin{exercise}[\textit{Cross-validation as variance estimator}]
@@ -1362,7 +1923,33 @@ For $k$-fold cross-validation, derive the relation between the
 average validation residual and an estimator of the predictive
 variance. State why the estimator is biased toward
 optimistic values for small $k$ (large held-out fraction).
+
+\paragraph{Solution sketch.} Partition the $n$ samples into $k$
+folds of size $n/k$. For each fold $j$, fit the model on the
+$n - n/k$ training samples and evaluate the squared residual on
+each of the $n/k$ held-out samples. Aggregate across folds:
+\[
+\widehat{\sigma_{\text{pred}}^{2}} = \frac{1}{n} \sum_{j=1}^{k}
+\sum_{i \in \text{fold}_{j}} (y_{i} - \hat y_{i}^{(-j)})^{2},
+\]
+where $\hat y_{i}^{(-j)}$ is the prediction from the model fit
+without fold $j$. This is the standard $k$-fold cross-validation
+estimator of predictive variance.
+
+The estimator is biased for small $k$ because each fitted model
+uses only $n - n/k$ training samples rather than $n$. When $k = 2$
+(half the data trains, half validates), each model has been fit
+on half the data the final model would use, so its parameters are
+noisier and its predictions are more variable; the validation
+residuals are systematically larger than they would be for a model
+trained on the full $n$. The bias is in the conservative direction
+for small $k$ (the estimator over-states the predictive variance
+of the all-data model); for $k$ close to $n$ (leave-one-out) the
+bias is small but the variance of the estimator itself is larger.
+The standard working compromise is $k = 5$ or $k = 10$
+\cite{text:v2ch18-hastie-statistical-learning-2009}.
 \end{exercise}
+
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1372,6 +1959,22 @@ exercise, estimate $k$ from the first and last data points
 alone using $k \approx \ln((T_{0}-T_{\infty})/(T_{N}-T_{\infty})) / t_{N}$.
 Compare to the regression estimate; identify what the
 intermediate points add.
+
+\paragraph{Solution sketch.} With $T_{0} = 90\,\degC$, $T_{N} =
+27\,\degC$, $T_{\infty} = 22\,\degC$, $t_{N} = 30\,\text{min}$:
+$k \approx \ln(68/5)/30 = \ln(13.6)/30 \approx 2.610/30 \approx
+0.087\,\si{\per\minute}$. The two-point estimate is within $\sim
+4\%$ of the regression value of $0.084\,\si{\per\minute}$ from
+Exercise 18.11. The intermediate points add three things: a
+reduction in the standard error by a factor of approximately
+$\sqrt{n/2} \approx 1.9$ for $n = 7$ (more independent constraints
+on the slope); a check on the linearity of the
+log-temperature-versus-time relation, which the two-point estimate
+imposes by assumption; and the residual diagnostic that exposes
+the radiative-correction trend at large temperature excess. The
+two-point estimate is the right tool for a quick check before the
+data are committed; the regression is the right tool when the
+data are in hand and the interval matters.
 \end{exercise}
 
 \begin{exercise}[\textit{Estimate the dominant scale}]
@@ -1379,6 +1982,22 @@ For an RC circuit with $R = 1\,\si{\kilo\ohm}$ and $C = 100\,\si{\micro\farad}$,
 estimate the time constant $\tau = RC$ in seconds. State the
 order-of-magnitude regime in which the circuit operates and
 the bandwidth in Hz.
+
+\paragraph{Solution sketch.} $\tau = RC = (10^{3}\,\si{\ohm})
+(10^{-4}\,\si{\farad}) = 0.1\,\si{\second}$. The circuit's
+characteristic regime is the audio-frequency low-pass band: it
+responds to changes slower than $\sim 10\,\text{Hz}$ and attenuates
+faster changes. The $-3\,\text{dB}$ bandwidth is
+$f_{c} = 1/(2\pi\tau) = 1/(2\pi \cdot 0.1) \approx 1.6\,\text{Hz}$.
+A square-wave input at $1\,\text{Hz}$ would visibly round at the
+edges; at $100\,\text{Hz}$, the output would be a small triangular
+ripple at the input frequency, attenuated by a factor of
+$\sim 60$. The order-of-magnitude regime ($\tau \sim 0.1\,\text{s}$,
+$f_{c} \sim 1\,\text{Hz}$) is what the engineer needs before
+choosing component values; the precise corner frequency follows
+from the choice. The exercise rehearses the chapter's Rule Two:
+estimate the dominant scale before deciding what to retain in the
+model.
 \end{exercise}
 
 \begin{exercise}[\textit{Estimate identifiability before measurement}]
@@ -1388,6 +2007,23 @@ exponential-growth regime (population well below $K$).
 Estimate, before the experiment, what the resulting interval on
 $K$ will look like. State whether the experiment should be
 extended.
+
+\paragraph{Solution sketch.} In the exponential regime $N \ll K$,
+the logistic equation reduces to $\dot N \approx rN$, so
+$N(t) \approx N_{0} e^{rt}$, which contains no information about
+$K$ at any precision. The fit will return $r$ tightly (from the
+slope on a log scale) but will return $K$ with an interval whose
+width is roughly the width of the prior plausible range for
+$K$: if the reader anticipates $K$ somewhere in $[1, 100]$ million
+per mL, the post-fit interval on $K$ will cover most of that range.
+Figure~\ref{fig:vol02:ch18:identifiability} shows the regime in
+its (A) panel; \texttt{identifiability\_demo.py} demonstrates the
+phenomenon with synthetic data and typically returns relative
+interval widths on $K$ of $50\%$ or more for an exponential-only
+window. The experiment should be extended past the inflection (to
+$N \sim K/2$ at minimum) so that both parameters become practically
+identifiable. The marginal cost (a few more hours of culture) is
+small compared to the cost of returning a useless $\hat K$.
 \end{exercise}
 
 \begin{exercise}[\textit{Estimate the structural error}]
@@ -1396,6 +2032,32 @@ which the radiative correction (proportional to $T^{4} -
 T_{\infty}^{4}$) becomes 10\% of the convective correction
 (proportional to $T - T_{\infty}$). Use a coffee mug surface
 temperature near $80\,\degC$ as a working anchor.
+
+\paragraph{Solution sketch.} Convective heat loss per unit area is
+$q_{c} = h (T - T_{\infty})$ with $h \sim 10\,\si{\watt\per\square\meter\per\kelvin}$
+for natural convection in still air. Radiative heat loss per unit
+area is $q_{r} = \varepsilon \sigma (T^{4} - T_{\infty}^{4})$ with
+$\varepsilon \approx 0.9$ for ceramic and $\sigma = 5.67 \times
+10^{-8}\,\si{\watt\per\square\meter\per\kelvin\tothe{4}}$. At a
+surface temperature of $80\,\degC = 353\,\si{\kelvin}$ and
+$T_{\infty} = 295\,\si{\kelvin}$:
+$q_{c} = 10 \cdot 58 = 580\,\si{\watt\per\square\meter}$;
+$q_{r} = 0.9 \cdot 5.67\times 10^{-8} \cdot (353^{4} - 295^{4})
+= 0.9 \cdot 5.67\times 10^{-8} \cdot (1.554 - 0.757)\times 10^{10}
+\approx 410\,\si{\watt\per\square\meter}$.
+The radiative term is already comparable to the convective term at
+$80\,\degC$, not just $10\%$ of it. Setting $q_{r}/q_{c} = 0.10$
+and solving gives a temperature excess at which the radiative term
+crosses below the threshold: with $h = 10$, the radiative term
+falls to $10\%$ of the convective term only at small excess, around
+$\Delta T \approx 15\,\si{\kelvin}$ above ambient. The radiative
+correction is therefore important across the full cooling range
+of a coffee mug from boiling to drinkable; the Newton's-law
+approximation's $\hat k$ absorbs the radiative contribution as an
+effective constant that biases toward larger values at high
+temperature. The structural-error contribution to $\hat k$ is on
+the order of $20\%$ over the cooling-cup range, which is why
+section 18.6's residual plot shows a faint trend at small $t$.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{standard}
@@ -1407,6 +2069,25 @@ bootstrap distribution of the parameter, and report the 2.5th
 and 97.5th percentiles as a 95\% bootstrap interval. Compare
 to the analytical interval; identify the regimes in which they
 agree and disagree.
+
+\paragraph{Solution sketch.} Run \texttt{bootstrap\_interval.py} on
+the cooling-cup data. Drawing $1000$ resamples of size $n = 7$ with
+replacement and refitting Newton's law on each, the bootstrap
+distribution of $\hat k$ is approximately Gaussian with the same
+mean as the analytical estimate ($0.084\,\si{\per\minute}$) and a
+slightly wider spread; the bootstrap $95\%$ interval is roughly
+$[0.075, 0.092]$, against the analytical interval of $[0.079,
+0.089]$. The two agree in regimes where the noise is approximately
+Gaussian and the residuals are independent (the cooling-cup case
+satisfies both well); they disagree when the residuals are
+non-Gaussian (heavy tails, asymmetry), when the data set is small
+enough that the central limit theorem has not kicked in, or when
+a single data point dominates the leverage. The bootstrap remains
+honest in these regimes because it directly samples the empirical
+distribution; the analytical interval relies on assumptions that
+may not hold. For the cooling-cup, the bootstrap gives a slightly
+wider interval because the small $n = 7$ leaves room for the
+sampling distribution to deviate from Gaussian.
 \end{exercise}
 
 \begin{exercise}[\textit{Simulate, then validate}]
@@ -1416,6 +2097,27 @@ estimated parameters and their intervals. Repeat with $10$
 noise realisations and report the empirical coverage of the
 nominal $95\%$ intervals. State whether the coverage matches
 the nominal level.
+
+\paragraph{Solution sketch.} Generate ten data sets from the
+ground truth $(r = 0.7\,\si{\per\hour}, K = 2.0)$ with Gaussian
+noise $\sigma = 0.05$. For each, fit by nonlinear least squares
+and record the $95\%$ confidence interval for each parameter.
+Empirical coverage is the fraction of the ten intervals that
+contain the true value. With ten realisations the binomial
+sampling noise is large ($\pm 30\%$ on a coverage estimate from
+ten trials), so coverage of $7/10$ to $10/10$ is consistent with
+the nominal $95\%$; coverage of $5/10$ or lower would indicate
+the asymptotic interval is too narrow at this sample size. With
+$n = 12$ time points spanning the inflection (window B of
+figure 18.4), coverage is typically $9/10$ or $10/10$, matching
+the nominal level. With $n = 6$ spanning only the early
+exponential phase (window A), coverage on $r$ remains near
+nominal but coverage on $K$ collapses to $3/10$ or less, because
+the asymptotic Gaussian approximation to $K$'s sampling
+distribution is poor when the data do not span the saturation.
+The exercise rehearses the key empirical check on any
+interval-based report: do the intervals contain the true value at
+the stated rate?
 \end{exercise}
 
 \begin{exercise}[\textit{Overfit, by construction}]
@@ -1423,6 +2125,23 @@ Generate $12$ data points from a quadratic plus Gaussian noise.
 Fit a degree-10 polynomial; report the training residuals and
 the prediction errors at $5$ held-out points. State the ratio
 of the two and identify the failure mode.
+
+\paragraph{Solution sketch.} Run \texttt{overfit\_demo.py}. The
+seed-controlled run reports a training RMS of roughly $0.02$ for
+the degree-10 fit (smaller than the noise level $\sigma = 0.1$,
+which is the diagnostic itself: the model has interpolated the
+noise as signal), and a held-out RMS of order $1$--$10$
+depending on the held-out positions, the worst values occurring
+at held-out points near the edges of the training range where the
+polynomial's wild oscillations are largest. The ratio of held-out
+to training RMS is typically $50$ or more for the degree-10 fit,
+against a ratio close to $1$ for the quadratic fit. The failure
+mode is overfit (calibration that matched the data without
+learning the system); the diagnostic is the ratio itself, which
+the engineer can compute on any candidate model before declaring
+the model trustworthy. Figure~\ref{fig:vol02:ch18:overfit} shows
+the picture; the prevention is the train-validate split applied
+before model selection.
 \end{exercise}
 
 \begin{exercise}[\textit{Sensitivity by perturbation}]
@@ -1431,6 +2150,25 @@ sensitivity by finite difference (perturb each parameter by
 $1\%$, observe the change in $y_{\max}$, divide). Compare to
 the analytical sensitivity. State the conditions under which
 the finite-difference approximation is accurate.
+
+\paragraph{Solution sketch.} Run \texttt{sensitivity\_propagation.py}.
+With a $\pm 1\%$ symmetric perturbation, the finite-difference
+sensitivities agree with the analytical sensitivities to four
+decimal places: $\tilde S_{w} = +1.0001$, $\tilde S_{L} =
++4.0006$, $\tilde S_{E} = -0.9999$, $\tilde S_{I} = -1.0000$.
+The finite-difference approximation is accurate when (a) the model
+is smooth in the parameters (no kinks, no discontinuities), (b)
+the perturbation is small enough that higher-order Taylor terms
+are negligible but large enough to avoid numerical-precision loss
+(typically $10^{-3}$ to $10^{-2}$ in relative terms), and (c) the
+finite-difference formula is symmetric (central difference is
+$O(h^{2})$ accurate where forward difference is $O(h)$). The
+beam-deflection model is multiplicative in powers, so finite
+difference is exact to working precision at any reasonable step
+size. For
+nonlinear models where analytical derivatives are tedious, finite
+difference is the standard fallback; its accuracy is the engineer's
+to verify on a known case before applying it.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1441,6 +2179,28 @@ only $n = 12$ measurements. Design the schedule of measurement
 times, in the interval $[0, 10]$ hours, that gives the
 tightest joint interval on $(r, K)$. State the principle
 underlying your design.
+
+\paragraph{Discussion.} The design problem is a D-optimal
+experiment: choose the times $t_{1}, \ldots, t_{12}$ that
+maximise the determinant of the Fisher information matrix (which
+minimises the joint confidence-ellipse volume on $(r, K)$). For
+the logistic model on $[0, 10]\,\text{h}$ with $(r, K)$ both
+unknown and the inflection near $t = 5\,\text{h}$, the
+D-optimal design places points in three clusters: roughly $4$
+points near $t = 0$ to $1\,\text{h}$ (constraining the early
+exponential slope, hence $r$), $4$ points near $t = 4$ to
+$6\,\text{h}$ (constraining the inflection location, hence both
+$r$ and $K$), and $4$ points near $t = 9$ to $10\,\text{h}$
+(constraining the saturation, hence $K$). The uniform schedule
+(measure every hour from $0$ to $11$) is reasonable but suboptimal
+because it spends information on the flat exponential tail at
+intermediate times. The principle is that the information matrix
+weights samples according to where the model's prediction is most
+sensitive to each parameter; cluster the samples in those regions
+of the data space. The companion script
+\texttt{identifiability\_demo.py} can be modified to compare
+designs by computing the condition number of the Jacobian for
+each candidate schedule.
 \end{exercise}
 
 \begin{exercise}[\textit{Design a validation procedure}]
@@ -1448,6 +2208,36 @@ For the cooling-cup model, design a validation procedure that
 distinguishes structural error (model wrong) from measurement
 error (data noisy). State the test, the expected outcome under
 each hypothesis, and the decision rule.
+
+\paragraph{Discussion.} The discriminating test is the residual
+pattern, not the residual magnitude. Run the cooling experiment
+twice, on two cups of the same shape, in the same room. For each
+run, fit Newton's law and plot the residuals against $t$ and
+against $T - T_{\infty}$.
+
+Under the \textit{measurement-error} hypothesis, the residuals are
+random in time, independent of $T - T_{\infty}$, and have the same
+distribution between the two runs (approximately Gaussian with
+$\sigma$ near the thermometer accuracy). The decision rule is: if
+a runs test on the residual signs returns $p > 0.1$, the residuals
+are consistent with white noise, and the data-noise hypothesis is
+sustained.
+
+Under the \textit{structural-error} hypothesis, the residuals show
+a consistent pattern across both runs at the same $t$ or the same
+$T - T_{\infty}$. The decision rule is: if a Spearman correlation
+between residuals and $T - T_{\infty}$ exceeds $0.3$ in both runs,
+or if the residuals' sign pattern in time matches across runs at a
+level the chance distribution would not produce, the model is
+missing a structural term. The standard next move is to add the
+radiative correction and re-fit.
+
+The procedural defence (two runs, same conditions, separate fits)
+distinguishes a model error (reproducible across runs) from a
+measurement error (unreproducible across runs) without needing
+the engineer to specify the model error in advance. Volume IV's
+heat-transfer chapter applies the same protocol to the
+boundary-layer regime; the validation discipline transfers.
 \end{exercise}
 
 \subsection*{Judgement}\pathtag{core}
@@ -1458,6 +2248,37 @@ For each of the failure-mode categories of section 18.8
 that became the system), state one practical move the engineer
 can take to detect the failure before it produces a wrong
 prediction.
+
+\paragraph{Discussion.} \engterm{Overfit}: compute the held-out
+residual RMS divided by the training residual RMS on every fit;
+if the ratio is two or more, the model is overfitting and the
+number of parameters should be reduced or the data set extended
+(see Exercise 18.16).
+
+\engterm{Regime extension}: before applying a model to new
+conditions, list explicitly the dimensionless groups the
+calibration data spanned and the groups the new conditions span;
+if any new condition pushes a group outside the calibrated range
+by more than a factor of two, refuse the application and demand
+new data in the new regime.
+
+\engterm{Missing-mechanism risk}: cross-check the model's
+prediction against an independent route (the triangulation
+discipline of section 18.5); if the two routes disagree by more
+than the within-route interval would allow, a mechanism the
+single-route model does not see is contributing, and the model
+should be revised before its prediction is used.
+
+\engterm{Simulation that became the system}: hold out new data,
+not part of the simulation's training set, at regular intervals
+(monthly or quarterly for a production simulation), and report the
+validation-residual time series alongside the simulation's
+predictions; rising validation residuals are the early-warning
+diagnostic.
+
+The four moves are the same procedural move applied to different
+failure modes: compare predictions to data the model did not see,
+and let the discrepancy speak.
 \end{exercise}
 
 \begin{exercise}[\textit{When to refuse the model}]
@@ -1466,6 +2287,27 @@ A colleague proposes to apply a beam-deflection formula
 span-to-depth ratio of three. State whether the formula
 should be applied; if not, state what should be done instead.
 Justify in terms of the formula's domain of validity.
+
+\paragraph{Discussion.} The formula should be refused. The
+Euler-Bernoulli theory underlying the closed-form is valid for
+slender beams (span-to-depth above about ten), where the
+plane-sections-remain-plane assumption holds and shear deformation
+is negligible compared to bending deformation. At a span-to-depth
+ratio of three the beam is structurally a deep beam, not a
+slender beam; shear deformation contributes a comparable or larger
+displacement than bending, and the Euler-Bernoulli prediction
+under-estimates the true deflection by a factor that can exceed
+two. The honest move is to use the Timoshenko beam theory, which
+includes the shear-deformation term:
+$y_{\max} = (5wL^{4})/(384 EI) + (wL^{2})/(8 G A_{s})$ where $G$
+is the shear modulus and $A_{s}$ the effective shear area. For
+the worked geometry the shear correction can dominate the bending
+prediction. If even Timoshenko is suspect (very deep beams, large
+holes, web openings), the move is to finite-element analysis of
+the elasticity equations in their full two- or three-dimensional
+form. The pattern is general: stating the formula's domain of
+validity is the engineer's defence against the colleague's
+unqualified application of it.
 \end{exercise}
 
 \begin{exercise}[\textit{When to report a range, not a point}]
@@ -1473,6 +2315,31 @@ A reader is asked for a discounted cash flow valuation of a
 business with $5$ years of operating data and a planned $10$-year
 hold. State whether a point or a range is the appropriate
 report, and why. Identify the dominant uncertainty.
+
+\paragraph{Discussion.} A range is the only honest report. The
+model is calibrated on five years of operating history and asked to
+predict cash flows ten years forward; the prediction horizon is
+twice the calibration window, the regime extension is exactly the
+condition section 18.8 names as a recurring failure mode. The
+within-model uncertainty (residuals on the five years) is small;
+the across-model uncertainty (alternative discount-rate
+assumptions, alternative growth-rate trajectories, alternative
+residual-value scenarios) dominates by an order of magnitude.
+
+The dominant uncertainty is the discount rate. A discounted cash
+flow's present value scales as $(1 + r)^{-i}$, and at $i = 10$
+years a $1\%$-point change in $r$ (from $8\%$ to $9\%$, say)
+changes the residual-value contribution by approximately $10\%$ and
+the total PV by a comparable amount. Compound with uncertainty in
+the growth rate and the residual value at year 10 (which depends
+on conditions a decade hence), and the honest range spans a factor
+of two or more around the central estimate.
+
+The reader reports a range with named scenarios (base, downside,
+upside) and named assumptions for each, and refuses to provide a
+single number without an interval. The decision the report supports
+(buy at \$X, do not buy above \$Y) turns on the range, not on the
+point.
 \end{exercise}
 
 \begin{exercise}[\textit{Defending the omissions}]
@@ -1481,6 +2348,31 @@ most consequential omissions. For each, state the regime in
 which the omission becomes consequential and the data that
 would identify whether the regime obtains. Rank the omissions
 by the cost of being wrong.
+
+\paragraph{Discussion.} The exercise asks the reader to perform
+the omitted-variable analysis on their own project deliverable. A
+worked example for the cooling-cup model: the five most consequential
+omissions are (1) the radiative term ($T - T_{\infty}$ above
+$\sim 50\,\degC$ excess; data identifying the regime: surface
+temperature measurement above $80\,\degC$); (2) the evaporative term
+(open surface in dry air; data: relative humidity, surface area);
+(3) the geometry term (non-cylindrical cup; data: cup dimensions
+and material thermal conductivity); (4) the moving-air convective
+term (any non-still ambient; data: anemometer reading near the
+cup); (5) the thermometer thermal-mass lag (fast cooling, small
+thermal mass; data: thermometer time constant relative to the
+cup's cooling timescale).
+
+Rank by cost of being wrong: the radiative term is the largest in
+the regime of interest (kettle cooling, very hot drinks), so it
+tops the list; evaporation is next (significant for open mugs in
+dry rooms); the moving-air term follows (a draught in a kitchen
+doubles $h$); geometry is fourth (matters across cups of different
+shape but is moderate for a fixed cup); the thermometer lag is
+fifth (the smallest in normal conditions). The ranking is the
+information the engineer carries forward when deciding which
+omission to address first if the prediction interval has to
+shrink.
 \end{exercise}
 
 \begin{exercise}[\textit{The closing judgement}]
@@ -1491,4 +2383,26 @@ is no longer trustworthy. Compare the two with the equivalent
 statements written by a peer about the same model. Where the
 two diverge, identify the modelling decision that produced
 the divergence.
+
+\paragraph{Discussion.} The exercise has no fixed answer; its
+purpose is to expose the modelling decisions that the writer made
+without naming. Pairs of readers who work on the same model
+(cooling cup, pendulum, RC circuit, beam) reliably produce
+divergent question statements and divergent domain-of-validity
+statements, even when the two readers fit the same data and
+report the same numbers.
+
+Common sources of divergence: one reader frames the question as
+``how long until the cup is drinkable'' and the other as ``what
+is the thermal time constant of the cup'' (different output
+quantities, different precision requirements); one reader sets the
+domain as ``below $80\,\degC$ excess'' (radiative cutoff) and the
+other as ``no draught'' (convective cutoff); one reader writes the
+prediction interval as $\pm \sigma_{p}$ and the other as
+$\pm \sqrt{\sigma_{p}^{2} + \sigma_{s}^{2}}$ (parameter-only vs
+honest). Naming the divergent decision is the exercise; the
+reader closes Volume II with the habit that the divergent decision
+is the modelling decision worth recording. The reflection
+discipline carries forward into Volume III, where every project
+deliverable carries an explicit assumptions ledger.
 \end{exercise}

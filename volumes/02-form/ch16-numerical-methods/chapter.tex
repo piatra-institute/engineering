@@ -14,7 +14,7 @@ Project track: simulation with analysis (reproduce one published
 numerical result, account for any drift, plus a 1500-word
 reflection). Hazard class: none. Reader path default: standard, with
 sections explicitly tagged. Named cases: Patriot missile system at
-Dhahran (1991); Ariane 5 Flight 501 (1996).}
+Dhahran (1991); Ariane 5 Flight 501 (1996); Pentium FDIV bug (1994).}
 
 \noindent
 A computation that returns a number is not the same thing as a
@@ -87,6 +87,15 @@ because its memory and bandwidth costs are half of double's. Half
 precision (about 3 to 4 decimal digits) appears in deep-learning
 training and in some embedded systems, and is too narrow for most
 classical numerical work.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-binary64-layout}
+
+Figure~\ref{fig:vol02:ch16:binary64-layout} shows the bit-field
+layout of binary64 and the decoded representation of the decimal
+$0.1$. The infinite repeating binary fraction terminates at the
+mantissa's 52nd bit by the round-to-nearest-ties-to-even rule. The
+chapter's Failure section (section 16.8.1) returns to this constant
+in deployed software.
 
 \begin{estimation}
 \textbf{Question.} A measurement chain produces a sequence of
@@ -249,8 +258,30 @@ is a property of the arithmetic relative to the algorithm as
 written. It scales predictably with the format (single, double,
 quad), and the engineer controls it by choosing the format and by
 preferring numerically stable variants of the algorithm (Kahan
-summation, Householder QR over Gram-Schmidt, partial pivoting in
-LU).
+summation \cite{text:v2ch16-kahan-1965}, Householder QR over
+Gram-Schmidt, partial pivoting in LU). The cancellation pattern in
+which two nearly equal floating-point numbers are subtracted, and
+the leading identical digits annihilate, is the canonical worst
+case of round-off amplification; it is sometimes called
+\engterm{catastrophic cancellation} because the algorithm choice
+turns an otherwise well-behaved problem into an unrecoverable
+loss of digits.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-catastrophic-cancellation}
+
+Figure~\ref{fig:vol02:ch16:catastrophic-cancellation} reads the
+mechanism on the example $\sin(x) - x + x^{3}/6$. The naive
+evaluation loses approximately two decimal digits per decade of
+$x$; the Taylor-rewritten form $x^{5}/120 - x^{7}/5040$ preserves
+all 16. The estimation block above runs the same diagnostic on
+$1 - \cos(x)$. Across this chapter the same recipe applies. The
+algorithm's correctness up to algebraic identity does not imply
+its numerical safety; the engineer rewrites before evaluating
+whenever the input drives two summands into near-equality. Goldberg
+\cite{text:goldberg1991-floating-point} catalogues additional
+patterns (Heron's formula at near-collinear triangles, the
+quadratic formula at small discriminant, the recursive variance
+computation) that share the structure and the remedy.
 
 \subsection{Conditioning}
 
@@ -278,6 +309,51 @@ algorithm that introduces no round-off cannot recover digits the
 problem has lost. The engineer who reports a result on an
 ill-conditioned problem reports the conditioning, the precision,
 and the rule-of-thumb digit count, and refuses to over-claim.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-condition-number}
+
+Figure~\ref{fig:vol02:ch16:condition-number} reads the condition
+number geometrically. The rows of $\mat{A}$ are lines (in two
+dimensions); the solution is their intersection. When the lines are
+near-orthogonal the intersection is stable under small perturbations
+of $\vect{b}$; when the lines are near-parallel a small perturbation
+moves the intersection by a large amount, amplified by
+$\kappa(\mat{A})$. The Hilbert-matrix simulation exercise of section
+16.4 reproduces this picture at higher dimension and at numerically
+catastrophic conditioning ($\kappa \sim 10^{12}$ at $n = 10$).
+
+\begin{estimation}
+\textbf{Question.} An engineer evaluates
+$g(x) = 1 - \cos(x)$ at $x = 10^{-7}$ in double precision. How many
+correct decimal digits does the engineer expect, and why? Before
+calculating, estimate the worst error source.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+For $x = 10^{-7}$, the exact value is $g(x) \approx x^{2}/2 =
+5 \times 10^{-15}$. The naive evaluation computes $\cos(x)$ to a
+relative error $\sim u$, returning a value close to $1$ that
+differs from the exact $\cos(x)$ in roughly the 15th decimal
+digit. The subtraction $1 - \cos(x)$ then cancels the 14 identical
+leading digits of $1$ and $\cos(x)$, leaving an absolute error
+near $u$ in a result whose true magnitude is $5 \times 10^{-15}$.
+The relative error of the naive evaluation is approximately
+$u / (x^{2}/2) \approx 4$; the answer has \emph{no} correct
+digits. The condition number of $g$ at this $x$ is
+$\kappa_{g}(x) = \abs*{x g'(x)/g(x)} = \abs{x \sin x / (1 - \cos
+x)} \approx 2$, so the problem itself is well conditioned. The
+algorithm is the buyer: the cancellation error is unforced. The
+remedy is to rewrite, using either the trig identity $1 - \cos x
+= 2 \sin^{2}(x/2)$ (which evaluates as $2 (\sin(x/2))^{2}$ with no
+cancellation) or the Taylor truncation $x^{2}/2 - x^{4}/24$. Either
+form recovers all 16 digits. The estimation drills the section's
+core point: the three error sources are independent. The arithmetic
+is correctly rounded; the problem is well conditioned; the algorithm
+loses everything. Section 16.8 returns to this pattern at deployed
+scale.
+\end{estimation}
 
 \subsection{Forward and backward error}
 
@@ -396,6 +472,18 @@ $\varphi = (1 + \sqrt{5})/2 \approx 1.618$, the golden ratio. It
 needs no derivative and one function evaluation per step instead
 of two. The method's robustness sits between bisection and
 Newton; like Newton, it can diverge from a poor initial pair.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-convergence-orders}
+
+Figure~\ref{fig:vol02:ch16:convergence-orders} reads the three rates
+side-by-side on a problem all three solve (the smooth scalar root of
+$\cos x - x = 0$ on $[0, 1]$). Bisection adds approximately $0.30$
+correct decimal digits per step; the secant method's rate climbs
+geometrically toward order $\varphi \approx 1.618$; Newton roughly
+doubles the digit count per step. All three saturate near 16 digits
+at the binary64 precision ceiling. The cost per step is one function
+evaluation for bisection and secant; two (one $f$, one $f'$) for
+Newton.
 
 \subsection{Choosing among the three}
 
@@ -645,6 +733,40 @@ accurate than trapezoidal or Simpson with comparable cost. For
 integrands with discontinuities, weak singularities, or rapid
 oscillation, fixed-order Gaussian quadrature is no better than
 the lower-order rules and is often worse.
+
+\subsection{The round-off floor of a refined grid}
+
+Composite trapezoidal and Simpson rules have truncation error that
+falls as $h^{2}$ and $h^{4}$ respectively. The round-off error of
+the sum scales as $u \sqrt{n}$ (for $n$ subintervals, in the
+statistical bound). Halving $h$ doubles $n$ and brings round-off up
+by $\sqrt{2}$. The total error has a minimum at the $h$ where the
+truncation error has fallen to the same order as the round-off
+floor; refining the grid further is wasted compute that adds
+round-off without lowering truncation.
+
+The same pattern is sharper for the finite-difference derivative,
+where round-off enters as $u/h$. Figure~\ref{fig:vol02:ch16:error-vs-h}
+plots the total error of a centred-difference derivative on log-log
+axes. The truncation slope is $+2$; the round-off slope is $-1$; the
+total error is the upper envelope and has a minimum near
+$h^{*} \approx u^{1/3} \approx 10^{-5.3}$ in binary64, with attainable
+error near $10^{-10.6}$. The engineer who chases truncation error
+past this point by halving $h$ further loses digits to round-off and
+reports a worse derivative than at the optimum.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-error-vs-h}
+
+The optimal step is algorithm-dependent: $h^{*} \sim u^{1/2}$ for
+the forward difference, $u^{1/3}$ for the centred difference, $u^{1/4}$
+for a Richardson-extrapolated centred difference; the attainable
+relative accuracy is the algorithm's order divided by one plus that
+order \cite[\S 5.7]{text:higham-numerical}. The reader who never
+needs to write a finite-difference derivative by hand still inherits
+the same trade-off when calling a black-box adaptive routine: the
+tolerance the engineer requests must lie above the round-off floor
+of the algorithm and the format, and a request below that floor
+returns an answer the engineer cannot defend.
 
 \subsection{Adaptive quadrature}
 
@@ -928,6 +1050,7 @@ hundred were wounded. The General Accounting Office investigation
 identified the cause as a software-clock arithmetic error in the
 Patriot's range-gate prediction \cite{acc:gao-patriot-1992}.
 
+\paragraph{Technical mechanism.}
 The Patriot's tracking software represented elapsed time as the
 number of tenths of a second since the system was started, stored
 as an integer counter and converted to seconds as a real number
@@ -950,16 +1073,42 @@ at the next radar look. At the Scud's speed of about $1{,}676
 \, \text{m}/\text{s}$, a time offset of $0.34$ seconds
 corresponded to a predicted-position error of about $570$ metres,
 larger than the range gate. The system reported "no track" and did
-not engage \cite{acc:gao-patriot-1992}.
+not engage \cite{acc:gao-patriot-1992}. The mechanism is
+quantitative throughout: the per-tick error, the counter rate, the
+cumulative duration, and the target velocity multiply to a single
+predicted-position error that the engineer can recompute. The
+reconstruction is in
+\texttt{code/patriot\_drift.py} and the resulting series is in
+\texttt{data/patriot-drift.csv};
+Figure~\ref{fig:vol02:ch16:patriot-drift} plots both the timing and
+position drift against operating hours.
 
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-patriot-drift}
+
+\paragraph{Organisational context.}
+The GAO investigation identified contributing institutional factors
+beyond the technical error \cite{acc:gao-patriot-1992}. Patriot
+batteries were not designed to operate continuously for one hundred
+hours; the operational concept assumed periodic restarts that would
+reset the time counter. Field operators in the Gulf War deployment
+had been instructed to keep the systems running continuously to
+maintain readiness. The accumulated-error effect had been observed
+in field tests and reported through the chain, but the patch and
+the operational-restart guidance moved through different
+distribution channels and arrived at field units inconsistently.
 A software patch correcting the conversion was developed and
 distributed before the Dhahran incident. The patch arrived at the
 Dhahran battery on 26 February 1991, the day after the strike.
-Patriot batteries had been operated continuously contrary to the
-design's restart assumption, and the patch and the
-operational-restart guidance had moved through different
-distribution channels.
+The Patriot organisation was not blind to the issue; the field unit
+that suffered the strike had received neither the patch nor the
+operational-restart guidance that would have substituted for it.
+The organisational pattern recurs widely in long-deployment
+mission-critical software: a corrected version exists, a workaround
+exists, neither one has reached the unit in the field, and the
+deployment continues against the original software whose
+precondition no longer holds.
 
+\paragraph{Lesson for numerical computation.}
 The case is canonical for this chapter because it illustrates a
 single principle of section 16.2 in deployed code at fatal scale.
 The exact decimal $0.1$ is not representable in binary
@@ -971,7 +1120,26 @@ representation of $0.1$ is non-terminating in any binary base. The
 Patriot deployed software whose precondition (operate for short
 intervals between restarts) was no longer met by the operational
 context (continuous Gulf War standby), and whose accumulated
-arithmetic error reached lethal scale before the patch did.
+arithmetic error reached lethal scale before the patch did. Three
+specific reading lessons follow. First, accumulated round-off (or
+its fixed-point analogue) is the dominant error source in any
+long-running computation that performs the same conversion or the
+same arithmetic step at a fixed rate; the bound the engineer must
+state is the operating-duration bound. Second, the choice of binary
+representation for a decimal constant is a per-conversion decision
+that the engineer must defend in the precondition; the conversion
+$\operatorname{fl}(0.1)$ has a defined error in every binary
+floating-point format, and the system designer who treats $0.1$ as
+representable has shipped a defect. Third, the chain from the
+arithmetic error to the engineering failure is mechanical and
+calculable; the engineer who could not have computed the
+predicted-position error from the operating hours and the target
+velocity is not equipped to deploy the algorithm. The reader who
+has run the \texttt{patriot\_drift.py} reconstruction at the
+chapter's accompanying code, and who has recovered the
+$0.34 \,\text{s}$ timing offset and the $570 \,\text{m}$
+position offset as a function of operating hours, has internalised
+the case at the depth this chapter is built around.
 
 \subsection{Ariane 5 Flight 501 (1996)}
 
@@ -982,31 +1150,120 @@ identified the cause as an unhandled software exception in the
 inertial reference system, triggered when a 64-bit floating-point
 representation of an internal horizontal-bias variable was
 converted to a 16-bit signed integer and the result exceeded the
-integer's range $[-32768, 32767]$ \cite{acc:ariane501-ifr}. The
-conversion ran inside an alignment function reused unchanged from
-Ariane 4. For Ariane 4, the trajectory kept the variable within
-range; for Ariane 5, the trajectory developed horizontal velocity
-faster, the variable did not stay within range, and the conversion
-overflowed.
+integer's range $[-32768, 32767]$ \cite{acc:ariane501-ifr}.
 
-The exception was unhandled. The primary inertial reference
-system shut down. The backup, running the same software on the
-same input, shut down for the same reason. The on-board computer
-interpreted diagnostic output from the inertial reference systems
-as flight data, commanded extreme nozzle deflections, and the
-launcher broke up under aerodynamic loads.
+\paragraph{Technical mechanism.}
+The conversion ran inside an alignment function reused unchanged
+from Ariane 4. For Ariane 4, the trajectory kept the variable
+within range; for Ariane 5, the trajectory developed horizontal
+velocity faster, the variable did not stay within range, and the
+conversion overflowed. The variable in question was an internal
+horizontal-bias quantity (named BH in the report) that the Ariane
+4 design analysis had certified would never exceed
+$\pm 32{,}767$ over the active duration of the alignment function;
+that analysis was not re-run for the Ariane 5 flight envelope
+\cite{acc:ariane501-ifr}. The exception was unhandled. The primary
+inertial reference system shut down. The backup, running the same
+software on the same input, shut down for the same reason. The
+on-board computer, deprived of valid attitude data, interpreted
+diagnostic output from the inertial reference systems as flight
+data, commanded extreme nozzle deflections, and the launcher broke
+up under aerodynamic loads; the range-safety self-destruct system
+then activated. The conversion is the simplest possible numerical
+procedure: read a double-precision floating-point value, cast to
+a 16-bit signed integer. The error is the simplest possible:
+the input lay outside the destination type's range and the
+operation was not defined.
 
+\paragraph{Organisational context.}
+The Lions Inquiry Board found the failure to be a verification-domain
+problem: software qualified for one launcher was reused on another
+whose flight envelope had not been re-analysed against the reused
+code. The board observed that the Ariane 5 qualification had treated
+the reused inertial-reference software as already qualified by
+Ariane 4 service history, rather than as new software whose flight
+envelope must be re-verified. Seven internal variables in the
+alignment function had been analysed for the Ariane 4 envelope;
+four had been protected against overflow on grounds that their
+ranges could not, in Ariane 4, exceed the destination's range; BH
+was one of the four. The protection decision was per-variable and
+per-flight-envelope; the rebadge to Ariane 5 did not re-run the
+range analysis. The board recommended explicit reuse-with-modification
+verification, including range analysis of all internal variables
+against the new flight envelope, defensive programming for arithmetic
+operations on flight-critical values, and software-architecture
+review for reused components in qualification \cite{acc:ariane501-ifr}.
+The institutional pattern is recurrent in aerospace: software
+inherited from a previous vehicle is treated as a sunk cost rather
+than as a component whose envelope must be re-derived. The Ariane
+501 inquiry is the canonical case in which the institutional
+shortcut produced a loss-of-vehicle failure.
+
+\paragraph{Lesson for numerical computation.}
 Volume II Chapter 9 already used this case as the canonical
-refusal-of-an-unsafe-numerical-operation example. The reading is
-the same here. The conversion is the simplest possible numerical
-procedure, and the precondition is the simplest possible
-precondition (the input lies in $[-32768, 32767]$). The procedure
-ran in a context whose envelope had not been verified against the
-precondition. The discipline that should have refused the
-operation, and that section 16.2's forward-error apparatus
-formalises, is the same discipline section 9.8 articulated:
-\emph{name the precondition, verify the input meets it, refuse
-the operation when verification fails}.
+refusal-of-an-unsafe-numerical-operation example. The reading is the
+same here, sharper. The conversion is the simplest possible numerical
+procedure, and the precondition is the simplest possible precondition
+(the input lies in $[-32768, 32767]$). The procedure ran in a context
+whose envelope had not been verified against the precondition. The
+discipline that should have refused the operation, and that section
+16.2's forward-error apparatus formalises, is the same discipline
+section 9.8 articulated: name the precondition, verify the input
+meets it, refuse the operation when verification fails. The Patriot
+and Ariane cases together teach the two scales of the same lesson.
+Patriot is the accumulated-error scale: the per-operation error is
+microscopic and acceptable, but the operational duration multiplies
+it past tolerance. Ariane is the range-envelope scale: the
+per-operation error is well-defined when the input is in range and
+catastrophic when it is not, and the operational envelope places
+the input out of range. Both deployments lacked the same artefact:
+a run-time check whose job was to detect the precondition violation
+and to surface it before the algorithm consumed the bad input. The
+arithmetic error in each case was undisputed and trivially
+calculable; the failure was the absence of the discipline that
+section 16.2 names and that the principle below formalises.
+
+\subsection{Pentium FDIV bug (1994), short form}
+
+The Pentium FDIV bug \cite{paper:coe-tang-pratt-1995,paper:edelman-1997}
+sits at a third scale, complementing the Patriot and Ariane cases.
+The Intel Pentium processor's floating-point division unit
+implemented the Sweeney-Robertson-Tocher (SRT) radix-4 algorithm
+with a lookup table of pre-computed quotient digits. The table
+shipped on the Pentium die was missing five of its 1067 entries; the
+empty cells were read as zero by the division hardware. The
+probability of triggering an affected entry on a uniformly random
+operand pair is approximately one in nine billion; the canonical
+test case $4{,}195{,}835.0 / 3{,}145{,}727.0$ returned approximately
+$1.33382044$ on an affected Pentium against the correct
+$1.33373906$, a relative error near $6 \times 10^{-5}$. The defect
+was discovered by Thomas Nicely of Lynchburg College in June 1994
+while computing reciprocal sums of twin primes; the public response
+through Internet discussion led Intel to announce an unconditional
+processor-replacement programme on 20 December 1994, with an
+eventual write-off of approximately 475 million US dollars in
+1994 dollars.
+
+The Pentium case extends the chapter's reading along two axes.
+First, the defect was in hardware, not in software; the lookup
+table was burned into silicon, and the remedy required physical
+replacement of the processor. The discipline of representing,
+checking, and refusing a numerical operation must extend to the
+hardware that performs the operation; the consumer cannot patch
+a fused circuit. Second, the operand-region the defect affected was
+not covered by Intel's pre-release verification; the defect
+survived ordinary statistical testing because random operand pairs
+hit the affected cells at a rate too low to register against a
+sampling-based test budget. The case is the canonical lesson for
+formal verification of arithmetic units: random testing cannot
+sample the operand space densely enough to find rare
+correctness failures, and a unit whose function is to compute a
+mathematical operation must be checked against the mathematics, not
+against a sample of inputs. Intel's substantial post-1994 investment
+in formal verification of arithmetic units, including the use of
+theorem provers for the floating-point division and square-root
+algorithms in subsequent processor generations, traces directly to
+the FDIV episode \cite{paper:edelman-1997}.
 
 \subsection{The principle}
 
@@ -1134,6 +1391,70 @@ code, the reproduced result, the drift table, the
 floating-point-environment description (compiler, BLAS, math
 library, OS, hardware), and the 1500-word reflection. The
 artefact lives in the reader's repository at \repopath{vol02-ch16/project/}.
+
+\textbf{Phases}. The project decomposes into five phases.
+
+\begin{enumerate}[leftmargin=*]
+  \item \emph{Source selection and reading} (1-2 hours). Read the
+    chosen source closely; isolate the numerical result; list every
+    algorithmic and parametric decision the source records and
+    every one it does not. The list of \emph{unrecorded} decisions
+    is the project's working hypothesis about where the drift will
+    come from.
+  \item \emph{Implementation} (3-5 hours). Translate the source's
+    method into runnable code in the reader's environment. Use
+    library primitives where the source used library primitives;
+    write from scratch where the source did. Pin compiler and
+    library versions.
+  \item \emph{Run and tabulate} (1-2 hours). Execute the
+    reproduction, log the output, and assemble the drift table.
+  \item \emph{Drift diagnosis} (2-3 hours). For each row whose
+    drift exceeds $10^{-10}$, attribute the dominant error source
+    from the list under \emph{drift accounting} above. The
+    attribution is the reader's working hypothesis; the reflection
+    treats it as such.
+  \item \emph{Reflection writing} (3-4 hours). Draft the 1500-word
+    narrative against the five bullet questions; rewrite for
+    voice.
+\end{enumerate}
+
+\textbf{Success criteria}. The project is complete when:
+
+\begin{itemize}[leftmargin=*]
+  \item Every value in the drift table is traceable to a specific
+    code path in the reader's implementation;
+  \item every drift greater than $10^{-10}$ has a named attribution
+    to one of the six listed sources;
+  \item the floating-point-environment description is sufficient
+    that a third party could reproduce the reader's reproduction on
+    different hardware;
+  \item the reflection addresses each of the five bullets with at
+    least one paragraph of analytical content.
+\end{itemize}
+
+\textbf{Common failure modes}. Three recurring failure modes the
+reader should anticipate.
+
+\begin{itemize}[leftmargin=*]
+  \item The reader cannot reproduce the source value to any precision
+    and concludes the source is wrong. The likely cause: a
+    parametric difference (different tolerance, different
+    convergence criterion, different starting iterate) that the
+    source did not record. The remedy: reread the source for
+    candidate parameters and tune.
+  \item The reader reproduces the source value to twenty digits and
+    concludes the project is trivial. The likely cause: the chosen
+    source is in a regime where the algorithm is bit-stable across
+    platforms (e.g.\ a small symmetric positive definite linear
+    system in double precision). The remedy: choose a more
+    aggressive source or extend the analysis to a parameter sweep
+    that exposes the regime change.
+  \item The reflection becomes a description of what was done rather
+    than an analysis of what was learned. The remedy: each of the
+    five bullets begins with an analytical claim and supports it
+    with the project's evidence; description supports the claim,
+    not the other way around.
+\end{itemize}
 \end{project}
 
 \section{Exercises}
@@ -1152,12 +1473,39 @@ number, and the spacing between $2^{20}$ and the next
 representable double-precision number above it.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+For binary64, $u = 2^{-53} \approx 1.110 \times 10^{-16}$ and
+$\epsilon_{m} = 2^{-52} \approx 2.220 \times 10^{-16}$. For binary32,
+$u = 2^{-24} \approx 5.960 \times 10^{-8}$ and
+$\epsilon_{m} = 2^{-23} \approx 1.192 \times 10^{-7}$. The spacing
+between consecutive representables at a normal number $x = 2^{e}$ is
+$\epsilon_{m} \cdot 2^{e}$. At $x = 1.0 = 2^{0}$ the spacing is
+$\epsilon_{m} \approx 2.220 \times 10^{-16}$. At $x = 2^{20}$ the
+spacing is $\epsilon_{m} \cdot 2^{20} \approx 2.328 \times 10^{-10}$,
+larger by a factor of $2^{20} \approx 10^{6}$. The lesson is that
+absolute spacing scales with the value; relative spacing is
+constant.
+
 \begin{exercise}
 The number $0.1$ is stored as a binary64 floating-point value.
 Compute the absolute representation error $\operatorname{fl}(0.1) - 0.1$ to
 three significant figures, and verify that it has the magnitude
 predicted by the unit round-off.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The exact value of the closest binary64 representable to $0.1$ is
+the rational $7205759403792794 / 2^{56}
+= 0.1000000000000000055511151231257827021\ldots$. The absolute
+representation error is $\operatorname{fl}(0.1) - 0.1
+\approx +5.55 \times 10^{-18}$. The unit-round-off prediction is
+$\abs{\operatorname{fl}(0.1) - 0.1} \leq 0.1 \cdot u
+\approx 1.11 \times 10^{-17}$. The observed error is about half the
+bound, consistent with the bound being worst-case under
+round-to-nearest. Verification with NumPy (the
+\texttt{code/floating\_point\_demo.py} script reconstructs the
+exact rational via \texttt{float.as\_integer\_ratio}) confirms the
+sign and magnitude.
 
 \begin{exercise}
 For the function $f(x) = e^{x} - 1$, evaluate $f$ at $x = 10^{-8}$
@@ -1166,6 +1514,22 @@ Taylor approximation $x + x^{2}/2$. Report both values and the
 relative error of (a). Identify the source of the error.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+At $x = 10^{-8}$ the exact value is $e^{x} - 1
+\approx 1.0000000050000000 \times 10^{-8}$. The Taylor approximation
+(b) returns $x + x^{2}/2 = 1.00000005 \times 10^{-8}$, correct to
+all visible digits. The direct evaluation (a) computes
+$e^{x} \approx 1.0000000100000001$ rounded to binary64, then
+subtracts $1$ to obtain approximately $1.0 \times 10^{-8}$; the
+result has only one or two correct digits because the subtraction
+cancels the leading 16 identical digits of $e^{x}$ and $1$. The
+relative error of (a) is roughly $5 \times 10^{-9}$. The source is
+catastrophic cancellation: the well-conditioned function $f$ is
+being computed by a numerically unstable algorithm. The C standard
+library function \texttt{expm1(x)} returns the stable Taylor form
+and is the working choice; the platform-equivalent in MATLAB is
+\texttt{expm1}, in NumPy \texttt{numpy.expm1}.
+
 \begin{exercise}
 Apply five iterations of bisection to find the root of $f(x) =
 x^{3} - x - 2$ in the bracket $[1, 2]$. Tabulate $a_{k}$, $b_{k}$,
@@ -1173,12 +1537,44 @@ $c_{k} = (a_{k} + b_{k})/2$, and $f(c_{k})$ at each step. State
 the bracket length after the fifth iteration.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$f(1) = -2$, $f(2) = +4$. Step 1: $c_{1} = 1.5$,
+$f(c_{1}) = -0.125$; replace $a$, new bracket $[1.5, 2]$.
+Step 2: $c_{2} = 1.75$, $f(c_{2}) = +1.609$; replace $b$, new
+bracket $[1.5, 1.75]$.
+Step 3: $c_{3} = 1.625$, $f(c_{3}) = +0.666$; new bracket
+$[1.5, 1.625]$.
+Step 4: $c_{4} = 1.5625$, $f(c_{4}) = +0.252$; new bracket
+$[1.5, 1.5625]$.
+Step 5: $c_{5} = 1.53125$, $f(c_{5}) = +0.0593$; new bracket
+$[1.5, 1.53125]$. Bracket length after five steps is
+$0.5 / 2^{5} = 1/64 = 0.015625$. The root is approximately
+$x^{*} \approx 1.5214$. The error of $c_{5}$ is approximately
+$0.010$, consistent with the bound (half the bracket).
+
 \begin{exercise}
 Apply five iterations of Newton's method to the same problem, $f
 (x) = x^{3} - x - 2$, starting from $x_{0} = 1.5$. Tabulate
 $x_{k}$ and $f(x_{k})$, and verify the quadratic convergence by
 comparing $\abs{e_{k+1}}$ and $\abs{e_{k}}^{2}$ at each step.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$f(x) = x^{3} - x - 2$, $f'(x) = 3x^{2} - 1$. The root, to many
+digits, is $x^{*} \approx 1.521379706804568$. Newton:
+$x_{0} = 1.5$, $f = -0.125$, $f' = 5.75$, $x_{1} = 1.521739\ldots$,
+$e_{1} \approx 3.6 \times 10^{-4}$.
+$x_{2} = 1.521379722\ldots$, $e_{2} \approx 1.5 \times 10^{-8}$.
+$x_{3} = 1.521379706804568\ldots$, $e_{3} \approx 3 \times 10^{-16}$
+(at the binary64 ceiling).
+Verification: $e_{1}^{2} \approx 1.3 \times 10^{-7}$ vs
+$\abs{e_{2}} \approx 1.5 \times 10^{-8}$; $e_{2}^{2}
+\approx 2.3 \times 10^{-16}$ vs $\abs{e_{3}} \approx 3 \times 10^{-16}$.
+The ratio $\abs{e_{k+1}} / e_{k}^{2}$ converges to
+$C = f''(x^{*}) / (2 f'(x^{*})) = 6 x^{*} / (2 (3 x^{*2} - 1))
+\approx 0.6$, matching the quadratic-convergence theory. The
+contrast with the bisection exercise is stark: five Newton steps
+recover machine precision; bisection needs roughly 50.
 
 \begin{exercise}
 Compute the LU factorisation with partial pivoting of $\mat{A} =
@@ -1188,12 +1584,47 @@ with and without pivoting, and solve $\mat{A}\vect{x} = (1, 2)
 two solutions to the exact solution.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The exact solution is $x_{1} = 1/0.999 \approx 1.001$, $x_{2} =
+1 - 0.001 x_{1} \approx 0.999$. Without pivoting (pivot $0.001$):
+the multiplier is $1/0.001 = 1000$; eliminating gives $U_{22} =
+1 - 1000 \cdot 1 = -999$, and the right-hand side updates to
+$2 - 1000 \cdot 1 = -998$. In three-digit arithmetic these round
+to $-999$ and $-998$, giving $x_{2} \approx 0.999$, then
+$x_{1} = (1 - 1 \cdot 0.999) / 0.001 = 0.001 / 0.001 = 1.00$. The
+sensitivity is now extreme: in three-digit arithmetic
+$1 - 0.999 = 0.001$ is the difference of two nearly equal numbers,
+so a single bit error in $x_{2}$ swings $x_{1}$ by $1000$. With
+partial pivoting, swap rows so the larger element ($1$) is the
+pivot. Multiplier is $0.001/1 = 0.001$, eliminating gives
+$U_{22} = 1 - 0.001 \cdot 1 = 0.999$ and right-hand side updates
+to $1 - 0.001 \cdot 2 = 0.998$, giving $x_{2} = 0.998/0.999 \approx
+0.999$ and $x_{1} = 2 - x_{2} \approx 1.00$. Both solutions are
+correct to three digits, but the no-pivot solution is at the mercy
+of round-off in $x_{2}$; partial pivoting bounds the multiplier by
+$1$ in magnitude and stabilises the back-substitution.
+
 \begin{exercise}
 Apply the composite trapezoidal rule with $n = 4, 8, 16, 32$ to
 $\int_{0}^{1} e^{x}\, \dd x$. Tabulate the approximation and the
 error against the exact value $e - 1$, and verify that the error
 behaves as $O(h^{2})$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The exact value is $e - 1 = 1.7182818284\ldots$.
+For $n = 4$ ($h = 0.25$): $T_{4} \approx 1.7272219046$, error
+$\approx +8.94 \times 10^{-3}$. For $n = 8$ ($h = 0.125$):
+$T_{8} \approx 1.7205185\ldots$, error $\approx +2.24 \times
+10^{-3}$. For $n = 16$: $T_{16}$, error $\approx +5.59 \times 10^{-4}$.
+For $n = 32$: error $\approx +1.40 \times 10^{-4}$. Each halving of
+$h$ divides the error by approximately 4, confirming the $O(h^{2})$
+prediction. The truncation-error formula
+$-(b - a) h^{2} f''(\xi) / 12$ with $f''(x) = e^{x}$ on $[0, 1]$
+gives a maximum predicted error of $(1)(0.25)^{2}(e)/12
+\approx 1.4 \times 10^{-2}$ for $n = 4$, consistent with the
+observed $+0.009$ (the sign is positive because the trapezoidal
+rule over-estimates for convex integrands).
 
 \begin{exercise}
 Apply Simpson's rule with $n = 4$ to the same integral
@@ -1202,11 +1633,38 @@ trapezoidal-rule error from the previous exercise. State the
 ratio of the two errors.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+With $n = 4$, $h = 0.25$: Simpson gives
+$S_{4} = (h/3) [f(0) + 4 f(0.25) + 2 f(0.5) + 4 f(0.75) + f(1)]
+\approx 1.7183188\ldots$, error $\approx +3.70 \times 10^{-5}$.
+The trapezoidal-rule error from the previous exercise was
+$+8.94 \times 10^{-3}$. Ratio: trapezoidal/Simpson
+$\approx 240$. The truncation-error formulas predict the ratio
+$(h^{2}/12 \cdot f''_{\max}) / (h^{4}/180 \cdot f^{(4)}_{\max})
+= 15 / h^{2}$ (with $f^{(k)}_{\max} \approx e$ for both); at
+$h = 0.25$ this is $15 / 0.0625 = 240$, exactly matching. The
+exercise drills the practical reading: doubling the order of the
+rule (from 2 to 4) buys two extra decades of accuracy at the
+same node count.
+
 \begin{exercise}
 Take one step of forward Euler and one step of RK4 for $\dot{y} =
 -y$, $y(0) = 1$, with $h = 0.1$. Compute both numerical values of
 $y(0.1)$ and compare to the exact value $e^{-0.1}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Exact value: $e^{-0.1} = 0.90483742\ldots$. Forward Euler:
+$y_{1} = y_{0} + h f(t_{0}, y_{0}) = 1 + 0.1 \cdot (-1) = 0.9$.
+Error: $-4.84 \times 10^{-3}$.
+RK4: $k_{1} = -1$; $k_{2} = -(1 + 0.05 \cdot (-1)) = -0.95$;
+$k_{3} = -(1 + 0.05 \cdot (-0.95)) = -0.9525$;
+$k_{4} = -(1 + 0.1 \cdot (-0.9525)) = -0.90475$;
+$y_{1} = 1 + (0.1/6)(-1 + 2(-0.95) + 2(-0.9525) - 0.90475)
+= 0.90483750$. Error: $+8.3 \times 10^{-8}$. RK4 is roughly five
+decades more accurate than forward Euler at the same step,
+consistent with the $O(h^{5})$ local-truncation prediction vs
+forward Euler's $O(h^{2})$ local.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1217,12 +1675,49 @@ specification, assuming $a + b$ is in the normal range. State
 where the assumption fails (overflow, underflow, subnormals).
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Let $s = a + b$ be the exact mathematical sum. Suppose $s$ lies in
+the normal range with $\abs{s} \in [2^{e}, 2^{e+1})$ for some
+exponent $e$. The representables near $s$ are spaced by
+$\epsilon_{m} \cdot 2^{e} = 2 u \cdot 2^{e}$, so the nearest
+representable $\operatorname{fl}(s)$ differs from $s$ by at most
+half a spacing: $\abs{\operatorname{fl}(s) - s} \leq u \cdot 2^{e}
+\leq u \abs{s}$. Writing $\operatorname{fl}(s) = s (1 + \delta)$
+with $\delta = (\operatorname{fl}(s) - s)/s$ gives
+$\abs{\delta} \leq u$. Failure cases: overflow when $\abs{s} >
+\Omega_{\max}$ (the maximum representable), in which case
+$\operatorname{fl}(s) = \pm \infty$ and the relative bound is
+meaningless; underflow when $\abs{s} < 2 u \cdot 2^{e_{\min}}$,
+where $e_{\min}$ is the minimum normal exponent, in which case
+$\operatorname{fl}(s)$ is subnormal and the absolute error is
+bounded by $u \cdot 2^{e_{\min}}$ but the relative error can be
+arbitrarily large.
+
 \begin{exercise}
 Derive the truncation error $-\frac{(b-a)h^{2}}{12} f''(\xi)$ of
 the composite trapezoidal rule by Taylor expansion of the
 integrand around the midpoint of each subinterval. State the
 smoothness assumption on $f$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+On a single subinterval $[x_{k}, x_{k+1}]$ of width $h$, expand
+$f$ around the midpoint $m = (x_{k} + x_{k+1})/2$:
+$f(x) = f(m) + f'(m)(x - m) + \frac{1}{2} f''(m)(x - m)^{2}
++ O((x-m)^{3})$. Integrate over the subinterval: the odd term
+vanishes by symmetry; the integral is
+$h f(m) + \frac{h^{3}}{24} f''(m) + O(h^{5})$. The trapezoidal
+estimate on the same subinterval is $(h/2)(f(x_{k}) + f(x_{k+1}))
+= h f(m) + \frac{h^{3}}{8} f''(m) + O(h^{5})$ (Taylor-expanding
+the endpoints around $m$). The per-subinterval error is
+$T_{k} - I_{k} = h^{3} f''(m)/8 - h^{3} f''(m)/24
+= h^{3} f''(m)/12$. Sum over $n = (b - a)/h$ subintervals and
+apply the mean-value theorem for sums: the total error is
+$(b - a) h^{2} f''(\xi)/12$ for some $\xi \in (a, b)$. The
+trapezoidal estimate is larger than the integral when $f'' > 0$
+(convex $f$), so the error is conventionally written with a
+negative sign: $-(b-a) h^{2} f''(\xi)/12$. Smoothness assumption:
+$f \in C^{2}([a, b])$ (twice continuously differentiable).
 
 \begin{exercise}
 Derive the quadratic-convergence rate of Newton's method at a
@@ -1231,6 +1726,22 @@ e_{k} + \frac{1}{2} f''(x^{*}) e_{k}^{2} + O(e_{k}^{3})$ and the
 update rule. State the constant $C$ in the bound $\abs{e_{k+1}}
 \leq C \abs{e_{k}}^{2}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Write $e_{k} = x_{k} - x^{*}$. By Taylor expansion at $x^{*}$:
+$f(x_{k}) = f'(x^{*}) e_{k} + \frac{1}{2} f''(x^{*}) e_{k}^{2}
++ O(e_{k}^{3})$ and $f'(x_{k}) = f'(x^{*}) + f''(x^{*}) e_{k}
++ O(e_{k}^{2})$. The Newton step
+$x_{k+1} - x^{*} = x_{k} - x^{*} - f(x_{k})/f'(x_{k})$. Substituting:
+$e_{k+1} = e_{k} - \frac{f'(x^{*}) e_{k} + \frac{1}{2} f''(x^{*})
+e_{k}^{2} + O(e_{k}^{3})}{f'(x^{*}) + f''(x^{*}) e_{k} + O(e_{k}^{2})}$.
+Expand the denominator as a geometric series:
+$1/(f'(x^{*}) (1 + (f''(x^{*})/f'(x^{*})) e_{k}))
+= (1/f'(x^{*})) (1 - (f''/f') e_{k} + O(e_{k}^{2}))$. After cancellation
+of the linear term and collecting $e_{k}^{2}$,
+$e_{k+1} = \frac{f''(x^{*})}{2 f'(x^{*})} e_{k}^{2} + O(e_{k}^{3})$.
+The constant is $C = \abs{f''(x^{*}) / (2 f'(x^{*}))}$, defined at a
+simple root since $f'(x^{*}) \neq 0$.
 
 \begin{exercise}
 Show that the Householder reflector $\mat{H} = \mat{I} - 2
@@ -1241,12 +1752,53 @@ vector $\vect{x}$, the choice $\vect{v} = \vect{x} + \sgn(x_{1})
 that is a multiple of $\vect{e}_{1}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Let $\beta = 2/(\vect{v}^{\transpose}\vect{v})$ so
+$\mat{H} = \mat{I} - \beta \vect{v}\vect{v}^{\transpose}$.
+Orthogonality: $\mat{H}^{\transpose}\mat{H} = (\mat{I} - \beta
+\vect{v}\vect{v}^{\transpose})^{2} = \mat{I} - 2\beta
+\vect{v}\vect{v}^{\transpose} + \beta^{2}
+\vect{v}(\vect{v}^{\transpose}\vect{v})\vect{v}^{\transpose}
+= \mat{I} - 2\beta\vect{v}\vect{v}^{\transpose} + 2\beta
+\vect{v}\vect{v}^{\transpose} = \mat{I}$, using
+$\beta(\vect{v}^{\transpose}\vect{v}) = 2$. So $\mat{H}^{\transpose}
+= \mat{H}^{-1} = \mat{H}$ (since $\mat{H}$ is symmetric and orthogonal
+it is its own inverse). For the second part: with $\sigma = \sgn(x_{1})
+\norm{\vect{x}}_{2}$ and $\vect{v} = \vect{x} + \sigma \vect{e}_{1}$:
+$\vect{v}^{\transpose}\vect{v} = \norm{\vect{x}}_{2}^{2} + 2\sigma x_{1}
++ \sigma^{2} = 2\sigma(x_{1} + \sigma)$ (using
+$\sigma^{2} = \norm{\vect{x}}_{2}^{2}$); $\vect{v}^{\transpose}\vect{x}
+= \norm{\vect{x}}_{2}^{2} + \sigma x_{1} = \sigma(x_{1} + \sigma)$.
+Then $\mat{H}\vect{x} = \vect{x} - 2(\vect{v}^{\transpose}\vect{x})
+\vect{v}/(\vect{v}^{\transpose}\vect{v})
+= \vect{x} - \vect{v} = -\sigma \vect{e}_{1}$, a multiple of
+$\vect{e}_{1}$. The sign choice $\sgn(x_{1})$ avoids cancellation in
+forming $\vect{v}$.
+
 \begin{exercise}
 Derive the stability region of forward Euler applied to the
 scalar test equation $\dot{y} = \lambda y$ with $\lambda \in \C$.
 State the region in the complex plane and verify that the method
 is not A-stable. Repeat for backward Euler and verify that it is.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Forward Euler on $\dot y = \lambda y$: $y_{n+1} = y_{n} + h \lambda
+y_{n} = (1 + h\lambda) y_{n}$. The iteration is stable when
+$\abs{1 + h\lambda} \leq 1$, i.e.\ when $h\lambda$ lies in the closed
+disk of radius 1 centred at $-1$. The region in the complex
+$z = h\lambda$ plane is $\{z : \abs{z + 1} \leq 1\}$. For
+$\lambda < 0$ real, this gives $h \leq 2/\abs{\lambda}$. The
+region does not contain the entire left half-plane (e.g.\
+$z = -2 + 2i$ has $\abs{z + 1} = \sqrt{1 + 4} > 1$), so forward
+Euler is not A-stable.
+Backward Euler: $y_{n+1} = y_{n} + h\lambda y_{n+1}$, giving
+$y_{n+1} = y_{n}/(1 - h\lambda)$. Stable when $\abs{1/(1 - h\lambda)}
+\leq 1$, i.e.\ $\abs{1 - h\lambda} \geq 1$. The region is the
+complement of the open disk of radius 1 centred at $+1$. This
+region contains the entire closed left half-plane (for any
+$z$ with $\Re z \leq 0$, $\abs{1 - z} \geq 1$), so backward Euler
+is A-stable \cite{text:v2ch16-dahlquist-1956}.
 
 \subsection*{Estimation}\pathtag{standard}
 
@@ -1257,6 +1809,19 @@ worst-case relative round-off error exceeds $10^{-10}$. Compare
 to the typical (statistical) bound $\sqrt{n} u$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Worst-case bound: $n u < 10^{-10}$ gives $n < 10^{-10}/u
+= 10^{-10}/(1.11 \times 10^{-16}) \approx 9 \times 10^{5}$. So
+naive sequential summation of about a million double-precision
+numbers risks the worst-case bound. Statistical bound:
+$\sqrt{n} u < 10^{-10}$ gives $n < 10^{-20}/u^{2} \approx
+8 \times 10^{11}$. The typical attainable count is therefore
+nearly a trillion before random-sign rounding accumulation
+approaches the $10^{-10}$ bound. The worst case is pessimistic
+for benign inputs; pairwise summation
+($O(\log n) u$) or Kahan summation
+($O(1) u$) defends against the worst case at modest cost.
+
 \begin{exercise}
 Estimate the wall-clock time to compute the LU factorisation of a
 dense $n \times n$ matrix on a laptop running at $10$ Gflops, for
@@ -1264,12 +1829,42 @@ $n = 10^{3}, 10^{4}, 10^{5}$. State at which $n$ the operation
 becomes a project rather than a routine call.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+LU costs approximately $\frac{2}{3} n^{3}$ flops. At $10^{10}$
+flops/s: $n = 10^{3}$ gives $6.7 \times 10^{8}$ flops, time
+$\approx 0.07 \,\text{s}$ (routine). $n = 10^{4}$ gives
+$6.7 \times 10^{11}$ flops, time $\approx 67 \,\text{s}$
+(coffee break). $n = 10^{5}$ gives $6.7 \times 10^{14}$ flops, time
+$\approx 19 \,\text{h}$ (project, and the $\approx 80 \,\text{GB}$
+of double-precision storage exceeds typical laptop RAM, so the
+estimate is academic; iterative or out-of-core methods are
+required). The threshold between routine and project on a single
+laptop sits near $n = 10^{4}$ for direct dense LU, current as of
+2025; a high-core-count workstation extends this by perhaps a
+decade.
+
 \begin{exercise}
 Estimate the loss of precision (in decimal digits) in solving a
 linear system whose condition number is $10^{12}$ in double
 precision. Compare to the loss in $80$-bit extended precision and
 in $128$-bit quad precision, using the appropriate unit round-offs.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The rule of thumb: relative error in the solution is bounded by
+$\kappa(\mat{A}) \cdot u$ for a backward-stable algorithm. The
+number of correct decimal digits in the solution is approximately
+$\log_{10}(1/u) - \log_{10} \kappa$. For binary64 ($u
+\approx 1.1 \times 10^{-16}$, $\log_{10}(1/u) \approx 16$): with
+$\kappa = 10^{12}$, correct digits $\approx 16 - 12 = 4$. For
+80-bit extended ($u \approx 5.4 \times 10^{-20}$, $\log_{10}(1/u)
+\approx 19$): correct digits $\approx 19 - 12 = 7$. For binary128
+quad ($u \approx 9.6 \times 10^{-35}$, $\log_{10}(1/u) \approx 34$):
+correct digits $\approx 34 - 12 = 22$. Format choice buys a few
+digits per format step; the conditioning of the problem is fixed
+and the algorithm cannot recover digits the problem has lost. The
+engineer who reports more digits than the rule-of-thumb count
+over-claims.
 
 \begin{exercise}
 Estimate the time step a forward-Euler integrator must take to be
@@ -1279,12 +1874,47 @@ how much wall-clock time is wasted on the fast mode if the slow
 mode dominates the solution of interest.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Forward-Euler stability on $\dot y = \lambda y$ requires
+$h < 2/\abs{\lambda}$. For $\lambda = -100$: $h < 0.02$. For
+$\lambda = -1$: $h < 2$. Ratio: $100$. If the slow mode dominates
+the solution (say on $t \in [0, 10]$), the natural step for
+accuracy is $\sim 0.1$ to resolve the $\lambda = -1$ dynamics,
+but the integrator is forced to $h < 0.02$ for stability of the
+$\lambda = -100$ mode. The factor of 5 in step count is wasted
+compute on the fast mode whose dynamics have already decayed.
+An implicit solver (backward Euler or trapezoidal) is A-stable
+and can take $h \sim 0.1$, recovering the wasted factor.
+At realistic stiffness ratios (e.g.\ chemical kinetics with
+$\lambda \sim -10^{6}$ and slow scale $-1$), the wasted factor
+reaches $10^{6}$, which is the difference between hours and
+seconds.
+
 \begin{exercise}
 Estimate the number of correctly rounded decimal digits in the
 result of a transcendental computation $\sin(x) - x + x^{3}/6$ at
 $x = 0.001$ in double precision, accounting for catastrophic
 cancellation. State a numerically stable alternative.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The true value is $\sin(x) - x + x^{3}/6 = x^{5}/120 - x^{7}/5040
++ \ldots \approx 8.33 \times 10^{-18}$ at $x = 10^{-3}$. In double
+precision, $\sin(x)$ rounds to a value differing from the exact in
+the 16th digit; $x$ and $x^{3}/6 \approx 1.67 \times 10^{-10}$ are
+represented to full precision. The subtraction $\sin(x) - x$
+returns approximately $-x^{3}/6 + O(10^{-19})$; adding $x^{3}/6$
+cancels the leading term and leaves a residual on the order of
+$10^{-19}$, which is below the round-off floor of $\sin(x)$ at
+$\sim 10^{-16}$. The naive answer has approximately
+$\log_{10}(8.3 \times 10^{-18}) - \log_{10}(10^{-16}) \approx -2$
+correct digits; the answer is dominated by rounding noise. The
+stable alternative uses the Taylor identity directly: compute
+$x^{5}/120$ (and optionally subtract $x^{7}/5040$ for $\sim 19$
+digits). The
+\texttt{code/catastrophic\_cancellation.py} script tabulates the
+difference across $x = 10^{0}$ to $10^{-12}$ and reproduces the
+prediction.
 
 \subsection*{Simulation}\pathtag{standard}
 
@@ -1296,6 +1926,20 @@ number. Verify the linear, quadratic, and superlinear rates from
 the slopes.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The root is $x^{*} = 0.7390851332151607$. Use the bracket
+$[0, 1]$ for bisection and the secant method; start Newton at
+$x_{0} = 0.5$. Reference implementation in
+\texttt{code/convergence\_orders.py}. Expected behaviour:
+bisection reduces the error by a factor of 2 per step (linear,
+slope $-\log_{10} 2$ on the semilog plot); Newton roughly
+squares the error each step (quadratic, slope steepens to
+$-2$ on log-log of $e_{k+1}$ vs $e_{k}$); secant has order
+$\varphi \approx 1.618$. All three saturate at the binary64 floor
+near $10^{-16}$. The chapter's
+Figure~\ref{fig:vol02:ch16:convergence-orders} sketches the same
+comparison.
+
 \begin{exercise}
 Implement the composite trapezoidal rule, the composite Simpson's
 rule, and a Gauss-Legendre rule (using the library nodes and
@@ -1303,6 +1947,18 @@ weights) for $\int_{0}^{\pi/2} \sin(x)\, \dd x$. Plot the error
 on a log scale against the number of nodes for each method, on
 the same axes.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The exact value is $\int_{0}^{\pi/2} \sin x\, dx = 1$. Use
+NumPy or SciPy: trapezoidal via \texttt{numpy.trapezoid},
+Simpson via \texttt{scipy.integrate.simpson}, Gauss-Legendre via
+\texttt{numpy.polynomial.legendre.leggauss}. For $n = 4, 8, 16, 32$
+nodes the trapezoidal error decays as $O(h^{2})$ (slope $-2$ on
+log-log of error vs $n$); Simpson decays as $O(h^{4})$ (slope $-4$);
+Gauss-Legendre decays super-algebraically (exponential decay for
+this smooth analytic integrand). The Gauss-Legendre rule reaches
+the binary64 floor in fewer than 10 nodes. The plot confirms the
+theoretical orders by the slopes.
 
 \begin{exercise}
 Solve the system $\mat{A}\vect{x} = \vect{b}$ for the Hilbert
@@ -1313,6 +1969,24 @@ partial pivoting and by SVD with a tolerance cutoff. Tabulate the
 relative error against the exact solution for both methods.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Reference implementation in \texttt{code/hilbert\_solve.py}.
+Expected relative-error progression (LU with partial pivoting,
+binary64): $n = 5$ gives $\sim 10^{-12}$; $n = 8$, $\sim 10^{-8}$;
+$n = 10$, $\sim 10^{-4}$; $n = 12$, $\sim 10^{-1}$; $n = 14$, of
+order unity (the solution has no correct digits). The condition
+number grows roughly as $\kappa \approx (\sqrt{2} + 1)^{4n}/\sqrt{n}$,
+so $\log_{10}\kappa$ grows by about $1.5$ per unit of $n$;
+expected loss-of-digits is $\log_{10}\kappa - 16$. The truncated
+SVD with cutoff $\sigma_{1} u n$ produces a regularised solution
+whose error stays bounded (at the cost of a biased estimator).
+The data table in \texttt{data/hilbert-conditioning.csv} lists the
+condition numbers for $n = 3$ to $15$. The exercise drills the
+chapter's central point: conditioning is the dominant constraint;
+algorithm choice within the well-conditioned regime is secondary,
+algorithm choice in the ill-conditioned regime requires
+regularisation.
+
 \begin{exercise}
 Implement forward Euler, backward Euler, and RK4 for the
 nonstiff problem $\dot{y} = -y \sin(t)$, $y(0) = 1$ on $t \in
@@ -1320,6 +1994,19 @@ nonstiff problem $\dot{y} = -y \sin(t)$, $y(0) = 1$ on $t \in
 step size on a log-log scale and verify the predicted order of
 each method.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The exact solution is $y(t) = \exp(\cos t - 1)$. For step sizes
+$h = 2^{-k}$ ($k = 0, 1, \ldots, 10$) compute the numerical
+solution at $t = 10$ and the absolute error against $y(10)
+= \exp(\cos 10 - 1) \approx 0.176$. On log-log axes the slopes
+are: forward Euler $\sim 1$ (first order), backward Euler $\sim 1$
+(first order), RK4 $\sim 4$ (fourth order). RK4 hits the binary64
+floor near $h \approx 10^{-3}$; refining further loses to
+round-off as the per-step error budget shrinks below the
+arithmetic floor. The plot validates the global-error theory and
+exposes the round-off floor in the high-precision regime, mirroring
+Figure~\ref{fig:vol02:ch16:error-vs-h}.
 
 \begin{exercise}
 Take a stiff problem $\dot{y}_{1} = -1000(y_{1} - \cos t)$,
@@ -1329,6 +2016,21 @@ $h$ that remains stable) and an implicit BDF or backward-Euler
 solver. Compare the wall-clock time, the number of steps, and the
 final-value accuracy.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Reference implementation in \texttt{code/stiffness\_demo.py}.
+RK4 stability requires $h \abs{\lambda_{\max}} \lesssim 2.78$;
+with $\lambda \approx -1000$, $h \lesssim 2.5 \times 10^{-3}$.
+On $t \in [0, 10]$ this is $\sim 4000$ steps, several milliseconds
+of wall-clock time on a current laptop. BDF (\texttt{scipy.
+integrate.solve\_ivp} with \texttt{method="BDF"}) takes on the
+order of 100 steps and similar wall-clock time but with the
+overhead per step of one Newton-style linear solve. The
+final-value agreement between the two integrators is at the
+tolerance the implicit solver requests ($10^{-6}$ relative by
+default). As stiffness ratio increases (replace $-1000$ with
+$-10^{6}$), the wall-clock ratio swings dramatically in BDF's
+favour; that is the working motivation for the implicit family.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1342,6 +2044,29 @@ the conditioning check, and the precision the deliverable will
 report.
 \end{exercise}
 
+\paragraph{Discussion.}
+Defensible pipeline. Format: binary64 throughout; binary32 risks
+losing digits when the Vandermonde columns span several orders of
+magnitude in $x$. Algorithm: form the design matrix $\mat{V} \in
+\R^{m \times (p+1)}$ with columns $1, x_{i}, x_{i}^{2}, \ldots,
+x_{i}^{5}$, then solve the least-squares problem by Householder QR
+(via \texttt{numpy.linalg.lstsq} or \texttt{scipy.linalg.lstsq}).
+Avoid the normal equations $\mat{V}^{\transpose}\mat{V}
+\vect{\beta} = \mat{V}^{\transpose}\vect{y}$: they square the
+condition number ($\kappa(\mat{V}^{\transpose}\mat{V}) =
+\kappa(\mat{V})^{2}$). For a degree-5 Vandermonde, $\kappa(\mat{V})$
+can reach $10^{5}$ even for benign $x$-grids; squaring it pushes
+the normal-equations form near the binary64 limit. Conditioning
+check: compute $\kappa(\mat{V})$ via SVD or via
+\texttt{numpy.linalg.cond}; if $\kappa > 10^{6}$, consider
+centring and scaling $x$ to $[-1, 1]$ or switching to a Chebyshev
+basis (Vandermonde-in-Chebyshev), which is dramatically better
+conditioned. Reported precision: $\log_{10}(1/u) - \log_{10}\kappa
+- 1$ digits, where the $-1$ accounts for the data noise's
+contribution to the backward error. For a well-conditioned
+Vandermonde, this is $\sim 10$ correct digits; report two or three
+fewer than that to leave margin.
+
 \begin{exercise}
 Design a reproducibility manifest for a numerical paper of the
 reader's choice (or a hypothetical paper described in three
@@ -1351,6 +2076,27 @@ seed, hardware, and operating system. State which of these the
 reader's chosen target paper would have left undocumented.
 \end{exercise}
 
+\paragraph{Discussion.}
+A defensible manifest names each of the following: language and
+version (e.g.\ Python 3.12.2 or Julia 1.10.3); compiler / interpreter
+version; optimisation flags (\texttt{-O2 -fno-fast-math} for C/C++/
+Fortran builds, no automatic vectorisation flags that reorder
+floating-point sums); BLAS / LAPACK variant and version (OpenBLAS
+0.3.27, MKL 2024.0, Apple Accelerate as bundled with macOS 14.5);
+math library (glibc 2.39, Apple Accelerate, Intel libm); thread
+count (\texttt{OMP\_NUM\_THREADS=1} for bit-reproducibility);
+random seed (with the RNG identified: PCG64, Mersenne Twister,
+Philox); hardware (CPU model and microcode revision, GPU model
+and driver version where relevant); operating system and kernel
+version; and the date of the run. A typical published numerical
+paper, current as of 2025, names the language and the library used
+and perhaps the operating system; the rest is implicit. The
+reader's audit will typically find the BLAS variant, the thread
+count, the optimisation flags, and the random seed (in stochastic
+work) undocumented. A reproduction artefact that fixes all eight
+items by means of a Conda environment or a Nix derivation or a
+container is the working standard.
+
 \begin{exercise}
 Design a safeguarded root-finder that combines bisection and
 Newton's method. Specify the initial bracket, the Newton-step
@@ -1359,6 +2105,25 @@ current bracket), the fallback (bisect when the Newton step is
 rejected), and the convergence tolerance. State the worst-case
 and the best-case iteration counts.
 \end{exercise}
+
+\paragraph{Discussion.}
+Reference implementation in \texttt{code/newton\_safeguarded.py}.
+The algorithm maintains a bracket $[a, b]$ with $f(a) f(b) < 0$
+throughout. At each iteration: compute $f(x_{k})$ and $f'(x_{k})$;
+form the Newton proposal $x_{N} = x_{k} - f(x_{k})/f'(x_{k})$; if
+$x_{N} \in (a, b)$ and (an optional further sufficient-decrease
+check) is satisfied, accept $x_{N}$ as $x_{k+1}$; otherwise fall
+back to bisection, $x_{k+1} = (a + b)/2$. Update the bracket
+based on the sign of $f(x_{k+1})$. Convergence test:
+$\abs{f(x_{k+1})} < \tau_{f}$ or $(b - a) < \tau_{x}$, with
+$\tau_{f}, \tau_{x}$ above the round-off floor of the problem
+($\sim u \abs{f(x)} \kappa_{f}$, $\sim u \abs{x^{*}}$
+respectively). Worst case: pure bisection, $\sim \log_{2}((b-a)/
+\tau_{x}) \approx 50$ for a unit bracket and double precision.
+Best case: Newton everywhere, $\sim \log_{2}(\log_{2}(1/\tau))
+\approx 6$ at quadratic convergence to machine precision. Brent's
+method and \texttt{scipy.optimize.brentq} implement a tested
+variant of this design.
 
 \subsection*{Diagnosis}\pathtag{standard}
 
@@ -1370,6 +2135,31 @@ candidate explanations and the diagnostic procedure the reader
 would run to identify the dominant cause.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Candidate explanations. (1) The matrix is ill-conditioned and
+$\kappa(\mat{A}) \cdot u \sim 10^{-5}$, so a five-digit cross-
+platform disagreement is at the algorithm's stability limit; both
+results are correct in the backward sense. (2) The two
+implementations call different BLAS variants (MKL vs OpenBLAS vs
+Apple Accelerate), and the BLAS reduction order differs, producing
+last-bit differences that the conditioning amplifies. (3) The
+parallel thread count differs and the parallel reduction order
+differs. (4) The two implementations use different algorithms
+(LU vs QR vs SVD), and the matrix is rank-deficient enough that
+the choice matters. (5) Different default tolerances or different
+treatment of small singular values in a regularised solve.
+Diagnostic. Compute $\kappa(\mat{A})$ and the residual
+$\norm{\mat{A}\vect{x} - \vect{b}}/\norm{\vect{b}}$ on each
+platform. If $\kappa \approx 10^{10}$ and both residuals are
+small ($\sim 10^{-12}$), the disagreement is expected; both
+$\vect{x}$ vectors are backward-stable solutions and the
+difference is the conditioning fan-out of last-bit BLAS
+reductions. If the residuals differ substantially, one of the
+two solves is broken; inspect the algorithm choice and the
+tolerance settings. Pin the BLAS and the thread count
+(\texttt{OMP\_NUM\_THREADS=1}, \texttt{MKL\_CBWR=COMPATIBLE}) for
+the reproducibility audit.
+
 \begin{exercise}
 A simulation of a chemical reaction network using
 \texttt{scipy.integrate.RK45} reports that the integrator
@@ -1378,6 +2168,24 @@ proceeding on a $1$-second time scale. Diagnose the issue and
 propose a remedy.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Stiffness. The reaction network contains at least one fast mode
+with $\abs{\lambda_{\max}} \sim 1/(2 \times 10^{-9})
+\approx 5 \times 10^{8} \,\text{s}^{-1}$. The slow chemistry of
+interest evolves on a $1 \,\text{s}$ scale, but the explicit
+\texttt{RK45} solver is forced to a step that resolves the fast
+mode for \emph{stability}, not for accuracy. The diagnostic
+confirmation: compute the Jacobian $\partial \dot{\vect{y}}/
+\partial \vect{y}$ at a representative state and inspect its
+eigenvalues; if the spectral radius is several orders of magnitude
+larger than $1/T$ where $T$ is the integration horizon, the
+system is stiff. Remedy: switch to an implicit, A-stable
+integrator. \texttt{scipy.integrate.solve\_ivp(method="BDF")} or
+\texttt{method="LSODA"} (which auto-detects stiffness and
+switches between Adams and BDF) is the working choice. The
+implicit solver pays a Newton-style linear solve per step but
+takes steps three to nine decades larger.
+
 \begin{exercise}
 A least-squares fit of a degree-10 polynomial to evenly spaced
 data on $[0, 100]$ produces coefficients that vary by a factor of
@@ -1385,6 +2193,26 @@ $10^{8}$ between two runs of nominally the same code. Diagnose
 the conditioning issue and prescribe two changes to the
 formulation that bring the conditioning under control.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The Vandermonde matrix on $[0, 100]$ for a degree-10 polynomial
+has columns $1, x, x^{2}, \ldots, x^{10}$ ranging in magnitude
+from $1$ to $10^{20}$. The columns are far from orthogonal and
+the condition number is enormous (typically $\sim 10^{18}$),
+which exceeds binary64's representable range. Tiny perturbations
+in the data swing the coefficient vector by orders of magnitude;
+two runs of the same code that differ only in reduction order or
+BLAS variant produce the observed $10^{8}$ swing.
+Remedy 1: rescale and re-centre. Map $x$ to $\tilde x =
+(x - 50)/50 \in [-1, 1]$ and fit in $\tilde x$. The Vandermonde
+columns now span order unity, and $\kappa$ drops by several
+orders of magnitude.
+Remedy 2: switch to an orthogonal basis. Use the Chebyshev
+polynomials of the first kind on $[-1, 1]$ as the basis
+(\texttt{numpy.polynomial.Chebyshev.fit}). The Vandermonde-
+in-Chebyshev matrix is nearly orthogonal; $\kappa$ for degree 10
+is typically $\sim 10$, twenty orders of magnitude better than
+the monomial Vandermonde on $[0, 100]$.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1397,6 +2225,30 @@ verification discipline that, if deployed, would have caught the
 error before the deployment.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Dominant source: \emph{round-off} (in the sense of representation
+error of the constant $0.1$ in finite binary precision), accumulated
+over $\sim 3.6 \times 10^{6}$ ticks. The error per conversion is
+about $9.5 \times 10^{-8}$, the same per-tick representation residual
+in every tick; summing produces a linearly accumulating bias rather
+than a random-sign cancellation, so the worst-case bound $nu$ is
+tight. Not primary: \emph{truncation error}, since the algorithm
+(integer counter + scalar multiplication) has no discretisation
+parameter; \emph{conditioning}, since the predicted-position
+function is well-conditioned in the time argument
+($\kappa \approx 1$ for the linear map). Verification discipline:
+state and check the operating-duration precondition. The system's
+design assumed periodic restarts; the design analysis should have
+included a maximum-continuous-operation duration with a built-in
+check (a watchdog or a logged warning) at, say, $50 \%$ of the
+duration at which the accumulated drift exceeds the range-gate
+tolerance. A run-time accumulator-bound check, with the bound
+derived from the per-conversion error and the range-gate width,
+would have surfaced the issue before the strike. The
+\texttt{code/patriot\_drift.py} script and
+\texttt{data/patriot-drift.csv} reconstruction lets the reader
+compute the bound directly.
+
 \begin{exercise}
 Reread the Ariane 5 Flight 501 case study in section 16.8.2. The
 case is sometimes described as a "floating-point error." Defend
@@ -1405,6 +2257,22 @@ specific numerical operation that failed and the precondition
 that was violated. Compare to the Patriot case in one further
 sentence.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The description is misleading. The failed operation was a
+type conversion from binary64 floating-point to a 16-bit signed
+integer; the precondition for the conversion is that the input
+lie in $[-32{,}768, 32{,}767]$, and the violation was that the
+horizontal-bias value at the Ariane 5 trajectory exceeded the
+upper bound. The arithmetic was correctly rounded throughout; the
+failure was the unhandled overflow on a type-conversion operation
+whose precondition the new flight envelope no longer satisfied,
+not a floating-point rounding error. Compared to the Patriot case
+(accumulated representation error over operating duration), Ariane
+501 is a single-operation range-envelope failure rather than a
+multi-operation accumulated-error failure; both share the deeper
+pattern of a precondition that the operating context silently
+violated.
 
 \subsection*{Judgment}\pathtag{standard}
 
@@ -1417,6 +2285,25 @@ the reader would put to the paper's authors before accepting the
 result. Reference at least one quantity from this chapter.
 \end{exercise}
 
+\paragraph{Discussion.}
+Question one: what is $\kappa(\mat{V}^{\transpose}\mat{V})$? A
+degree-12 Vandermonde on an unrescaled $x$-range can give
+$\kappa(\mat{V}) \sim 10^{12}$ to $10^{15}$; the normal equations
+square this, putting $\kappa(\mat{V}^{\transpose}\mat{V})$ near or
+past binary64's representable range, and the six-figure
+coefficients are then below the round-off floor of the algorithm.
+Question two: was the data rescaled to $[-1, 1]$ and / or fitted
+in a Chebyshev basis? If not, the reported residual of $10^{-7}$
+on $10^{6}$ points may reflect a fit dominated by the
+high-leverage endpoints rather than a globally accurate model.
+Question three: what BLAS / LAPACK call was used, and was the
+algorithm normal-equations or backward-stable QR? If normal
+equations, the authors are reporting more digits than the
+algorithm warrants; switching to \texttt{numpy.linalg.lstsq} or
+to Chebyshev fitting is the recommended remedy. (The chapter's
+\emph{rule of thumb}: correct digits $\approx \log_{10}(1/u)
+- \log_{10} \kappa$.)
+
 \begin{exercise}
 An embedded-systems engineer proposes to replace IEEE 754 binary64
 arithmetic with binary16 throughout a flight-control inner loop,
@@ -1426,6 +2313,32 @@ substitution is defensible, and what the engineer would have to
 add to the deployment to make the substitution safe in the field.
 \end{exercise}
 
+\paragraph{Discussion.}
+Verifications before substitution. (1) Range: binary16 represents
+roughly $6 \times 10^{-5}$ to $6.5 \times 10^{4}$; the engineer
+demonstrates that every intermediate value of the flight-control
+inner loop lies in this range across the entire operating
+envelope, including all failure scenarios. (2) Precision: binary16
+has 11 significant binary digits ($\sim 3$ to $4$ decimal); the
+engineer demonstrates that the loop's stability margin and
+control accuracy are not eroded by the four-decade loss of
+precision relative to binary64. (3) Algorithm conditioning: any
+matrix inverse or linear solve in the loop has $\kappa$ small
+enough that $\kappa \cdot u_{\text{binary16}} \approx \kappa \cdot
+5 \times 10^{-4}$ remains within the control tolerance. (4) Sensor
+noise floor: the input quantisation must dominate the round-off
+floor for the substitution to be net-positive in any sense beyond
+memory savings.
+Field-safety additions. Run-time range and overflow checks on
+every flight-critical computation, with a defined fall-back
+(redundant binary64 path, safe-mode controller, or pilot
+notification) when a value approaches the binary16 range
+boundary; explicit verification of denormal handling and of the
+math-library behaviour on the target hardware; a regression test
+suite that exercises the loop across the operating envelope at
+the substituted precision; and a formal hazard analysis that
+treats every precondition violation as a credible failure mode.
+
 \begin{exercise}
 A client requests a "reproducible" Monte Carlo simulation of a
 financial portfolio. State, in three sentences, the three
@@ -1434,3 +2347,22 @@ and the operational discipline corresponding to each. State which
 of the three is the working default in the engineer's
 deliverable.
 \end{exercise}
+
+\paragraph{Discussion.}
+Three senses. (1) \emph{Bit-reproducible}: the same code on the
+same hardware produces identical output bit-for-bit; achieved by
+pinning the random seed, the RNG, the BLAS, the thread count, and
+the floating-point flags. (2) \emph{Statistically reproducible}:
+re-runs produce summary statistics (mean, variance, value-at-risk
+quantile) that agree within a stated tolerance; achieved by
+running enough Monte Carlo samples that the Monte Carlo standard
+error is below the tolerance, and reporting the tolerance.
+(3) \emph{Cross-platform reproducible}: any conformant
+implementation, on any hardware, with the same algorithm
+specification and the same sampled inputs, produces identical
+output; achieved by using bit-reproducible RNGs, bit-reproducible
+reductions, and a fully specified algorithm, and is the strictest
+and most expensive sense. The working default in a financial
+deliverable is (1) for an internal audit trail and (2) for the
+reported risk numbers; (3) is reserved for regulator-facing
+artefacts where independent re-derivation is required.

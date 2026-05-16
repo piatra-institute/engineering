@@ -121,6 +121,45 @@ The rest of this chapter generalises it: many variables, many
 constraints, possibly nondifferentiable objective, possibly
 discrete decision space.
 
+\begin{estimation}
+\textbf{Question.} Before working the formula, estimate the optimal
+diameter $d^{*}$ for the pipeline above with $c_{1} =
+1000\,\text{USD}/\si{\meter\cubed}$ (a representative steel-pipe
+material cost, current as of 2025) and $c_{2} = 5 \times 10^{8}
+\,\text{USD}\cdot\si{\second\cubed\per\meter\tothe{8}}$ (a
+representative pumping cost over a 25-year service life), with $L
+= 100\,\si{\meter}$ and $Q = 0.05\,\si{\cubic\meter\per\second}$.
+What working diameter would you expect for a low-pressure water
+line of this scale, drawn from common sense about plumbing?
+
+\textbf{Calibrated guess.} Domestic-scale pipework runs at
+diameters from $25$ to $200\,\si{\milli\meter}$. A $50\,\text{L/s}$
+flow is at the upper end of household and the lower end of
+commercial scale; a few-hundred-millimetre diameter is the
+plausible answer.
+
+\textbf{Calculation.} The first-order condition
+$\dv{f_{0}}{d} = 0$ gives $d^{*} = (5 c_{2} Q^{3} / (2 c_{1}))^{1/7}$.
+Substituting the numbers, the bracket evaluates to $5 \times 5 \times
+10^{8} \times (0.05)^{3} / (2 \times 1000) = 5 \times 5 \times
+10^{8} \times 1.25 \times 10^{-4} / 2000 = 3.125 \times 10^{5} /
+2000 \approx 156$. Then $d^{*} = 156^{1/7} \approx 2.07
+\,\si{\meter}$. The calculation is wildly outside the feasible
+range $[0.05, 0.30]\,\si{\meter}$; the constrained optimum is at
+the upper endpoint $d = 0.30\,\si{\meter}$. The estimation was
+right about the scale (hundreds of millimetres) but the toy
+constants $c_{1}, c_{2}$ are not internally calibrated to a real
+material-versus-pumping balance at this flow. The exercise is
+genuine: the cost coefficients carry units, and an
+order-of-magnitude error in either coefficient moves the optimum
+by a multiplicative factor in $d^{*}$. The lesson: an
+optimisation answer is no better than the cost coefficients it
+sits on, and the engineer who reports $d^{*}$ to three decimal
+places without checking that the coefficients are consistent with
+the actual market and the actual pump curve has reported a
+calculation, not an engineering judgment.
+\end{estimation}
+
 \subsection{Existence of a minimum}
 
 A minimum may fail to exist. The function $f_{0}(x) = e^{-x}$ on
@@ -325,7 +364,10 @@ The theorem is the load-bearing fact of the chapter. Every
 algorithm we treat for convex problems converges to a local
 optimum; the theorem upgrades that local guarantee to a global
 guarantee. For nonconvex problems the same algorithm finds only
-a local optimum, with no statement about the global landscape.
+a local optimum, with no statement about the global picture
+(\cref{fig:vol02:ch15:convex-nonconvex}).
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-convex-nonconvex.tex}
 
 \subsection{Recognising convexity in engineering problems}
 
@@ -369,10 +411,10 @@ the objective is constant on hyperplanes. The geometry forces
 the optimum to occur at a vertex of the polyhedron whenever an
 optimum exists and the polyhedron has vertices. There are
 finitely many vertices, so the search is, in principle, finite.
-The simplex method of Dantzig (1947) walks the vertex graph
-along edges that decrease the objective; the interior-point
-methods of Karmarkar (1984) and successors approach the optimum
-through the polyhedron's interior in polynomial time. An
+The simplex method of \textcite{text:v2ch15-dantzig1947} walks the
+vertex graph along edges that decrease the objective; the
+interior-point methods of Karmarkar (1984) and successors approach
+the optimum through the polyhedron's interior in polynomial time. An
 engineer in 2026 does not implement either method by hand; the
 working tools are commercial solvers (Gurobi, CPLEX, Mosek) and
 open-source solvers (HiGHS, GLPK, CBC, Clp), called from a
@@ -386,15 +428,20 @@ linearity assumption. Real cost curves are seldom exactly linear;
 linear programs are nonetheless the working approximation when
 costs are roughly linear in the relevant range, and they are the
 relaxation that integer programs use to bound their search
-(Section 15.7).
+(Section 15.7). The two-variable geometry, with feasible polygon
+and parallel objective level sets, generalises directly to $n$
+variables with a polyhedron of exponentially many vertices
+(\cref{fig:vol02:ch15:feasible-polytope}).
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-feasible-polytope.tex}
 
 \subsection{Worked LP: the diet problem}
 
-The diet problem (Stigler, 1945, posed before LP existed): choose
-quantities $x_{i} \geq 0$ of $n$ foods to minimise total cost
-$\vect{c}^{\transpose} \vect{x}$ subject to nutritional
-requirements $A \vect{x} \geq \vect{b}$, where $A_{ij}$ is the
-amount of nutrient $i$ in food $j$ and $b_{i}$ is the daily
+The diet problem (\textcite{text:v2ch15-stigler1945}, posed before
+LP existed): choose quantities $x_{i} \geq 0$ of $n$ foods to
+minimise total cost $\vect{c}^{\transpose} \vect{x}$ subject to
+nutritional requirements $A \vect{x} \geq \vect{b}$, where $A_{ij}$
+is the amount of nutrient $i$ in food $j$ and $b_{i}$ is the daily
 requirement for nutrient $i$. The standard-form rewrite
 introduces slack variables $\vect{s} \geq \vect{0}$ via $A
 \vect{x} - \vect{s} = \vect{b}$. The optimum, computed by Dantzig
@@ -404,7 +451,11 @@ cabbage, beef liver, evaporated milk, and dried navy beans, in
 specific quantities. The LP solution is mathematically optimal
 and gastronomically intolerable; the example is the standard
 illustration of the gap between a well-stated objective and the
-right objective.
+right objective. A toy five-food, three-nutrient version of the
+same LP is implemented as
+\repopath{volumes/02-form/ch15-optimisation/code/lp_diet.py};
+running it prints the optimal diet, the binding constraints, and
+the shadow prices on each nutrient.
 
 \subsection{Quadratic programming}
 
@@ -667,6 +718,10 @@ multiplier $\lambda^{*} = b / \norm{\vect{a}}_{2}^{2}$. The
 multiplier reports the rate at which $p^{*}$ decreases per unit
 relaxation of $b$: $\dv{p^{*}}{b} = b / \norm{\vect{a}}_{2}^{2} =
 \lambda^{*}$, in agreement with the shadow-price reading.
+\Cref{fig:vol02:ch15:lagrange-geometry} draws the equality-constraint
+version of the same picture.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-lagrange-geometry.tex}
 
 \section{Gradient methods, Newton's method}\pathtag{core}
 
@@ -728,7 +783,47 @@ ill-conditioned problem (large $\kappa$) converges slowly. The
 canonical bad case is the elongated quadratic
 $f(x_{1}, x_{2}) = \tfrac{1}{2}(x_{1}^{2} + 100 x_{2}^{2})$, with
 condition number $\kappa = 100$; gradient descent zigzags down
-the long axis and converges only after many iterations.
+the long axis and converges only after many iterations
+(\cref{fig:vol02:ch15:gradient-zigzag}).
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-gradient-zigzag.tex}
+
+\begin{estimation}
+\textbf{Question.} A medium-scale least-squares problem has $n =
+10^{4}$ variables and condition number $\kappa \approx 10^{3}$
+(the ratio of the largest to the smallest singular value of the
+design matrix). Estimate the iteration count gradient descent
+needs to reach relative error $10^{-6}$ from a unit-norm initial
+error, and compare against Newton's method on the same problem.
+
+\textbf{Calibrated guess.} The convergence rate is geometric with
+factor $1 - 1/\kappa = 0.999$. Each iteration shrinks the error by
+$0.1\%$; reaching $10^{-6}$ should take a few times $\kappa
+\log(10^{6})$ iterations.
+
+\textbf{Calculation.} The error bound $\norm{\vect{x}_{k} -
+\vect{x}^{*}}^{2} \leq (1 - 1/\kappa)^{k}$ reaches $10^{-12}$ in
+the norm-squared (so $10^{-6}$ in the norm) when $(1 - 10^{-3})^{k}
+= 10^{-12}$, i.e.\ $k = 12 \log 10 / \log(1/(1 - 10^{-3})) \approx
+12 \times 2.303 / (10^{-3}) \approx 2.8 \times 10^{4}$ iterations.
+Each iteration costs one matrix-vector multiply at
+$O(n^{2}) = 10^{8}$ flops, totalling $\approx 3 \times 10^{12}$
+flops, roughly an hour on a single 2026-era CPU core at $10^{9}$
+flops per second of sustained throughput.
+
+Newton's method takes $\sim 5$ iterations on a quadratic (it
+converges in one step exactly for a quadratic, and a few steps for
+a near-quadratic), each costing one Hessian solve at $O(n^{3}) =
+10^{12}$ flops. Five iterations totals $\approx 5 \times 10^{12}$
+flops, comparable to gradient descent's total at this scale but
+trading sustained matrix-vector throughput for a single very large
+linear solve that must fit in memory. The break-even moves
+sharply: at $n = 10^{5}$ the Newton cost rises by $10^{3}$ while
+the gradient-descent cost rises by $10^{2}$, and gradient methods
+dominate. The principle of method selection (see the box at the
+end of this section) is the formal statement of this scaling
+analysis.
+\end{estimation}
 
 \subsection{Step-size selection}
 
@@ -813,6 +908,21 @@ nonsmooth objectives, use proximal methods or subgradient
 descent. For constrained problems, use projected gradient,
 augmented Lagrangian, or interior point.
 \end{principle}
+
+\Cref{fig:vol02:ch15:method-comparison} draws the convergence
+rates of these methods schematically; the asymptotic separation
+between gradient descent's $1 - 1/\kappa$ rate, Nesterov's
+$1 - 1/\sqrt{\kappa}$ rate, and Newton's quadratic rate is the
+load-bearing reason a working engineer chooses Newton or L-BFGS on
+medium-scale smooth problems when the second-order information is
+available, and falls back on gradient methods only at the scales
+where the Hessian solve becomes infeasible. The standard
+references for these rates are
+\textcite{text:v2ch15-nocedal-wright2006} for the numerical-analysis
+viewpoint and \textcite{text:v2ch15-bottou-curtis-nocedal2018} for
+the machine-learning viewpoint.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-method-comparison.tex}
 
 \section{Stochastic optimisation, SGD}\pathtag{standard}
 
@@ -913,19 +1023,28 @@ $\boldsymbol{\theta}_{k}$. Nesterov's method achieves the optimal
 $O(1/K^{2})$ rate for smooth convex problems, an improvement over
 gradient descent's $O(1/K)$ rate.
 
-\engterm{Adam} (Kingma-Ba): combines momentum with per-coordinate
-adaptive step sizes built from running second-moment estimates of
-the gradient. Adam is the default first attempt for training a
-modern neural network. Its convergence theory is weaker than
-SGD's (some convex problems on which Adam fails to converge are
-known); its practical performance on deep nonconvex objectives
-is the empirical reason for its dominance, current as of 2026.
+\engterm{Adam} (\textcite{text:v2ch15-kingma-ba2015-adam}): combines
+momentum with per-coordinate adaptive step sizes built from running
+second-moment estimates of the gradient. Adam is the default first
+attempt for training a modern neural network. Its convergence
+theory is weaker than SGD's (some convex problems on which Adam
+fails to converge are known); its practical performance on deep
+nonconvex objectives is the empirical reason for its dominance,
+current as of 2026.
 
 The engineer's working catalogue: vanilla SGD is the baseline;
 SGD with momentum is the next step up; Adam is the modern
 default for deep nonconvex problems; L-BFGS is the smooth
 medium-scale workhorse. The reader implements the first three in
-the chapter project (Section 15.9).
+the chapter project (Section 15.9). A reference implementation of
+vanilla gradient descent on the elongated quadratic of this
+section is at
+\repopath{volumes/02-form/ch15-optimisation/code/gradient_descent.py},
+and a comparison of gradient descent, momentum, and Adam on the
+Rosenbrock function (the canonical nonconvex benchmark) is at
+\repopath{volumes/02-form/ch15-optimisation/code/rosenbrock_methods.py}.
+Reference convergence counts from these scripts are tabulated in
+\repopath{volumes/02-form/ch15-optimisation/data/rosenbrock_convergence.csv}.
 
 \section{Integer and combinatorial optimisation preview}\pathtag{standard}
 
@@ -1092,8 +1211,9 @@ the gap before the optimiser exploits it.
 \end{principle}
 
 The principle, originally articulated by the British economist
-Charles Goodhart in 1975 in the context of monetary policy, is
-the most important single warning in optimisation practice. A
+\textcite{text:v2ch15-goodhart1975} in the context of monetary
+policy, is the most important single warning in optimisation
+practice. A
 factory measured on units produced will produce defective units;
 a hospital measured on average wait time will discharge patients
 on the wait-time clock; a model measured on training accuracy
@@ -1286,12 +1406,39 @@ optimum and the active constraints, and write down the dual
 variable.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The feasible set is the probability simplex in $\R^{5}$. A linear
+objective on a simplex is minimised at a vertex; the vertices are
+the unit-coordinate points $\vect{e}_{i}$, with objective value
+$c_{i}$. The smallest $c_{i}$ is $1$, achieved at $i = 2$ and $i =
+4$. Any convex combination of $\vect{e}_{2}$ and $\vect{e}_{4}$
+also attains $p^{*} = 1$; the optimum is the line segment
+$\set{(0, t, 0, 1 - t, 0) : t \in [0, 1]}$. Active constraints at
+any optimum: the equality $\vect{1}^{\transpose} \vect{x} = 1$ and
+the nonnegativity bounds on the three components fixed at zero.
+The dual variable on the equality is $\nu^{*} = 1$ (the optimal
+cost per unit relaxation of the simplex sum), and the dual
+variables on the active $x_{i} \geq 0$ constraints are $c_{i} -
+\nu^{*}$, vanishing for $i \in \set{2, 4}$ as required by
+complementary slackness.
+
 \begin{exercise}
 Compute the optimum of the QP $\min_{\vect{x}} \tfrac{1}{2}
 \norm{\vect{x}}_{2}^{2}$ subject to $\vect{1}^{\transpose}
 \vect{x} = 1$ in $\R^{n}$ for general $n$. Report
 $\vect{x}^{*}$, $p^{*}$, and the multiplier $\nu^{*}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Lagrangian $\mathcal{L} = \tfrac{1}{2} \vect{x}^{\transpose}
+\vect{x} + \nu (\vect{1}^{\transpose} \vect{x} - 1)$. Stationarity:
+$\vect{x}^{*} = -\nu^{*} \vect{1}$. Primal feasibility: $-\nu^{*}
+n = 1$, so $\nu^{*} = -1/n$ and $\vect{x}^{*} = (1/n) \vect{1}$,
+the uniform distribution. Optimal value $p^{*} = \tfrac{1}{2}
+\norm{\vect{x}^{*}}^{2} = \tfrac{1}{2} n (1/n)^{2} = 1/(2n)$. The
+multiplier $\nu^{*}$ is the rate at which $p^{*}$ changes when the
+simplex level is shifted: $\dv{p^{*}}{b} = -1/n$ at $b = 1$,
+matching $\nu^{*}$.
 
 \begin{exercise}
 For $f(x, y) = x^{2} + 4 y^{2} - 2 x + 8 y + 5$, compute the
@@ -1300,17 +1447,45 @@ verify that it is a global minimum by the Hessian test. Report
 $f(\vect{x}^{*})$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\grad f = (2 x - 2, 8 y + 8)$, vanishing at $(x^{*}, y^{*}) =
+(1, -1)$. Hessian $\nabla^{2} f = \diag(2, 8)$, with eigenvalues
+$2$ and $8$, both positive, so $f$ is strictly convex on $\R^{2}$
+and the critical point is the global minimum. $f(1, -1) = 1 + 4 -
+2 - 8 + 5 = 0$.
+
 \begin{exercise}
 Run two iterations of gradient descent by hand on $f(x) = x^{2}$
 from $x_{0} = 4$ with constant step size $\eta = 0.1$. Report
 $x_{1}, x_{2}, x_{3}$ and verify the geometric convergence rate.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$f'(x) = 2x$, so $x_{k+1} = x_{k} - 0.2 x_{k} = 0.8 x_{k}$. From
+$x_{0} = 4$: $x_{1} = 3.2$, $x_{2} = 2.56$, $x_{3} = 2.048$. The
+contraction factor per step is $0.8$, matching the theoretical
+$1 - \eta \cdot 2 = 0.8$ for this quadratic. Geometric convergence
+with rate $0.8$ per step; reaching $|x_{k}| < 10^{-6}$ takes
+$\log(4/10^{-6}) / \log(1/0.8) \approx 15.2 / 0.223 \approx 68$
+iterations.
+
 \begin{exercise}
 Run one Newton step by hand on $f(x, y) = x^{2} + 2 x y + 3 y^{2}
 - 2 x - 4 y$ from $(x_{0}, y_{0}) = (0, 0)$. Verify that the
 result is the global minimum.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\grad f = (2 x + 2 y - 2, \; 2 x + 6 y - 4)$, evaluating to
+$(-2, -4)$ at $(0, 0)$. Hessian $H = \begin{pmatrix} 2 & 2 \\ 2 & 6
+\end{pmatrix}$, with $\det H = 8$ and inverse $H^{-1} = \tfrac{1}{8}
+\begin{pmatrix} 6 & -2 \\ -2 & 2 \end{pmatrix}$. Newton step:
+$-H^{-1} \grad f = -\tfrac{1}{8} (6 \cdot (-2) + (-2)(-4), \;
+(-2)(-2) + 2 \cdot (-4)) = -\tfrac{1}{8} (-4, -4) = (1/2, 1/2)$.
+The new point is $(0, 0) + (1/2, 1/2) = (1/2, 1/2)$. Setting $\grad
+f = \vect{0}$ directly: $x + y = 1$ and $x + 3 y = 2$, giving $y =
+1/2, x = 1/2$. The Newton step reached the unique critical point
+in one move, as expected for a strictly convex quadratic.
 
 \begin{exercise}
 Solve the KKT conditions for $\min_{\vect{x}} \tfrac{1}{2}
@@ -1319,6 +1494,21 @@ Solve the KKT conditions for $\min_{\vect{x}} \tfrac{1}{2}
 $\vect{x}^{*}$, $p^{*}$, and $\lambda^{*}$, and verify
 complementary slackness.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Rewrite as $f_{1}(\vect{x}) = b - \vect{a}^{\transpose} \vect{x}
+\leq 0$. Stationarity: $\vect{x}^{*} = \lambda^{*} \vect{a}$. If
+$\lambda^{*} = 0$ then $\vect{x}^{*} = \vect{0}$, which violates
+$\vect{a}^{\transpose} \vect{x} \geq b$ for $b > 0$; so
+$\lambda^{*} > 0$ and the constraint is active:
+$\vect{a}^{\transpose} \vect{x}^{*} = b$, giving $\lambda^{*} =
+b / \norm{\vect{a}}^{2} = 6 / 9 = 2/3$. Then $\vect{x}^{*} =
+(2/3)(1, 2, 2) = (2/3, 4/3, 4/3)$ and $p^{*} = \tfrac{1}{2}
+\norm{\vect{x}^{*}}^{2} = \tfrac{1}{2} \cdot (4/9) \cdot 9 = 2$.
+Complementary slackness $\lambda^{*} (b - \vect{a}^{\transpose}
+\vect{x}^{*}) = (2/3) \cdot 0 = 0$ holds because the constraint is
+active. Shadow-price check: $\dv{p^{*}}{b} = b / \norm{\vect{a}}^{2}
+= 2/3 = \lambda^{*}$ at $b = 6$.
 
 \subsection*{Derivation}\pathtag{standard}
 
@@ -1329,6 +1519,31 @@ Derive the dual of the LP $\min_{\vect{x}} \vect{c}^{\transpose}
 their sign constraints.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Two inequality blocks: $A \vect{x} - \vect{b} \leq \vect{0}$ with
+multiplier $\boldsymbol{\lambda} \geq \vect{0}$, and
+$-\vect{x} \leq \vect{0}$ with multiplier $\boldsymbol{\mu} \geq
+\vect{0}$. Lagrangian
+$\mathcal{L} = \vect{c}^{\transpose} \vect{x} +
+\boldsymbol{\lambda}^{\transpose}(A \vect{x} - \vect{b})
+- \boldsymbol{\mu}^{\transpose} \vect{x}
+= (\vect{c} + A^{\transpose} \boldsymbol{\lambda}
+- \boldsymbol{\mu})^{\transpose} \vect{x}
+- \boldsymbol{\lambda}^{\transpose} \vect{b}$. The infimum over
+$\vect{x}$ is $-\infty$ unless $\vect{c} + A^{\transpose}
+\boldsymbol{\lambda} - \boldsymbol{\mu} = \vect{0}$, in which case
+the value is $-\boldsymbol{\lambda}^{\transpose} \vect{b}$.
+Eliminate $\boldsymbol{\mu} = \vect{c} + A^{\transpose}
+\boldsymbol{\lambda} \geq \vect{0}$. The dual is
+$\max_{\boldsymbol{\lambda} \geq \vect{0}} -\vect{b}^{\transpose}
+\boldsymbol{\lambda}$ subject to $A^{\transpose} \boldsymbol{\lambda}
+\geq -\vect{c}$, equivalently (substituting $\boldsymbol{\lambda}
+\to -\boldsymbol{\lambda}$, conventional sign): the dual carries one
+nonpositive multiplier per primal inequality and one nonnegative
+multiplier per primal nonnegativity, and the dual feasibility set
+$A^{\transpose} \boldsymbol{\lambda} \leq \vect{c}$ is the
+constraint side of the original problem.
+
 \begin{exercise}
 Derive the dual of a general convex QP $\min_{\vect{x}}
 \tfrac{1}{2} \vect{x}^{\transpose} P \vect{x} +
@@ -1337,12 +1552,45 @@ Derive the dual of a general convex QP $\min_{\vect{x}}
 positive definiteness of $P$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Lagrangian $\mathcal{L} = \tfrac{1}{2} \vect{x}^{\transpose} P
+\vect{x} + \vect{q}^{\transpose} \vect{x} +
+\boldsymbol{\nu}^{\transpose}(A \vect{x} - \vect{b})$. Stationarity
+in $\vect{x}$: $P \vect{x} + \vect{q} + A^{\transpose}
+\boldsymbol{\nu} = \vect{0}$, so $\vect{x}^{*}(\boldsymbol{\nu}) =
+-P^{-1}(\vect{q} + A^{\transpose} \boldsymbol{\nu})$ (using $P
+\succ 0$). Substituting back,
+$g(\boldsymbol{\nu}) = -\tfrac{1}{2}(\vect{q} + A^{\transpose}
+\boldsymbol{\nu})^{\transpose} P^{-1} (\vect{q} + A^{\transpose}
+\boldsymbol{\nu}) - \boldsymbol{\nu}^{\transpose} \vect{b}$. The
+dual problem is $\max_{\boldsymbol{\nu}} g(\boldsymbol{\nu})$
+(unconstrained in $\boldsymbol{\nu}$), a concave quadratic in
+$\boldsymbol{\nu}$. Setting $\nabla g = \vect{0}$:
+$A P^{-1}(\vect{q} + A^{\transpose} \boldsymbol{\nu}^{*}) =
+-\vect{b}$, giving $\boldsymbol{\nu}^{*} =
+-(A P^{-1} A^{\transpose})^{-1}(\vect{b} + A P^{-1} \vect{q})$,
+which is the Schur-complement formula for the equality-constrained
+QP.
+
 \begin{exercise}
 Derive the gradient-descent convergence rate for a quadratic
 objective $f(\vect{x}) = \tfrac{1}{2} \vect{x}^{\transpose} P
 \vect{x}$ with $P$ positive definite. Identify the optimal
 constant step size in terms of the eigenvalues of $P$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+$\grad f = P \vect{x}$, so the iteration is $\vect{x}_{k+1} =
+(I - \eta P) \vect{x}_{k}$, hence $\vect{x}_{k} = (I - \eta P)^{k}
+\vect{x}_{0}$. The spectral radius of $I - \eta P$ governs the
+geometric rate. Let $\mu = \lambda_{\min}(P)$ and $L =
+\lambda_{\max}(P)$; the eigenvalues of $I - \eta P$ are $1 - \eta
+\lambda_{i}$. The worst-case contraction is $\max(|1 - \eta \mu|,
+|1 - \eta L|)$, minimised when $1 - \eta \mu = -(1 - \eta L)$,
+giving $\eta^{*} = 2 / (\mu + L)$ and worst-case rate $(L - \mu)/
+(L + \mu) = (\kappa - 1)/(\kappa + 1)$. The familiar $1 - \mu/L$
+bound is the loose version obtained from $\eta = 1/L$; the tight
+bound uses the symmetric choice.
 
 \begin{exercise}
 Derive the Newton step for $f(\vect{x}) = \tfrac{1}{2}
@@ -1351,16 +1599,49 @@ Derive the Newton step for $f(\vect{x}) = \tfrac{1}{2}
 $\vect{x}_{0}$ reaches the optimum.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+$\grad f = P \vect{x} + \vect{q}$, Hessian $H = P$. Newton step
+$\vect{p} = -H^{-1} \grad f(\vect{x}_{0}) = -P^{-1}(P \vect{x}_{0}
++ \vect{q}) = -\vect{x}_{0} - P^{-1} \vect{q}$. Updated point
+$\vect{x}_{0} + \vect{p} = -P^{-1} \vect{q}$. Setting $\grad f =
+\vect{0}$ directly gives $\vect{x}^{*} = -P^{-1} \vect{q}$, the
+same point. One Newton step reaches the global optimum from any
+$\vect{x}_{0}$ when $f$ is a strictly convex quadratic.
+
 \begin{exercise}
 Show that the pointwise maximum of a finite collection of convex
 functions is convex. Use the definition of convexity directly.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Let $f(\vect{x}) = \max_{i \in \set{1, \ldots, m}} f_{i}(\vect{x})$
+with each $f_{i}$ convex on a common convex domain. For
+$\vect{x}, \vect{y}$ in the domain and $\theta \in [0, 1]$, and any
+$i$,
+$f_{i}(\theta \vect{x} + (1 - \theta) \vect{y}) \leq
+\theta f_{i}(\vect{x}) + (1 - \theta) f_{i}(\vect{y})
+\leq \theta f(\vect{x}) + (1 - \theta) f(\vect{y})$. Taking the
+maximum over $i$ on the left gives $f(\theta \vect{x} + (1 -
+\theta) \vect{y}) \leq \theta f(\vect{x}) + (1 - \theta)
+f(\vect{y})$, which is convexity of $f$.
 
 \begin{exercise}
 Show that the composition $g(A \vect{x} + \vect{b})$ of a convex
 $g : \R^{m} \to \R$ with an affine map $\vect{x} \mapsto A \vect{x}
 + \vect{b}$, $A \in \R^{m \times n}$, is convex on $\R^{n}$.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Let $h(\vect{x}) = g(A \vect{x} + \vect{b})$. For
+$\vect{x}, \vect{y} \in \R^{n}$ and $\theta \in [0, 1]$, $A(\theta
+\vect{x} + (1 - \theta) \vect{y}) + \vect{b} = \theta (A \vect{x}
++ \vect{b}) + (1 - \theta)(A \vect{y} + \vect{b})$ by linearity of
+$A$. Applying convexity of $g$ to the right-hand side,
+$h(\theta \vect{x} + (1 - \theta) \vect{y}) = g(\theta (A \vect{x}
++ \vect{b}) + (1 - \theta)(A \vect{y} + \vect{b})) \leq \theta g(A
+\vect{x} + \vect{b}) + (1 - \theta) g(A \vect{y} + \vect{b}) =
+\theta h(\vect{x}) + (1 - \theta) h(\vect{y})$, the defining
+inequality for convexity of $h$.
 
 \subsection*{Estimation}\pathtag{core}
 
@@ -1373,6 +1654,23 @@ Verify $d^{*} \in [0.05, 0.30]\,\si{\meter}$ and report the
 total optimal cost.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The first-order condition gives $d^{*} = (5 c_{2} Q^{3} / (2
+c_{1}))^{1/7} = (156)^{1/7} \approx 2.07\,\si{\meter}$, which lies
+outside the feasible interval $[0.05, 0.30]$. The constrained
+optimum is the upper endpoint $d = 0.30\,\si{\meter}$. Substituting
+into $f_{0}$: material cost $c_{1} L d^{2} = 1000 \cdot 100 \cdot
+0.09 = 9000$\,USD; pumping cost $c_{2} L Q^{3} d^{-5} = 5 \times
+10^{8} \cdot 100 \cdot 1.25 \times 10^{-4} / 0.00243 \approx 2.57
+\times 10^{9}$\,USD. The pumping cost dominates the bound, which
+is the formal warning that the toy coefficients are not consistent
+with a real engineering economy at this scale. The exercise serves
+its purpose: it demonstrates that an out-of-range first-order
+optimum forces a boundary solution and that the numerical answer
+is dictated by the cost-coefficient ratio, which the engineer must
+calibrate against actual market and pump-curve data before
+reporting any number.
+
 \begin{exercise}
 Estimate the condition number $\kappa = L/\mu$ of the
 least-squares objective $f(\vect{x}) = \tfrac{1}{2} \norm{A
@@ -1383,6 +1681,20 @@ gradient descent needs to reach error $\epsilon = 10^{-6}$ from a
 unit-norm initial error.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The Hessian is $A^{\transpose} A$, whose eigenvalues are
+$\sigma_{i}^{2}$. With $\sigma_{\max} = 100$ and $\sigma_{\min} =
+0.01$, $L = 10^{4}$, $\mu = 10^{-4}$, and $\kappa = L/\mu =
+10^{8}$. The geometric-rate iteration count to reach error
+$\epsilon$ scales as $\kappa \log(1/\epsilon) = 10^{8} \cdot \log
+10^{6} \approx 1.4 \times 10^{9}$ iterations. The estimate is a
+warning: a problem this ill-conditioned is not solvable by plain
+gradient descent in any reasonable time, and the working response
+is preconditioning (rescaling the variables so the Hessian
+eigenvalues cluster), a second-order method (Newton or L-BFGS
+which absorbs the conditioning), or reformulation (regularisation
+that floors the small eigenvalues).
+
 \begin{exercise}
 Estimate the iteration count for SGD with step schedule $\eta_{k}
 = \eta_{0} / \sqrt{k+1}$ to reach expected suboptimality
@@ -1392,6 +1704,19 @@ Compare to the iteration count of full gradient descent under
 the same accuracy target.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The SGD convergence bound is $\E[f] - f^{*} \leq O(L D^{2}/\sqrt{K}
++ \sigma D / \sqrt{K})$ for diameter $D$ of the search domain.
+Solving for $10^{-3}$ at $D \sim 1$: $K \approx (L + \sigma)^{2} /
+\epsilon^{2} \approx 121 / 10^{-6} \approx 10^{8}$ iterations. Full
+gradient descent on the same objective has geometric rate, so it
+takes $\log(1/\epsilon)/\log(1/(1 - 1/\kappa))$ iterations; with
+the same $L$ and an unknown $\mu$, even pessimistic $\kappa = 100$
+gives $\approx 700$ iterations. The trade is per-iteration cost:
+each full-gradient step costs $N$ per-sample gradient
+computations, so on a dataset of $N > 10^{5}$ the SGD count
+becomes competitive in wall-clock time.
+
 \begin{exercise}
 Estimate the wall-clock cost of one full-gradient evaluation on
 a dataset of $N = 10^{6}$ samples, assuming each per-sample
@@ -1399,12 +1724,38 @@ gradient takes $10\,\si{\micro\second}$. Compare to the cost of a
 minibatch gradient with $b = 256$. Report the ratio.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Full gradient: $10^{6} \cdot 10\,\si{\micro\second} = 10\,\si{\second}$
+per evaluation. Minibatch ($b = 256$): $256 \cdot 10\,\si{\micro\second}
+\approx 2.6\,\si{\milli\second}$ per minibatch step, a factor
+$\approx 3900$ faster per iteration. For $K_{\text{SGD}}$ SGD
+iterations to make equivalent progress to one full-gradient step,
+SGD wins on wall-clock time whenever $K_{\text{SGD}} < 3900$. The
+SGD convergence theorem says one full-gradient step's progress is
+matched after $O(\kappa)$ to $O(\kappa^{2})$ SGD iterations
+depending on the regime; for any well-conditioned problem (small
+$\kappa$) and any large dataset (large $N$), SGD dominates on
+wall-clock time per unit of progress.
+
 \begin{exercise}
 Estimate the size of the branch-and-bound tree in the worst case
 for an integer program with $n = 30$ binary variables, assuming
 no pruning. Compare to the realistic case in which an LP-relaxation
 gap of $5\%$ allows pruning $99\%$ of the tree.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Worst case: complete binary tree of depth $30$, so $2^{30} \approx
+10^{9}$ leaves. At $10^{6}$ LP-relaxation solves per second
+(a representative figure for a modern solver on a small LP,
+current as of 2026), the unpruned search takes $\approx 10^{3}\,
+\si{\second} \approx 17\,\si{\minute}$. With $99\%$ pruning the
+effective tree has $\approx 10^{7}$ nodes, finishing in seconds. The
+estimate illustrates the practical message of Section 15.7: the
+runtime of a MIP solver lives or dies on the LP-relaxation
+quality, and the engineer's effort is well spent on formulation
+strength (tight constraints, cutting planes, valid inequalities)
+before paying for more compute.
 
 \subsection*{Simulation}\pathtag{mastery}
 
@@ -1416,6 +1767,19 @@ on a contour plot for step sizes $\eta \in \set{10^{-3}, 10^{-2},
 0.02}$. Identify the step size at which the iteration diverges.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The stability threshold is $\eta L < 2$, i.e.\ $\eta < 0.02$ here.
+At $\eta = 10^{-3}$ the iteration converges smoothly but slowly
+(rate $\approx 1 - 10^{-3}$ in the $x_{1}$ direction); at $\eta =
+10^{-2}$ the $x_{2}$ direction oscillates but contracts (rate $1 -
+1 = 0$ for $x_{1}$, rate $|1 - 1| = 0$ then dominant rate from
+$x_{2}$ at $|1 - 100 \cdot 10^{-2}| = 0$); at $\eta = 0.02$
+exactly, the iteration is marginally stable (rate $|1 - 100 \cdot
+0.02| = 1$ in $x_{2}$). At $\eta$ slightly above $0.02$ the
+iteration diverges. The reference implementation
+\repopath{volumes/02-form/ch15-optimisation/code/gradient_descent.py}
+sweeps these values and prints the convergence status.
+
 \begin{exercise}
 Implement Newton's method on $f(x, y) = (x - 1)^{2} + 100
 (y - x^{2})^{2}$ (Rosenbrock with $a = 1, b = 100$) from
@@ -1424,6 +1788,18 @@ gradient descent with the best step size you find in $\set{10^{-2},
 10^{-3}, 10^{-4}}$.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Newton's method, with a line search to guard against the Hessian
+becoming indefinite in the curved valley, converges in $\sim 20$
+to $\sim 50$ iterations from $(-1, 1)$. Vanilla gradient descent
+at the best step size in the given set ($\eta = 10^{-3}$ is
+typical, larger values diverge) takes $> 10^{4}$ iterations to
+reach $f < 10^{-4}$, sometimes failing to reach that threshold
+inside the iteration cap. The ratio is two to three orders of
+magnitude in iterations, paid back by a Hessian solve at each
+Newton step. The reference comparison is in
+\repopath{volumes/02-form/ch15-optimisation/code/rosenbrock_methods.py}.
+
 \begin{exercise}
 Implement vanilla SGD and SGD with momentum (decay $\beta = 0.9$)
 on a logistic regression objective for a binary classification
@@ -1431,6 +1807,18 @@ dataset of your choice (synthesised or real). Run for 20 epochs
 with minibatch size $b = 32$ and report training-loss curves for
 both methods.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Logistic loss per sample $\ell(\boldsymbol{\theta}; \vect{x}_{i},
+y_{i}) = \log(1 + \exp(-y_{i} \boldsymbol{\theta}^{\transpose}
+\vect{x}_{i}))$, gradient $-y_{i} \vect{x}_{i} \sigma(-y_{i}
+\boldsymbol{\theta}^{\transpose} \vect{x}_{i})$ where $\sigma$ is
+the logistic. With a well-scaled dataset, vanilla SGD at $\eta =
+0.1$ converges to a smooth loss curve; momentum at $\beta = 0.9$
+typically reaches the same loss in roughly half the epoch count
+and shows visibly smoother loss curves. Both should plateau within
+20 epochs on a small dataset; if either oscillates, reduce
+$\eta$ by a factor of $3$.
 
 \begin{exercise}
 Solve the LP $\min_{\vect{x}} -\vect{c}^{\transpose} \vect{x}$
@@ -1441,6 +1829,20 @@ a randomly generated $A \in \R^{50 \times 100}$, $\vect{b} \in
 optimal value, the active constraints, and the dual variables.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+With $50$ constraints and $100$ variables in a generic random
+instance, the optimal vertex has roughly $50$ tight constraints
+(the binding rows of $A \vect{x} \leq \vect{b}$ plus some active
+nonnegativity bounds). The solver returns the optimal $\vect{x}^{*}$,
+the objective value, and the dual vector $\boldsymbol{\lambda}^{*}
+\in \R^{50}_{\geq 0}$. Inspect $\boldsymbol{\lambda}^{*}$: the
+nonzero components index the binding constraints, by complementary
+slackness. The template
+\repopath{volumes/02-form/ch15-optimisation/code/lp_diet.py}
+adapts directly to the random version by replacing the data
+loading with \verb|numpy.random.default_rng(seed)| and generating
+$A, \vect{b}, \vect{c}$ with the right signs.
+
 \begin{exercise}
 Compare gradient descent, momentum, and Adam on the Rosenbrock
 function from $(x_{0}, y_{0}) = (-1, 1)$. For each method, sweep
@@ -1448,6 +1850,18 @@ the step size over five values and report the iteration count to
 reach $f < 10^{-4}$. Identify the most robust method on this
 nonconvex problem.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Adam is the most robust to step-size choice on this benchmark:
+working step sizes span roughly an order of magnitude with similar
+convergence counts. Momentum at $\beta = 0.9$ accelerates over
+plain gradient descent by roughly $4\times$ on the working step
+size. Plain gradient descent has a narrow working range: at $\eta$
+below $10^{-3}$ progress is glacial, above $\eta = 3 \times 10^{-3}$
+the curved valley triggers oscillation. The reference run in
+\repopath{volumes/02-form/ch15-optimisation/code/rosenbrock_methods.py}
+reports the iteration counts in
+\repopath{volumes/02-form/ch15-optimisation/data/rosenbrock_convergence.csv}.
 
 \subsection*{Design}\pathtag{standard}
 
@@ -1460,6 +1874,20 @@ $\gamma \in \set{0.1, 1, 10}$ and plot the resulting portfolios on
 a return-vs-risk diagram (the efficient frontier).
 \end{exercise}
 
+\paragraph{Discussion.}
+Generate $\boldsymbol{\mu}$ as ten plausible annual returns
+($1\%$ to $15\%$) and build $\Sigma$ as $A A^{\transpose} +
+\sigma^{2} I$ for a random $A$ so that $\Sigma$ is strictly
+positive definite. At $\gamma = 0.1$ the optimiser tolerates risk
+and concentrates the portfolio in the highest-return assets; at
+$\gamma = 10$ the optimiser is risk-averse and spreads weight over
+many low-correlation assets to minimise variance. The trajectory
+from $\gamma = 0.1$ down to $\gamma = 10$ traces the upper edge of
+the efficient frontier. Discuss: the frontier is convex; every
+point on it is Pareto-optimal in $(\text{risk}, \text{return})$;
+no point above the frontier is achievable by any
+$\boldsymbol{w}$ on the simplex.
+
 \begin{exercise}
 Design a production-planning LP for a hypothetical factory
 producing $n = 5$ products from $m = 3$ raw materials, with
@@ -1468,6 +1896,19 @@ Solve and identify the binding resource constraints. Compute the
 shadow prices and interpret them as the maximum the engineer
 should pay for one additional unit of each binding resource.
 \end{exercise}
+
+\paragraph{Discussion.}
+At a generic optimum, between zero and three of the resource
+constraints are binding (active) and the rest are slack. The
+shadow prices $\nu_{i}^{*}$ on binding constraints are the per-unit
+profit gained by relaxing the corresponding resource by one unit;
+the slack constraints have $\nu_{i}^{*} = 0$ by complementary
+slackness. The engineering interpretation: the engineer should pay
+up to $\nu_{i}^{*}$ for each additional unit of a binding
+resource. Above that price the additional unit is not worth its
+cost; below it the engineer is leaving money on the table. The
+shadow-price reading is the load-bearing reason LP duality is
+useful in practice, not just as theory.
 
 \begin{exercise}
 Design a regularised regression problem on a dataset of your
@@ -1478,6 +1919,21 @@ test error against $\lambda$. Identify the $\lambda$ that
 minimises the test error.
 \end{exercise}
 
+\paragraph{Discussion.}
+The training-error curve is monotonically nondecreasing in
+$\lambda$: more regularisation, worse fit on the training set. The
+test-error curve is U-shaped: too little regularisation overfits,
+too much underfits. The minimum test error sits at a
+problem-specific $\lambda^{*}$ that depends on signal-to-noise
+ratio and sample size. The standard sweep is logarithmic across
+five orders of magnitude (e.g.\ $\lambda \in \set{10^{-4}, 10^{-3},
+\ldots, 10^{0}}$); the working $\lambda^{*}$ is the minimum of the
+test-error curve, with cross-validation supplying the confidence
+interval. Discuss how the $\lambda^{*}$ would shift if the sample
+size doubled (smaller $\lambda^{*}$ as noise averages out) or if
+the noise variance doubled (larger $\lambda^{*}$ to control the
+overfit).
+
 \begin{exercise}
 Design a model-predictive-control QP for a one-dimensional
 double-integrator system $x_{k+1} = x_{k} + v_{k}$, $v_{k+1} =
@@ -1487,6 +1943,20 @@ Solve once for the planning sequence $\set{u_{k}}_{k=0}^{H-1}$
 and apply only the first input. Iterate to convergence.
 \end{exercise}
 
+\paragraph{Discussion.}
+The per-step QP has $10$ decision variables (the $u_{k}$) with box
+constraints. The objective penalises the state deviation from the
+target plus a small actuator-effort term. The receding-horizon
+trajectory from $(x_{0}, v_{0}) = (0, 0)$ accelerates under
+$u_{k} = 0.1$ for several steps, coasts, then decelerates to
+arrive near the target. Discuss the trade-offs: a longer horizon
+$H$ produces smoother actuation but more compute per step;
+softening the actuator bound (relaxing to a penalty) speeds the
+QP solve but degrades safety; in practice the engineer ships the
+shortest horizon that delivers acceptable tracking and uses warm-
+starts (initialising each QP from the previous one) for an
+order-of-magnitude speedup.
+
 \begin{exercise}
 Design a knapsack instance with $n = 20$ items of randomly
 generated weights and values, and a capacity of $50\%$ of the
@@ -1494,6 +1964,18 @@ total weight. Solve as an integer program (using a library
 solver) and as the LP relaxation. Report the optimality gap
 between the two solutions.
 \end{exercise}
+
+\paragraph{Discussion.}
+The LP relaxation of the 0/1 knapsack is solved by sorting items
+by value-to-weight ratio and filling the knapsack greedily, with a
+fractional item at the end. The LP optimum upper-bounds the
+integer optimum. Typical gaps on uniformly random instances are
+$1\%$ to $10\%$; tighter gaps arise when one item dominates the
+sort. Discuss: when the gap is small, the LP relaxation already
+gives a tight bound and branch-and-bound terminates fast; when
+the gap is large (e.g.\ the LP would pack many fractional items)
+the search is slow, and cutting planes or branching strategies
+that focus on the most fractional variables become decisive.
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{standard}
 
@@ -1505,6 +1987,19 @@ distinguish overfitting, label noise, and a learning-rate
 problem.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Most likely overfitting (the optimiser succeeded on the wrong
+objective, as in Section 15.8). Three diagnostics:
+(i) train on a $50\%$ subset and report test loss versus training-
+set size; if the gap shrinks with more data, the model is
+overfitting; (ii) compute the noise floor by relabelling a
+small fraction of the training set and retraining; if the
+training loss falls below the noise floor, the model is
+memorising; (iii) reduce model capacity (smaller architecture,
+stronger weight decay, dropout) and check whether the gap closes.
+If none of the three change the gap, suspect label noise or
+distribution shift between train and test.
+
 \begin{exercise}
 A colleague reports that gradient descent on a smooth convex
 objective has not converged after $10^{5}$ iterations and
@@ -1512,6 +2007,22 @@ proposes increasing the iteration budget. Identify three checks
 the engineer should run before paying for more iterations
 (condition number, step size, smoothness assumption).
 \end{exercise}
+
+\paragraph{Solution sketch.}
+(i) Estimate $\kappa = L/\mu$ by power iteration on the Hessian
+(or on $A^{\transpose} A$ for least squares). If $\kappa > 10^{6}$,
+no realistic iteration budget will reach the optimum with plain
+gradient descent; switch to L-BFGS or precondition. (ii) Check
+that the step size $\eta$ satisfies $\eta L < 2$; if not, the
+iteration is oscillating. Run a backtracking line search to verify
+the Armijo condition holds at each step. (iii) Verify the
+smoothness assumption by computing $\norm{\grad f(\vect{x}_{k+1})
+- \grad f(\vect{x}_{k})} / \norm{\vect{x}_{k+1} - \vect{x}_{k}}$
+along the iterates; if the empirical Lipschitz constant exceeds
+the assumed $L$, the convergence theorem does not apply and the
+step size is too aggressive. Any of the three findings reframes
+the problem; only after all three pass should the budget be
+increased.
 
 \begin{exercise}
 A library LP solver returns "infeasible" on a problem the
@@ -1521,6 +2032,22 @@ between equality and inequality constraints) and propose a
 diagnostic protocol.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+Diagnostic protocol: (i) Compute an irreducible infeasible subset
+(IIS), supported by most modern solvers as \verb|model.computeIIS()|;
+this returns a minimal set of constraints whose removal restores
+feasibility. Inspect each. (ii) If IIS reveals two contradictory
+constraints, look for a sign error in the data or a unit mismatch
+(metres vs centimetres, dollars vs cents). (iii) If IIS reveals
+one constraint that should be trivially satisfiable, inspect the
+right-hand side and the variable bounds for typos. Two structural
+causes: numerical ill-conditioning (the solver's working tolerance
+exceeds the constraint magnitude; rescale the problem so each
+constraint and each variable is $O(1)$); and a mismatch between
+equality and inequality blocks (an equality $A \vect{x} = \vect{b}$
+combined with an inequality $A \vect{x} \leq \vect{b} - \epsilon$
+is infeasible by construction).
+
 \begin{exercise}
 An MIP solver reports a $5\%$ optimality gap after the time
 budget expires. Identify what the gap means, what the engineer
@@ -1528,6 +2055,23 @@ can report on the basis of the partial solve, and the three
 options (extend time, tighten formulation, accept the bound) for
 proceeding.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+The $5\%$ gap is $(\text{incumbent} - \text{best LP bound}) /
+\text{incumbent}$. The incumbent is the best integer-feasible
+solution found; the best LP bound is a lower bound (for
+minimisation) certified by the unexplored subtree's LP
+relaxations. The engineer can report: "Best known feasible
+solution has value $V$; the true optimum lies in $[V \cdot 0.95,
+V]$." Three options: (i) extend the time budget if the gap is
+closing steadily (observable by logging the bound over time);
+(ii) tighten the formulation (add cutting planes, valid
+inequalities, stronger branching rules) which often produces an
+order-of-magnitude speedup; (iii) accept the $5\%$ bound as the
+engineering answer if the downstream decision is not sensitive to
+optimality at that level. The third option is often the correct
+engineering call: $5\%$ on a manufacturing-cost objective is below
+the noise in the input data.
 
 \subsection*{Failure analysis}\pathtag{core}
 
@@ -1539,6 +2083,26 @@ correctly and what the formulation got wrong, and propose a
 specific remediation referencing Section 15.8.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The optimiser correctly minimised the stated training-set MSE to
+zero; with $d + 1 = 12$ free coefficients and $N = 12$ data
+points, the interpolating polynomial exists and is unique. The
+formulation got wrong its choice of objective: training-set fit is
+a proxy for unseen-data fit, and the two diverge in the
+high-capacity regime. Remediation A: regularise. Replace the
+objective with $\mathcal{L}_{\text{train}} + \lambda
+\norm{\boldsymbol{\theta}}_{2}^{2}$ for $\lambda$ chosen by cross-
+validation; the ridge regression of Section 15.8 worked example
+demonstrates this. Remediation B: reduce capacity. A lower-degree
+polynomial (say $d = 3$ for $N = 12$) has fewer parameters than
+data points and cannot interpolate, hence cannot oscillate.
+Remediation C: change the basis. B-splines or low-order piecewise
+polynomials trade global oscillation for local smoothness. The
+common thread: the optimiser is doing its job; the engineer
+re-specifies the job. The diagnostic in Section 15.8 (state the
+objective in plain English, ask what literal optimum the
+formulation rewards) catches this failure before it ships.
+
 \begin{exercise}
 A trading strategy is optimised on $10$ years of historical
 backtest data and shows a $40\%$ annualised return. In live
@@ -1546,6 +2110,27 @@ deployment over 12 months, the strategy returns $-5\%$. Argue,
 in 200 to 300 words, the most likely failure mode, citing the
 relevant Section 15.8 principle.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Most likely failure: backtest overfit, the trading equivalent of
+the polynomial-regression failure of Section 15.8. The optimiser
+correctly maximised the stated backtest objective; the
+formulation got wrong its assumption that backtest performance
+generalises to live deployment. The proxy (historical returns
+under the strategy) was optimised aggressively, and the
+optimisation has moved the strategy to exploit any peculiarity of
+the historical sample, including peculiarities that will not
+recur. By Goodhart's law (\textcite{text:v2ch15-goodhart1975}), once
+backtest return became the target, it ceased to be a measure of
+strategy quality. Remediations: (i) walk-forward validation, in
+which the strategy is fit on one window and evaluated on the next,
+with the windows rolling forward; (ii) regularisation of the
+strategy's free parameters; (iii) penalisation of strategy
+complexity (number of parameters, number of rules); (iv) explicit
+out-of-sample reserve before any tuning is allowed. None of these
+guarantee live performance; all of them reduce the gap between
+backtest and live. The engineer's responsibility is to anticipate
+the gap before the optimiser exploits it.
 
 \begin{exercise}
 A neural network is trained for 1000 epochs and the training
@@ -1556,6 +2141,25 @@ working remedy, and identify what the optimiser optimised that
 the engineer did not want.
 \end{exercise}
 
+\paragraph{Solution sketch.}
+The optimiser minimised training-set loss across the full
+$1000$-epoch trajectory; the validation loss plateau and slight
+rise over the last $200$ epochs is the empirical signature of
+overfitting beyond the validation optimum. Early stopping is the
+working remedy because it freezes the parameters at the iterate
+that minimises the validation loss, which is the iterate that
+generalises best by the held-out estimate of generalisation error.
+The engineer wanted the model that minimises true unseen-data
+loss; the optimiser delivered the model that minimises training-set
+loss after $1000$ epochs. Reporting the training loss to seven
+decimal places signals false precision: the meaningful quantity
+is the validation loss at the early-stopping iterate, with its
+sampling uncertainty stated. Implementation: track the validation
+loss at each epoch, snapshot the model when the validation loss
+improves, restore the snapshot at the end. The procedure adds
+zero compute over the unguarded run and yields the
+generalisation-optimal model the engineer wanted.
+
 \begin{exercise}
 A factory's quality program targets a defect rate of $\leq 1\%$
 and ties bonuses to it. Defect rates fall to $0.3\%$ but customer
@@ -1563,6 +2167,30 @@ complaints about product reliability rise. Argue, in 200 to 300
 words, how Goodhart's law applies and propose a corrected
 incentive structure that rewards what the engineer actually wants.
 \end{exercise}
+
+\paragraph{Solution sketch.}
+Goodhart's law applies directly. The measured defect rate, once
+installed as a bonus target, ceased to be a measure of product
+reliability; the workforce optimises the measured rate, which can
+be moved (lower the inspection threshold, reclassify failures as
+maintenance items, push marginal units through without flagging)
+without improving the underlying reliability. The rise in customer
+complaints is the symptom: the engineering goal (reliable
+products) and the measured target (low in-factory defect rate)
+have diverged. Corrected incentive structure: target a composite
+of in-factory defect rate, in-warranty failure rate, and customer-
+reported failure rate over the first six months, with each
+component independently auditable and each tied to a portion of
+the bonus. The composite is harder to game because gaming one
+component (e.g.\ understating in-factory defects) leaves the
+others (in-warranty failures, customer reports) detecting the same
+underlying problem. A second-line defence: independent
+quality-assurance audits, conducted by inspectors whose
+compensation depends on detection rate rather than on the measured
+defect rate of the factory under audit. The general lesson of
+Section 15.8: an installed target is, by construction, a target,
+and any gap between target and intent will be exploited unless
+the engineer closes the gap by reformulation.
 
 \subsection*{Judgment}\pathtag{standard}
 
@@ -1575,6 +2203,29 @@ not (small enough for restarts, multimodal objective, downstream
 decisions sensitive to local minima).
 \end{exercise}
 
+\paragraph{Discussion.}
+Defensible when (i) the problem is too large for restarts to be
+affordable (deep-learning models with millions of parameters where
+a single training run costs hours of GPU time), (ii) empirical
+practice in the relevant subfield has established that local
+minima of the loss landscape are weakly distinguished by their
+generalisation behaviour (a substantial body of evidence supports
+this for modern neural networks, current as of 2026), or (iii) the
+downstream decision is insensitive to which local minimum is
+found because the engineering goal is "any reasonable model" not
+"the best possible model." Not defensible when (i) the problem is
+small enough that even ten random restarts is cheap (any problem
+with $n < 10^{4}$ parameters and a fast loss evaluation), (ii) the
+objective is known to be multimodal with structurally different
+basins (mixture-model fits, phylogenetic trees, combinatorial
+relaxations), or (iii) the downstream decision is sensitive to
+the final value of the optimum (safety-critical inference, dollar-
+denominated decisions in operations research, scientific
+parameter estimation). The general rule: report the local-versus-
+global guarantee that has actually been earned, with the number
+of restarts and the spread of converged losses, and let the
+downstream user judge whether the guarantee is sufficient.
+
 \begin{exercise}
 A vendor sells a "global optimisation" package that claims to
 find the global optimum of any nonconvex problem in polynomial
@@ -1583,6 +2234,25 @@ with NP-hardness for any plausible problem class, and propose
 the questions an engineer should ask before evaluating the
 package.
 \end{exercise}
+
+\paragraph{Discussion.}
+A polynomial-time global optimiser for any nonconvex problem would
+imply $P = NP$ (since the integer-programming feasibility problem
+is a special case, and Cook 1971 and Karp 1972 established NP-
+completeness for the family). The vendor either restricts the
+problem class without saying so, runs in polynomial time on every
+problem they tested but is exponential on at least some problem
+class, uses a heuristic that returns local optima with no global
+guarantee, or is misrepresenting the package. Questions to ask:
+(i) On what problem class does the polynomial-time guarantee
+hold? Get the formal statement. (ii) What is the runtime
+complexity in the worst case? In the average case under what
+distribution? (iii) What benchmarks does the package solve, and
+what is its performance against state-of-the-art solvers
+(Gurobi, Mosek, CPLEX) on those benchmarks? (iv) Will the vendor
+provide a no-cost trial on the engineer's actual problem
+instances? Any vendor who refuses (iv) has failed the
+engineering acceptance test.
 
 \begin{exercise}
 \textcite{text:boyd-vandenberghe2004} state that "almost any
@@ -1593,6 +2263,24 @@ and identify a class of linearly constrained problems (the
 integer ones) where the change of variables does not exist.
 \end{exercise}
 
+\paragraph{Discussion.}
+The claim is strong because it covers a large fraction of the
+practical optimisation problems an engineer encounters:
+geometric programming, $\log$-$\sum$-$\exp$ objectives, fractional
+linear objectives, generalised polynomial inequalities all admit
+convex change-of-variables that preserve linearity of constraints.
+The claim is not universal: any problem with an integer constraint
+$x_{i} \in \Z$ is linearly constrained (the integer requirement is
+a constraint set, not a nonconvex function in the objective), but
+no change of variables turns the integer lattice into a convex
+set; the lattice fails the segment test by construction. The
+integer-programming class is therefore a structurally separate
+category, and the working strategy is relaxation plus branch-and-
+bound rather than a convex reformulation. The same line of
+reasoning excludes mixed-integer programs, combinatorial problems
+defined on discrete graphs, and problems with cardinality
+constraints (at most $k$ variables nonzero).
+
 \begin{exercise}
 \textcite{text:strang2016}'s treatment of least squares
 emphasises the geometric content (orthogonal projection onto the
@@ -1600,6 +2288,26 @@ column space) over the optimisation content (gradient zero of a
 quadratic). Argue, in one paragraph, why both viewpoints are
 essential and how each illuminates the other.
 \end{exercise}
+
+\paragraph{Discussion.}
+The geometric viewpoint reveals what the optimum is: the
+orthogonal projection of $\vect{b}$ onto the column space of $A$,
+unique whenever $A$ has full column rank. The optimisation
+viewpoint reveals how to compute it: set $\grad f = A^{\transpose}
+(A \vect{x} - \vect{b}) = \vect{0}$, giving the normal equations
+$A^{\transpose} A \vect{x} = A^{\transpose} \vect{b}$. The
+geometry explains uniqueness (the column space is a linear
+subspace, projection onto it is single-valued); the optimisation
+explains computation (the normal equations are a linear system,
+solvable by Cholesky or QR in $O(n^{3})$). Each viewpoint
+illuminates the other: the geometric reading shows why the normal
+equations have a solution whenever $A^{\transpose} A$ is invertible
+(the column space is the same as the column space of
+$A^{\transpose} A$), and the optimisation reading shows why
+iterative methods (gradient descent on the residual-squared
+objective) converge to the projection. The two viewpoints meet at
+the singular value decomposition, where geometry, optimisation,
+and numerical stability converge in a single object.
 
 \begin{exercise}
 A practitioner uses Adam as the default optimiser for every
@@ -1609,4 +2317,28 @@ unknown smoothness) and when it is irresponsible (small smooth
 convex problems where L-BFGS is faster, or constrained problems
 where a constrained solver is required).
 \end{exercise}
+
+\paragraph{Discussion.}
+Reasonable when (i) the objective is a large nonconvex deep-
+learning loss with millions to billions of parameters, where the
+per-iteration cost of L-BFGS or Newton is prohibitive and the
+per-coordinate adaptation of Adam handles the wide range of
+gradient scales typical in deep networks; (ii) the smoothness
+constant $L$ is unknown and would require a tuning sweep to
+estimate, which Adam's adaptive step sizes amortise; or (iii)
+the engineering goal is "first working baseline" rather than
+"smallest possible loss." Irresponsible when (i) the problem is
+small and smooth and convex, where L-BFGS converges
+super-linearly with a few-line setup and Adam's $O(1/\sqrt{K})$
+rate is two orders of magnitude slower; (ii) the problem is
+constrained, where Adam has no constraint-handling mechanism and
+the engineer should use a projected-gradient method, an interior-
+point method, or a modelling layer such as CVXPY that calls a
+constrained solver; (iii) the problem has known structure
+(quadratic, conic, semidefinite, integer) that a specialised
+solver exploits with $10\times$ to $10^{6}\times$ speedups over a
+general first-order method. The professional rule: choose the
+method that fits the problem class, document the choice, and
+default to the method only after the class has been recognised.
+The principle in Section 15.5 is the working selection rule.
 
