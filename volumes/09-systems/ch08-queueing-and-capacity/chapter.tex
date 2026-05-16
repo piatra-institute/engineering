@@ -1,37 +1,261 @@
 \chapter{Queueing theory and capacity planning}
 \label{vol09:ch08}
 
-\epigraph{}{}
+\epigraph{The queue is where capacity meets demand and demand wins.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: balance, transport, scaling. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: balance, transport, scaling, coupling. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 8. Approx 100 pp.}
+Queueing theory analyses systems where work arrives at variable rates and is served by limited resources. The discipline emerged from Erlang's 1909 telephone-switch analysis, expanded through the operations-research and computer-systems eras, and now governs the design of call centres, web services, hospital emergency rooms, supply chains, semiconductor manufacturing, and transportation networks. The central engineering insight is that running a server "hot" (near full utilisation) produces queues that explode in length; the engineering balance is between capacity (which costs money) and queue length (which costs customer satisfaction or worse). This chapter develops arrivals and service, the standard queueing models ($M/M/1$, $M/M/c$, $M/G/1$), networks of queues, Little's law, capacity planning, worked examples across industries, and the failure modes of systems that exceed their stability boundary.
 
-\section{Arrivals and service}
-\TODO{Section prose.}
+\section{Arrivals and service}\pathtag{core}
 
-\section{$M/M/1$, $M/M/c$, $M/G/1$}
-\TODO{Section prose.}
+A queueing system has three elements: arrivals (work entering the system), servers (resources processing the work), and a queue discipline (the rule for selecting which work is processed next). Customers (or jobs, or packets, or patients) arrive at the system; if a server is free, the customer is served immediately; if all servers are busy, the customer waits in the queue.
 
-\section{Networks of queues}
-\TODO{Section prose.}
+Arrivals are described by an arrival process; the most common model is Poisson arrivals at rate $\lambda$ (arrivals per unit time). The Poisson process has memoryless inter-arrival times (exponential distribution with mean $1/\lambda$): the time to the next arrival is independent of how long since the last. The Poisson model fits well when arrivals come from many independent sources (call-centre customers, web-server requests, particle-detector events).
 
-\section{Little's law in practice}
-\TODO{Section prose.}
+Service is described by a service-time distribution. The most common model is exponential service times with rate $\mu$ (services per unit time per server): the mean service time is $1/\mu$, the variance is $1/\mu^2$, the coefficient of variation is $1$. Real service times vary widely; the general-distribution case ($M/G/1$) handles arbitrary service-time distributions.
 
-\section{Capacity planning and queueing-theoretic sizing}
-\TODO{Section prose.}
+The utilisation $\rho = \lambda/(c\mu)$, where $c$ is the number of servers, is the fraction of time servers are busy. For $\rho < 1$, the system is stable (queue lengths are bounded); for $\rho \geq 1$, the system is unstable (queue grows without bound). The closer $\rho$ approaches $1$, the more dramatic the queueing effects; the engineering rule of thumb is to keep $\rho$ below $0.85$ for most applications.
 
-\section{Worked examples: server farm, hospital ER, manufacturing line}
-\TODO{Section prose.}
+\begin{archetype}[balance: utilisation as the queueing trade-off]
+Utilisation balances capacity cost against waiting time. Low utilisation means servers sit idle, wasting capacity. High utilisation means customers wait, sometimes a long time. The waiting time grows nonlinearly with utilisation: at $\rho = 0.5$, the waiting time is roughly equal to the service time; at $\rho = 0.9$, the waiting time is $9$ times the service time; at $\rho = 0.99$, $99$ times. The choice of operating utilisation is the engineering question; the answer depends on the cost of capacity and the cost of waiting.
+\end{archetype}
 
-\section{Failure: queues that became unstable; the cost of running too hot}
-\TODO{Section prose.}
+\section{$M/M/1$, $M/M/c$, $M/G/1$}\pathtag{core}
 
+The Kendall notation $A/B/c$ describes queueing systems: $A$ is the arrival process, $B$ is the service-time distribution, $c$ is the number of servers. $M$ stands for "memoryless" (Poisson arrivals, exponential service); $G$ for "general" (arbitrary distribution); $D$ for "deterministic" (constant service time). A fourth field can specify the queue capacity or the population size when relevant.
 
-\section{Project}
-\TODO{model a real queueing system in software; verify on observed data}
+\textbf{$M/M/1$:} single server, Poisson arrivals, exponential service. Closed-form results: expected queue length $L_q = \rho^2/(1-\rho)$, expected waiting time $W_q = \rho/(\mu(1-\rho)) = \rho/(\lambda(1-\rho))$, expected time in system $W = 1/(\mu - \lambda)$. The waiting time grows as $1/(1-\rho)$; at $\rho = 0.9$ the waiting time is $10$ times the service time, at $\rho = 0.99$ it is $100$ times.
+
+\textbf{$M/M/c$:} $c$ servers, Poisson arrivals, exponential service. The Erlang-C formula gives the probability that an arriving customer waits: $P_W = (1 + (1-\rho) \sum_{k=0}^{c-1} (c\rho)^{c-k} k! / c!)^{-1}$, more conveniently computed numerically. The expected waiting time given waiting is $1/(c\mu - \lambda)$; the unconditional waiting time is $W_q = P_W / (c\mu - \lambda)$. Multiple servers smooth queue dynamics: $c = 5$ servers at $\rho = 0.8$ have shorter expected wait than $5$ separate $\rho = 0.8$ queues.
+
+\textbf{$M/G/1$:} single server, Poisson arrivals, general service time. The Pollaczek-Khintchine formula: $L_q = \rho^2 (1 + C_v^2)/2(1-\rho)$, where $C_v$ is the coefficient of variation of the service time. The expected waiting time depends on the variance of service time as well as the mean; higher variance produces longer queues at the same utilisation. Deterministic service ($C_v = 0$) gives the shortest waits; high-variance service (e.g., a phone call that occasionally takes much longer than average) produces longer waits.
+
+The standard tools handle more complex cases: $M/M/c/N$ for finite queue capacity (lost customers when full); $M/G/c$ for multiple servers with general service (approximate); $G/G/c$ for general arrivals and service (approximate); priority queues for differentiated service classes.
+
+\section{Networks of queues}\pathtag{standard}
+
+Real systems are usually networks of queues, not single queues. A web request hits a load balancer, then an application server, then a database server, then a storage system; each stage is a queue. A hospital patient goes through admission, triage, examination, lab tests, treatment, and discharge, each a queue. A factory product passes through cutting, machining, assembly, inspection, packaging.
+
+For networks of queues, two key results extend the single-queue case:
+
+\textbf{Burke's theorem:} the output of an $M/M/1$ queue at utilisation $\rho < 1$ is a Poisson process with the same rate as the input. The output of one queue can be used as the input to the next, and the simple results apply.
+
+\textbf{Jackson networks:} for networks of $M/M/c$ queues with probabilistic routing between them, the steady-state joint distribution decomposes as the product of marginal $M/M/c$ distributions. Each queue can be analysed individually with the rates that flow through it; the network properties (mean delays, queue lengths) come from the marginals.
+
+These results assume Poisson arrivals to each stage; the assumption is violated when service times are non-exponential or when feedback (cycling work back through earlier stages) is present. For these cases, simulation or more elaborate analytical models are used.
+
+The capacity bottleneck of a network is the queue with the highest utilisation. The throughput of the network cannot exceed the throughput of the bottleneck; adding capacity elsewhere does not help. The discipline of capacity planning is identifying the bottleneck and matching capacity across the network.
+
+\section{Little's law in practice}\pathtag{core}
+
+Little's law: in any stable queueing system, $L = \lambda W$, where $L$ is the average number of customers in the system, $\lambda$ is the average arrival rate, and $W$ is the average time a customer spends in the system. The law holds for any arrival process, any service-time distribution, any queue discipline; the only requirement is that the system is stable (the long-run averages exist).
+
+The law's generality is its power: knowing two of the three quantities determines the third. If a server processes $\lambda = 100$ requests per second and the average time-in-system is $W = 0.05\,\text{s}$, the average number in system is $L = 5$. If a hospital treats $\lambda = 50$ patients per day and the average length of stay is $W = 4$ days, the average bed occupancy is $L = 200$ patients.
+
+Little's law applies at any level of granularity: the whole system, a subsystem, a single resource. Combining application points: the bed occupancy across an entire hospital equals the sum of bed occupancies across departments; if the average length of stay differs by department, the total can be decomposed by department.
+
+In practice, Little's law is the cheapest sanity check on capacity calculations. The arrival rate is usually measured (logged transactions, recorded admissions); the time-in-system is often measured directly (response time, length of stay); the resulting $L$ predicts the queue size or required resource count. Predictions from Little's law that disagree with observation indicate either non-stationarity (the system is not in steady state), measurement issues, or a misunderstood scope.
+
+\begin{estimation}
+\textbf{Question.} Estimate the staffing required for a call centre receiving $200$ calls per hour with average call duration $5$ minutes, target waiting time under $30\,\text{s}$, and customers willing to abandon after $1$ minute.
+
+\textbf{Working.} Arrival rate $\lambda = 200/3600 \approx 0.056\,\text{calls/s}$. Service rate per agent $\mu = 1/300 \approx 0.0033\,\text{calls/s}$. Required servers to maintain stability: $c\mu > \lambda$ gives $c > 17$. For target waiting time, use Erlang-C: at $c = 18$, $\rho = 0.93$, waiting probability $\sim 0.8$ and average wait $\sim 30\,\text{s}$. At $c = 20$, $\rho = 0.83$, waiting probability $\sim 0.4$ and average wait $\sim 8\,\text{s}$. At $c = 22$, $\rho = 0.76$, waiting probability $\sim 0.2$. The choice depends on the cost of agents vs the cost of waiting; for a service-level target of $80\%$ answered within $30\,\text{s}$, $20$ agents is typical. The actual number must also account for breaks ($1.2$ to $1.5\times$ multiplier), call mix variation, and time-of-day patterns.
+\end{estimation}
+
+\section{Capacity planning and queueing-theoretic sizing}\pathtag{standard}
+
+Capacity planning is the engineering decision of how much capacity to deploy. The standard inputs: forecast demand (arrival rate over time), required service level (waiting time, abandonment rate), capacity unit cost, demand variability.
+
+The decision is informed by queueing analysis: given the demand and the service level, what capacity is needed. The output is a capacity number with appropriate safety margin; the engineering practice typically targets $\rho$ between $0.70$ and $0.85$ for shared resources with random demand, lower for safety-critical systems, higher for cost-sensitive systems with tolerant customers.
+
+Demand forecasting is its own discipline (time-series analysis, seasonal decomposition, scenario planning). The forecast is uncertain; capacity decisions hedge against forecast error. Common patterns: deterministic capacity (fixed capacity, lose business when demand exceeds it), elastic capacity (capacity adjusts to demand at a cost premium), reserved capacity (multiple tiers, high-cost reserved for critical demand).
+
+Cloud-computing capacity has changed the economics: capacity can be provisioned in minutes, scaled with demand, and paid for by the hour or even the second. The trade-off shifts from over-provisioning (paying for idle capacity) to autoscaling latency (the time to provision new capacity when demand spikes). Modern web services use a mix: baseline capacity for steady load, autoscaling for peaks, reserved instances for the highest-priority workloads.
+
+The queueing perspective informs autoscaling thresholds: scale up before $\rho$ exceeds the threshold (typically $0.7$ or $0.8$) to avoid the steep waiting-time growth; scale down only when $\rho$ falls well below to avoid thrashing. The thresholds are tuned through measurement and simulation.
+
+\section{Worked examples: server farm, hospital ER, manufacturing line}\pathtag{standard}
+
+Three domains, three queueing examples:
+
+\textbf{Server farm (web service).} Requests arrive at $\lambda = 10{,}000/\text{s}$ across multiple servers; each server processes requests with mean service time $50\,\text{ms}$. The required server count: at $\rho = 0.7$, each server handles $\rho/\text{service time} = 14$ requests/s; $10{,}000/14 \approx 714$ servers. Practical deployment includes margin: $850$ to $1000$ servers to handle peaks and provide latency margin. The autoscaling configuration scales between $700$ and $1500$ servers as load varies.
+
+\textbf{Hospital emergency room.} Patients arrive at $\lambda = 5/\text{hour}$ on average, with substantial variance (peaks at weekend evenings, troughs at midweek mornings). Length of stay is highly variable: $30\,\text{min}$ for minor issues, $4\,\text{hr}$ for complex cases, $24\,\text{hr+}$ for admissions. The standard analysis uses simulation rather than closed-form: the high variability (high $C_v$) and the limited server count (a few attending physicians, a few rooms) make closed-form $M/M/c$ inadequate. Simulation incorporates the variable service-time distributions, the priority discipline (triage), and the constraint of patient routing (admission vs discharge).
+
+\textbf{Manufacturing line.} Products pass through cutting, machining, assembly, inspection. Each station has a processing time and a buffer. The line's throughput is limited by the slowest station. Imbalance between stations produces waiting at fast stations and starvation at slow stations. Modern manufacturing analyses combine queueing theory with lean methods: identify the bottleneck, balance the line, reduce variability, control work-in-process. The Goldratt theory-of-constraints view is queueing-theoretic at heart.
+
+Each example illustrates the central queueing insight: capacity must match demand with appropriate margin, the margin depends on variability, and operating near full utilisation produces queues that grow non-linearly.
+
+\section{Failure: queues that became unstable; the cost of running too hot}\pathtag{core}
+
+Queueing systems fail in characteristic ways.
+
+\textbf{Instability:} the arrival rate exceeds the service rate; the queue grows without bound. The system either runs out of storage (lost customers, dropped packets, full hospitals) or experiences catastrophic delays (orders never filled, customers leave). Mitigation: monitor utilisation; admit-control when capacity is exceeded; reserve capacity for high-priority work; scale capacity up.
+
+\textbf{Variability-driven queue growth:} the average arrival rate matches average capacity, but the variability produces transient queue spikes that exceed buffer capacity or service-level targets. Mitigation: smooth the variability (arrival smoothing, batching), reduce service-time variance (standardised processes), add capacity margin.
+
+\textbf{Cascading failure across queue network:} a queue at one stage exceeds capacity; work backs up; upstream queues fill; the upstream system experiences increased latency; service-level violations propagate. Mitigation: backpressure (signals that slow the upstream when downstream is overloaded), explicit queue limits with rejection, load shedding.
+
+\textbf{Operating near $\rho = 1$:} the engineering "cost of running too hot" is that small variations produce large queue growth. A target of $\rho = 0.95$ saves $5\%$ capacity but produces $4\times$ the waiting time of $\rho = 0.80$; the trade-off is rarely favourable. Mitigation: design with explicit capacity margin; alert when margin is consumed; capacity-expansion procedures for sustained high utilisation.
+
+\textbf{Mismatched queue discipline:} the queue discipline (first-come-first-served, priority, shortest-job-first, processor-sharing) does not match operational priorities. Examples: a hospital's first-come-first-served wait time disadvantages critical patients; a web service's lack of priority class fails critical user traffic during overload. Mitigation: explicit priority classes, queue admission control, fair-share scheduling.
+
+\textbf{Hidden coupling:} two systems' queues appear independent but are coupled through a shared resource (database connection pool, network bandwidth, downstream service). The hidden coupling produces correlated congestion that the independent-queue models miss. Mitigation: explicit modelling of shared resources, separate quotas per system, observable resource utilisation.
+
+\textbf{Saturation feedback effects:} customers respond to queue length by changing their arrival behaviour: rejoining the queue (frustration), abandoning (lost revenue), retrying (amplifying the load). The retry storm is the classic web-service failure mode: a service slows; customers retry; retries amplify the load; the service falls over. Mitigation: exponential back-off on retry; circuit breakers; admission control.
+
+\textbf{Queueing-naive design:} a system is designed with capacity equal to average demand, neglecting variability. The system works at low load and fails at peak load. Mitigation: design for peak load with margin; understand the variability; size for the peak that matters.
+
+The 2003 Northeast blackout had a queueing flavour: transmission lines operating near full capacity could not absorb the loss of even small additions; the loss of one line shifted load to others which then tripped; the cascade brought down the grid. The 2012 Knight Capital trading-system incident had a software-deployment failure that caused mis-routed orders to flood the queue; the trading-engine queue overflowed and Knight lost $\$440\,\text{M}$ in $45$ minutes.
+
+\begin{principle}[The capacity-margin principle]
+A stable queueing system runs with explicit capacity margin for variability and growth. The margin is sized to the variability of the demand; high-variability systems need more margin than low-variability systems. The engineer who sizes capacity by average demand without margin builds a system that works in calm conditions and fails in normal conditions. Capacity is the visible cost; queueing failures are the hidden cost; the right trade-off depends on the application, but for most engineering systems, the right operating utilisation is $0.70$ to $0.85$, not $0.95$.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Queueing model of a real system]
+\textbf{Objective.} Model a real queueing system in software; collect data from the real system; verify the model on observed data; predict the effect of capacity changes.
+
+\textbf{Method.} Choose a real queueing system you can observe: a coffee shop's barista queue; an elevator system; an internet service's response time (use a load tester against a publicly-accessible service or your own); a manufacturing line at an internship; checkout lines at a grocery store. Measure arrival times and service times across a sample of operating periods. Fit the arrival distribution (Poisson? not Poisson?) and the service-time distribution. Build a simulation model in code (Python's SimPy, R's queuecomputer, or a custom implementation). Run the simulation; compare to observed waiting times. Predict the effect of adding or removing capacity.
+
+\textbf{Deliverables.} The measurement data (raw and processed); the fitted distributions with sources; the simulation model; comparison plots between model and observed; sensitivity analysis showing predicted waiting time as a function of capacity; a written analysis of the model's strengths and weaknesses.
+
+\textbf{Hazard.} If you observe a service-industry system, do so politely and unobtrusively; some service businesses do not want detailed timing data collected by customers.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+An $M/M/1$ queue has $\lambda = 4/\text{min}$, $\mu = 5/\text{min}$. Compute the utilisation, expected queue length, expected waiting time, and expected time in system.
+\end{exercise}
+
+\begin{exercise}
+An $M/M/c$ system has $\lambda = 30/\text{hr}$, $\mu = 8/\text{hr}$ per server. Find the minimum $c$ for stability and the probability of waiting at $c = 5$.
+\end{exercise}
+
+\begin{exercise}
+An $M/G/1$ queue has $\rho = 0.8$, service-time coefficient of variation $C_v = 2$. Compute the expected queue length and waiting time.
+\end{exercise}
+
+\begin{exercise}
+Apply Little's law: a server farm processes $\lambda = 5000\,\text{requests/s}$ with average response time $40\,\text{ms}$. Compute the average number of requests in progress.
+\end{exercise}
+
+\begin{exercise}
+A call centre has $\lambda = 300\,\text{calls/hr}$, average call duration $4\,\text{min}$. Compute the minimum staffing and the staffing for target waiting probability $0.2$ (use Erlang-C table or calculation).
+\end{exercise}
+
+\begin{exercise}
+A network of two $M/M/1$ queues in series has $\lambda = 10/\text{s}$, $\mu_1 = 15/\text{s}$ first stage, $\mu_2 = 12/\text{s}$ second stage. Compute the total expected time in the network.
+\end{exercise}
+
+\begin{exercise}
+A hospital ER has average occupancy $80$ patients, average length of stay $5\,\text{hr}$. Compute the arrival rate.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the $M/M/1$ steady-state distribution from the balance equations.
+\end{exercise}
+
+\begin{exercise}
+Derive Little's law informally from the area under the cumulative arrival and departure curves.
+\end{exercise}
+
+\begin{exercise}
+Derive the Pollaczek-Khintchine formula for the $M/G/1$ expected queue length.
+\end{exercise}
+
+\begin{exercise}
+Derive the Erlang-B (blocking) formula for an $M/M/c/c$ system (no queue, blocked when all servers busy).
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the impact on average waiting time of reducing service-time variability by half (e.g., standardising a manufacturing process).
+\end{exercise}
+
+\begin{exercise}
+Estimate the staffing increase needed in a hospital ER to handle a $20\%$ surge in patient arrivals while maintaining the current waiting-time target.
+\end{exercise}
+
+\begin{exercise}
+Estimate the throughput of a manufacturing line with three stations of average processing times $30\,\text{s}$, $45\,\text{s}$, $35\,\text{s}$, including the bottleneck-imposed limit.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate an $M/M/1$ queue at three utilisations ($0.5$, $0.8$, $0.95$); plot the empirical waiting-time distribution and compare to theory.
+\end{exercise}
+
+\begin{exercise}
+Simulate a call centre with time-varying arrival rate (low at night, high during business hours); compute the staffing schedule that meets a target service level.
+\end{exercise}
+
+\begin{exercise}
+Simulate a manufacturing line with three stations and buffers; identify the bottleneck and quantify the effect of doubling the buffer size.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a capacity plan for a web service: peak demand $5{,}000$ requests/s, off-peak $500$ requests/s, target $99\%$ within $200\,\text{ms}$. State the autoscaling configuration.
+\end{exercise}
+
+\begin{exercise}
+Design a queue-management policy for an emergency room: prioritisation, abandonment, fast track for low-acuity patients.
+\end{exercise}
+
+\begin{exercise}
+Design a load-shedding architecture for a network service that must remain stable under DDoS attack.
+\end{exercise}
+
+\begin{exercise}
+Design a capacity-planning model for an airport check-in system: variable demand by hour, staffing constraints, target waiting time.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's web service has $99\%$ response time below target but the $99.9\%$ tail is much worse. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's call centre runs at $95\%$ utilisation; abandonment rate has crept up over months. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between high baseline capacity and aggressive autoscaling for a web service. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's manufacturing line has uneven throughput; some stations are bottlenecks while others sit idle. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's hospital ER's waiting times have increased despite no apparent change in arrival rate. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's service experiences retry storms during overload events. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to size a redundant database with target availability $99.99\%$ and target queue length $< 10$. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's capacity-planning forecast was based on historical demand; actual demand is twice the forecast. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to operate a system at $90\%$ utilisation to maximise revenue per capacity unit. State the engineering concerns and the role of variability and tail behaviour, including the queueing-network coupling effects when station independence does not hold.
+\end{exercise}

@@ -1,37 +1,287 @@
 \chapter{Resilience and antifragility}
 \label{vol09:ch17}
 
-\epigraph{}{}
+\epigraph{Robustness is the ability to take the hit; resilience is the ability to recover; antifragility is the ability to come back stronger.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: stability, scaling. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: balance, scaling, failure. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 17. Approx 110 pp.}
+Resilience is the property of a system that maintains or recovers function in the face of disturbance. The discipline emerged from ecology (Holling 1973), spread through psychology and organisational science, and now informs engineering of infrastructure, computing systems, supply chains, and human-technical systems. Antifragility, a more recent concept (Taleb 2012), describes systems that gain function from disturbance rather than merely surviving it. This chapter develops resilience and its operational meaning, the distinction between robustness, resilience, and antifragility, recovery curves, the engineering ingredients (slack, redundancy, modularity, diversity), stress testing and chaos engineering, resilience metrics, and the failure mode of resilience theatre.
 
-\section{Resilience defined and operationalised}
-\TODO{Section prose.}
+\section{Resilience defined and operationalised}\pathtag{standard}
 
-\section{Robustness vs resilience vs antifragility}
-\TODO{Section prose.}
+Resilience is the capacity of a system to maintain its function despite disturbances and to recover from disruptions. The operational definition involves four phases:
 
-\section{Bouncing back: recovery curves and capacity}
-\TODO{Section prose.}
+\textbf{Resist:} the system absorbs the disturbance without significant degradation. Robustness is the engineering property that enables resistance.
 
-\section{Slack, redundancy, modularity, diversity}
-\TODO{Section prose.}
+\textbf{Absorb:} the system maintains essential function with degraded performance during the disturbance. Buffer capacity, graceful degradation, and prioritisation enable absorption.
 
-\section{Stress testing and chaos engineering}
-\TODO{Section prose.}
+\textbf{Recover:} the system restores function after the disturbance passes. Recovery capacity, repair resources, and effective procedures enable recovery.
 
-\section{Resilience metrics}
-\TODO{Section prose.}
+\textbf{Adapt:} the system changes its structure or operation to handle future similar disturbances better. Learning, design evolution, and operational change enable adaptation.
 
-\section{Failure: resilience theatre, brittle systems that called themselves robust}
-\TODO{Section prose.}
+A resilient system performs across all four phases; a brittle system fails at one or more. The engineering of resilience addresses each phase: design for robustness so the disturbance is absorbed; build buffers for the absorption phase; plan recovery so the time to restore is short; learn from disturbances so future events are handled better.
 
+Resilience is not the same as reliability. A reliable system rarely fails; a resilient system handles failure well. A reliable but brittle system performs excellently until catastrophic failure; a resilient system has more frequent small failures but no catastrophic ones. The engineering choice depends on the consequence of failure: where catastrophic failure is unacceptable, resilience is preferred over reliability.
 
-\section{Project}
-\TODO{chaos-test a small distributed system the reader runs; document recovery}
+\begin{archetype}[balance: resilience as the disturbance-response trade-off]
+A resilient system trades performance under nominal conditions for performance under disturbance. Buffers cost capacity; redundancy costs components; diversity costs efficiency. The engineering judgement is how much resilience is worth: a critical-infrastructure system buys more; a commodity service buys less. The disturbance frequency and severity determine the trade-off; the difficulty is anticipating the disturbances that have not yet occurred.
+\end{archetype}
+
+\section{Robustness vs resilience vs antifragility}\pathtag{standard}
+
+The three concepts are related but distinct:
+
+\textbf{Robustness:} the system performs well across a range of conditions, including off-nominal. A robust system can take the hit without degradation. The engineering: conservative design margins, robust control methods, components qualified across the operating envelope.
+
+\textbf{Resilience:} the system maintains or recovers function after disturbance. A resilient system bounces back. The engineering: redundancy, modularity, recovery procedures, learning from incidents.
+
+\textbf{Antifragility:} the system gains function from disturbance. An antifragile system bounces back stronger. The engineering: explicit learning mechanisms, controlled exposure to stressors, structural updates from experience.
+
+The three are not opposites; they layer. A fragile system breaks under disturbance. A robust-but-fragile system absorbs small disturbances but breaks under large ones. A resilient system absorbs and recovers. An antifragile system absorbs, recovers, and improves.
+
+Examples:
+
+A glass window is fragile: small stresses tolerated, larger ones catastrophic.
+
+A steel beam is robust: tolerates large stresses within its design envelope, then yields.
+
+The internet is resilient: routes around damaged segments, recovers from outages.
+
+The immune system is antifragile: each infection trains it to fight similar infections better.
+
+In engineering, robustness and resilience are well-established disciplines; antifragility is more aspiration than achievement. The challenge of antifragility: systems are designed for known conditions; designing for unknown conditions requires generic learning capabilities that current engineering practice often lacks.
+
+\section{Bouncing back: recovery curves and capacity}\pathtag{standard}
+
+A recovery curve plots the system's function over time, showing the response to a disturbance. The standard shape: initial performance at $100\%$, drop at the disturbance, recovery toward $100\%$ over time. Key parameters: depth of drop (how much function is lost), duration of drop (how long until significant recovery starts), recovery time (how long to full function), final level (whether full recovery is achieved).
+
+Resilience metrics derived from the recovery curve:
+
+\textbf{Robustness measure:} the depth of initial drop. Smaller drops indicate more robustness.
+
+\textbf{Rapidity measure:} the time to recover. Faster recovery indicates more resilience.
+
+\textbf{Resourcefulness measure:} the recovery resources (people, money, equipment) deployed. Less resource use for the same recovery indicates more efficient resilience.
+
+\textbf{Redundancy measure:} the slack absorbed during recovery. More slack absorbed without service degradation indicates more redundancy.
+
+The metrics are application-specific: a power grid measures resilience in MWh-not-served; a software service measures it in availability percentage; a transportation network measures it in vehicle-miles-not-served.
+
+Recovery capacity is the system's ability to recover, distinct from its ability to resist. A system can be both robust (resists disturbance) and have low recovery capacity (slow to restore service if the resistance is breached). The engineering of recovery capacity is distinct from the engineering of robustness: stockpiles, trained personnel, alternative procedures, communication, command-and-control.
+
+\section{Slack, redundancy, modularity, diversity}\pathtag{core}
+
+Four engineering properties contribute to resilience:
+
+\textbf{Slack:} extra capacity beyond nominal demand. The slack absorbs perturbations without service degradation. Power grids carry spinning reserve; data centres have capacity headroom; supply chains have safety stock. Slack costs money; the engineering judgement is how much.
+
+\textbf{Redundancy:} multiple components performing the same function. If one fails, others take over. The classical reliability gain (Chapter 7) is one aspect; the resilience gain is broader, including resilience to non-independent failures. Diverse redundancy (different designs of the redundant components) addresses common-cause failure.
+
+\textbf{Modularity:} subsystems with limited interaction. Failure in one module is contained; the cascade through the system is limited. The engineering: explicit boundaries, defined interfaces, isolation mechanisms, fail-safe behaviours at boundaries.
+
+\textbf{Diversity:} different implementations of the same function. N-version programming uses diverse software; multi-vendor sourcing uses diverse suppliers; multi-fuel power plants use diverse fuel. Diversity costs more than uniform implementation but protects against common-cause failures.
+
+The four properties combine. A resilient system has slack to absorb perturbations, redundancy to handle component failures, modularity to contain cascades, and diversity to resist common-cause failures. Each is an engineering decision with cost; the right combination depends on the application's disturbance environment and consequence-of-failure profile.
+
+\section{Stress testing and chaos engineering}\pathtag{standard}
+
+Stress testing exposes the system to disturbances larger than the nominal operating envelope to verify resilience. The discipline is established in financial systems (regulatory stress tests for banks), structural engineering (seismic tests), and increasingly in IT (chaos engineering).
+
+Chaos engineering, popularised by Netflix's Chaos Monkey (2010), deliberately injects failures into running systems to verify the system's recovery. The discipline includes: choose a failure mode (kill a server, sever a network link, throttle a database); inject the failure; observe the system's response; identify and fix any deficiencies. The practice has spread to many large-scale online services.
+
+The principles of chaos engineering:
+
+\textbf{Build a hypothesis around steady-state behaviour:} the engineer formulates what should remain steady (response time, error rate, availability) under the injected failure.
+
+\textbf{Vary real-world events:} the failures injected are similar to actual production failures, not idealised cases.
+
+\textbf{Run experiments in production:} the system is tested where it lives, not in a sanitised staging environment. The risk is real; the discipline includes blast-radius limits and abort conditions.
+
+\textbf{Automate experiments to run continuously:} the resilience is verified continuously, not in a one-time event.
+
+\textbf{Minimise blast radius:} the experiment is contained so that the worst-case impact is limited.
+
+Engineering chaos engineering: identify steady-state metrics; identify failure modes; build the failure-injection infrastructure; build the abort mechanism; design and run the experiments; respond to findings; institutionalise the practice.
+
+Stress testing in non-IT domains: structural seismic testing verifies a building's response to ground motion beyond design conditions; aircraft flight-test envelope exploration verifies handling outside the normal envelope; financial stress tests verify a bank's solvency under adverse economic scenarios. The discipline transfers; the methods vary.
+
+\section{Resilience metrics}\pathtag{standard}
+
+Quantifying resilience requires metrics that capture the system's response to disturbance. Standard approaches:
+
+\textbf{Recovery-curve metrics:} as discussed in the recovery section. Standard quantities include the depth and duration of the performance drop.
+
+\textbf{Time to recovery:} the elapsed time from disturbance to full function. Industry-specific definitions (MTTR for IT systems, restoration time for utilities).
+
+\textbf{Function preserved:} during the disturbance, the fraction of normal service maintained. For partial outages, the operationally relevant metric.
+
+\textbf{Cost of recovery:} the resources spent to restore function. Includes capital, labour, lost revenue, contractual penalties.
+
+\textbf{Lessons-learned indicators:} the system's response to repeat disturbances. Improving resilience over events indicates antifragility; static or worsening response indicates a learning failure.
+
+\textbf{Diversity indices:} measures of the system's diversity (component types, suppliers, operational modes). High diversity reduces common-mode vulnerability.
+
+The metrics are application-specific; no universal "resilience number" exists. The discipline is to choose the metrics that match the application's operational concerns, measure them consistently, track them over time, and use them to inform investment decisions.
+
+\begin{estimation}
+\textbf{Question.} Estimate the resilience-investment level that minimises total expected cost over an asset's life, given the cost of resilience investment and the expected disturbance impact.
+
+\textbf{Working.} Let $R$ be the resilience investment, $C(R)$ be the investment cost, and $L(R)$ be the expected loss given the disturbance distribution and the investment. The total expected cost is $C(R) + L(R)$. Differentiating: at the optimal investment, the marginal cost of additional resilience equals the marginal reduction in expected loss. The shape: $C(R)$ is typically increasing and convex (more resilience is more expensive at the margin); $L(R)$ is decreasing and convex (the first units of resilience prevent the worst losses). The optimum is at the intersection of marginal cost and marginal benefit. The numerical answer depends on the specifics; the principle is consistent across applications.
+\end{estimation}
+
+\section{Failure: resilience theatre, brittle systems that called themselves robust}\pathtag{core}
+
+Resilience efforts fail in characteristic ways.
+
+\textbf{Resilience theatre:} the system has the appearance of resilience without the substance. Disaster-recovery plans that have never been tested; backup systems that are not actually online; redundancy that shares a common failure mode. The theatre passes audit but does not deliver in actual disturbances.
+
+\textbf{Untested assumptions:} the resilience design assumes conditions that are not verified. The redundant power supply requires the second-source supplier to work; the failover database requires WAN connectivity; the manual fallback requires trained operators. The assumption breaks under the disturbance; the resilience fails.
+
+\textbf{Brittleness in disguise:} a system that performs well in nominal conditions and small perturbations is described as robust; large perturbations expose the brittleness. The 2003 Northeast blackout cascaded through a power grid whose operators believed in its robustness; the discrepancy between belief and reality is the failure mode.
+
+\textbf{Optimisation against resilience:} the system is optimised for efficiency; the slack and redundancy that resilience requires are removed. Just-in-time supply chains are vulnerable to disruption; tight scheduling is vulnerable to delays; minimal staffing is vulnerable to absences. The optimum-without-margin is the brittle system.
+
+\textbf{Misaligned redundancy:} the redundant components share a failure mode. The N-version software runs on the same operating system; the redundant power supplies share a circuit; the redundant suppliers source from the same factory. Diversity matters.
+
+\textbf{Recovery rehearsal failure:} the recovery plan exists but is not rehearsed; when the disturbance occurs, the team improvises and makes errors. The remedy is regular rehearsal; the cost of rehearsal is real but smaller than the cost of botched recovery.
+
+\textbf{Cognitive overconfidence:} the engineers believe the system is more resilient than it is. Confirmation bias selects evidence of resilience; failure to consider unfamiliar disturbance modes leaves blind spots. External red-team analysis can correct this.
+
+\textbf{Slow degradation masked by averages:} the system degrades slowly while average metrics remain acceptable; the worst-case performance has deteriorated significantly. The disturbance that hits the worst case (instead of the average) exposes the deterioration.
+
+\textbf{Operational changes that undermine design:} the engineered resilience is undermined by operational decisions: budget cuts, staffing reductions, deferred maintenance, configuration drift. The system that was once resilient is no longer; the operators may not be aware.
+
+\textbf{Resilience to the wrong things:} the system is resilient to the disturbances it was designed for; new disturbance modes find the system unprepared. Climate-related events, cyberattacks, supply-chain disruptions, pandemic effects are all examples where engineered resilience has often been inadequate.
+
+The 2011 Fukushima nuclear disaster illustrates resilience failures: the plant was designed to withstand a $5.7\,\text{m}$ tsunami; the actual tsunami was $14$ to $15\,\text{m}$; the assumed design basis had been challenged by historical data showing higher waves, but the response was inadequate. The plant's safety systems were robust to design-basis events; the actual event exceeded the design basis; the cascading failures (loss of power, loss of cooling, fuel damage, radiation release) followed predictable patterns of brittle systems exposed to beyond-design-basis events.
+
+\begin{principle}[The tested-resilience principle]
+Resilience that has not been tested under realistic conditions is hypothetical. The engineering discipline includes: identify the disturbances; test the resilience under those disturbances; quantify the response; address the deficiencies. Untested resilience designs are at best optimistic, at worst theatre. The cost of testing is real; the cost of finding out resilience is theatre during an actual disturbance is much higher. Test, learn, improve, repeat.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Chaos-test a small distributed system; document recovery]
+\textbf{Objective.} Build a small distributed system; chaos-test it by injecting failures; document the system's recovery; identify and address brittleness.
+
+\textbf{Method.} Choose a small distributed system: a multi-process workflow on your computer; a microservices demo; a small cluster of Raspberry Pis; a simulated distributed system. Establish steady-state behaviour: normal operation, key metrics. Inject failures: kill a process, sever communication, exhaust a resource, introduce latency. Observe the system's response. Document: detection time, recovery time, function-preserved during the failure, residual issues after recovery. Identify brittleness: failures that produced unexpected outcomes, recoveries that needed manual intervention, single points of failure exposed. Fix or document the brittleness.
+
+\textbf{Deliverables.} The distributed-system architecture; the chaos experiments and their results; the failures and recoveries; the brittleness identified and the remediation; a written analysis of what the experiments revealed about the system's resilience.
+
+\textbf{Hazard.} The chaos experiments should be on a system the team controls; do not chaos-test others' systems without permission.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A web service has $99.9\%$ availability target; an outage of $43\,\text{minutes}$ exceeds the monthly budget. Compute the corresponding allowed outages per year.
+\end{exercise}
+
+\begin{exercise}
+A power grid has $5\%$ spinning reserve; the largest generator at $1.5\%$ of system load trips. Compute the resulting frequency response (rough estimate; ignore inertia).
+\end{exercise}
+
+\begin{exercise}
+A recovery curve has $40\%$ function drop and full recovery after $4\,\text{hours}$. Compute the integrated function lost (the "performance deficit" area under the curve).
+\end{exercise}
+
+\begin{exercise}
+A redundant system has two identical components with $0.95$ availability each, but common-cause $\beta$-factor of $0.1$. Compute the system availability.
+\end{exercise}
+
+\begin{exercise}
+A supply chain has $14$-day standard lead time and $5$-day safety stock; an actual lead-time spike doubles to $28$ days. State whether the safety stock is sufficient.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the relationship between the recovery curve's area and the integrated function lost.
+\end{exercise}
+
+\begin{exercise}
+Derive the trade-off curve between resilience investment and expected loss, assuming exponential cost growth and linear loss reduction.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the cost of a major data-centre outage for a hyperscale cloud provider, including direct costs, customer compensation, and reputation impact.
+\end{exercise}
+
+\begin{exercise}
+Estimate the diversity gain (reduction in common-cause failure probability) from sourcing $25\%$ of components from a second supplier.
+\end{exercise}
+
+\begin{exercise}
+Estimate the slack required in a hospital ER to maintain acceptable service during a $50\%$ arrival surge.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a distributed system with chaos engineering: kill random processes; measure recovery metrics; identify brittleness.
+\end{exercise}
+
+\begin{exercise}
+Simulate a power-grid frequency response to a generator trip under various spinning-reserve levels; identify the threshold for system stability.
+\end{exercise}
+
+\begin{exercise}
+Simulate a supply chain with stochastic lead times and safety stock; compare resilience metrics under different stocking policies.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a chaos-engineering program for a mid-sized SaaS service: experiment selection, blast-radius limits, instrumentation, lessons-learned process.
+\end{exercise}
+
+\begin{exercise}
+Design a power-grid resilience strategy for a region prone to severe weather: redundancy, hardening, micro-grids, demand response.
+\end{exercise}
+
+\begin{exercise}
+Design a supply-chain resilience strategy for a manufacturer dependent on a critical component from a single overseas supplier.
+\end{exercise}
+
+\begin{exercise}
+Design a building-evacuation resilience analysis: capacity, multiple exits, signage, training, drills.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's disaster-recovery plan has never been tested. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's "robust" system has just experienced a catastrophic failure during a moderate disturbance. State the engineering response and the role of post-incident reviews.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between high-availability uptime and high-resilience design (slower steady-state, faster recovery). State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's optimisation initiative has removed slack from operations; recent disturbances have caused unexpected issues. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to certify a system as "resilient." State the engineering criteria and the role of stress testing.
+\end{exercise}
+
+\begin{exercise}
+A team's redundant system has shown that the redundancy shares a failure mode. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is considering a chaos-engineering programme for a production system; some stakeholders are concerned about service disruption. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's recovery plan has been overtaken by changes in operations; the plan no longer matches the system. State the engineering response.
+\end{exercise}

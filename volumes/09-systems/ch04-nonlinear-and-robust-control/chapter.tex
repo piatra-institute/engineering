@@ -1,40 +1,281 @@
 \chapter{Nonlinear and robust control}
 \label{vol09:ch04}
 
-\epigraph{}{}
+\epigraph{The model is always wrong; the question is by how much, and whether the controller can survive the difference.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, stability, uncertainty. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, stability, uncertainty. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 4. Approx 110 pp.}
+Linear control assumes the plant can be approximated as a linear time-invariant system within the operating envelope and that the linearisation's parameters are known. Many engineering plants violate one or both assumptions. Aircraft fly through nonlinear aerodynamic regimes; robots manipulate masses that change with payload; chemical reactors are sensitive to product composition over wide ranges; power systems shift operating points across the day. Nonlinear and robust control extend the linear toolkit to handle plants that are explicitly nonlinear, plants with significant uncertainty, and plants that operate across regimes that no single linearisation can represent. This chapter develops Lyapunov stability, the limits of linearisation, sliding-mode control, backstepping, $H_\infty$ control, robust control under uncertainty, saturation and anti-windup, and the characteristic failure modes of nonlinear and robust methods.
 
-\section{Lyapunov stability}
-\TODO{Section prose.}
+\section{Lyapunov stability}\pathtag{standard}
 
-\section{Linearisation and its limits}
-\TODO{Section prose.}
+Lyapunov's direct method analyses the stability of a nonlinear system without solving the equations of motion. The method: find a scalar function $V(\mathbf{x})$ (a Lyapunov function) that is positive definite and whose time derivative along the system trajectories is negative semi-definite. The system is then stable in the sense of Lyapunov; if $\dot{V}$ is negative definite, the system is asymptotically stable.
 
-\section{Sliding-mode control}
-\TODO{Section prose.}
+For linear systems, Lyapunov functions are quadratic: $V = \mathbf{x}^T P \mathbf{x}$ with $P$ positive definite. The condition $\dot{V} < 0$ becomes $A^T P + P A < 0$ (the Lyapunov equation), which has a solution for stable $A$.
 
-\section{Backstepping introduction}
-\TODO{Section prose.}
+For nonlinear systems, finding a Lyapunov function is an art. Standard candidates: energy-like functions (kinetic plus potential), quadratic forms in error variables, sum-of-squares constructions. Many physical systems admit a natural energy Lyapunov function. The robotics manipulator equation, for example, has a Lyapunov function based on kinetic energy plus position-error potential, used to prove stability of feedback laws like PD plus gravity compensation.
 
-\section{$H_\infty$ control}
-\TODO{Section prose.}
+LaSalle's invariance principle extends Lyapunov's direct method to cases where $\dot{V} = 0$ on a set (not just a point). The principle says that trajectories converge to the largest invariant subset of $\{x : \dot{V} = 0\}$. The principle is useful for proving asymptotic stability when $\dot{V}$ is only negative semi-definite.
 
-\section{Robust control under uncertainty}
-\TODO{Section prose.}
+The region of attraction (the set of initial conditions that converge to the equilibrium) is an important practical question. Local Lyapunov analysis gives a conservative estimate; computational methods (sum-of-squares, level-set methods) give tighter estimates. The region of attraction's size determines how large a perturbation the system can recover from.
 
-\section{Saturation and anti-windup}
-\TODO{Section prose.}
+\begin{archetype}[stability: Lyapunov as energy bookkeeping]
+A Lyapunov function is an energy-like accounting: a non-negative quantity that does not grow under the system's dynamics. If the engineer can construct such a quantity for the system in question, stability is proved without computing trajectories. The construction is non-trivial; the payoff is a stability proof that holds globally (or over the region where the function is positive definite), without the linearisation assumption.
+\end{archetype}
 
-\section{Failure: chattering in sliding mode, integrator wind-up, modelling-uncertainty surprises}
-\TODO{Section prose.}
+\section{Linearisation and its limits}\pathtag{standard}
 
+Linearisation around an operating point $\mathbf{x}_0$, $\mathbf{u}_0$ produces $\delta \dot{\mathbf{x}} = A_0 \delta \mathbf{x} + B_0 \delta \mathbf{u}$ where $A_0 = \partial f / \partial \mathbf{x}$ and $B_0 = \partial f / \partial \mathbf{u}$ evaluated at $(\mathbf{x}_0, \mathbf{u}_0)$. The linearisation is the best linear approximation in a neighbourhood of the operating point.
 
-\section{Project}
-\TODO{implement a sliding-mode controller; observe and mitigate chatter}
+The neighbourhood's size is a separate question. For small deviations, the linearisation is accurate; for large deviations, the nonlinear terms dominate. The boundary depends on the system: a pendulum's linearisation around hanging is accurate for $\pm 30^\circ$; around inverted, it is accurate only for very small angles. The boundary should be estimated, not assumed.
+
+For plants that operate across multiple operating points, gain scheduling is the standard practical approach: linearise at multiple operating points; design a controller at each; switch or interpolate between controllers as the operating point changes. The scheduling variable (an indicator of which linearisation is current) is a measured or estimated quantity (Mach number for aircraft, throttle position for engines, output for chemical processes).
+
+Gain scheduling is informal but widely used in industry. The formal alternative is linear parameter-varying (LPV) control, which treats the scheduling variable as a known parameter in the design and produces a single controller that adapts continuously. LPV is well-developed but is rarely necessary for engineering applications that gain scheduling can handle.
+
+Hard nonlinearities (saturation, dead band, friction, hysteresis) cannot be removed by linearisation. They are handled by methods explicitly tailored to them: describing-function analysis for friction, anti-windup for saturation, dither for dead band, friction compensation for stick-slip.
+
+\section{Sliding-mode control}\pathtag{mastery}
+
+Sliding-mode control is a nonlinear method that drives the system state onto a designed surface (the sliding surface) and then constrains motion to the surface. The control law is discontinuous: it switches sign across the sliding surface to ensure that trajectories approach the surface in finite time.
+
+The standard formulation: choose a sliding surface $s(\mathbf{x}) = 0$ designed so that the dynamics on the surface are stable and have desired performance. The control law $u = u_{eq} + u_{sw}$ has an equivalent control $u_{eq}$ that maintains $\dot{s} = 0$ on the surface and a switching control $u_{sw} = -K \text{sgn}(s)$ that drives the state to the surface.
+
+Sliding-mode control has theoretical strengths: it is robust to matched uncertainty (uncertainty entering through the same channel as the control); it achieves finite-time convergence to the surface; the closed-loop dynamics on the surface are reduced-order and easier to design. The method has been applied successfully to robotic manipulators, power electronics, automotive ABS, satellite attitude control, and many other applications.
+
+The method's practical weakness is chattering: the discontinuous switching produces high-frequency oscillation at the control output, exciting unmodelled dynamics, wearing actuators, and producing audible noise. Mitigation: boundary-layer methods (replace $\text{sgn}(s)$ with $\tanh(s/\epsilon)$ or a saturation function) smooth the switching at the cost of a small steady-state error; higher-order sliding modes (the control's derivative is discontinuous, the control itself is continuous) avoid chattering at the cost of complexity.
+
+\section{Backstepping introduction}\pathtag{mastery}
+
+Backstepping is a recursive design method for nonlinear systems in "strict feedback" form: the dynamics are written so that each state's derivative depends on the next state in a triangular structure. Backstepping designs a stabilising control by recursively constructing a Lyapunov function and a virtual control at each level.
+
+The construction: at the deepest level, design a control law that makes the state at that level approach the desired value, using a quadratic Lyapunov function. Move up one level: the desired value at the deeper level becomes the virtual control at the current level; design the current-level control to track the virtual control. Repeat until the actual control input is reached. The composite Lyapunov function decreases along trajectories; closed-loop stability follows.
+
+Backstepping is the workhorse of nonlinear control for the class of systems it covers (a substantial fraction of mechanical and electromechanical plants). The method produces explicit control laws with Lyapunov-function proofs of stability. Variants (adaptive backstepping, robust backstepping, integrator backstepping) handle uncertainty and constraints.
+
+Backstepping limitations: it requires the strict feedback structure (not all systems have it); the explicit control laws can be complex for high-order systems; the controller can be aggressive and excite unmodelled dynamics if not tuned carefully. For systems outside the strict feedback class, feedback linearisation or other methods are used.
+
+\section{$H_\infty$ control}\pathtag{mastery}
+
+$H_\infty$ control formulates robust control as a min-max problem: minimise the worst-case effect of a disturbance on a performance output. The "$H_\infty$ norm" of a transfer function is its peak magnitude over frequency; the $H_\infty$ design minimises this norm.
+
+The standard problem: find a controller $K$ that minimises $\|T_{w \to z}\|_\infty$, where $w$ is a disturbance, $z$ is a performance output, and the closed-loop transfer function from $w$ to $z$ is $T_{w \to z}$. The problem admits a state-space solution via two Riccati equations (the Doyle-Glover-Khargonekar-Francis 1989 paper is the canonical reference).
+
+$H_\infty$ design handles robust performance directly: by including uncertainty weights in $w$ and $z$, the design guarantees performance across a specified uncertainty set. The trade-off between performance and robustness is explicit in the weight selection.
+
+$\mu$-synthesis (structured singular value) extends $H_\infty$ to structured uncertainty: the uncertainty enters in a known structural way (parametric variation, multiplicative perturbation, additive perturbation), and the design takes the structure into account. $\mu$-synthesis is more conservative than necessary in general but is the right tool for many practical robust-control problems.
+
+$H_\infty$ and $\mu$-synthesis are mature methods with standard software implementations (MATLAB Robust Control Toolbox, Python's slycot/control packages). They are used in aerospace flight-control design, automotive active-suspension design, and high-performance servo design. The methods produce conservative but reliable controllers; for performance demands that exceed what robust control can provide, adaptive methods (next chapter) or scheduled designs are required.
+
+\section{Robust control under uncertainty}\pathtag{standard}
+
+Uncertainty in control design takes several forms. Parametric uncertainty: a plant parameter is known to lie in an interval. Unmodelled dynamics: the plant has dynamics not captured in the model, bounded in some norm. Operating-point variation: the linearisation point varies across operation. Disturbances: external signals act on the plant; bounded in magnitude or energy.
+
+Robust control design addresses these uncertainties explicitly: the design optimises performance subject to stability and performance across the uncertainty set. The set is parameterised (interval, ball in a norm, polytope) and the design produces a controller that meets specifications for every point in the set.
+
+The trade-off between performance (good behaviour on the nominal plant) and robustness (good behaviour across the uncertainty set) is fundamental. The Bode integral and related results impose constraints: the integrated sensitivity over frequency is fixed; performance at one frequency comes at the cost of performance at another. The waterbed effect describes this: pushing sensitivity down at one frequency pushes it up at another.
+
+Standard robustness analyses include: structured singular value $\mu$; multiplicative input uncertainty $|W_m(j\omega) T(j\omega)| < 1$ for all $\omega$ (where $W_m$ bounds the uncertainty); gain and phase margins extended to MIMO; Monte Carlo simulation across the uncertainty set; Lyapunov-based bounds. The methods are complementary; a comprehensive analysis uses several.
+
+The discipline of robust control includes characterising the uncertainty: what is uncertain, by how much, and how does it enter the plant. Characterisation is the engineering work; the synthesis algorithms then produce the controller. Uncharacterised uncertainty cannot be addressed; the engineer's first job is to know what is uncertain.
+
+\begin{estimation}
+\textbf{Question.} Estimate the uncertainty bounds needed for a robust controller of an aircraft elevator hinge moment, given that the aerodynamic coefficient varies by $\pm 25\%$ across the flight envelope, and the structural mode at $30\,\text{Hz}$ has $\pm 10\%$ frequency variation across temperature.
+
+\textbf{Working.} The aerodynamic uncertainty enters as a multiplicative gain uncertainty at low frequency: $W_m(s) \approx 0.25$ at low frequency, rolling off at high frequency. The structural mode uncertainty enters as a multiplicative perturbation around the mode frequency: $W_m(s)$ has a peak of $\sim 0.1$ at $30\,\text{Hz}$, low at frequencies far from the mode. Robust stability requires $|W_m(j\omega) T(j\omega)| < 1$ at all frequencies; the design optimisation manipulates the controller to satisfy the constraint. The closed-loop bandwidth must be well below $30\,\text{Hz}$ (to avoid the structural-mode peak) and the low-frequency gain must accommodate the $25\%$ uncertainty. A typical result is bandwidth $\sim 5$ to $10\,\text{Hz}$ with $40$ to $50\%$ stability margin at the mode frequency.
+\end{estimation}
+
+\section{Saturation and anti-windup}\pathtag{core}
+
+Actuator saturation is the most common nonlinearity in feedback systems. The controller commands an output that the actuator cannot provide; the actuator's actual output is bounded; the closed loop's behaviour departs from the linear prediction.
+
+The most familiar consequence is integrator windup: a controller with integral action continues to integrate the error during saturation; the integrator state grows; when the saturation releases, the controller produces excessive command in the wrong direction, causing overshoot or instability.
+
+Anti-windup methods modify the controller to prevent or correct windup. Standard methods:
+
+\textbf{Clamping:} the integrator is frozen when the output saturates. Simple to implement but does not address the integrator's existing state.
+
+\textbf{Back-calculation:} the integrator state is adjusted by an additional term proportional to the difference between the controller's commanded output and the actuator's actual output. The adjustment drives the integrator state back to a value consistent with the saturated output. The back-calculation gain is the design parameter; typical values $1/T_i$ to $4/T_i$.
+
+\textbf{Conditional integration:} the integration is conditional on the saturation status, with explicit logic. More general than clamping but requires more careful design.
+
+\textbf{Observer-based anti-windup:} an internal observer of the controller's state accounts for the difference between commanded and actual control; the controller acts on the observer-estimated state.
+
+The design discipline includes accounting for saturation from the start: the controller's bandwidth and gain are chosen so that the actuator only saturates under exceptional conditions; the anti-windup mechanism handles the exceptions. A controller that saturates frequently in normal operation is mis-designed regardless of how well the anti-windup performs.
+
+Other actuator nonlinearities (dead band, hysteresis, rate limits) require additional treatment: dead-band compensation, friction compensation, slew-rate limits in the controller that match the actuator.
+
+\section{Failure: chattering in sliding mode, integrator wind-up, modelling-uncertainty surprises}\pathtag{core}
+
+Nonlinear and robust control fail in characteristic ways.
+
+\textbf{Chattering:} sliding-mode control's discontinuous switching produces high-frequency oscillation that excites unmodelled dynamics, wears actuators, and produces audible or measurable noise. Mitigation: boundary-layer smoothing; higher-order sliding modes; passive filters between controller and actuator. The chattering question must be addressed at design; ignoring it produces a controller that works in simulation and fails on hardware.
+
+\textbf{Integrator wind-up:} as discussed above; the failure mode is well-known and well-mitigated, but every PID-like controller without anti-windup is vulnerable to it.
+
+\textbf{Modelling-uncertainty surprises:} the robust controller is designed against a specified uncertainty set; uncertainty outside the set produces unexpected behaviour. Two failure modes: (a) the uncertainty set was too small (the real uncertainty exceeds the design assumption), and (b) the uncertainty set was too large (the design is over-conservative and the performance is poor). Characterising the uncertainty correctly is part of the engineering work.
+
+\textbf{Lyapunov function selection:} the Lyapunov-based design uses a candidate Lyapunov function; an inappropriate choice may fail to prove stability or may give an unduly conservative region of attraction. The choice of Lyapunov function is iterative; engineering judgement and physical insight guide the iteration.
+
+\textbf{Backstepping aggressiveness:} the recursive construction can produce controllers with high gains in deeper levels, exciting unmodelled dynamics. Mitigation: include modelling-uncertainty terms in the backstepping design; tune the gains conservatively.
+
+\textbf{Gain scheduling discontinuity:} interpolating between controllers across operating points can produce discontinuous control if the schedule has gaps. Smooth interpolation, careful linearisation point selection, and verification across the schedule space mitigate this.
+
+\textbf{Numerical issues in $H_\infty$ synthesis:} the Riccati equations underlying $H_\infty$ design can be ill-conditioned; numerical solutions may produce unreliable controllers. Mitigation: scale the problem; use double-precision; verify the synthesis result by computing the resulting closed-loop response.
+
+\textbf{Verification across the uncertainty set:} robust control's guarantees are conditional on the uncertainty set; verifying the controller across the set requires sampling, formal analysis, or Lyapunov-based bounds. Verification omission is a frequent oversight.
+
+\textbf{Wrong nonlinearity model:} actuator saturation modelled as instantaneous but actually has dynamics; dead band modelled as symmetric but actually asymmetric; hysteresis modelled with a static model but actually has memory. The mismatch between modelled and actual nonlinearity propagates to design issues.
+
+The 2009 Air France Flight 447 (\cite{acc:bea-af447}) involved complex automation behaviour in the presence of pitot-tube sensor failures: the autopilot disengaged, the flight envelope protection downgraded, and the flight crew responded with manual inputs that triggered a stall the aircraft could not recover from. The control system's behaviour in the failure modes had been designed but was not fully understood by the operators; the failure was the boundary between the nominal control regime and the degraded modes.
+
+\begin{principle}[The uncertainty-acknowledgement principle]
+Nonlinear and robust control's first move is to acknowledge what is uncertain. The plant is not the model; the actuator is not unlimited; the disturbance is not bounded by what was seen in development. The controller's guarantees are conditional on the assumptions; the engineer's job is to make the assumptions explicit, to bound them with evidence, and to design within the bounds. A controller that performs poorly under acknowledged uncertainty is honestly bounded; a controller that performs poorly under unacknowledged uncertainty is the engineer's failure.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Sliding-mode controller with chatter mitigation]
+\textbf{Objective.} Implement a sliding-mode controller for a chosen plant (a pendulum, a motor, a thermal process). Observe chattering. Apply boundary-layer mitigation. Compare to a PID controller on the same plant. Quantify the trade-off between robustness and chatter.
+
+\textbf{Method.} Choose a simulation plant with significant model uncertainty (e.g., a mass-spring system with $\pm 30\%$ uncertain mass and friction). Design a sliding-mode controller using a Lyapunov-based construction. Implement in simulation with idealised switching; observe the chatter at the control output. Apply boundary-layer smoothing with three boundary-layer widths; observe the chatter-vs-error trade-off. Compare the resulting controllers (idealised SMC, three boundary layers, PID with the nominal plant) under perturbed plants. Plot the responses and the control efforts.
+
+\textbf{Deliverables.} The plant model with uncertainty range; the sliding-mode design with Lyapunov derivation; the simulation results across the controllers; a plot of chatter amplitude vs boundary-layer width; a written analysis of the robustness-vs-chatter trade-off.
+
+\textbf{Hazard.} Simulation only; physical implementation requires care because chatter can damage actuators.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+For $\dot{x} = -x^3$, propose a Lyapunov function and verify stability of the origin.
+\end{exercise}
+
+\begin{exercise}
+For the pendulum equation $\ddot{\theta} + (g/L)\sin\theta = 0$, derive a Lyapunov function based on total mechanical energy. Identify the equilibria and their stability.
+\end{exercise}
+
+\begin{exercise}
+A linearisation around $\theta_0 = 0$ of $\ddot{\theta} = -\sin\theta - 0.5\dot{\theta} + u$ is $\ddot{\theta} = -\theta - 0.5\dot{\theta} + u$. Compute the linearisation error at $\theta = 30^\circ$.
+\end{exercise}
+
+\begin{exercise}
+A first-order plant has nominal $\tau = 1\,\text{s}$ with $\pm 30\%$ uncertainty. A robust controller designs for the worst-case $\tau = 1.3\,\text{s}$. Compute the impact on closed-loop bandwidth.
+\end{exercise}
+
+\begin{exercise}
+A PID controller has $K_i = 0.5$. The actuator saturates at $\pm 5$. Compute the integrator state after $10\,\text{s}$ of saturation with persistent error of $1$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Lyapunov function for a linear time-invariant system using the Lyapunov equation $A^T P + P A = -Q$ for symmetric positive-definite $Q$.
+\end{exercise}
+
+\begin{exercise}
+Derive a sliding-mode control law for a second-order plant $\ddot{x} = u + d(t)$ with bounded disturbance $|d| < D$, using sliding surface $s = \dot{x} + \lambda x = 0$.
+\end{exercise}
+
+\begin{exercise}
+Derive the back-calculation anti-windup law for a PI controller with output saturation.
+\end{exercise}
+
+\begin{exercise}
+Derive the small-gain theorem for stability of an interconnected linear system with uncertainty.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the region of attraction for a Lyapunov function $V = (1/2)(\dot{\theta}^2 + 2(1 - \cos\theta))$ for the unforced pendulum.
+\end{exercise}
+
+\begin{exercise}
+Estimate the chatter frequency for an idealised sliding-mode controller with sampling rate $1\,\text{kHz}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the uncertainty bound at which a robust controller's bandwidth is reduced by half compared to the nominal design.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a sliding-mode controller with idealised switching, with $\tanh(s/\epsilon)$ smoothing for three values of $\epsilon$. Plot the chatter and the steady-state error.
+\end{exercise}
+
+\begin{exercise}
+Simulate gain scheduling for a pendulum's full angular range: linearise at $0^\circ$, $\pm 60^\circ$, $\pm 120^\circ$, $\pm 180^\circ$; design PID at each; switch among them. Test the transition.
+\end{exercise}
+
+\begin{exercise}
+Simulate an $H_\infty$ design for a plant with parametric uncertainty; report the worst-case performance across the uncertainty set.
+\end{exercise}
+
+\begin{exercise}
+Simulate a PI controller with and without back-calculation anti-windup under repeated saturation events.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a sliding-mode controller for a second-order plant with significant disturbance, including boundary-layer smoothing. Verify in simulation with three boundary-layer widths.
+\end{exercise}
+
+\begin{exercise}
+Design a robust controller for an aircraft elevator hinge moment with $\pm 25\%$ aerodynamic-coefficient uncertainty and $\pm 10\%$ structural-mode frequency uncertainty.
+\end{exercise}
+
+\begin{exercise}
+Design an anti-windup mechanism for a saturating actuator in a PID position controller, including the back-calculation gain selection.
+\end{exercise}
+
+\begin{exercise}
+Design a gain-scheduled controller for a chemical reactor whose dynamics change with product composition.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's sliding-mode controller produces audible chatter that damages a piezoelectric actuator. State the engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team's $H_\infty$ controller meets the specification on the nominal plant and performs poorly across the uncertainty set. State the engineering hypothesis.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a robust controller and a gain-scheduled controller for an aircraft pitch axis. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's anti-windup mechanism does not prevent overshoot after a long saturation event. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's robust controller is conservative; performance is below the customer's request. State the engineering options.
+\end{exercise}
+
+\begin{exercise}
+A team's Lyapunov-based design uses an ad-hoc candidate function and the stability proof is loose. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to certify a nonlinear flight-control law for aerospace use. State the engineering considerations including verification approach, certification standards, and the role of $H_\infty$ analysis.
+\end{exercise}
+
+\begin{exercise}
+A team's automation behaviour at the boundary between nominal and degraded modes (e.g., the AF447 sequence) is not well understood by operators. State the engineering response and the role of human-factor analysis.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to deliver a robust control design within a deadline shorter than typical $\mu$-synthesis iterations require. State the engineering options: simpler robustness analysis, $H_\infty$ alone, gain scheduling, or scope reduction, and the trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's nonlinear plant has actuator dynamics that were modelled as instantaneous; the resulting controller is unstable on hardware. State the engineering response and the role of including actuator dynamics in the nonlinear model.
+\end{exercise}

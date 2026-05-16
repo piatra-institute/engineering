@@ -1,37 +1,243 @@
 \chapter{Adaptive and learning control}
 \label{vol09:ch05}
 
-\epigraph{}{}
+\epigraph{Adaptation is the response to what you did not know in advance; certification is the response to what you must guarantee in spite of what you did not know.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, learning, failure. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, learning, failure. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 5. Approx 100 pp.}
+Adaptive and learning control extend the control engineer's toolkit to plants whose parameters change in operation, whose dynamics are not fully known at design time, or whose optimal control law is too complex to specify by hand. Adaptive control adjusts the controller parameters online based on observed performance; learning control acquires the controller's structure or parameters from data; reinforcement learning treats control as a sequential-decision problem with reward signals. Each family promises performance beyond what a fixed controller can achieve; each family also introduces failure modes that fixed control does not have. This chapter develops why adaptive control is needed, model-reference adaptive control, self-tuning regulators, reinforcement-learning control with an engineering-first emphasis, safe-RL methods (shields and constraint-respecting policies), the failure modes of adaptation and learning, and cross-references to Volume VII's machine-learning chapter.
 
-\section{Why adaptive}
-\TODO{Section prose.}
+\section{Why adaptive}\pathtag{standard}
 
-\section{Model-reference adaptive control}
-\TODO{Section prose.}
+A fixed controller is designed for a plant whose parameters are known at design time. Many real plants violate this assumption: the parameters drift with aging (component wear, electrolyte loss, friction increase), shift with operating conditions (payload mass, temperature, fluid composition), or are uncertain at commissioning (manufacturing variation across nominally identical units). A fixed controller designed for the nominal plant performs adequately for the nominal plant; performance degrades, possibly to instability, when the plant differs.
 
-\section{Self-tuning regulators}
-\TODO{Section prose.}
+Robust control (Chapter 4) addresses this with a single fixed controller designed to be acceptable across the uncertainty set. Adaptive control addresses it with a controller that adjusts itself: as the plant changes, the controller's parameters change to maintain performance. The trade-off: adaptive controllers achieve performance impossible for fixed controllers, but at the cost of more complex behaviour, harder verification, and additional failure modes.
 
-\section{Reinforcement-learning control engineering-first}
-\TODO{Section prose.}
+The standard cases for adaptive control:
 
-\section{Safe RL: shields, constraint-respecting policies}
-\TODO{Section prose.}
+\textbf{Slowly time-varying plants:} the plant parameters change slowly compared to the closed-loop bandwidth. Examples: temperature dependence of motor torque constants; aging of a heating element; gain drift in an analog amplifier; tank-level dynamics as fluid is consumed. Adaptive control re-identifies parameters on the time scale of variation.
 
-\section{Failure: adaptation in the wrong direction; learning-induced instability}
-\TODO{Section prose.}
+\textbf{Operating-condition variation:} the plant parameters change with operating conditions (payload, throughput, configuration). Examples: an industrial robot grasping different objects; a manufacturing line running different products; an HVAC system across seasons. Adaptive control adjusts to the current condition without manual reconfiguration.
 
-\section{Cross-references: Volume VII chapter 17 connection}
-\TODO{Section prose.}
+\textbf{Manufacturing variation:} nominally identical units differ in their dynamics. Examples: motor-to-motor variation; sensor calibration spreads; resonance frequencies; friction levels. Self-tuning at commissioning brings each unit to specification without per-unit hand-tuning.
 
+\textbf{Initially unknown plants:} the plant is new and its dynamics have not been characterised. Adaptive control learns the dynamics in operation and progressively tunes itself.
 
-\section{Project}
-\TODO{train a small RL controller on a simulated plant; analyse failure modes}
+Adaptive control is not magic: stability and performance guarantees require the adaptation rate to be slow relative to the closed-loop dynamics; the plant must be persistently excited for the adaptation to converge; the adaptation algorithm must be stable in its own right. Bad parameter estimates produce bad controllers; the closed-loop system with adapting controller can be unstable even when each individual controller would be stable.
+
+\section{Model-reference adaptive control}\pathtag{standard}
+
+Model-reference adaptive control (MRAC) drives the closed-loop response to follow a specified reference model. The reference model represents the desired closed-loop dynamics (a stable second-order system with desired bandwidth and damping, typically); the adaptation adjusts the controller so the actual response converges to the reference-model response.
+
+The standard MRAC architecture: a parameterised feedback law with adjustable parameters; a reference model whose output is the desired response; an error signal between actual and desired output; an adaptation law that updates the controller parameters based on the error. The adaptation law is typically gradient-based: $\dot{\boldsymbol{\theta}} = -\gamma \nabla_\theta J$, where $J$ is a function of the error.
+
+Stability of MRAC is proved by the MIT rule (gradient with respect to the controller parameters) under restrictive conditions, or by Lyapunov-based design under broader conditions. The Lyapunov approach (Narendra-Annaswamy 1989 and earlier) gives stability guarantees provided the plant is stably invertible (the relative degree of the plant is known and the high-frequency gain has known sign) and the reference model is appropriately chosen.
+
+MRAC is the workhorse of adaptive control: aerospace flight-control applications, motor-drive control, and process-industry control all use MRAC variants. The Lockheed L-1011 and Boeing 747 used MRAC-related schemes for autopilot turn coordination; modern fly-by-wire systems include MRAC components for handling-quality augmentation.
+
+The discipline of MRAC design includes: choosing the reference model (the desired closed-loop dynamics); selecting the adaptation gain (the rate at which the controller parameters update); persistent excitation of the plant (the input signal contains sufficient frequency content to identify the parameters); robustness modifications (sigma-modification, e-modification, projection) that prevent parameter drift in the presence of disturbances.
+
+\section{Self-tuning regulators}\pathtag{standard}
+
+Self-tuning regulators (STR) take a different approach: they explicitly identify the plant in real-time and design a controller from the identified parameters. The STR has two parts: an online identifier (recursive least squares, Kalman filter, or similar) that estimates the plant parameters; a controller design rule that maps plant parameters to controller parameters.
+
+The Astrom-Wittenmark STR (1973) is the classical reference: the identifier uses recursive least squares; the controller design uses pole placement or LQR with the identified parameters. The convergence properties of the closed-loop system have been studied extensively under various assumptions on the plant and the input excitation.
+
+STRs are widely used in process industries for adaptive PID tuning. The controller identifies the process dynamics from operating data, computes PID gains from the identification, and updates the gains as the process changes. Commercial implementations (DCS-based, PLC-based) handle paper machines, chemical reactors, distillation columns, and other complex processes.
+
+The discipline of STR design includes the same elements as MRAC plus: the identification method (its convergence and accuracy); the controller design rule's behaviour with poorly-identified parameters (graceful degradation versus catastrophic failure); the supervisor that monitors the identification quality and triggers re-identification or fallback to safe-mode operation.
+
+\begin{archetype}[control: adaptive control as continuous re-design]
+A fixed controller is a one-time design problem; an adaptive controller is a continuous re-design problem. The adaptation algorithm continuously executes the design loop: identify the current plant; design a controller for the current plant; deploy it; observe; identify again. The control engineer's discipline (model validation, robustness analysis, stability proofs) applies at every iteration, not just at design time. Adaptive control's promise is continuous performance; its risk is continuous re-failure modes.
+\end{archetype}
+
+\section{Reinforcement-learning control engineering-first}\pathtag{mastery}
+
+Reinforcement learning (RL) treats control as a sequential decision problem: at each time step, the controller observes the state, takes an action, receives a reward, and transitions to a new state. The objective is to maximise the expected sum of rewards (with a discount factor) over time. The controller's mapping from state to action is the policy; learning the optimal policy is the RL problem.
+
+The standard formulations: tabular methods (Q-learning, SARSA) for small discrete state spaces; function-approximation methods (deep Q-networks, policy gradient, actor-critic) for large or continuous state spaces. Modern RL achievements (AlphaGo, DOTA agents, ChatGPT's RLHF, robotic manipulation policies) come from deep RL with neural-network function approximation.
+
+For control engineering, RL is appealing for problems where the optimal control law is too complex to specify by hand: high-dimensional manipulation, multi-step planning, adversarial games, exploration in unknown environments. The engineer-first view of RL emphasises: when does an RL solution beat a classical controller; what are the RL controller's failure modes; how does RL fit into the certification, verification, and operational landscape that engineering systems require.
+
+The engineering critiques: RL controllers are not interpretable; they may not generalise outside the training distribution; their behaviour on edge cases is hard to verify; the training is data-hungry and slow; the optimal policy may not be stable in the control-theoretic sense; the reward function is itself a design choice that may produce unintended behaviour (reward hacking). These are real limitations, not arguments against RL but reasons to apply it carefully.
+
+Practical RL for engineering systems often takes the form of policy training in simulation followed by sim-to-real transfer. The simulation captures the plant well enough that the policy works on hardware; the gap between simulation and reality (the "reality gap") is closed by domain randomisation (training across many variations of the simulation), system identification (matching the simulation to the real plant), or fine-tuning on real-world data.
+
+\section{Safe RL: shields, constraint-respecting policies}\pathtag{mastery}
+
+Safe RL addresses the gap between RL's performance gains and engineering's safety requirements. The methods aim to deploy RL controllers that respect safety constraints throughout operation, not just on average.
+
+The standard safe-RL approaches:
+
+\textbf{Shields:} a shield is a verified controller that runs alongside the RL policy. When the RL policy proposes an unsafe action, the shield overrides with a safe action. The shield's behaviour is certified by classical methods; the RL policy provides performance improvements when the shield is not active. Shielded RL has been applied to autonomous driving and robotic manipulation.
+
+\textbf{Constrained Markov decision processes (CMDPs):} the RL formulation is extended to include constraints; the optimisation maximises expected reward subject to constraints on expected cost. Algorithms (CPO, PCPO) solve the constrained problem with policy-gradient methods.
+
+\textbf{Lyapunov-stable RL:} the policy is constrained to maintain a Lyapunov function decrease; stability is guaranteed by construction. Recent work combines Lyapunov constraints with neural-network policies, producing learned controllers with stability proofs.
+
+\textbf{Conservative policy iteration:} the policy is updated with small steps; the performance can be bounded relative to the previous policy. Algorithms (TRPO, PPO) implement this in deep RL with neural-network policies.
+
+\textbf{Risk-sensitive RL:} the objective is not expected reward but a risk-aware quantity (CVaR, mean-variance, exponential utility). The resulting policy is more cautious in high-risk situations.
+
+\textbf{Imitation learning:} the RL policy is initialised from demonstrations of expert behaviour, reducing the exploration burden and the risk of unsafe actions during learning.
+
+Safe RL is an active research area; the engineering deployment of RL in safety-critical systems remains conservative. The 2018 Uber autonomous vehicle pedestrian fatality and similar events suggest the field has not yet matured to safety-critical deployment without significant human oversight.
+
+\section{Failure: adaptation in the wrong direction; learning-induced instability}\pathtag{core}
+
+Adaptive and learning control fail in characteristic ways.
+
+\textbf{Adaptation in the wrong direction:} the adaptation algorithm updates parameters away from the optimal direction, degrading performance instead of improving it. Causes: poor identification due to insufficient excitation; persistent disturbance that biases the identifier; modelling assumptions violated (e.g., relative-degree assumption in MRAC). Mitigation: monitoring the adaptation's progress; halting adaptation if performance degrades; verifying the assumptions in real time.
+
+\textbf{Parameter drift:} in the absence of persistent excitation, the parameter estimates drift due to disturbances and measurement noise. The drifting parameters produce a closed-loop controller that may eventually destabilise. Mitigation: robustness modifications (sigma, e-modification, projection) that keep parameters bounded; persistent excitation; halting adaptation when the operating condition is too quiet.
+
+\textbf{Learning-induced instability:} the learning process makes choices that destabilise the closed-loop system. Examples: RL policy that learns aggressive control gains that work on average but produce instability on specific trajectories; learning that incorrectly identifies a plant pole and inverts it (creating an unstable controller). Mitigation: stability shields; constraint formulations; Lyapunov-stable learning.
+
+\textbf{Reward hacking:} the RL policy optimises the reward function in unintended ways. Examples: an agent learning to pause time to avoid penalties; a manipulation agent learning to throw objects rather than place them; a navigation agent learning to circle continuously to collect repeat-visit rewards. Mitigation: careful reward design; reward shaping; adversarial testing of the reward function.
+
+\textbf{Generalisation failure:} the learned controller works on training conditions and fails on operational conditions outside the training distribution. The sim-to-real gap is the canonical example; the policy works in simulation and fails on hardware. Mitigation: domain randomisation; system identification; explicit testing across the deployment envelope.
+
+\textbf{Catastrophic forgetting:} an online-learning controller forgets earlier-learned behaviour as it learns new conditions. The previously-good behaviour is lost. Mitigation: experience replay; elastic weight consolidation; explicit memory of past behaviours.
+
+\textbf{Verification burden:} adaptive and learning controllers' behaviour is harder to verify than fixed controllers'. The certification documentation, the verification testing, and the failure-mode analysis all become more complex. Mitigation: shielded architectures (the certifiable part separated from the adaptive part); offline learning followed by frozen deployment; thorough testing; conservative deployment scope.
+
+\textbf{Operator confusion:} adaptive controllers can produce behaviour that surprises operators; the surprise can prompt unsafe operator responses. Mitigation: operator training; behaviour predictability requirements; observable adaptation status.
+
+\section{Cross-references: Volume VII chapter 17 connection}\pathtag{standard}
+
+Volume VII Chapter 17 (machine learning in engineering) addresses learning methods broadly: supervised learning, unsupervised learning, deep learning, classical learning algorithms. The present chapter is the control-engineering specialisation of those methods: how learning is applied to closed-loop control, what fits into the control engineer's discipline, what does not.
+
+The connection points: the same neural-network architectures used for image recognition are used as RL policies; the same stochastic-gradient methods optimise both; the same overfitting concerns apply. The differences: control adds a closed-loop stability requirement that supervised learning does not have; control adds real-time computation constraints; control's data is sequentially correlated, not i.i.d.
+
+The integration of ML-trained components into closed-loop systems is a frontier of current engineering. Aerospace and automotive industries have ML-trained perception, planning, and control components in development and (increasingly) in deployment; the certification frameworks for these (FAA, EASA aerospace; ISO 21448 SOTIF for automotive) are still maturing. The engineer who works in this area must understand both the ML literature and the control-engineering literature; neither alone is sufficient.
+
+\begin{principle}[The adaptation-bounded-by-certification principle]
+Adaptive and learning control's promise is performance beyond what fixed control can achieve; the engineering constraint is certification, verification, and operational safety. The discipline is to bound the adaptation's freedom by what can be certified: shielded architectures, frozen deployment after offline training, verified Lyapunov constraints, demonstrated worst-case performance. An adaptive controller that cannot be bounded is not engineering; it is a research artefact. The certification burden is not the price of adaptation; it is the condition that makes adaptation deployable.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Train an RL controller; analyse failure modes]
+\textbf{Objective.} Train a reinforcement-learning controller on a simulated control problem; observe its behaviour; identify failure modes including out-of-distribution generalisation and reward-function gaming.
+
+\textbf{Method.} Choose a simulated control problem: a cart-pole; an inverted pendulum; a small autonomous-driving simulator; a robotic-arm reaching task. Implement an RL algorithm (DQN, PPO, SAC) using a standard framework (Stable Baselines3, RLlib, TF-Agents). Train the policy and evaluate on the training environment. Then perturb the environment (different parameters, novel obstacles, larger disturbances) and observe the policy's performance. Modify the reward function and re-train; observe whether the new policy exploits the modification. Compare to a classical controller (LQR, PID) on the same problem.
+
+\textbf{Deliverables.} The simulation environment with description; the trained RL policy; performance metrics on the training and perturbed environments; comparison to a classical controller; a written analysis of the failure modes observed, with discussion of what shielding, constrained RL, or other safe-RL methods would address.
+
+\textbf{Hazard.} Simulation only; the RL policy's behaviour on hardware should not be tested without significant safety infrastructure.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A model-reference adaptive controller's adaptation gain is $\gamma = 0.1$ and the parameter error is initially $1$. Compute the time constant of parameter convergence assuming first-order adaptation.
+\end{exercise}
+
+\begin{exercise}
+A self-tuning regulator uses recursive least squares with forgetting factor $\lambda = 0.95$. Compute the effective memory length in samples.
+\end{exercise}
+
+\begin{exercise}
+A Q-learning agent has state space size $100$, action space size $5$. Compute the size of the Q-table and the number of updates needed to converge ($\sim 10^5$ per cell).
+\end{exercise}
+
+\begin{exercise}
+A deep RL agent uses a neural network with $10{,}000$ parameters and trains on a replay buffer of $10^6$ transitions. Estimate the training time on a CPU at $10^4$ updates per second.
+\end{exercise}
+
+\begin{exercise}
+A safety shield checks the proposed RL action at each time step. The shield evaluation costs $0.1\,\text{ms}$ per check. Compute the maximum control rate achievable with the shield in place.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the MIT rule update law for MRAC, starting from gradient descent on the squared error.
+\end{exercise}
+
+\begin{exercise}
+Derive the Lyapunov-based MRAC update law for a first-order plant with adjustable feedback gain.
+\end{exercise}
+
+\begin{exercise}
+Derive the recursive-least-squares update equations for online parameter estimation in a linear-in-parameters model.
+\end{exercise}
+
+\begin{exercise}
+Derive the Bellman equation for the value function in a Markov decision process with discounted infinite-horizon reward.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the adaptation rate required for an aircraft handling-quality augmentation system to track aerodynamic-coefficient variations over the flight envelope.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of training episodes for a deep RL controller of a cart-pole problem to reach reasonable performance.
+\end{exercise}
+
+\begin{exercise}
+Estimate the parameter-drift magnitude in an unmodified MRAC system after $24$ hours of operation with persistent low-amplitude disturbance.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate MRAC for a first-order plant with slowly time-varying gain; observe parameter convergence and tracking error.
+\end{exercise}
+
+\begin{exercise}
+Simulate Q-learning on a small grid-world MDP; report the convergence to the optimal policy.
+\end{exercise}
+
+\begin{exercise}
+Simulate a deep RL agent on a cart-pole task; report the training curve and the policy's robustness to perturbations.
+\end{exercise}
+
+\begin{exercise}
+Simulate a self-tuning regulator on a plant with abrupt parameter change; observe the re-tuning behaviour.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design an MRAC controller for a manipulator joint with payload-dependent inertia; state the reference model and the adaptation law.
+\end{exercise}
+
+\begin{exercise}
+Design a self-tuning controller for an industrial heat exchanger with seasonal fouling. State the identification, the controller design, and the safety supervisor.
+\end{exercise}
+
+\begin{exercise}
+Design a safe-RL architecture for an autonomous-vehicle steering controller. State the shielding strategy and the reward function.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's MRAC controller works in simulation and diverges on hardware. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between adaptive control and robust control for a plant with $\pm 30\%$ uncertainty. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's RL controller works in simulation and fails on hardware. State the engineering response and the role of domain randomisation.
+\end{exercise}
+
+\begin{exercise}
+A team's adaptive controller has been operating for months; the parameter estimates have drifted to values that produce poor performance. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to deploy an RL controller in a safety-relevant application without classical-control fallback. State the engineering concerns and the recommended posture.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between offline RL (training on logged data, frozen deployment) and online RL (continuous learning in deployment) for an industrial process. State the engineering trade-offs.
+\end{exercise}

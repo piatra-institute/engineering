@@ -1,37 +1,271 @@
 \chapter{Optimisation in operation}
 \label{vol09:ch09}
 
-\epigraph{}{}
+\epigraph{The optimum is the best answer to the question you wrote down; the engineering question is whether you wrote down the right question.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: optimisation, scaling. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: optimisation, scaling, balance. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 9. Approx 100 pp.}
+Operations research is the systematic application of mathematical optimisation to engineering decisions: schedule shifts, route deliveries, plan production, design networks, allocate inventory, mix products, locate facilities. The discipline emerged from World War II logistics (the original "operational research" of British and American forces) and matured through linear programming (Dantzig 1947), integer programming, network optimisation, dynamic programming, and stochastic and robust extensions. Modern operational systems compute the daily airline schedule, the package routing for a logistics company, the production plan for a refinery, the bid stack for an electricity market. This chapter develops the engineer's working understanding of linear, integer, and mixed-integer programming; network flow problems; scheduling; inventory control; stochastic and robust optimisation; and the failure mode of optimised systems with no slack.
 
-\section{LP/IP/MILP in operations}
-\TODO{Section prose.}
+\section{LP/IP/MILP in operations}\pathtag{core}
 
-\section{Network flow problems}
-\TODO{Section prose.}
+Linear programming (LP) optimises a linear objective subject to linear constraints with continuous variables: $\min \mathbf{c}^T \mathbf{x}$ subject to $A\mathbf{x} \leq \mathbf{b}$, $\mathbf{x} \geq 0$. The standard problem class has polynomial-time algorithms (simplex method, interior-point methods) and scales to millions of variables and constraints on modern hardware. LP is the workhorse of operations research; many engineering problems reduce to or include LP sub-problems.
 
-\section{Scheduling}
-\TODO{Section prose.}
+Standard LP applications: product mix (maximise profit subject to capacity, demand, and material constraints), blending (mix raw materials to meet specifications at minimum cost), transportation (ship goods from sources to destinations at minimum cost), production planning (allocate production across periods to meet demand at minimum cost). Each application has standard formulations; the engineering work is mapping the operational problem to the standard formulation.
 
-\section{Inventory control}
-\TODO{Section prose.}
+Integer programming (IP) requires variables to take integer values: $\mathbf{x} \in \mathbb{Z}_+^n$. The integer-constrained problem is NP-hard in general but admits efficient algorithms (branch-and-bound, cutting planes) for many practical instances. Integer variables represent binary decisions (yes/no), counts (number of items), or categorical choices (assignment of items to bins).
 
-\section{Stochastic programming}
-\TODO{Section prose.}
+Mixed-integer linear programming (MILP) combines continuous and integer variables: some decisions are made discretely (binary choice), others continuously (quantities). MILP is the most flexible class for engineering applications: facility location (binary for opening a facility, continuous for flow), unit commitment (binary for turning generators on/off, continuous for output), routing with vehicle assignment.
 
-\section{Robust optimisation}
-\TODO{Section prose.}
+Modern MILP solvers (CPLEX, Gurobi, FICO Xpress, open-source HiGHS) handle problems with hundreds of thousands of integer variables and millions of constraints. The state of the art has improved by orders of magnitude since 1990; problems that were intractable then are routine now. The practical limitation is formulation: a good MILP formulation makes the difference between a $5\,\text{s}$ solve and a $5\,\text{day}$ solve.
 
-\section{Failure: optimised systems with no slack and the cost when reality bit}
-\TODO{Section prose.}
+\begin{archetype}[optimisation: mathematical programming as engineering decision]
+A mathematical programme is the formal expression of an engineering decision problem: variables represent choices, constraints represent feasibility, the objective represents preference. The optimiser finds the best feasible choice. The engineering art is in the formulation: identifying the decision variables, expressing the constraints, choosing the objective. A well-formulated problem usually solves quickly with standard methods; a poorly-formulated problem may not solve at all. The engineer who is fluent in mathematical programming has a tool that addresses many operational problems where intuition alone is inadequate.
+\end{archetype}
 
+\section{Network flow problems}\pathtag{standard}
 
-\section{Project}
-\TODO{solve a real scheduling problem (shifts, deliveries, batch jobs) with appropriate solver}
+Network flow problems are LPs with special structure: variables represent flows on the edges of a graph, constraints represent flow conservation at nodes and capacity limits on edges. Special algorithms (network simplex, push-relabel) exploit the structure for much faster solution than general LP.
+
+Standard network flow problems:
+
+\textbf{Shortest path:} from a source node to a destination node, find the path of minimum cost. Dijkstra's algorithm (1959) gives polynomial-time solution for non-negative edge costs; Bellman-Ford handles negative-cost edges. Applications: routing on networks, navigation, project scheduling.
+
+\textbf{Maximum flow:} find the maximum total flow from a source to a sink subject to edge capacities. Ford-Fulkerson and its refinements (Edmonds-Karp, Dinic) solve in polynomial time. Applications: network capacity, bipartite matching, image segmentation.
+
+\textbf{Minimum-cost flow:} find the flow pattern from sources to sinks that minimises total cost, subject to capacity constraints. Generalises shortest path (single source, single sink, no capacity beyond flow demand) and maximum flow (single source, single sink, capacity-bounded). Applications: transportation, supply chain, telecommunications.
+
+\textbf{Multi-commodity flow:} multiple commodities share capacity; each commodity has its own source-sink demand. Significantly harder than single-commodity (it is LP-equivalent for some formulations); applications include packet routing in shared networks, transportation of multiple products in a shared fleet.
+
+Network flow algorithms are among the most elegant and useful results in operations research. The clean structure, the polynomial solution times, and the broad applicability make them the right tool for many transportation, logistics, and routing problems.
+
+\section{Scheduling}\pathtag{standard}
+
+Scheduling problems assign tasks to resources over time. The problem class is enormous; specific problems include:
+
+\textbf{Job-shop scheduling:} $n$ jobs each with a sequence of operations on different machines; minimise makespan (total time to complete all jobs). NP-hard in general; modern MILP and constraint-programming solvers handle moderate instances.
+
+\textbf{Machine scheduling:} $n$ jobs each requiring a single machine; minimise some objective (makespan, sum of completion times, tardiness). Various special cases have polynomial-time algorithms (single machine, identical jobs).
+
+\textbf{Shift scheduling:} workers with preferences and constraints, demand by hour or shift, minimise cost subject to coverage. MILP formulation with binary variables for each (worker, shift) assignment.
+
+\textbf{Project scheduling:} tasks with precedence and resource constraints, minimise project duration (critical path method, PERT, more elaborate variants). CPM handles unlimited resources; resource-constrained project scheduling is MILP.
+
+\textbf{Vehicle routing:} a fleet of vehicles must visit a set of customers; minimise total distance subject to vehicle capacity and time windows. The travelling salesperson problem is a special case; modern variants (capacitated VRP, VRP with time windows, dynamic VRP) cover practical logistics.
+
+Scheduling problems are the bread-and-butter of operations research consulting; modern systems schedule airline crews, university classrooms, surgical operating rooms, refinery production, telecommunications maintenance.
+
+\section{Inventory control}\pathtag{standard}
+
+Inventory control balances the cost of holding inventory against the cost of stockout. The standard EOQ (economic order quantity) model: order quantity $Q^* = \sqrt{2 D K / h}$, where $D$ is demand rate, $K$ is fixed order cost, $h$ is holding cost per unit per time. The model assumes constant demand and instantaneous replenishment; extensions handle stochastic demand, lead times, and multi-period planning.
+
+\textbf{$(s, S)$ policy:} when inventory drops to $s$, order up to $S$. Used for stochastic demand with lead times; $(s, S)$ are computed from demand distribution, lead-time distribution, holding cost, and stockout cost.
+
+\textbf{$(R, Q)$ policy:} order $Q$ when inventory drops to $R$ (reorder point). Equivalent to $(s, S)$ for constant $Q$; widely used in practice.
+
+\textbf{Newsvendor model:} single-period, stochastic demand, the cost of overstocking versus understocking. Optimal order quantity satisfies $F(Q^*) = (p - c)/(p - s)$, where $F$ is the demand CDF, $p$ is selling price, $c$ is cost, $s$ is salvage. Used for perishable goods, fashion, single-shot deployments.
+
+\textbf{Multi-echelon inventory:} inventory at multiple levels (factory, warehouse, retail). The optimal policy considers the joint distribution; standard analytical results (Clark-Scarf, base-stock policies) for serial systems extend with approximation to networks.
+
+The inventory control discipline includes demand forecasting (its own discipline), supplier reliability (lead-time distribution), service-level targets (acceptable stockout rate), and the trade-off between centralisation (lower total inventory, longer transport) and decentralisation (more inventory, faster service).
+
+\section{Stochastic programming}\pathtag{mastery}
+
+Stochastic programming handles optimisation under uncertainty: the constraints and/or the objective depend on random parameters whose distribution is known. The standard formulations:
+
+\textbf{Two-stage stochastic programming:} first-stage decisions $\mathbf{x}$ are made before uncertainty is realised; second-stage decisions $\mathbf{y}(\xi)$ are made after. Minimise $\mathbf{c}^T \mathbf{x} + \E_\xi[\mathbf{q}(\xi)^T \mathbf{y}(\xi)]$ subject to feasibility constraints linking the stages. Solution methods: scenario decomposition, Benders decomposition, sample-average approximation.
+
+\textbf{Multi-stage stochastic programming:} decisions are made over multiple stages, each after observing more uncertainty. Solution methods scale poorly with the number of stages; modern approximations (stochastic dual dynamic programming) handle dozens of stages for some structured problems.
+
+\textbf{Chance-constrained programming:} constraints must hold with high probability rather than always. Useful for safety-related constraints; tractable for specific distributional assumptions (Gaussian linear constraints) or via Monte Carlo approximation.
+
+Stochastic programming is the right tool when uncertainty is significant and the decision must hedge against multiple scenarios. The challenge is characterising the uncertainty (the distribution of $\xi$): too narrow and the solution is not robust; too wide and the solution is overly conservative.
+
+\section{Robust optimisation}\pathtag{mastery}
+
+Robust optimisation provides an alternative to stochastic programming when the distribution of uncertain parameters is unknown or hard to characterise. The formulation: minimise the worst-case objective over an uncertainty set; $\min_{\mathbf{x}} \max_{\xi \in \mathcal{U}} f(\mathbf{x}, \xi)$ subject to $g(\mathbf{x}, \xi) \leq 0$ for all $\xi \in \mathcal{U}$.
+
+The uncertainty set $\mathcal{U}$ replaces the probability distribution: a box (each parameter in an interval), an ellipsoid (correlations between parameters), a polyhedron (linear constraints), or a finite scenario set. The choice of set determines the conservatism and the tractability: box uncertainty leads to LP; ellipsoidal to second-order cone programming; polyhedral to LP with more constraints.
+
+Robust optimisation has matured into a standard tool with widely-available solvers. Applications include portfolio optimisation, power-system unit commitment, network design under demand uncertainty, supply chain under disruption.
+
+The choice between stochastic and robust optimisation is engineering judgement. Stochastic is more efficient if the distribution is well-characterised; robust is more reliable if it is not. Modern hybrid approaches (distributionally robust optimisation) combine the two: optimise over a set of plausible distributions, providing robustness with less conservatism than pure worst-case.
+
+\begin{estimation}
+\textbf{Question.} Estimate the value of stochastic information for a delivery-routing problem with uncertain demand at each customer.
+
+\textbf{Working.} Two reference solutions: the expected-value solution (solve the deterministic problem at expected demand) and the wait-and-see solution (the average solution if you knew the actual demand for each scenario before planning). The value of stochastic solution (VSS) is the gap between the expected-value solution and the stochastic solution; the expected value of perfect information (EVPI) is the gap between the stochastic solution and the wait-and-see solution. Both VSS and EVPI are typically a few percent of the total cost for moderate uncertainty; they grow when uncertainty is large or when the recourse cost (the cost of correcting an under- or over-estimate) is asymmetric. The engineering decision: if VSS is below a threshold (say $1\%$), stick with deterministic; if higher, invest in stochastic methods. The numbers depend on the application but the analysis is standard.
+\end{estimation}
+
+\section{Failure: optimised systems with no slack and the cost when reality bit}\pathtag{core}
+
+Optimised systems fail in characteristic ways.
+
+\textbf{Optimised to fragility:} the optimisation strips out slack and redundancy; the resulting system is efficient but fragile. A small perturbation (delay, fault, demand spike) exceeds the slack and propagates. The 2003 power-grid blackout, the 2011 Thailand hard-drive supply-chain collapse, and many other modern failures involve optimised systems with insufficient slack. Mitigation: include slack as a constraint; optimise expected cost with explicit recourse for disruption; use robust optimisation.
+
+\textbf{Wrong objective function:} the optimisation maximises a measurable proxy that diverges from the real goal. Examples: a routing system optimised for distance neglects time; a scheduling system optimised for resource utilisation neglects worker fatigue; a portfolio optimised for return neglects tail risk. Mitigation: include multiple objectives (multi-criteria optimisation); validate the objective against the operational goal.
+
+\textbf{Wrong constraints:} the optimisation respects modelled constraints but violates unmodelled real-world constraints. Examples: a schedule that respects shift hours but violates labour-law overtime; a routing plan that respects mileage but violates customer time preferences; a production plan that respects machine capacity but violates supplier delivery limits. Mitigation: enumerate constraints carefully; verify the solution against operational reality.
+
+\textbf{Stochastic vs deterministic mismatch:} the optimisation assumes deterministic parameters that are actually stochastic; the optimal deterministic solution performs poorly when uncertainty is realised. Mitigation: stochastic or robust formulations; sensitivity analysis around the deterministic optimum.
+
+\textbf{Solver-feasibility errors:} the MILP solver reports infeasibility or optimality but the actual solution does not match the operational system. Causes: bugs in formulation, numerical issues, solver limits. Mitigation: validate solutions on the operational system; cross-check critical solutions with different solvers.
+
+\textbf{Brittleness in the formulation:} a small change in input data causes a large change in the solution; the optimisation is unstable. Mitigation: regularise the objective (favour solutions close to previous); penalise large changes; stabilise the formulation with auxiliary constraints.
+
+\textbf{Disregard for human factors:} the optimisation produces a mathematically optimal plan that operators cannot or will not execute. A schedule that gives all weekend shifts to one worker; a route that violates norms of safe driving; a production plan that does not align with shift patterns. Mitigation: include human-factor constraints; operator feedback; pilot deployments.
+
+\textbf{Optimising the wrong scope:} the optimisation covers a subset of the system; optimal sub-system decisions are suboptimal at the system level. The classical example is local-versus-global optimisation in supply chains; each plant or distribution centre optimises locally and the total is worse than the joint optimum. Mitigation: explicit system-level coordination; aggregation of objectives across subsystems.
+
+The 2012 Knight Capital trading-software incident had an optimisation-system root cause: the software was deployed with an old code path that produced unintended large trades; the optimisation system (the trading engine) executed the trades at high speed before the error was caught. The failure mode was "optimised execution of bad input"; the rapidity of optimised execution exceeded the speed of human verification.
+
+\begin{principle}[The slack-is-not-waste principle]
+Optimisation tends to identify slack as waste; the operational reality is that slack is the reserve that lets the system survive disturbance. The engineer's job is to distinguish between slack that is genuine waste (idle resources that serve no purpose) and slack that is genuine reserve (buffer against variability, uncertainty, and disruption). The optimisation must respect this distinction: minimise true waste while preserving reserve. The cost of failure when optimised-out slack is needed often dwarfs the savings from removing it.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Solve a real scheduling problem with an appropriate solver]
+\textbf{Objective.} Solve a real scheduling problem (shifts, deliveries, batch jobs) using an appropriate optimisation solver. Compare the solver's solution to a heuristic or current practice. Quantify the improvement and the trade-offs.
+
+\textbf{Method.} Choose a scheduling problem: a personal schedule of tasks over a week with precedence and resource constraints; a delivery routing problem for a small set of locations; a batch-job scheduling problem (e.g., laundry or kitchen tasks); a shift schedule for a small team. Formulate as MILP using a modelling tool (PuLP, Pyomo, JuMP, AMPL, or GAMS) and solve with a solver (CBC, GLPK, Gurobi academic, CPLEX academic). Compare the solver's solution to an intuitive heuristic. Document the formulation, the data, the solution, and the comparison.
+
+\textbf{Deliverables.} The problem statement; the MILP formulation; the data and constraints; the solver output; comparison to heuristic; a written analysis of the formulation choices, the constraints that proved important, and where the formulation could be improved.
+
+\textbf{Hazard.} Software only; some commercial solvers require academic or free licences.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+An LP has $\max 3x_1 + 5x_2$ subject to $x_1 + x_2 \leq 4$, $2x_1 + x_2 \leq 6$, $x_1, x_2 \geq 0$. Solve graphically.
+\end{exercise}
+
+\begin{exercise}
+A transportation problem has three sources with supply $(10, 15, 20)$ and four destinations with demand $(8, 12, 10, 15)$. Compute the total supply and demand and state whether the problem is balanced.
+\end{exercise}
+
+\begin{exercise}
+For the EOQ model with demand $D = 1000$ units/year, order cost $K = 50$, holding cost $h = 2/\text{unit/year}$, compute the optimal order quantity, the number of orders per year, and the total annual cost.
+\end{exercise}
+
+\begin{exercise}
+A newsvendor problem has demand $D \sim \mathcal{U}(50, 150)$, selling price $p = 10$, cost $c = 4$, salvage $s = 1$. Compute the optimal order quantity.
+\end{exercise}
+
+\begin{exercise}
+A shortest-path problem on a 4-node graph has edge weights given. State Dijkstra's algorithm steps and the final shortest-path tree.
+\end{exercise}
+
+\begin{exercise}
+A scheduling problem has $5$ jobs with processing times and a single machine; compute the makespan for FIFO and for SPT (shortest processing time) ordering.
+\end{exercise}
+
+\begin{exercise}
+A two-stage stochastic programme has first-stage cost $c^T x$ and second-stage recourse $q^T y(\xi)$ with two scenarios of equal probability. Write the deterministic equivalent problem.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the optimal order quantity in the EOQ model from the total cost expression.
+\end{exercise}
+
+\begin{exercise}
+Derive the newsvendor optimal order quantity from the marginal cost of overstocking versus understocking.
+\end{exercise}
+
+\begin{exercise}
+Derive the LP duality relationships: weak duality, strong duality, complementary slackness.
+\end{exercise}
+
+\begin{exercise}
+Derive the Wagner-Whitin shortest-path formulation of the deterministic dynamic lot-sizing problem.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the LP size (variables, constraints) of a daily airline crew-pairing problem for a regional carrier.
+\end{exercise}
+
+\begin{exercise}
+Estimate the value of stochastic information for a portfolio-optimisation problem with $5\%$ demand uncertainty.
+\end{exercise}
+
+\begin{exercise}
+Estimate the run-time of a MILP-based vehicle-routing problem with $100$ customers.
+\end{exercise}
+
+\begin{exercise}
+Estimate the holding-cost saving from reducing safety stock by $20\%$ at the cost of doubled stockout probability.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a simple $(s, S)$ inventory simulation with stochastic demand; compare the simulated cost to the analytical expression.
+\end{exercise}
+
+\begin{exercise}
+Simulate a job-shop schedule with random processing times; compare to the deterministic LP solution.
+\end{exercise}
+
+\begin{exercise}
+Implement a Monte Carlo simulation for a stochastic LP; compare the sample-average solution to the true expected-value solution.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a MILP formulation for a facility-location problem: $n$ candidate locations with fixed cost, $m$ customers with demand, transportation cost per unit per kilometre.
+\end{exercise}
+
+\begin{exercise}
+Design a MILP for a unit-commitment problem in electricity generation: minimise total cost subject to demand, ramp-rate constraints, minimum-up and minimum-down times.
+\end{exercise}
+
+\begin{exercise}
+Design a vehicle-routing problem formulation with time windows and capacity constraints for a small fleet.
+\end{exercise}
+
+\begin{exercise}
+Design a robust-optimisation formulation for a portfolio with $5$ assets and ellipsoidal uncertainty in returns.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's MILP-based scheduler produces a feasible solution but operators cannot execute it. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a deterministic optimisation with safety margin and a stochastic formulation. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's robust optimisation is overly conservative; the customer wants higher-performance solutions. State the engineering response and the role of distributionally robust optimisation.
+\end{exercise}
+
+\begin{exercise}
+A team's inventory system is optimised; a single supplier disruption causes extensive stockouts. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's routing solution is mathematically optimal but drivers report unsafe situations. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to optimise an objective that the operations team and the finance team interpret differently. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's scheduling solver returns an "infeasibility" diagnosis; the team needs a schedule. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is integrating an optimiser into a real-time decision system. State the engineering considerations: solve-time bounds, fallback behaviour, validation against operational reality, and the explanation for why pilot tests often outperform full-deployment.
+\end{exercise}

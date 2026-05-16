@@ -1,37 +1,281 @@
 \chapter{Stochastic systems and Kalman filtering}
 \label{vol09:ch06}
 
-\epigraph{}{}
+\epigraph{The Kalman filter is the right answer to the wrong question; the engineer's job is to make sure it is also the right answer to the right question.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: uncertainty, transport. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: uncertainty, coupling. Exercise target: 35. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 6. Approx 120 pp.}
+Stochastic system theory and Kalman filtering address the engineering reality that measurements are noisy, plants are subject to unmodelled disturbances, and the state of a system must be estimated from imperfect observations. The Kalman filter, formulated by Rudolf Kalman in 1960, is the optimal linear-quadratic estimator for linear Gaussian systems and the workhorse of state estimation in aerospace, automotive, robotics, finance, and physics. The extensions (extended Kalman filter, unscented Kalman filter, particle filter) handle nonlinearity and non-Gaussian distributions. This chapter develops random processes, linear Gaussian systems, the Kalman filter derivation in engineer-first form, the nonlinear extensions, particle filters, sensor fusion as Kalman application, and the characteristic failure modes including filter divergence and mismatched noise covariance.
 
-\section{Random processes}
-\TODO{Section prose.}
+\section{Random processes}\pathtag{standard}
 
-\section{Linear Gaussian systems}
-\TODO{Section prose.}
+A random process $X(t)$ is a family of random variables indexed by time. The standard characterisations include the mean $\mu(t) = \E[X(t)]$, the autocorrelation $R_{XX}(t_1, t_2) = \E[X(t_1) X(t_2)]$, the covariance $\Sigma_{XX}(t_1, t_2) = R_{XX}(t_1, t_2) - \mu(t_1)\mu(t_2)$, and the higher-order moments. A process is stationary if its statistics do not depend on absolute time; wide-sense stationary if the mean and autocorrelation are time-invariant; strict-sense stationary if all moments are time-invariant. Most engineering processes are at most wide-sense stationary in restricted operating regimes.
 
-\section{Kalman filter derivation engineering-first}
-\TODO{Section prose.}
+White noise is an idealised process with constant power spectral density across all frequencies and zero autocorrelation at non-zero lags: $R_{XX}(t_1, t_2) = N_0 \delta(t_2 - t_1)/2$. Real noise sources approximate white noise over a finite bandwidth; thermal noise in resistors and shot noise in semiconductors are nearly white up to several gigahertz. Coloured noise has frequency-dependent spectral density; the standard colours are pink ($1/f$), brown ($1/f^2$), and blue ($f$).
 
-\section{Extended and unscented Kalman filter}
-\TODO{Section prose.}
+Gaussian processes have the property that any finite collection of samples is jointly Gaussian. For a wide-sense stationary Gaussian process, the mean and autocorrelation (equivalently, the power spectral density) characterise the process completely. The central-limit theorem ensures that many real-world noise sources approximate Gaussian distribution; this is the basis of the Kalman filter's optimality for Gaussian noise.
 
-\section{Particle filters}
-\TODO{Section prose.}
+The power spectral density (PSD) $S_{XX}(f)$ is the Fourier transform of the autocorrelation function (the Wiener-Khinchin theorem). The PSD quantifies the noise's energy distribution across frequency; it is the standard tool for noise analysis in communication, instrumentation, and signal processing.
 
-\section{Sensor fusion}
-\TODO{Section prose.}
+\section{Linear Gaussian systems}\pathtag{standard}
 
-\section{Failure: filter divergence, mismatched noise covariance, the GPS-jamming problem}
-\TODO{Section prose.}
+A linear Gaussian system is a linear time-invariant system driven by Gaussian inputs, with all states and outputs being jointly Gaussian. The state-space form: $\dot{\mathbf{x}} = A\mathbf{x} + B\mathbf{u} + G\mathbf{w}$, $\mathbf{y} = C\mathbf{x} + \mathbf{v}$, where $\mathbf{w}$ is process noise (Gaussian, zero mean, covariance $Q_w$) and $\mathbf{v}$ is measurement noise (Gaussian, zero mean, covariance $R_v$), with $\mathbf{w}$ and $\mathbf{v}$ mutually independent.
 
+The Gaussian property is preserved through linear operations: a linear combination of jointly Gaussian variables is Gaussian; a linear time-invariant system driven by Gaussian noise has Gaussian states. The probability distributions of the state and output are determined by their means and covariances at each time; the system's dynamics propagate the moments through differential equations (the Lyapunov equation for covariance propagation).
 
-\section{Project}
-\TODO{implement a 2D tracker with Kalman filter on real video data}
+Conditional probability for jointly Gaussian variables: given $\mathbf{X}$ and $\mathbf{Y}$ jointly Gaussian, the conditional distribution $p(\mathbf{X} | \mathbf{Y})$ is Gaussian with mean and covariance computable from the joint distribution. This conditional Gaussianity is the basis of Kalman filtering: the conditional distribution of the state given the measurements is Gaussian; its mean is the optimal estimate; its covariance is the estimation uncertainty.
+
+\begin{archetype}[uncertainty: Gaussian processes as the closed-form estimation problem]
+The linear-Gaussian framework is the unique stochastic-systems setting in which optimal estimation has a closed-form recursive solution: the Kalman filter. The closed form depends on three ingredients: linearity of the dynamics, Gaussianity of the noise, and quadratic optimality criterion. Outside this framework, estimation becomes harder: nonlinearity requires linearisation (EKF), non-Gaussian noise requires particle methods, and non-quadratic criteria require numerical optimisation. The linear-Gaussian case is the centre of estimation theory because it is the only case where the engineer can write the algorithm as a few matrix operations.
+\end{archetype}
+
+\section{Kalman filter derivation engineering-first}\pathtag{core}
+
+The Kalman filter recursively estimates the state of a discrete-time linear-Gaussian system from measurements. The discrete-time formulation: $\mathbf{x}_{k+1} = A_d \mathbf{x}_k + B_d \mathbf{u}_k + \mathbf{w}_k$, $\mathbf{y}_k = C_d \mathbf{x}_k + \mathbf{v}_k$, with $\mathbf{w}_k \sim \mathcal{N}(0, Q)$ and $\mathbf{v}_k \sim \mathcal{N}(0, R)$.
+
+The filter maintains the state estimate $\hat{\mathbf{x}}_k$ and the error covariance $P_k = \E[(\mathbf{x}_k - \hat{\mathbf{x}}_k)(\mathbf{x}_k - \hat{\mathbf{x}}_k)^T]$. Each cycle consists of a prediction step and a measurement update step.
+
+\textbf{Prediction:} given the estimate $\hat{\mathbf{x}}_{k-1|k-1}$ and covariance $P_{k-1|k-1}$ at time $k-1$:
+$$\hat{\mathbf{x}}_{k|k-1} = A_d \hat{\mathbf{x}}_{k-1|k-1} + B_d \mathbf{u}_{k-1}, \quad P_{k|k-1} = A_d P_{k-1|k-1} A_d^T + Q$$
+The prediction propagates the state mean and adds the process-noise covariance.
+
+\textbf{Update:} given the measurement $\mathbf{y}_k$:
+$$K_k = P_{k|k-1} C_d^T (C_d P_{k|k-1} C_d^T + R)^{-1}$$
+$$\hat{\mathbf{x}}_{k|k} = \hat{\mathbf{x}}_{k|k-1} + K_k (\mathbf{y}_k - C_d \hat{\mathbf{x}}_{k|k-1})$$
+$$P_{k|k} = (I - K_k C_d) P_{k|k-1}$$
+The Kalman gain $K_k$ weights the measurement update relative to the prediction; the innovation $\mathbf{y}_k - C_d \hat{\mathbf{x}}_{k|k-1}$ is the difference between measurement and prediction.
+
+The Kalman gain has an intuitive interpretation: when the measurement noise covariance $R$ is small relative to the prediction covariance, the gain is large (trust the measurement); when $R$ is large, the gain is small (trust the prediction). The filter automatically weights measurements by their information content relative to the model prediction.
+
+The filter is optimal in the linear minimum-mean-square-error sense: among all linear estimators, no other achieves lower error covariance. For linear-Gaussian systems with Gaussian initial conditions, the filter is also the maximum-likelihood estimator and the maximum a posteriori estimator. The convergence of $P_k$ to a steady-state $P_\infty$ depends on observability and the noise covariances; for an observable system, $P_k$ converges and the filter reaches a steady-state Kalman gain.
+
+\section{Extended and unscented Kalman filter}\pathtag{standard}
+
+The extended Kalman filter (EKF) handles nonlinear dynamics by linearising the system around the current estimate. The dynamics $\mathbf{x}_{k+1} = f(\mathbf{x}_k, \mathbf{u}_k) + \mathbf{w}_k$ and measurements $\mathbf{y}_k = h(\mathbf{x}_k) + \mathbf{v}_k$ are approximated using Jacobians $F_k = \partial f / \partial \mathbf{x}$ and $H_k = \partial h / \partial \mathbf{x}$ evaluated at the current estimate. The Kalman update equations use $F_k$ and $H_k$ in place of $A_d$ and $C_d$.
+
+EKF is widely used: GPS positioning, inertial navigation, robot localisation, target tracking, biomedical monitoring all use EKF or its variants. The method's failure modes are linearisation error (when the nonlinearity is significant at the scale of the uncertainty) and Jacobian computation (requires symbolic or numerical differentiation, with finite-precision concerns).
+
+The unscented Kalman filter (UKF) handles nonlinearity differently: instead of linearising, it computes the mean and covariance after nonlinear transformation using a deterministic set of sample points (sigma points). The sigma points are chosen to capture the mean and covariance of the prior; the nonlinear function transforms each sigma point; the transformed sigma points produce the posterior mean and covariance.
+
+UKF avoids Jacobian computation, handles strong nonlinearity better than EKF, and is competitive with EKF in computation cost (linear in state dimension squared). UKF has become the preferred choice for many nonlinear estimation problems in robotics and aerospace.
+
+\section{Particle filters}\pathtag{mastery}
+
+Particle filters represent the probability distribution by a set of weighted samples (particles): $p(\mathbf{x}_k | \mathbf{y}_{1:k}) \approx \sum_i w_i \delta(\mathbf{x}_k - \mathbf{x}_k^{(i)})$. Each cycle, the particles are propagated through the dynamics (prediction), reweighted by the likelihood of the measurement (update), and resampled (to avoid degeneracy).
+
+Particle filters handle arbitrary nonlinear dynamics and arbitrary non-Gaussian distributions. They can represent multi-modal distributions (the prior or posterior has multiple peaks, which Gaussian methods cannot represent). They scale poorly with state dimension (the number of particles needed grows exponentially), limiting them to low-dimensional problems (typically up to 10 or so dimensions).
+
+The standard variants include sequential importance resampling (SIR), Rao-Blackwellised particle filters (combine Kalman filters for linear sub-states with particles for nonlinear sub-states), and particle filters with adaptive proposal distributions. The implementation discipline includes adequate particle count (typically thousands to millions), effective resampling (to avoid particle depletion), and parallel computation (particles are independent and parallelise naturally).
+
+Particle filters dominate applications where the distribution structure matters: simultaneous localisation and mapping (SLAM) with ambiguous landmark associations, multi-target tracking with unknown target counts, fault detection with multiple-mode hypotheses. For unimodal Gaussian-like problems, EKF and UKF are preferred for their lower computational cost.
+
+\section{Sensor fusion}\pathtag{standard}
+
+Sensor fusion is the practical name for state estimation that combines multiple sensor sources. The Kalman filter and its extensions are the standard tools: the dynamics propagate the state in time; each sensor's measurement updates the state estimate; the Kalman gain weights each measurement by its information content relative to the prediction.
+
+The canonical examples have been mentioned in previous chapters: inertial navigation fused with GPS, vision fused with lidar, joint encoders fused with IMU in robots. The discipline includes characterising each sensor's noise (covariance), modelling each sensor's bias and drift (often as additional state), handling synchronisation (different sensors sample at different rates), and managing data association (which measurement corresponds to which target).
+
+Distributed sensor fusion arises when sensors are at different physical locations and the fusion happens via a network. Each node may perform local filtering and report estimates rather than raw measurements; the global fusion combines the estimates. The mathematics generalises (information filter, decentralised Kalman, consensus filtering) at the cost of communication and consistency constraints.
+
+Robust sensor fusion handles sensor failures and outliers. A faulty sensor's measurement can poison a Kalman filter; the filter cannot distinguish a small bias from a failure on its own. Mitigation: innovation tests (the measurement is rejected if the innovation exceeds an expected magnitude), redundancy (multiple sensors, voting), parallel filters (each filter excludes one sensor; comparison detects faults), and explicit fault models (the state space includes fault hypotheses).
+
+\begin{estimation}
+\textbf{Question.} Estimate the position-error growth of a GPS-aided inertial navigation system that loses GPS for $5$ minutes, given $1\,\text{mg}$ accelerometer bias and $1\,^\circ/\text{hr}$ gyro bias.
+
+\textbf{Working.} The gyro bias produces an angular error growing as $\omega_b t$; in $5\,\text{min} = 300\,\text{s}$, the angular error is $(1/3600) \times 300 = 0.083\,^\circ \approx 1.5\,\text{mrad}$. This angle, multiplied by gravity ($9.8\,\text{m/s}^2$), gives an apparent horizontal acceleration of $1.5\times 10^{-3} \times 9.8 = 0.015\,\text{m/s}^2$. The accelerometer bias gives $1\,\text{mg} = 0.01\,\text{m/s}^2$. The total error acceleration is $\sim 0.025\,\text{m/s}^2$; integrating twice over $300\,\text{s}$ gives a position error of $\sim 1100\,\text{m}$. This is the Schuler-loop limit; the actual error has a complex frequency response, but the order of magnitude is right. The system needs better sensors, GPS-denied alternatives (visual odometry, terrain matching), or a tighter operating envelope to maintain useful position knowledge over five minutes without GPS.
+\end{estimation}
+
+\section{Failure: filter divergence, mismatched noise covariance, the GPS-jamming problem}\pathtag{core}
+
+Stochastic-systems estimators fail in characteristic ways.
+
+\textbf{Filter divergence:} the estimate moves away from the true state and the filter becomes confident in the wrong value. Causes: linearisation error in EKF/UKF for highly nonlinear systems; numerical issues (matrix ill-conditioning, loss of positive definiteness in covariance); measurement outliers; unmodelled dynamics. Mitigation: numerical conditioning (square-root filters, factorised forms); innovation testing; fault-tolerant fusion architectures.
+
+\textbf{Mismatched noise covariance:} the assumed $Q$ and $R$ matrices differ from the actual noise statistics. If the actual noise is larger than assumed, the filter is over-confident and rejects valid measurements. If actual noise is smaller than assumed, the filter is over-cautious and tracks slowly. Mitigation: noise-covariance estimation from operating data (adaptive Kalman filtering); conservative initial choices; periodic re-tuning.
+
+\textbf{The GPS-jamming problem:} the navigation system depends on GPS; an adversary jams or spoofs the GPS signal; the navigation drifts according to the unaided inertial system. Mitigation: anti-jam GPS hardware; alternative position sources (lidar, vision, terrain matching, celestial); GPS-denied navigation modes; multi-frequency GPS to detect spoofing. The Iran-US drone capture (December 2011) and subsequent academic spoofing demonstrations (Humphreys 2013) raised the operational significance of GPS denial.
+
+\textbf{Initialisation:} the filter's initial estimate and covariance must be reasonable; poor initialisation can cause divergence or slow convergence. Mitigation: known initial conditions (system calibration), alignment procedures (inertial-system static alignment), or robust initialisation via batch estimation.
+
+\textbf{Process-noise misspecification:} the assumed process noise covariance $Q$ is too small relative to the actual model error; the filter becomes too confident in its predictions and ignores valid measurements. The standard fix is to inflate $Q$ to account for unmodelled dynamics (process-noise injection).
+
+\textbf{Measurement-noise correlation:} the noise on different sensors or different times is not independent; the Kalman filter's optimality and stability assumptions are violated. Mitigation: model the correlation explicitly (state-space augmentation); whitening transforms; conservative inflation of $R$.
+
+\textbf{Computational saturation:} the filter's computational requirements exceed the available real-time budget. For high-dimensional state spaces, the matrix operations cost $O(n^3)$ per update; for many sensors at high rates, the per-sample cost is significant. Mitigation: factored filters (information filter), sparse implementations, sub-optimal but faster variants (steady-state Kalman with constant gains).
+
+\textbf{Linearisation in EKF:} the Taylor-series approximation in EKF is locally valid; for highly nonlinear systems or large state uncertainty, the linearisation produces large errors. Mitigation: UKF (no linearisation); IEKF (iterated EKF, iterates the linearisation point); particle filter (no linearisation); reformulate the problem in a more linear coordinate system.
+
+\textbf{Outliers and gross errors:} a single bad measurement can disrupt the filter for many time steps. Mitigation: innovation tests with thresholds; robust statistics (Huber filter); explicit outlier models.
+
+The 1990 Hubble Space Telescope mirror grinding (\cite{acc:nasa-hubble-optical-systems-1990}) was a fundamental measurement-system failure: the null corrector used for the primary mirror's figure verification was itself mis-figured; the verification system reported the wrong answer with high confidence. The lesson: the estimator's confidence is no guarantee of correctness; the assumptions underlying the estimation must themselves be verified.
+
+\begin{principle}[The Kalman-as-tool principle]
+The Kalman filter is the optimal linear estimator for linear-Gaussian systems with known noise statistics. Each assumption (linearity, Gaussianity, known statistics) is part of the contract. The engineer's job is to verify that the assumptions hold in the deployed system: the nonlinearity is small enough for EKF/UKF; the noise is sufficiently Gaussian; the covariances are characterised. When the contract is broken, the filter's output is no longer authoritative. The Kalman filter is a tool, not a truth; the user verifies the contract before trusting the output.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[2D tracker with Kalman filter on real video data]
+\textbf{Objective.} Implement a 2D Kalman filter for tracking a moving object in real video data. Compare to a simple position-history baseline. Identify failure modes.
+
+\textbf{Method.} Choose video data containing one or more moving objects (a YouTube clip of a soccer match, a sports recording, a drone flight, a wildlife clip with consistent target visibility). Implement a simple object detector (colour thresholding, background subtraction, or a pre-trained network) that produces position measurements per frame. Implement a Kalman filter with a constant-velocity or constant-acceleration motion model. Tune the process and measurement noise covariances. Run on the video. Visualise the estimate, the measurements, and the uncertainty ellipse. Identify failure modes (occlusion, abrupt manoeuvre, detector errors); apply mitigations (innovation gating, adaptive Q, multi-hypothesis tracking).
+
+\textbf{Deliverables.} The Kalman-filter implementation; the video with overlay of estimate and uncertainty; a comparison plot to the baseline; a written analysis of the failure modes encountered and the mitigations applied.
+
+\textbf{Hazard.} Software only; no hardware hazards.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A wide-sense stationary process has autocorrelation $R_{XX}(\tau) = 4 e^{-2|\tau|}$. Compute the variance and the power spectral density.
+\end{exercise}
+
+\begin{exercise}
+A measurement $y = x + v$ has $x \sim \mathcal{N}(0, 4)$ and $v \sim \mathcal{N}(0, 1)$, independent. Compute the conditional mean and variance of $x$ given $y$.
+\end{exercise}
+
+\begin{exercise}
+A scalar Kalman filter has state model $x_{k+1} = 0.9 x_k + w_k$, $w \sim \mathcal{N}(0, 0.5)$, and measurement $y_k = x_k + v_k$, $v \sim \mathcal{N}(0, 2)$. Compute the steady-state Kalman gain.
+\end{exercise}
+
+\begin{exercise}
+For the same system, compute the steady-state covariance $P_\infty$ from the discrete Riccati equation.
+\end{exercise}
+
+\begin{exercise}
+A particle filter uses $N = 1000$ particles. Compute the effective sample size after a measurement update if the maximum weight is $0.5$ and the rest sum to $0.5$ uniformly.
+\end{exercise}
+
+\begin{exercise}
+A GPS receiver gives position with $5\,\text{m}$ standard deviation; the IMU gives acceleration with $1\,\text{mg}$ standard deviation. Compute the steady-state position uncertainty in an idealised constant-acceleration Kalman filter with GPS at $1\,\text{Hz}$ and IMU at $100\,\text{Hz}$.
+\end{exercise}
+
+\begin{exercise}
+A two-state Kalman filter has $P_0 = \text{diag}(10, 4)$, $Q = \text{diag}(0.1, 0.01)$, $A = I$, $C = (1, 0)$, $R = 1$. Compute $P_{1|0}$ and $P_{1|1}$ after one prediction and update.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Kalman filter update equations from the linear-Gaussian conditional-probability formula.
+\end{exercise}
+
+\begin{exercise}
+Derive the steady-state Riccati equation for a continuous-time linear Gaussian Kalman filter.
+\end{exercise}
+
+\begin{exercise}
+Derive the Wiener-Khinchin theorem connecting power spectral density and autocorrelation.
+\end{exercise}
+
+\begin{exercise}
+Derive the EKF measurement update for a system with nonlinear measurement $y = h(x) + v$ by linearising around the prediction.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between the Kalman gain and the signal-to-noise ratio at the input.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the convergence time of a Kalman filter for the scalar example in the calculation section, starting from $P_0 = 100$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the position drift over $30\,\text{s}$ of GPS outage in a consumer-grade GPS-IMU navigation system (gyro bias $1\,^\circ/\text{hr}$, accelerometer bias $0.1\,\text{mg}$).
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of particles required for a particle filter on a $3$-dimensional state with moderately diffuse posterior.
+\end{exercise}
+
+\begin{exercise}
+Estimate the divergence rate of an EKF whose linearisation point is offset by $1\,\sigma$ from the true state, given a quadratic nonlinearity.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a 1D constant-velocity Kalman filter; vary the process and measurement noise covariances; plot the Kalman gain convergence.
+\end{exercise}
+
+\begin{exercise}
+Simulate an EKF for a 2D bicycle robot with range-and-bearing measurements; observe the convergence behaviour.
+\end{exercise}
+
+\begin{exercise}
+Simulate a UKF on a system with strong measurement nonlinearity; compare to EKF on the same system.
+\end{exercise}
+
+\begin{exercise}
+Simulate a particle filter for a system with bi-modal posterior; observe the particle distribution over time.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a Kalman filter for an aircraft altitude estimate from GPS (vertical position) and barometric altitude (vertical position). State the state vector, the dynamics model, the measurements, and the noise covariances.
+\end{exercise}
+
+\begin{exercise}
+Design a sensor fusion architecture for an autonomous vehicle's localisation: GPS, IMU, wheel odometry, lidar-to-map matching. State the Kalman-filter structure.
+\end{exercise}
+
+\begin{exercise}
+Design an EKF for a robotic-arm joint-angle estimate from encoder, current measurement, and torque-sensor data. State the state, the dynamics, and the measurements.
+\end{exercise}
+
+\begin{exercise}
+Design a multi-target tracker using nearest-neighbour data association with Kalman filters. State the filter per target and the association rule.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's Kalman filter shows divergence after a few minutes of operation. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between EKF and UKF for a nonlinear estimation problem. State the engineering criteria.
+\end{exercise}
+
+\begin{exercise}
+A team's filter has been working well; performance has degraded over months. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's GPS-aided navigation drifts $1\,\text{km}$ during a 5-minute GPS outage. State three engineering responses.
+\end{exercise}
+
+\begin{exercise}
+A team's particle filter has $99\%$ of its weight on one particle. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between conservative and aggressive process-noise tuning. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's measurement contains intermittent outliers that disrupt the Kalman filter. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to certify a Kalman-filter-based navigation system for aerospace use. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's GPS-aided navigation must operate in GPS-denied environments. State the engineering options and the operational trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's filter is over-confident in its estimates (predicted covariance is smaller than the empirical estimation error). State the engineering response and the role of innovation statistics in detecting and correcting this.
+\end{exercise}
+
+\begin{exercise}
+A team's sensor-fusion system depends on a critical GPS receiver and a critical IMU; both must work for the fusion to provide acceptable accuracy. State the engineering options for redundancy and the criteria for choosing among them.
+\end{exercise}

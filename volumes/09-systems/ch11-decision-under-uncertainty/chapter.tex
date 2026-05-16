@@ -1,37 +1,257 @@
 \chapter{Decision-making under uncertainty}
 \label{vol09:ch11}
 
-\epigraph{}{}
+\epigraph{The rational decision is the one that survives sunlight: the choice you can explain after you know the outcome.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: uncertainty, ethics. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: uncertainty, coupling, balance. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 11. Approx 110 pp.}
+Engineering decisions are made under uncertainty: the future is not known, the system behaves stochastically, the information is incomplete, the stakes are real. Decision theory provides the mathematical framework for choosing among options when outcomes are uncertain; the engineering challenge is applying the theory to actual decisions where the framework's assumptions are strained. This chapter develops decision theory (utility, risk, regret), expected utility and its critics, Markov decision processes (MDPs), partially observable MDPs (POMDPs), multi-criteria decision-making, the realities of decision-making in organisations, and the failure modes of cognitive bias and motivated reasoning in engineering decisions.
 
-\section{Decision theory: utility, risk, regret}
-\TODO{Section prose.}
+\section{Decision theory: utility, risk, regret}\pathtag{standard}
 
-\section{Expected utility and its critics}
-\TODO{Section prose.}
+Decision theory studies how to choose among options whose outcomes depend on uncertain states of the world. A decision problem has three elements: a set of actions $A$, a set of states $S$ with probabilities $p(s)$, and an outcome function $u(a, s)$ giving the value of action $a$ in state $s$.
 
-\section{Markov decision processes}
-\TODO{Section prose.}
+The expected-utility principle: the rational decision is the action that maximises the expected utility $\E_s[u(a, s)] = \sum_s p(s) u(a, s)$. The principle is grounded in von Neumann-Morgenstern axioms (completeness, transitivity, continuity, independence); under these axioms, preferences over uncertain outcomes can be represented by an expected-utility function unique up to positive affine transformations.
 
-\section{Partially observable MDPs}
-\TODO{Section prose.}
+The shape of the utility function captures risk attitude. A linear utility ($u(x) = x$) represents risk neutrality. A concave utility ($u(x) = \sqrt{x}$, $u(x) = \log x$) represents risk aversion: the decision-maker prefers a certain payoff to an uncertain one with the same expected value. A convex utility represents risk seeking. Most engineering decisions involve risk-averse stakeholders (cost overruns, safety failures, schedule slippage all have asymmetric consequences), so concave utility is the default modelling choice.
 
-\section{Multi-criteria decision-making}
-\TODO{Section prose.}
+Regret theory provides an alternative framework: the decision-maker minimises expected regret rather than maximising expected utility. Regret is the difference between the realised outcome and the best possible outcome given the actual state. The minimax-regret decision is the action that minimises the maximum possible regret across states. Regret theory captures behaviour that expected utility cannot explain (preference reversals, framing effects).
 
-\section{Decision-making in real organisations}
-\TODO{Section prose.}
+Multi-attribute utility decomposes preferences over multiple objectives into a weighted combination of single-attribute utilities. The decomposition is exact under independence assumptions; approximate otherwise. Standard examples: cost-quality-schedule trade-offs in engineering; financial-environmental-social trade-offs in policy; performance-safety-reliability trade-offs in product design.
 
-\section{Failure: anchoring, framing, motivated reasoning in engineering decisions}
-\TODO{Section prose.}
+\begin{archetype}[uncertainty: decision theory as preference under risk]
+Decision theory is the formal expression of how an engineer chooses among options whose consequences are uncertain. The framework requires: enumerate the actions, characterise the uncertainty (probability over states), evaluate the outcomes (utility), maximise the expected utility. Each step is engineering work: identifying the actions is creativity; characterising the uncertainty is data analysis; evaluating outcomes is stakeholder consultation; maximising is computation. The framework is general; the engineering art is applying it to a specific decision.
+\end{archetype}
 
+\section{Expected utility and its critics}\pathtag{standard}
 
-\section{Project}
-\TODO{solve a small MDP with three alternative algorithms; reconcile}
+The expected-utility framework is dominant in formal decision analysis but is empirically violated by humans in many situations.
+
+\textbf{Allais paradox:} preferences across some pairs of gambles violate the independence axiom; the same difference in probability between common alternatives can change which option is preferred depending on the certainty levels.
+
+\textbf{Ellsberg paradox:} people prefer known probabilities to unknown probabilities even when the expected utility is the same. This "ambiguity aversion" suggests that expected utility under known probabilities is not the full story.
+
+\textbf{Prospect theory (Kahneman-Tversky 1979):} actual human decision-making weights probabilities nonlinearly (small probabilities are overweighted, large probabilities underweighted), values gains and losses asymmetrically (losses loom larger than gains of the same magnitude), and references outcomes against a status-quo point. Prospect theory empirically describes how people actually decide; it does not necessarily prescribe how they should.
+
+\textbf{Bounded rationality (Simon):} decision-makers face computational limits; the rational decision-maker may not be able to enumerate all actions or compute the expected utility precisely. Simon proposed "satisficing": choose an option that meets a threshold, rather than maximising. Satisficing is empirically common and often the right response to bounded resources.
+
+For engineering decisions, the engineer typically uses expected utility as the framework but adjusts for the empirical observations: weight low-probability high-consequence events explicitly (the Allais critique); recognise ambiguity in probability estimates; account for the asymmetry of regret around a status quo; build the analysis to support, not replace, human judgement.
+
+\section{Markov decision processes}\pathtag{standard}
+
+A Markov decision process (MDP) extends decision theory to sequential decision problems with state. An MDP has: a state space $S$, an action space $A(s)$ at each state, a transition probability $P(s' | s, a)$, a reward function $R(s, a, s')$, and a discount factor $\gamma \in [0, 1)$.
+
+The value function $V^\pi(s)$ of a policy $\pi$ (a mapping from states to actions) is the expected discounted reward starting from state $s$ and following $\pi$. The optimal value function $V^*(s) = \max_\pi V^\pi(s)$ satisfies the Bellman equation:
+$$V^*(s) = \max_a \sum_{s'} P(s' | s, a) [R(s, a, s') + \gamma V^*(s')]$$
+The optimal policy $\pi^*(s) = \argmax_a \sum_{s'} P(s' | s, a) [R(s, a, s') + \gamma V^*(s')]$.
+
+Solution methods: value iteration (iterative application of the Bellman equation until convergence); policy iteration (alternate between policy evaluation and policy improvement); linear programming. For finite MDPs with reasonable state and action sizes, these methods are practical. For large state spaces, function approximation (e.g., deep Q-learning, covered in Chapter 5) replaces the explicit table.
+
+Applications: inventory control, equipment replacement, maintenance scheduling, capacity expansion, sequential resource allocation. Each application maps the decision problem to the MDP framework; the discount factor reflects the time preference for present versus future rewards.
+
+\section{Partially observable MDPs}\pathtag{mastery}
+
+A POMDP extends the MDP by adding observation uncertainty: the agent does not directly observe the state; it observes an observation $o$ that is a noisy function of the state. The agent maintains a belief $b(s)$, a probability distribution over states, updated by Bayes' rule from observations.
+
+POMDPs are fundamentally harder than MDPs: the optimal policy depends on the belief, which is a continuous quantity even for finite state spaces. The exact solution is computationally intractable for non-trivial problems. Approximate methods include point-based value iteration (PBVI), Monte Carlo tree search, and heuristic policies.
+
+POMDPs are the right framework for decision problems with sensor uncertainty: medical diagnosis (the patient's state is observed through tests), robot navigation in occluded environments, equipment fault management (the equipment state is observed through diagnostics). The framework's intractability has limited deployment; modern reinforcement-learning methods (especially for high-dimensional observations) are increasingly used as practical approximations.
+
+\section{Multi-criteria decision-making}\pathtag{standard}
+
+Multi-criteria decision-making (MCDM) addresses decisions with multiple objectives that cannot all be optimised simultaneously. The standard frameworks:
+
+\textbf{Pareto efficiency:} a solution is Pareto-efficient if no other solution improves one objective without worsening another. The set of Pareto-efficient solutions defines the Pareto frontier; the decision-maker selects a point on the frontier based on preference.
+
+\textbf{Weighted sum:} combine the objectives with weights; minimise the weighted total. Simple but requires explicit weight specification and biases toward the convex parts of the Pareto frontier.
+
+\textbf{Goal programming:} specify a goal value for each objective; minimise the weighted sum of deviations from goals. Useful when targets are clear and shortfalls are penalised.
+
+\textbf{AHP (Analytic Hierarchy Process):} decompose the decision into hierarchical levels; perform pairwise comparisons at each level; compute weights and rankings. Widely used in business decision-making.
+
+\textbf{Multi-attribute utility:} assess utility for each attribute separately and combine; theoretically rigorous but requires substantial elicitation effort.
+
+\textbf{TOPSIS (Technique for Order Preference by Similarity to Ideal Solution):} rank alternatives by their distance to an ideal and an anti-ideal point. Used in engineering design selection.
+
+The discipline of MCDM includes: identifying the relevant objectives (often more than the decision-maker initially recognises); operationalising the objectives (each measurable on a comparable scale); structuring the decision to expose the trade-offs; communicating the trade-offs to stakeholders. The MCDM methods provide structure; the engineering judgement is in the formulation.
+
+\section{Decision-making in real organisations}\pathtag{standard}
+
+Real engineering decisions are made in organisations with their own dynamics. The textbook decision is a single decision-maker maximising expected utility; the real decision involves multiple stakeholders with different objectives, different information, different incentives, and different power.
+
+Standard patterns observed in organisations:
+
+\textbf{Committee decisions:} multiple decision-makers must agree. The decision converges to a compromise that may not be any individual's first preference. Voting paradoxes (Arrow's theorem) imply no satisfactory aggregation is universally possible.
+
+\textbf{Hierarchy:} a decision is escalated to a higher level, possibly through multiple levels. Information is lost or distorted in the chain; the final decision is made by someone with less detail than those below.
+
+\textbf{Negotiation:} stakeholders bargain over the decision; the outcome reflects bargaining power as much as expected utility. Pareto-improving trades are sometimes blocked by distributional concerns.
+
+\textbf{Inertia:} the status quo has a strong pull; changing direction has costs that the analysis often underestimates. Sunk-cost reasoning extends this: the past investment in the current path makes change harder than a fresh analysis would suggest.
+
+\textbf{Risk-averse organisations:} the cost of a bad decision is greater than the benefit of a good one (career consequences, blame, audits). Decision-makers prefer no-decision to action; explicit decisions are deferred or made provisionally.
+
+\textbf{Political processes:} the decision is shaped by considerations beyond the technical merits; budget cycles, election timing, regulatory windows. The engineering analysis must accommodate these constraints.
+
+The engineering decision-maker who is fluent in both the formal framework and the organisational realities can shape decisions effectively; the engineer who knows only the formal framework will have analyses that go nowhere. The "soft skills" of stakeholder management, communication, framing, and timing are part of the discipline of engineering decision-making.
+
+\begin{estimation}
+\textbf{Question.} Estimate the cost of indecision: a company faces a decision between two options of similar expected utility; the analysis takes six months; during the delay, opportunities are lost. Quantify when the cost of analysis exceeds the value of the better decision.
+
+\textbf{Working.} If the two options have expected utilities $U_1$ and $U_2$ with $|U_1 - U_2| = \Delta U$, the value of more analysis is the improved probability of choosing the better option times $\Delta U$. The cost of delay is the lost opportunity value during the analysis period. If the analysis improves the probability of correct choice from $0.6$ to $0.85$, the expected value gain is $0.25 \Delta U$. If the delay costs $0.5 \Delta U$ in lost opportunity, the analysis is net negative. The general principle: when $\Delta U$ is small, the analysis value is small; when delay cost is large, fast decisions beat thorough analyses. The engineering judgement: spend analysis time on decisions where the expected utility differences are large, accept rapid intuition on decisions where the differences are small.
+\end{estimation}
+
+\section{Failure: anchoring, framing, motivated reasoning in engineering decisions}\pathtag{core}
+
+Engineering decisions fail in characteristic ways related to cognitive bias and organisational dynamics.
+
+\textbf{Anchoring:} the first estimate or value mentioned anchors subsequent reasoning; later estimates are insufficiently adjusted away from the anchor. The 2003 Columbia disaster (\cite{acc:caib-columbia}) had an anchoring component: the foam strike on launch was initially classified as "in family" (similar to past events that did not cause damage); subsequent analysis did not sufficiently adjust toward the possibility that this event was different. Mitigation: separate the initial estimate from subsequent analysis; use multiple anchors; explicitly consider the rationale for staying near the anchor.
+
+\textbf{Framing:} the same decision can produce different choices depending on how the options are framed (gains vs losses, certain vs uncertain). The classic Kahneman-Tversky framing effects appear in engineering: a $1\%$ failure rate is presented as "$99\%$ success" or "$1\%$ catastrophic failure" with different decisions. Mitigation: examine the same decision under multiple frames; require formal cost-benefit framing with both gains and losses.
+
+\textbf{Motivated reasoning:} the engineer or decision-maker has a preferred conclusion and the analysis is shaped to support it. Standard symptoms: selective evidence, special-pleading arguments, dismissal of contradictory data, focus on uncertainty when it favours the desired conclusion and certainty when it does not. Mitigation: explicit alternatives; designated devil's advocates; external review.
+
+\textbf{Confirmation bias:} the engineer accepts evidence supporting the current hypothesis and discounts evidence against it. Mitigation: explicit search for contradictory evidence; falsification framing; pre-registered analyses.
+
+\textbf{Sunk-cost fallacy:} continuing a path because of past investment, rather than because the path is now best. Most rational decisions ignore sunk costs; humans do not. Mitigation: re-framing decisions from the current state; explicit acknowledgement of sunk costs as past, not future.
+
+\textbf{Overconfidence:} the decision-maker is more certain than the evidence warrants. The Three Mile Island accident (\cite{acc:kemeny-tmi-1979}) had elements of overconfident operator interpretation of indicators. Mitigation: explicit calibration training; uncertainty quantification; second opinions.
+
+\textbf{Group think:} the team converges on a consensus that suppresses dissent; the resulting decision is worse than any individual member would make. The 1986 Challenger disaster (\cite{acc:nasa-challenger}) management decision-making had group-think elements: dissenting engineers were not heard, schedule pressure produced consensus on launch. Mitigation: structured deliberation; explicit dissent role; written justifications.
+
+\textbf{Ambiguity aversion:} avoiding the unknown distribution in favour of the known distribution, even when the known is worse. In engineering: preferring a familiar but suboptimal technology to an unfamiliar but better one. Mitigation: explicit comparison of expected outcomes; pilot the unfamiliar option to reduce ambiguity.
+
+\textbf{Optimism bias:} the project will succeed despite the historical base rate of failure for similar projects. Megaprojects suffer routinely; reference-class forecasting (compare to similar past projects) is the standard mitigation.
+
+\textbf{Status-quo bias:} preferring the current state to alternatives, even when the alternatives are objectively better. Mitigation: explicit consideration of the cost of inaction; reversing the default (consider departing from the status quo as the active choice).
+
+\begin{principle}[The structured-decision principle]
+A consequential engineering decision is structured: the alternatives are enumerated; the uncertainty is characterised; the outcomes are evaluated; the trade-offs are explicit. The discipline does not eliminate judgement; it makes the judgement visible. The decision that is recorded with its rationale, alternatives considered, and analysis can be reviewed, learned from, and defended. The decision that is made in the head without structure is harder to review and harder to learn from. For high-consequence decisions, the structure is mandatory; for low-consequence decisions, it is overhead. The engineering judgement is matching the formality to the consequence.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Solve a small MDP with three alternative algorithms]
+\textbf{Objective.} Solve a small Markov decision process using three different algorithms (value iteration, policy iteration, linear programming). Reconcile the solutions; explain any differences; discuss the algorithm trade-offs.
+
+\textbf{Method.} Choose a small MDP: a grid world with a few rewards and penalties; a simple inventory problem; a maintenance-scheduling problem; a chosen-from-textbook example. Implement value iteration to convergence; policy iteration; LP formulation solved with a standard solver. Compare the optimal value functions and policies. Report convergence speed, computational effort, sensitivity to discount factor.
+
+\textbf{Deliverables.} The MDP specification (states, actions, transitions, rewards); the three solution implementations; comparison of the optimal value functions and policies; convergence plots; a written analysis of when each algorithm is preferred.
+
+\textbf{Hazard.} Software only; the educational value is in understanding the algorithm trade-offs.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A gamble pays $\$100$ with probability $0.5$ and $\$0$ with probability $0.5$. Compute the certainty equivalent for a decision-maker with utility $u(x) = \sqrt{x}$.
+\end{exercise}
+
+\begin{exercise}
+A decision-maker with utility $u(x) = \log(1 + x)$ chooses between $\$50$ certain and a gamble paying $\$0$ or $\$120$ with equal probability. Which is preferred?
+\end{exercise}
+
+\begin{exercise}
+A simple MDP has states $\{1, 2\}$, actions $\{a, b\}$ in each state, transitions and rewards specified. Compute the optimal value function and policy with $\gamma = 0.9$.
+\end{exercise}
+
+\begin{exercise}
+A decision problem has actions $A_1, A_2, A_3$ and states $S_1, S_2, S_3$ with given utilities and state probabilities. Compute the expected utility of each action and the minimax-regret action.
+\end{exercise}
+
+\begin{exercise}
+For a multi-attribute decision with three attributes, weights $(0.5, 0.3, 0.2)$, and attribute scores for three alternatives, compute the weighted-sum ranking.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Bellman optimality equation from the principle of optimality.
+\end{exercise}
+
+\begin{exercise}
+Derive the value-iteration update from the Bellman equation, and show that it converges for $\gamma < 1$.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between risk aversion in the utility function and the certainty-equivalent for a small risk.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the certainty equivalent for a $\$1\text{M}$ catastrophic-failure risk at probability $10^{-4}$, for a risk-averse decision-maker.
+\end{exercise}
+
+\begin{exercise}
+Estimate the value of information for an engineering test that has $80\%$ accuracy at distinguishing two hypotheses with prior probabilities $0.7$ and $0.3$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the expected cost of optimism bias in a project where reference-class data shows $30\%$ average overrun.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a Monte Carlo decision analysis for a multi-attribute decision with uncertain attribute values; report the robustness of the ranking.
+\end{exercise}
+
+\begin{exercise}
+Implement value iteration on a grid-world MDP; plot the value function convergence.
+\end{exercise}
+
+\begin{exercise}
+Simulate the decision-making behaviour of a risk-averse versus risk-neutral decision-maker on a sequence of investment decisions.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a decision-analysis framework for an engineering project's go/no-go gate, including multi-attribute objectives and risk considerations.
+\end{exercise}
+
+\begin{exercise}
+Design an MDP for an inventory-management problem with stochastic demand and capacity-constrained replenishment.
+\end{exercise}
+
+\begin{exercise}
+Design a decision-support tool for an emergency response team facing time-critical resource-allocation decisions.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's decision analysis recommends an option that differs from the senior engineer's intuition. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between expected-utility and minimax-regret frameworks for a project decision. State the engineering criteria.
+\end{exercise}
+
+\begin{exercise}
+A team's project has been pursued for two years; new analysis suggests the original decision was wrong. State the engineering response and the role of sunk-cost reasoning.
+\end{exercise}
+
+\begin{exercise}
+A team's risk register includes a high-impact low-probability event; the team disagrees on the probability estimate. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's organisation has a culture of "no decision is the safe decision." State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to certify a decision-support system that will operate in safety-relevant contexts. State the engineering considerations: verification, validation, operator-trust calibration.
+\end{exercise}
+
+\begin{exercise}
+A team's decision analysis shows two options with similar expected utility but very different risk profiles. State the engineering judgement.
+\end{exercise}
+
+\begin{exercise}
+A team's analysis includes substantial uncertainty in the input parameters; the team is asked to provide a single recommendation. Discuss the engineering response, and address the process-vs-outcome accountability question that arises when the recommendation produces a poor outcome.
+\end{exercise}

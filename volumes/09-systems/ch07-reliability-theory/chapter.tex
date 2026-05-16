@@ -1,40 +1,279 @@
 \chapter{Reliability theory}
 \label{vol09:ch07}
 
-\epigraph{}{}
+\epigraph{Reliability is the probability that a thing does what it should, under conditions it was designed for, for as long as needed.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: failure, balance. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: failure, balance, coupling. Exercise target: 30. Project track: physical.}
 
 \noindent
-\TODO{Volume 9, Chapter 7. Approx 110 pp.}
+Reliability theory provides the mathematical and engineering tools to quantify, predict, and improve the probability that a system performs its intended function under stated conditions for a stated period. The discipline emerged from World War II electronic-systems failures (vacuum-tube radar with hundreds of tubes failing weekly), matured during the Cold War missile and aerospace programmes, and now governs the design of any system whose failure has significant cost. Reliability is not just a number; it is a discipline of how failures are anticipated, prevented, detected, recovered from, and recorded. This chapter develops the failure-rate concepts (MTBF, MTTR), the bathtub curve, reliability functions and distributions, series-parallel-k-of-n system reliability, fault-tree and event-tree analysis, FMEA/FMECA, common-cause failure, and the failure mode of redundancy that does not help when it is needed.
 
-\section{Failure rate, MTBF, MTTR}
-\TODO{Section prose.}
+\section{Failure rate, MTBF, MTTR}\pathtag{core}
 
-\section{Bathtub curve}
-\TODO{Section prose.}
+The failure rate $\lambda(t)$ is the conditional probability of failure per unit time, given that the component has not yet failed: $\lambda(t) = f(t)/R(t)$, where $f(t)$ is the failure time density and $R(t)$ is the reliability (probability of surviving to time $t$). For the exponential distribution (constant failure rate), $\lambda$ is constant, and $R(t) = e^{-\lambda t}$, $f(t) = \lambda e^{-\lambda t}$.
 
-\section{Reliability functions and distributions}
-\TODO{Section prose.}
+The mean time between failures (MTBF) is $\E[T] = 1/\lambda$ for the exponential distribution; for repairable systems with negligible repair time, MTBF is the mean lifetime of the component or system. For non-exponential lifetimes, MTBF is the mean of the lifetime distribution; the relationship to the failure rate is less direct.
 
-\section{Series, parallel, $k$-of-$n$ systems}
-\TODO{Section prose.}
+MTBF should not be confused with useful life: an MTBF of $50{,}000$ hours does not mean the component lasts $50{,}000$ hours before wearing out. For exponential lifetimes, the median life is $\ln 2 \times \text{MTBF} \approx 0.693 \times \text{MTBF}$; the probability of surviving the MTBF is $1/e \approx 37\%$. A component specified at MTBF $= 10$ years has a $63\%$ chance of failing within $10$ years.
 
-\section{Fault-tree and event-tree analysis}
-\TODO{Section prose.}
+The mean time to repair (MTTR) is the expected time to restore the system after failure. The availability $A = \text{MTBF}/(\text{MTBF} + \text{MTTR})$ is the fraction of time the system is operational. For high availability ($> 0.99$), either MTBF is much greater than MTTR or both are managed carefully.
 
-\section{FMEA, FMECA}
-\TODO{Section prose.}
+The MTBF and MTTR can be measured (from operational data), estimated (from accelerated testing), or predicted (from component handbooks like MIL-HDBK-217 or industry-specific data). The predicted values are typically optimistic; operational values reflect real-world stresses (temperature, vibration, humidity) that handbook models do not capture fully.
 
-\section{Common-cause failure}
-\TODO{Section prose.}
+\section{Bathtub curve}\pathtag{core}
 
-\section{Failure: redundancy that did not help}
-\TODO{Section prose.}
+The bathtub curve is the standard representation of failure rate over a component's life: early-life failures (infant mortality, declining failure rate), useful life (constant failure rate, the flat bottom of the bathtub), and wear-out (rising failure rate). The curve's shape varies by component family but the three regions are nearly universal.
 
+Early-life failures arise from manufacturing defects, assembly errors, and material flaws. The failure rate is high initially and declines as the defective units fail and are removed from the population. Burn-in (operating units for a period before deployment) screens out early-life failures at the cost of operating time. The duration of the early-life region depends on the component: hours to a few weeks for electronics, weeks to months for mechanical components.
 
-\section{Project}
-\TODO{build a fault tree for a household system (heating, water, internet); estimate MTBF}
+Useful-life failures arise from random events: cosmic-ray strikes, transient overloads, statistical noise. The failure rate is roughly constant; the exponential distribution applies. The useful-life period is the majority of the component's life: years to decades for well-designed components.
+
+Wear-out failures arise from gradual degradation: bearing wear, electrolyte loss in capacitors, oxidation, cycle fatigue, hydrogen embrittlement, radiation damage. The failure rate rises with time; the Weibull distribution with shape parameter $\beta > 1$ is the standard model. Preventive maintenance and component replacement address wear-out failures before they accumulate.
+
+The engineering response to each region differs: burn-in for early-life, redundancy and graceful degradation for useful-life random failures, scheduled maintenance for wear-out. Mixing the responses (replacing components on schedule during the useful-life period) wastes resources without improving reliability; leaving components in service through wear-out invites failure.
+
+\section{Reliability functions and distributions}\pathtag{standard}
+
+The reliability $R(t) = \Pr(T > t)$ is the probability that the lifetime $T$ exceeds $t$. The complementary cumulative distribution function. The reliability satisfies $R(0) = 1$, $R(\infty) = 0$, and $R'(t) \leq 0$ (the reliability is non-increasing).
+
+Standard lifetime distributions and their use:
+
+\textbf{Exponential:} $R(t) = e^{-\lambda t}$, constant failure rate $\lambda$. The memoryless property: $\Pr(T > t + s | T > t) = \Pr(T > s)$, the survival probability of the next $s$ time units is independent of how long the component has already survived. The exponential model fits useful-life random failures.
+
+\textbf{Weibull:} $R(t) = \exp(-(t/\eta)^\beta)$, with scale $\eta$ and shape $\beta$. For $\beta < 1$, decreasing failure rate (infant mortality); $\beta = 1$, constant (exponential); $\beta > 1$, increasing (wear-out). The Weibull is the most versatile lifetime distribution; the shape parameter is fit to data and indicates the failure mechanism.
+
+\textbf{Lognormal:} $T = \exp(\mu + \sigma Z)$ with $Z$ standard normal. The lognormal arises from multiplicative degradation; fatigue life often follows lognormal.
+
+\textbf{Gamma:} arises from the sum of exponential lifetimes; used for systems with multiple sequential failure mechanisms.
+
+\textbf{Normal:} truncated to positive values, used for tightly-clustered failure times (well-maintained mechanical components).
+
+The choice of distribution is a model-selection problem; statistical tests (Anderson-Darling, Kolmogorov-Smirnov, probability plots) compare candidate distributions on a dataset.
+
+\section{Series, parallel, $k$-of-$n$ systems}\pathtag{core}
+
+System reliability composes from component reliability through the system architecture. The three standard cases:
+
+\textbf{Series:} components are independent and all must work for the system to work. $R_{sys} = \prod_i R_i$. A series system is less reliable than any of its components; ten components each with $R_i = 0.99$ give system reliability $0.90$. The series structure is the dominant pattern in most systems; identifying the series chain identifies the reliability bottleneck.
+
+\textbf{Parallel:} components are independent and any one working is sufficient. $R_{sys} = 1 - \prod_i (1 - R_i)$. A parallel system is more reliable than any of its components; two components each $R_i = 0.99$ give system reliability $0.9999$. Parallel structures are the engineering response to unreliable components: redundancy buys reliability at the cost of components, weight, power.
+
+\textbf{$k$-of-$n$:} the system works if at least $k$ of $n$ components work. Reliability: $R_{sys} = \sum_{i=k}^n \binom{n}{i} R^i (1-R)^{n-i}$ for identical components with reliability $R$. The $k$-of-$n$ pattern is the standard for voting systems (e.g., $2$-of-$3$ triple-modular redundancy in flight computers), distributed-storage systems (RAID, Reed-Solomon erasure coding), and tolerance designs (a multi-engine aircraft requiring $k$ engines to continue flight).
+
+The reliability calculations assume independence: each component's failure is statistically independent of the others. Real systems often violate independence: shared environment, shared design, shared manufacturing batch. Common-cause failures (later section) defeat redundancy when independence fails.
+
+\begin{archetype}[balance: redundancy as the cost-of-reliability trade-off]
+Reliability and redundancy are in direct trade-off with cost, weight, power, and complexity. A more reliable system requires more components, more analysis, more testing. The engineering judgement is how much reliability is worth: a consumer device needs $0.99$ reliability over a year; an aircraft autopilot needs $10^{-9}$ failure probability per flight hour; a nuclear reactor protection system needs $10^{-7}$ on demand. Each step of reliability comes at multiplicative cost; the design optimises reliability per unit cost subject to the application's reliability requirement.
+\end{archetype}
+
+\section{Fault-tree and event-tree analysis}\pathtag{standard}
+
+Fault-tree analysis (FTA) decomposes a system failure (the top event) into combinations of basic events (component failures, human errors, environmental events) using logical gates (AND, OR, voting). The tree is constructed top-down: what could cause the top event; what could cause each subcause; and so on, until reaching basic events whose probabilities are known.
+
+The tree's quantitative analysis computes the top event probability from the basic event probabilities. The qualitative analysis identifies the minimal cut sets (the smallest combinations of basic events that cause the top event); these are the failure pathways the design must defend against. Common-cause analysis identifies cut sets with dependent basic events.
+
+Fault trees are the standard tool for safety-critical-systems analysis in aerospace, nuclear, process, and medical industries. The NUREG-0492 fault-tree handbook (NRC, 1981) is the canonical reference; commercial tools (Isograph, ITEM, ReliaSoft) provide practitioner-grade computation.
+
+Event-tree analysis (ETA) is the dual: starting from an initiating event, the tree branches at each subsequent decision or protective system; the leaves are the system states (success, partial success, various failures). ETA is the standard for probabilistic risk assessment of process and nuclear systems: the initiating event triggers a sequence; the protective systems may succeed or fail at each step; the end-state probability is the product of the conditional probabilities along the path.
+
+The combination of FTA and ETA (the bow-tie diagram, with FTA on the input side and ETA on the output side) gives the full picture of how an initiating event propagates through the system. The discipline includes identifying the initiating events, the protective systems, the consequences, and the probabilities; the analysis is the engineering audit of safety.
+
+\section{FMEA, FMECA}\pathtag{standard}
+
+Failure mode and effects analysis (FMEA) is a systematic, bottom-up enumeration of component failure modes, their effects on the system, and the means to detect and mitigate them. The standard tabular form: component, function, failure mode, cause, effect on subsystem, effect on system, detection method, mitigation, severity, occurrence, detection.
+
+FMECA (failure mode, effects, and criticality analysis) adds quantitative criticality: each failure mode is assigned severity and probability scores; the product (risk priority number, RPN) ranks the failure modes for engineering attention. High-RPN failure modes get design attention; low-RPN failure modes are documented and accepted.
+
+FMEA is conducted during design (design FMEA, dFMEA), during manufacturing (process FMEA, pFMEA), and for service (service FMEA). The discipline includes: comprehensive enumeration (every component, every interface), correct identification of effects (the failure's propagation through the system), and realistic detection assessment (does the system actually detect the failure during operation).
+
+FMEA is widely applied in aerospace, automotive, medical, and reliability-critical industries. The 9001:2008 quality standard requires design and process FMEAs for many applications; IATF 16949 (automotive) and ISO 13485 (medical) make FMEA explicit. The discipline's limitations include: single-failure focus (the standard FMEA considers one failure at a time, not combinations); human-error coverage (not typically included unless explicitly added); software failure modes (less well-covered than hardware).
+
+\section{Common-cause failure}\pathtag{core}
+
+Common-cause failure is a single event that causes multiple nominally independent components to fail simultaneously. The phenomenon defeats redundancy: $n$ components designed for independence can be brought down by one common cause.
+
+Common-cause sources:
+
+\textbf{Environmental:} all components share an environment that drives all to fail. Cold weather, lightning strike, flooding, fire, dust ingress, electromagnetic pulse. The 1986 Challenger disaster (\cite{acc:nasa-challenger}) is a common-cause failure: cold weather degraded O-ring sealing on both joints in the SRB joint, and on both SRBs.
+
+\textbf{Manufacturing:} all components are from the same manufacturing batch with the same defect. A common batch of bolts with low yield strength; a common batch of capacitors with high-failure-rate electrolyte; a common batch of integrated circuits with a die-bond defect.
+
+\textbf{Design:} all components share a design flaw. A software bug in identical software running on all redundant computers; an aerodynamic-margin error common to all wing units; a load-path assumption violated in all bolted joints.
+
+\textbf{Operational:} a single operator action affects multiple components. A switch turned to the wrong position; a single command transmitted to multiple actuators; a maintenance procedure performed incorrectly on all units of a redundant set.
+
+\textbf{Calibration:} all sensors share a calibration that is wrong. The 1990 Hubble Space Telescope mirror grinding (\cite{acc:nasa-hubble-optical-systems-1990}) used a null corrector with a flaw, producing a mirror with spherical aberration; the redundancy (multiple test methods) was bypassed in favour of the precise but flawed null corrector.
+
+Common-cause modelling: the basic event probabilities in fault trees are augmented with explicit common-cause events that affect multiple components. Beta-factor models, multiple-Greek-letter models, and partial-beta-factor models quantify the common-cause coupling. The discipline includes identifying potential common causes, designing diversity (different manufacturers, different software implementations, different test methods, different staff for redundant procedures), and verifying that the diversity is meaningful (not nominal-but-shared).
+
+\section{Failure: redundancy that did not help}\pathtag{core}
+
+Reliability designs fail in characteristic ways.
+
+\textbf{Common-cause failure defeated the redundancy.} The redundant units shared a failure mode; the same event brought all units down. The standard response is diverse redundancy (different designs, different manufacturers, different procedures), but diversity is costly and may not be feasible.
+
+\textbf{Wear-out concurrence.} Redundant units installed at the same time wear out at the same rate; the redundancy provides protection in early life and useful life but fails simultaneously in wear-out. Mitigation: stagger installation, monitor and replace before wear-out begins.
+
+\textbf{Latent failures.} A redundant unit failed but the failure was not detected; when the primary fails, the redundant unit is also down. Mitigation: built-in test (BIT), periodic testing, redundant monitoring of redundant units.
+
+\textbf{Reliability target not met.} The design's predicted reliability is based on optimistic component data; the operational reliability is worse. Mitigation: characterise components in the actual environment; include margin in reliability budgets.
+
+\textbf{Maintenance-induced failure.} The maintenance activity damages or mis-installs a redundant component, introducing a new failure. Mitigation: maintenance procedures with verification, post-maintenance test, periodic post-maintenance system test.
+
+\textbf{Operator misunderstanding.} The operator does not understand the redundancy or the degraded modes; the response to a failure introduces a new failure. The 1979 Three Mile Island accident (\cite{acc:kemeny-tmi-1979}) had a major operator-confusion component: the pressure-operated relief valve was stuck open, the indicators showed the valve command (closed) not the actual position (open), and operators inferred the wrong system state for hours. The control-room information design was a contributing factor.
+
+\textbf{Software common cause.} Multiple computers run the same software; a software bug fails all of them simultaneously. Mitigation: $N$-version programming (different teams write independent versions); diverse algorithms; static and runtime analysis; formal verification for safety-critical components.
+
+\textbf{Cascading failure.} The failure of one component triggers stress on others, which then fail. The cascade can amplify a small initial event into a system-wide failure. Mitigation: graceful degradation, isolation between modules, controlled load shedding.
+
+The 2003 Northeast blackout cascaded across multiple utility systems whose interconnections were not modelled together as one system. Each utility's protection responded correctly within its boundary; the inter-utility cascade was not anticipated. The lesson: the system boundary matters; failures cross boundaries that engineering analysis often does not.
+
+\begin{principle}[The redundancy-with-diversity principle]
+Redundancy alone is not reliability; redundancy with diversity is reliability. Two units of the same design, made by the same manufacturer, installed by the same crew, operating in the same environment, with the same software, are not two independent units. Their common modes failure together. The discipline of reliability is the discipline of recognising and mitigating common causes; the engineer who installs three identical units expecting independence has the wrong mental model.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Fault tree for a household system]
+\textbf{Objective.} Build a fault tree for a household system (heating, water, internet); estimate the MTBF; identify the bottleneck failures.
+
+\textbf{Method.} Choose a household system you operate: gas/electric heating, water supply (well or municipal), internet connectivity, refrigeration. Map the components: appliances, sensors, controls, energy sources, distribution. Define a top event ("no heat for $24\,\text{hours}$ in winter"). Construct the fault tree: what could cause no heat (heater failure, fuel failure, electricity failure, control failure, etc.); decompose each branch. Estimate the basic event probabilities from your experience, manufacturer specifications, or generic data. Compute the top event probability. Identify the minimal cut sets and the high-contribution events.
+
+\textbf{Deliverables.} The fault tree diagram (drawn by hand, in a graphic tool, or in a fault-tree tool); the basic event probabilities with sources; the top event probability; the minimal cut sets; a written analysis of where the household-system reliability is bottlenecked and what improvements would help.
+
+\textbf{Hazard.} None for the analysis; if you modify the household system, follow appropriate codes and licensed-professional involvement (electrical, gas).
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A component has constant failure rate $\lambda = 10^{-4}/\text{hr}$. Compute the reliability at $1000\,\text{hr}$, the MTBF, and the median life.
+\end{exercise}
+
+\begin{exercise}
+Three identical components with $R = 0.95$ are in series. Compute the system reliability.
+\end{exercise}
+
+\begin{exercise}
+Two identical components with $R = 0.95$ are in parallel. Compute the system reliability.
+\end{exercise}
+
+\begin{exercise}
+A $2$-of-$3$ voting system has three identical components with $R = 0.98$. Compute the system reliability.
+\end{exercise}
+
+\begin{exercise}
+A system has MTBF $= 10{,}000\,\text{hr}$ and MTTR $= 4\,\text{hr}$. Compute the availability.
+\end{exercise}
+
+\begin{exercise}
+A Weibull lifetime has $\beta = 2$, $\eta = 1000\,\text{hr}$. Compute the reliability at $500\,\text{hr}$ and at $2000\,\text{hr}$.
+\end{exercise}
+
+\begin{exercise}
+A common-cause failure rate of $\beta = 0.1$ applies to a $2$-of-$3$ system with individual failure probability $0.01$ per demand. Compute the system unavailability.
+\end{exercise}
+
+\begin{exercise}
+For two independent failure events, $P(A) = 10^{-3}$, $P(B) = 5 \times 10^{-4}$, compute the probability of either A or B and of both.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the exponential reliability function from the constant failure-rate assumption.
+\end{exercise}
+
+\begin{exercise}
+Derive the system reliability for a series-parallel combination from the component reliabilities.
+\end{exercise}
+
+\begin{exercise}
+Derive the $k$-of-$n$ system reliability for identical components.
+\end{exercise}
+
+\begin{exercise}
+Derive the Weibull lifetime distribution from the assumption that the failure rate is a power-law function of time.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between MTBF, MTTR, and steady-state availability for a repairable system.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the MTBF of a typical residential refrigerator from the population-level failure data ($\sim 5\%$ failure per year).
+\end{exercise}
+
+\begin{exercise}
+Estimate the duration of the early-life region for a complex integrated circuit, given typical burn-in practices.
+\end{exercise}
+
+\begin{exercise}
+Estimate the operational MTBF improvement from doubling the failure rate margin in a design.
+\end{exercise}
+
+\begin{exercise}
+Estimate the common-cause $\beta$-factor for triple-redundant identical software components running on identical computers.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate the reliability of a series system over time for components with Weibull lifetimes; identify when the system reliability drops below $50\%$.
+\end{exercise}
+
+\begin{exercise}
+Simulate Monte Carlo fault-tree analysis: generate random component failure times from exponential distributions and compute the empirical top-event probability.
+\end{exercise}
+
+\begin{exercise}
+Simulate the availability of a $2$-of-$3$ system with realistic repair times; identify the trade-off between MTBF and MTTR for target availability.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a reliability architecture for an aircraft fly-by-wire system: state the redundancy strategy, the voting scheme, and the diversity strategy.
+\end{exercise}
+
+\begin{exercise}
+Design a reliability test plan for an industrial pump: accelerated life testing, sample size, target reliability with confidence bound.
+\end{exercise}
+
+\begin{exercise}
+Design an FMEA process for a consumer electronics product: scope, team composition, deliverables, integration with design.
+\end{exercise}
+
+\begin{exercise}
+Design a fault-tree for a vehicle airbag system: state the top event, the basic events, and the gate structure.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's redundant computers run the same software and both fail under a specific input. State the engineering response and the role of N-version programming.
+\end{exercise}
+
+\begin{exercise}
+A team's reliability prediction is based on MIL-HDBK-217 component data; the operational reliability is half the prediction. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to specify the redundancy for a process-control safety instrumented system. State the engineering considerations: SIL level, target failure probability, common-cause analysis, proof-test interval.
+\end{exercise}
+
+\begin{exercise}
+A team's FMEA identifies a critical failure mode with no current detection method. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between high MTBF (low failure rate) and high MTTR-recovery (fast repair) for a target availability. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to extend the operating life of an aging system beyond its original design lifetime. State the engineering considerations.
+\end{exercise}

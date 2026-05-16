@@ -1,40 +1,289 @@
 \chapter{Modelling dynamic systems}
 \label{vol09:ch01}
 
-\epigraph{}{}
+\epigraph{All models are wrong; some are useful.}{George Box, 1979}
 
-\chapmeta{Half-life: medium-life. Archetypes: balance, scaling. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: balance, scaling, coupling. Exercise target: 35. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 1. Approx 100 pp.}
+A dynamic system is a system whose state evolves over time according to rules that connect current state and inputs to future state. Modelling a dynamic system is the discipline of writing those rules in a form precise enough to compute with, simple enough to reason about, and accurate enough to be useful for the question being asked. Modelling is not the same as physics; modelling is the engineer's choice of abstraction. A satellite can be modelled as a point mass, a rigid body, a flexible structure, or a stack of finite elements with thermal coupling; each model answers different questions, each model has a range of validity, and choosing the right model is a separate skill from solving any one of them. This chapter develops the engineer's vocabulary of dynamic-system models: what a system is, what a model is, the standard categorisations (lumped vs distributed, linear vs nonlinear, time-invariant vs time-varying), block diagrams and signal-flow graphs, the introduction to system identification, worked examples across multiple domains, and the failure mode of model misspecification.
 
-\section{What a system is, what a model is}
-\TODO{Section prose.}
+\section{What a system is, what a model is}\pathtag{core}
 
-\section{Lumped vs distributed}
-\TODO{Section prose.}
+A system, in engineering usage, is a collection of components organised to perform a function, with defined inputs, defined outputs, and a defined boundary that separates the system from its environment. The boundary is a modelling choice: drawing it wider includes more of the environment as part of the system; drawing it tighter externalises more variables. A car is a system; the car-driver-road triple is a different system. The right boundary depends on the question.
 
-\section{Linear vs nonlinear}
-\TODO{Section prose.}
+A model of a system is a representation of its behaviour, simplified to be tractable while retaining the aspects relevant to the question. The model can be physical (a wind tunnel, a hydraulic analogue), graphical (a block diagram, a phase portrait), mathematical (differential equations, transfer functions, state-space, automata), computational (a simulation in code), or experiential (an operator's intuition, encoded in procedures). Mathematical models dominate engineering analysis because they admit symbolic manipulation, numerical computation, and formal proof.
 
-\section{Time-invariant vs time-varying}
-\TODO{Section prose.}
+State, input, output, and parameters are the four standard variables of a dynamic-system model. The \textit{state} is the minimal set of variables whose current value, together with the future input, determines the future evolution. The \textit{input} is what the environment or operator imposes on the system. The \textit{output} is what is measured or matters externally. The \textit{parameters} are quantities that characterise the system but do not change during the dynamics of interest (or change slowly enough to be treated as constants over the time scale of the analysis).
 
-\section{Block diagrams and signal-flow graphs}
-\TODO{Section prose.}
+For a mass-spring-damper, the state is position and velocity, the input is applied force, the output is position, and the parameters are mass, spring constant, and damping coefficient. For a heated room, the state is temperature, the input is heater power and outside temperature, the output is temperature, and the parameters are thermal mass and thermal resistance. For a bank account, the state is balance, the input is deposits and withdrawals, the output is balance, and the parameter is interest rate (treated as constant on the time scale of daily transactions).
 
-\section{System identification introduced}
-\TODO{Section prose.}
+The choice of state is not unique. Two state vectors that are related by an invertible transformation describe the same system; the choice between them is convenience. A model with too few state variables fails to capture relevant dynamics; a model with too many state variables is wasteful and may be numerically ill-conditioned. The minimal-state representation is often the goal of system identification.
 
-\section{Worked examples across mechanical, thermal, electrical, biological, social systems}
-\TODO{Section prose.}
+\begin{archetype}[coupling: the system view]
+A system is a coupling pattern. The same components arranged differently make different systems with different behaviours. A mass on a spring vibrates; the same mass on a spring with damping decays; the same mass on a spring with damping driven by a harmonic force resonates; the same mass on a spring with damping driven by a harmonic force connected to another mass shows coupled-mode resonance. The components are unchanged; the system behaviour is transformed by the coupling. The systems engineer thinks in connections, not in parts.
+\end{archetype}
 
-\section{Failure: model misspecification at the foundation}
-\TODO{Section prose.}
+\section{Lumped vs distributed}\pathtag{core}
 
+A lumped-parameter model treats spatial variation as negligible: the system has a finite number of state variables, each a function of time only. The mass-spring-damper, the RC circuit, the well-stirred reactor are lumped models. The governing equations are ordinary differential equations (ODEs) in time.
 
-\section{Project}
-\TODO{identify a real dynamic system from input-output data; defend the model class}
+A distributed-parameter model retains spatial variation: state variables are functions of both space and time. A heated rod's temperature distribution, the displacement of a vibrating beam, the velocity field in a pipe, the concentration profile in a packed reactor are distributed. The governing equations are partial differential equations (PDEs) in space and time.
+
+The choice between lumped and distributed depends on the time and length scales of interest. A wavelength that is much longer than the system dimension permits lumping (the system behaves as a single element). A wavelength comparable to or shorter than the system dimension requires the distributed treatment (the spatial structure of the response matters). The relevant ratio is the spatial dimension divided by the wavelength, or equivalently the Helmholtz number for acoustic systems, the thermal Biot number for thermal systems, the electrical length in wavelengths for transmission lines.
+
+Lumped models admit closed-form analysis for low orders (one to three states), numerical solution for higher orders, and direct interpretation of state. Distributed models require spatial discretisation for computation: finite difference, finite element, finite volume, spectral methods all convert PDEs into large ODE systems. Modal analysis represents the distributed model as an infinite sum of modes, often truncated to a finite number for engineering use.
+
+The practical engineering choice is often a hierarchy: a high-fidelity distributed model for design and verification; a reduced-order lumped model for control design and operational monitoring; a single-input single-output transfer function for the basic feedback loop. Each layer is consistent with the next at the scales of interest.
+
+\section{Linear vs nonlinear}\pathtag{core}
+
+A system is linear if it satisfies superposition: the response to a sum of inputs is the sum of the responses to the individual inputs, and the response to a scaled input is the scaled response. Mathematically: $f(\alpha u_1 + \beta u_2) = \alpha f(u_1) + \beta f(u_2)$ for the input-output map $f$.
+
+Linear systems admit a remarkably complete toolkit: Laplace and Fourier transforms convert the dynamics into algebraic relations in the frequency domain; transfer functions characterise the input-output relationship; eigenvalue analysis predicts stability and modal behaviour; controllability and observability conditions admit clean algebraic tests; optimal controllers (LQR, LQG, Kalman) have closed-form solutions; robust controllers ($H_\infty$, $\mu$-synthesis) build on the same algebra.
+
+Most real systems are nonlinear. Saturation, dead-band, hysteresis, friction with stick-slip, fluid dynamics at high Reynolds number, large-deformation mechanics, all introduce nonlinearity. Nonlinear systems can exhibit behaviours that linear systems cannot: multiple equilibria, limit cycles, bifurcations, chaos, finite-time escape. The phase-plane analysis, Lyapunov methods, describing functions, and harmonic balance are the classical tools; modern computational methods (numerical continuation, manifold theory, contraction analysis) extend the reach.
+
+The engineer's typical move is linearisation around an operating point: replace the nonlinear system by its Taylor series, keep the linear terms, design with linear-system methods, and verify on the nonlinear system or hardware. The linearised model is valid in a neighbourhood of the operating point; the size of the neighbourhood is itself an analysis question. Wide-envelope nonlinear systems may require multiple linearisations at multiple operating points (gain scheduling) or genuinely nonlinear control methods (feedback linearisation, sliding mode, model-predictive).
+
+\section{Time-invariant vs time-varying}\pathtag{standard}
+
+A time-invariant system's behaviour does not depend on absolute time: shifting the input in time shifts the output by the same amount, with no other change. Mathematically: if the input $u(t)$ produces output $y(t)$, then $u(t - \tau)$ produces $y(t - \tau)$ for any time shift $\tau$.
+
+Most engineering systems are time-invariant on relevant time scales. The mass-spring-damper, the RC circuit, the heated room all have parameters that change slowly enough to be treated as constants. The methods of linear time-invariant (LTI) analysis (transfer functions, frequency response, eigenvalues) apply.
+
+Time-varying systems have parameters that change on time scales comparable to or faster than the dynamics. Examples: a rocket's mass decreases as fuel burns, changing its dynamics over the burn; a satellite passes through the Earth's shadow, with solar-panel power dropping to zero; a battery's internal resistance changes with state of charge; a manufacturing process drifts as tools wear. Time-varying systems require time-dependent models; linear time-varying (LTV) systems are tractable with extended methods; nonlinear time-varying systems usually require numerical approaches.
+
+The boundary between time-invariant and time-varying is itself a modelling choice. A car's mass changes by $5\%$ over a tank of fuel; the dynamics may be modelled as time-invariant for control (over a few seconds) and time-varying for trip planning (over hours). A power-grid's load varies daily, weekly, seasonally; the dynamics on a millisecond scale (frequency stability) are time-invariant relative to the daily variation; the dynamics on a daily scale are explicitly time-varying.
+
+\section{Block diagrams and signal-flow graphs}\pathtag{standard}
+
+A block diagram is a graphical representation of a dynamic system: blocks represent operations (gains, integrators, transfer functions, nonlinear elements); arrows represent signals (state variables, inputs, outputs); summing junctions combine signals; pickup points fan out signals. The diagram shows the architecture: which signals flow to which blocks, where the feedback is, what the input-output relationship of the whole system is.
+
+Standard block-diagram operations include series connection ($G_1 G_2$ in the forward path), parallel connection ($G_1 + G_2$ in parallel), feedback ($G/(1+GH)$ for unity-sign feedback with forward path $G$ and feedback path $H$), and the various rearrangement rules (moving a pickup, moving a summing junction). Mason's gain formula gives the input-output transfer function of an arbitrary signal-flow graph in closed form.
+
+Block diagrams are the working language of control engineering. A control system's architecture (the plant, the sensor, the controller, the reference, the disturbance, the actuator, the feedback path) is read directly from the block diagram. The mathematical equations follow from the diagram, not the other way around: the engineer draws the diagram to organise the system, then writes equations as needed.
+
+Modern block-diagram environments (Simulink, Modelica, ROS computation graphs) extend the static block diagram to executable models with state, time-stepping, events, and discrete-event behaviour. The same architectural reading carries over to these tools; the engineer who can read a block diagram can read a Simulink model.
+
+\section{System identification introduced}\pathtag{standard}
+
+System identification is the inverse of modelling: given input-output data from a real system, find a model that reproduces the data. The discipline distinguishes parametric identification (the model class is given; parameters are estimated) from non-parametric identification (the model is described by its impulse response or frequency response, with no fixed structure).
+
+Standard parametric methods include least squares (for linear-in-parameters models), prediction-error methods (minimising prediction error over a model class such as ARMAX or state-space), subspace methods (singular-value decomposition of data matrices to extract state-space models), and neural-network methods (for nonlinear, high-dimensional cases). The standard non-parametric methods include impulse-response measurement, frequency-response measurement with sinusoidal or chirp inputs, and correlation analysis.
+
+The discipline of system identification includes designing the experiment: the input must excite the system at the frequencies of interest (persistent excitation), the data must be long enough to average out noise, the system must remain in the regime of interest, the sensor and actuator must be calibrated. A poorly designed experiment produces uninformative data; a well-designed experiment produces a model accurate within stated uncertainty bounds.
+
+Validation is essential. The model is tested on data not used for fitting (cross-validation); residuals are checked for whiteness (the model should explain all the systematic content); the model is checked against physical knowledge (parameters should have plausible magnitudes and signs). A model that fits the training data perfectly but fails on new data is overfit; a model that violates known physics is wrong even if it fits.
+
+\section{Worked examples across mechanical, thermal, electrical, biological, social systems}\pathtag{standard}
+
+Five domains, five characteristic models:
+
+\textbf{Mechanical (mass-spring-damper).} A mass $m$ on a spring $k$ with viscous damper $b$, driven by external force $F(t)$: $m\ddot{x} + b\dot{x} + kx = F$. The natural frequency is $\omega_n = \sqrt{k/m}$, damping ratio $\zeta = b/(2\sqrt{km})$. For $\zeta < 1$, the unforced response is damped oscillation at $\omega_d = \omega_n \sqrt{1-\zeta^2}$. The transfer function from $F$ to $x$ is $1/(ms^2 + bs + k)$.
+
+\textbf{Thermal (heated chamber).} A chamber with thermal capacitance $C$ (joules per kelvin) loses heat to ambient at temperature $T_a$ through thermal resistance $R$: $C \dot{T} = q_{in} - (T - T_a)/R$. The time constant is $\tau = RC$; the steady-state response to constant input $q_{in}$ is $T = T_a + R q_{in}$. The transfer function from $q_{in}$ to $(T - T_a)$ is $R/(\tau s + 1)$.
+
+\textbf{Electrical (RLC circuit).} An RLC series circuit driven by voltage source $v(t)$, with current $i(t)$: $L \dot{i} + Ri + (1/C)\int i\,dt = v$. Defining the charge $q$ as the state with $i = \dot{q}$: $L \ddot{q} + R\dot{q} + q/C = v$, the same form as the mass-spring-damper with the obvious analogies ($L \leftrightarrow m$, $R \leftrightarrow b$, $1/C \leftrightarrow k$).
+
+\textbf{Biological (Lotka-Volterra predator-prey).} A prey population $x$ and predator population $y$ with reproduction and predation rates: $\dot{x} = a x - b x y$, $\dot{y} = -c y + d x y$. The system is nonlinear; the unforced dynamics are closed orbits in the phase plane (periodic oscillations); the period and amplitude depend on the initial condition. Linearisation around the non-trivial equilibrium gives a centre, neither stable nor unstable to small perturbations.
+
+\textbf{Social (epidemic SIR).} A population partitioned into susceptible $S$, infected $I$, removed $R$ (recovered or deceased): $\dot{S} = -\beta SI/N$, $\dot{I} = \beta SI/N - \gamma I$, $\dot{R} = \gamma I$. The basic reproduction number is $R_0 = \beta/\gamma$; if $R_0 > 1$, the epidemic grows; if $R_0 < 1$, it decays. The model is nonlinear and admits closed-form analysis for some questions (final epidemic size, peak prevalence) and numerical for others.
+
+The common pattern: a small number of state variables, simple coupling, a small number of parameters, dynamics that span several orders of magnitude in time. The same mathematical structure (second-order linear ODE, first-order linear ODE, coupled nonlinear ODEs) describes phenomena that are physically very different. The engineer who recognises the structure transfers analytical results across domains.
+
+\begin{estimation}
+\textbf{Question.} Estimate the time constant of a residential refrigerator (thermal mass, insulation), and decide whether the compressor's duty cycle is dominated by the thermal time constant or by hysteresis in the thermostat.
+
+\textbf{Working.} Thermal mass: roughly $20\,\text{kg}$ of food and air at $\sim 2000\,\text{J/(kg \cdot K)}$ specific heat gives $\sim 40{,}000\,\text{J/K}$. Insulation: typical R-value $R \sim 0.5$ to $1\,\text{K/W}$ for the cabinet. Time constant: $\tau = RC \approx 0.7 \times 40{,}000 = 28{,}000\,\text{s} \approx 8$ hours. Thermostat hysteresis: $\sim 2$ to $3\,^\circ\text{C}$ between cut-in and cut-off. Cooling capacity: $\sim 200\,\text{W}$. Time to cool by $3\,^\circ\text{C}$: $\Delta T \cdot C / q = 3 \times 40{,}000 / 200 = 600\,\text{s} = 10$ minutes. Time to warm by $3\,^\circ\text{C}$ from ambient driver: in thermal-resistance steady state, the room temperature differential drives the rise; for ambient at $25\,^\circ\text{C}$ and interior at $4\,^\circ\text{C}$, $\Delta T_a = 21\,^\circ\text{C}$, heat in $q = \Delta T_a / R \approx 30\,\text{W}$, warm-up time $3 \times 40{,}000 / 30 = 4000\,\text{s} = 67$ minutes. So the duty cycle is roughly $10/(10+67) \approx 13\%$; the cycle period is set by the hysteresis dwell time at warming side, which is much longer than the cooling time. The duty cycle is hysteresis-dominated, not time-constant-dominated.
+\end{estimation}
+
+\section{Failure: model misspecification at the foundation}\pathtag{core}
+
+The failure mode of a modelling project is misspecification: the model omits dynamics that matter, includes dynamics that do not exist, sets the wrong boundary, uses the wrong scale, or assumes linearity where nonlinearity dominates. Model misspecification at the foundation propagates through every analysis built on the model; the conclusions are wrong but appear precise.
+
+Classic misspecifications:
+
+\textbf{Omitted dynamics.} A flexible mechanical structure modelled as rigid; a transmission line modelled as lumped; an actuator with significant lag modelled as instantaneous. The control designed against the simplified model is unstable when the omitted dynamics are excited. The Tacoma Narrows Bridge (\cite{acc:tacoma-narrows-1941}) failed because the aeroelastic coupling between airflow and torsional vibration was not in the design model. The model was right for the questions it was designed to answer (static loads, gravity, wind drag); it was wrong for the question that mattered (aeroelastic stability at moderate wind).
+
+\textbf{Wrong boundary.} The system is modelled with a boundary that excludes a coupling that matters. A control loop modelled without including the operator's response time; an aircraft modelled without considering the autopilot's interaction with the pilot; an electrical grid modelled without the customer-side response to frequency. The 2003 Northeast blackout cascaded across systems whose interconnection had not been modelled together; each utility's model was correct for its own boundary.
+
+\textbf{Wrong scale.} The model assumes the right physics for a different scale. A turbulent flow modelled as laminar; a molecular process modelled with continuum mechanics; a small-deformation model used at large deformations. The relevant scaling parameters (Reynolds, Knudsen, Mach, Prandtl, strain) should be checked before applying a model.
+
+\textbf{Linearisation outside the valid region.} The system is operating in a regime where the linearisation is wrong: saturation has hit, the operating point has moved, the perturbations are no longer small. The control loop based on the linearised plant has the wrong gain or the wrong phase margin; the closed-loop response is unsatisfactory or unstable.
+
+\textbf{Parameter ignorance.} The model structure is correct but the parameters are not known to the precision needed. The dynamics predicted from nominal parameters miss the actual behaviour; the controller designed for nominal parameters underperforms on hardware. Parameter sensitivity analysis identifies the parameters that matter most; system identification estimates them.
+
+\textbf{Aging and drift.} The model is correct at commissioning and wrong after years of operation. Components wear, parameters drift, structure changes. A model with no provision for adaptation (re-identification, re-tuning, re-calibration) becomes obsolete in service. The 1991 Patriot missile system clock drift (\cite{acc:gao-patriot-1992}) was a failure of a fixed-time-base model when the system was operated outside its qualified duration.
+
+\textbf{Confusion between fit and truth.} A model that fits the data may not be true. Two models can fit the same data with different predictions for conditions outside the data range. Statistical model selection (AIC, BIC, cross-validation) helps among models with similar structure; physical knowledge is essential among models with different structure. The model that is right physically is preferred to the model that fits better; the model that fits better may be overfit.
+
+\begin{principle}[The all-models-are-wrong principle]
+George Box's aphorism is the working motto of the modelling engineer. All models simplify, all simplifications introduce error, all error is bounded by the modelling choices. The discipline is not to seek the "right" model but to seek the model that is useful for the question being asked, to know the model's range of validity, to verify the model on data not used to build it, and to bound the consequences of model error in the design that follows. A model is a tool, not the truth; the engineer who treats the model as the truth has made the modelling error that propagates.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Identify a real dynamic system from input-output data]
+\textbf{Objective.} Identify the dynamics of a real system from input-output measurements. Defend the model class (model order, linearity, time-invariance). Validate on data not used for fitting.
+
+\textbf{Method.} Choose a system: an RC or RLC circuit on a breadboard; a small thermal mass with a heater and thermometer; a pendulum with a position sensor and a motor; a mass-spring-damper rig; a recorded acoustic system. Apply known inputs (steps, impulses, chirps, pseudo-random binary) and record the output. Choose a model class (first-order, second-order, ARMAX, state-space). Fit the model using least squares or a system-identification toolbox (MATLAB System Identification Toolbox, Python SIPPY, Julia ControlSystemIdentification). Validate the model on data not used for fitting; analyse the residuals; check the parameters for physical plausibility.
+
+\textbf{Deliverables.} The experimental setup (description and photograph), the input-output data (raw and processed), the chosen model class with rationale, the fitted parameters with uncertainty bounds, the validation plots (fitted vs measured on validation data), the residual analysis, and a written defence of the model: why this class, why this order, where the model breaks down.
+
+\textbf{Hazard.} Electrical safety on the bench; mechanical hazards if a pendulum or motor is involved; the model is a tool, not the truth, and the deliverable is a defensible characterisation, not the "correct" answer.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A mass-spring-damper system has $m = 2\,\text{kg}$, $k = 50\,\text{N/m}$, $b = 4\,\text{N\,s/m}$. Compute the natural frequency, the damping ratio, and the damped natural frequency.
+\end{exercise}
+
+\begin{exercise}
+An RC circuit has $R = 10\,\text{k}\Omega$, $C = 100\,\mu\text{F}$. Compute the time constant and the time to reach $90\%$ of a step input.
+\end{exercise}
+
+\begin{exercise}
+A second-order system has transfer function $4/(s^2 + 2s + 4)$. Compute the natural frequency, damping ratio, and the steady-state response to a unit step.
+\end{exercise}
+
+\begin{exercise}
+A thermal chamber has time constant $\tau = 1800\,\text{s}$. Compute the time to reach $63\%$ of a step change and the time to reach $99\%$.
+\end{exercise}
+
+\begin{exercise}
+A first-order plus delay system has transfer function $2 e^{-3s}/(5s + 1)$. Compute the gain at $\omega = 0.2\,\text{rad/s}$ and the phase shift.
+\end{exercise}
+
+\begin{exercise}
+For the Lotka-Volterra system with $a = 1$, $b = 0.5$, $c = 1$, $d = 0.5$, compute the non-trivial equilibrium point and check whether it is stable to small perturbations.
+\end{exercise}
+
+\begin{exercise}
+An SIR epidemic has $\beta = 0.4$, $\gamma = 0.1$. Compute $R_0$ and decide whether the disease will become endemic in a fully susceptible population.
+\end{exercise}
+
+\begin{exercise}
+For a linear time-invariant system with state matrix $A = \begin{pmatrix} 0 & 1 \\ -2 & -3 \end{pmatrix}$, compute the eigenvalues and classify the equilibrium at the origin.
+\end{exercise}
+
+\begin{exercise}
+A mass-spring-damper has under-damped impulse response $h(t) = e^{-t} \sin(2t)$. Compute the natural frequency and the damping ratio.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the differential equation governing an RLC series circuit; express it in state-space form with state $\mathbf{x} = (i, q)^T$.
+\end{exercise}
+
+\begin{exercise}
+Derive the linearisation of the pendulum equation $\ddot{\theta} + (g/L)\sin\theta = 0$ around the upright and inverted equilibria; classify each.
+\end{exercise}
+
+\begin{exercise}
+Derive the transfer function of a cascaded two-tank water level system from input flow rate to second tank level.
+\end{exercise}
+
+\begin{exercise}
+Derive the conditions under which an ARMAX model can be reduced to a transfer function in $z$ for a discrete-time linear time-invariant system.
+\end{exercise}
+
+\begin{exercise}
+Derive the impulse response of a first-order plus delay system from the transfer function $K e^{-\tau_d s}/(\tau s + 1)$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the dominant time constant of a residential gas furnace, including the burn cycle, the air handler, and the room thermal mass. State the operating regime.
+\end{exercise}
+
+\begin{exercise}
+Estimate the bandwidth at which a flexible cantilever beam's first bending mode must be considered (rather than treating the beam as rigid).
+\end{exercise}
+
+\begin{exercise}
+Estimate the model order required to capture the dynamics of a six-story building under earthquake loading. State the assumptions.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time scale of seasonal variation that would warrant treating a building's HVAC model as time-varying rather than time-invariant.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate the step response of an under-damped second-order system at three different damping ratios; report overshoot, settling time, and rise time.
+\end{exercise}
+
+\begin{exercise}
+Simulate the Lotka-Volterra predator-prey dynamics; plot the phase trajectory; identify the period of oscillation.
+\end{exercise}
+
+\begin{exercise}
+Simulate an SIR epidemic with $R_0 = 2.5$, $\gamma^{-1} = 7$ days; identify the peak prevalence and the final epidemic size.
+\end{exercise}
+
+\begin{exercise}
+Simulate a heated chamber with measurement noise; apply a system-identification routine to extract a first-order plus delay model; compare to the true parameters.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a system-identification experiment for an electric motor: choose the input signal class, the sampling rate, the duration, and the validation strategy.
+\end{exercise}
+
+\begin{exercise}
+Design a hierarchical model for a turbofan engine: a high-fidelity CFD model for design verification, a reduced-order dynamic model for control, a transfer-function model for the fuel-control loop. State the consistency conditions.
+\end{exercise}
+
+\begin{exercise}
+Design a state vector for the dynamics of a quad-rotor drone in hover; state the assumptions and the regime of validity.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's mass-spring-damper model fits step-response data but fails to predict frequency response near $5\,\text{Hz}$. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a lumped and a distributed model of a heat exchanger. State the engineering criteria.
+\end{exercise}
+
+\begin{exercise}
+A team's control system, designed against a linearised plant model, oscillates at large setpoint changes. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's identified system model fits training data with $R^2 = 0.99$ but performs poorly on validation data. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team has data from a thermal-process commissioning run and asks for a model. State the engineering investigation: input richness, signal-to-noise, sampling, and model-class selection.
+\end{exercise}
+
+\begin{exercise}
+A team has a model that predicts behaviour the system has never shown; the team asks whether the model can be trusted. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's model is calibrated against a plant that has since been retrofitted. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to defend a model whose parameters have changed since fitting; the predictions are still close to data. State the engineering judgement and the implications for predictive use.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a physics-based model and a data-driven (neural-network) model for a complex process. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to deliver a model whose predictions will be used to size a safety-critical component. State the engineering considerations: uncertainty quantification, conservative bounding, validation against historical failures, and the documentation needed for the model to be defensible in a post-incident review.
+\end{exercise}

@@ -1,40 +1,307 @@
 \chapter{Linear control: transfer functions, Bode, Nyquist}
 \label{vol09:ch02}
 
-\epigraph{}{}
+\epigraph{The controller is not the answer to the question what to do; it is the answer to the question how fast.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, stability. Exercise target: 40. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: control, stability, coupling. Exercise target: 40. Project track: physical.}
 
 \noindent
-\TODO{Volume 9, Chapter 2. Approx 120 pp.}
+Linear control theory is the discipline of designing the feedback loop that drives a plant to follow a reference signal while rejecting disturbances and tolerating model uncertainty. The discipline emerged from the demands of telecommunications (Black's negative feedback amplifier, 1927), fire-control radar (the MIT Radiation Laboratory, 1940s), aerospace (Bode's frequency-domain methods), and industrial process control (Ziegler-Nichols, 1942). The same mathematics governs the autopilot, the cruise control, the temperature regulator, the disk-drive head positioner, the satellite attitude controller, the inverted pendulum, the chemical-process composition loop. This chapter develops the engineer's working understanding of linear control: plant, controller, and feedback architecture; transfer functions; stability and root locus; Bode and Nyquist analysis; PID design and tuning; lead-lag compensators; and the failure modes of marginal stability and resonance amplification. The reader who finishes this chapter can design, analyse, and tune a single-input single-output feedback loop.
 
-\section{Plant, controller, feedback}
-\TODO{Section prose.}
+\section{Plant, controller, feedback}\pathtag{core}
 
-\section{Transfer functions}
-\TODO{Section prose.}
+The standard feedback architecture has four named blocks: the plant (the dynamic system being controlled), the controller (the algorithm that decides what to command), the sensor (which measures the plant output), and the reference (the desired output trajectory). The plant's output is measured by the sensor; the measurement is subtracted from the reference to produce the error; the controller acts on the error to produce the command; the command drives the plant. The loop is closed.
 
-\section{Stability: poles, root locus}
-\TODO{Section prose.}
+The classical block diagram: a reference $r$ enters at the top, the error $e = r - y_{meas}$ is computed at a summing junction, the controller $C(s)$ acts on $e$ to produce a command $u$, the plant $P(s)$ responds to $u$ producing the output $y$, the sensor $H(s)$ converts $y$ to $y_{meas}$. The closed-loop transfer function from $r$ to $y$ is $T(s) = C(s) P(s) / (1 + C(s) P(s) H(s))$. The open-loop transfer function is $L(s) = C(s) P(s) H(s)$.
 
-\section{Bode plots}
-\TODO{Section prose.}
+The objectives of a feedback loop are typically: track the reference (low tracking error), reject disturbances (the plant remains close to the reference under disturbance), tolerate sensor noise (the controller does not amplify measurement noise into the command), and tolerate model uncertainty (the loop remains stable and performs adequately even when the plant differs from the design model).
 
-\section{Nyquist criterion}
-\TODO{Section prose.}
+The four objectives can conflict. High gain at low frequencies gives good reference tracking and disturbance rejection; the same high gain at high frequencies amplifies sensor noise and can destabilise the loop. The art of linear control is shaping the loop transfer function over frequency to achieve the four objectives within the constraints of the plant's dynamics.
 
-\section{PID design and tuning}
-\TODO{Section prose.}
+\begin{archetype}[control: feedback as the loop-shaping problem]
+A linear feedback design is a frequency-by-frequency negotiation. At low frequencies, the design wants high loop gain (tight tracking, strong disturbance rejection). At high frequencies, the design wants low loop gain (insensitive to noise, robust to unmodelled dynamics). In between, the design negotiates the crossover frequency, where the loop gain transitions from high to low; the crossover frequency is the closed-loop bandwidth. The phase at crossover determines stability; the closer to $-180^\circ$, the closer to instability. The designer shapes the loop with the controller's frequency response, building in the gain at low frequency and the rolloff at high frequency, with adequate phase margin at crossover.
+\end{archetype}
 
-\section{Lead-lag compensators}
-\TODO{Section prose.}
+\section{Transfer functions}\pathtag{core}
 
-\section{Failure: gain margin and phase margin too low; resonance amplification}
-\TODO{Section prose.}
+A transfer function $G(s) = Y(s)/U(s)$ is the Laplace-transform ratio of output to input for a linear time-invariant system, computed with zero initial conditions. The Laplace variable $s$ is complex; $s = j\omega$ on the imaginary axis recovers the frequency response.
 
+The transfer function captures the essential dynamics of a linear system in a compact form. First-order plus delay: $G(s) = K e^{-\tau_d s}/(\tau s + 1)$, parameterised by gain $K$, time constant $\tau$, and delay $\tau_d$, is the workhorse model for many process-control applications. Second-order: $G(s) = K \omega_n^2 / (s^2 + 2\zeta \omega_n s + \omega_n^2)$, parameterised by gain, natural frequency $\omega_n$, and damping ratio $\zeta$, describes a wide range of mechanical, electrical, and process dynamics.
 
-\section{Project}
-\TODO{tune a real PID for a physical plant (motor, thermal, level)}
+Poles of the transfer function are roots of the denominator polynomial; they determine the system's natural response. Poles in the left half-plane correspond to stable modes (exponentially decaying or damped oscillation); poles in the right half-plane correspond to unstable modes (exponentially growing). Poles on the imaginary axis are marginally stable (undamped oscillation or constant); the closed-loop system should avoid them.
+
+Zeros of the transfer function are roots of the numerator polynomial; they determine the system's response to inputs at specific frequencies. A right-half-plane zero produces non-minimum-phase behaviour (the output initially moves in the wrong direction before responding correctly), limits the achievable bandwidth, and complicates control design.
+
+The standard manipulations are: cascade ($G_1 G_2$), parallel ($G_1 + G_2$), feedback ($G/(1 + GH)$ for negative unity feedback with forward $G$ and feedback $H$), and partial-fraction decomposition (for computing time-domain responses). The standard time-domain responses are step, impulse, ramp, and sinusoidal; each is characterised by parameters (settling time, rise time, overshoot, steady-state error) that correspond to the frequency-domain features.
+
+\section{Stability: poles, root locus}\pathtag{standard}
+
+A closed-loop system is stable if and only if all poles of the closed-loop transfer function are in the open left half-plane. Stability is the first design requirement; all other performance objectives are conditional on stability.
+
+The Routh-Hurwitz criterion gives stability conditions directly from the coefficients of the closed-loop characteristic polynomial, without computing the poles. The criterion is useful for symbolic analysis (determining the range of a gain or parameter for which the loop is stable) and for low-order systems by hand.
+
+The root-locus method plots the closed-loop pole locations as a function of a varying gain or parameter. The plot reveals how the dynamics change with the gain: poles migrate from the open-loop locations (at zero gain) toward the open-loop zeros or to infinity (at infinite gain). The designer reads stability margins, dominant pole locations, and damping behaviour from the locus.
+
+Stability margins quantify the distance to instability. Gain margin: the factor by which the loop gain can be increased before the loop becomes unstable (typical design target: $6\,\text{dB}$ or greater). Phase margin: the additional phase shift that would make the loop unstable at the crossover frequency (typical design target: $45^\circ$ or greater). Sensitivity peaks: the maximum of the closed-loop sensitivity transfer function over frequency (typical target: $6\,\text{dB}$ or less). The three measures are related but capture different aspects of stability robustness.
+
+The Nyquist stability criterion gives a graphical condition for stability that handles right-half-plane poles, time delays, and other complications that elude simpler tests. The Nyquist plot of the open-loop transfer function $L(j\omega)$ for $\omega$ from $-\infty$ to $+\infty$ encircles the $-1$ point a number of times that equals the number of right-half-plane closed-loop poles minus the number of right-half-plane open-loop poles. For most engineering plants (open-loop stable), the test reduces to: the Nyquist plot does not encircle $-1$.
+
+\section{Bode plots}\pathtag{core}
+
+A Bode plot is the magnitude and phase of a transfer function plotted against frequency on logarithmic axes. The plot has two panels: magnitude in decibels vs frequency on log scale, and phase in degrees vs frequency on log scale. The Bode plot displays the loop's frequency response and is the working tool of frequency-domain control design.
+
+The asymptotic Bode plot is the piecewise-linear approximation to the magnitude and phase, constructed by composing the contributions of poles and zeros. A pole at $s = -1/\tau$ contributes magnitude that is flat at low frequency, has corner at $\omega = 1/\tau$, and rolls off at $-20\,\text{dB/decade}$ at high frequency. A zero contributes flat at low frequency, corner at the zero frequency, rolloff up at $+20\,\text{dB/decade}$ at high frequency. The asymptotic phase changes by $\mp 90^\circ$ across each pole or zero, with the transition centred at the corner frequency.
+
+Stability margins read off the Bode plot directly: gain margin is the magnitude at the frequency where the phase crosses $-180^\circ$ (read as the distance below $0\,\text{dB}$); phase margin is $180^\circ$ plus the phase at the crossover frequency (where the magnitude crosses $0\,\text{dB}$).
+
+The classical compensators (lead, lag, lead-lag, PID) modify the Bode plot in characteristic ways: a lag compensator adds gain at low frequency without adding phase loss; a lead compensator adds phase at the crossover region; a PID controller integrates at low frequency (lifting the gain), differentiates at high frequency (adding phase lead). The designer reads the open-loop Bode plot, identifies the modifications needed to meet performance and robustness targets, and adds compensation to achieve them.
+
+\begin{estimation}
+\textbf{Question.} Estimate the closed-loop bandwidth of a feedback loop with a first-order plant ($\tau = 1\,\text{s}$, $K = 1$), a proportional controller with gain $K_p = 10$, and unity sensor.
+
+\textbf{Working.} Open-loop $L(s) = K_p K / (\tau s + 1) = 10/(s + 1)$. Magnitude: $|L(j\omega)| = 10/\sqrt{\omega^2 + 1}$. Crossover where $|L| = 1$: $\omega_c^2 + 1 = 100$, $\omega_c \approx 9.95\,\text{rad/s}$. The closed-loop pole is at $s = -(1 + K_p K)/\tau = -11$; the closed-loop bandwidth is approximately $11\,\text{rad/s}$. Increasing $K_p$ increases the bandwidth proportionally up to the limits of the plant; the assumption that the plant is first-order is valid only up to the frequency at which the next mode appears.
+\end{estimation}
+
+\section{Nyquist criterion}\pathtag{standard}
+
+The Nyquist criterion is the formal stability test for feedback loops with arbitrary open-loop dynamics. The procedure: plot the open-loop transfer function $L(j\omega) = C(j\omega)P(j\omega)H(j\omega)$ on the complex plane as $\omega$ varies from $-\infty$ to $+\infty$ (or equivalently from $0$ to $+\infty$ and reflect for negative frequencies). Count $N$, the number of clockwise encirclements of the $-1$ point. The number of unstable closed-loop poles is $Z = N + P$, where $P$ is the number of right-half-plane open-loop poles. For stability, $Z = 0$.
+
+The Nyquist criterion handles cases that gain and phase margins do not: time delays, multiple gain-crossover frequencies, and right-half-plane poles. It also provides the formal foundation for robust-control measures (the structured singular value, $H_\infty$ analysis).
+
+For most engineering plants (open-loop stable, no right-half-plane zeros, finite delay), the gain and phase margin read from the Bode plot is sufficient. The Nyquist analysis is the right tool when the plant is unstable open-loop (a vertical pendulum, a chemical reactor at an unstable operating point), when there are multiple gain crossovers, or when robustness must be verified against parameter variation.
+
+Conditionally stable systems are systems that are unstable at low or high gain but stable in a middle range; their Nyquist plot encircles $-1$ but the encirclement count is zero (positive and negative encirclements cancel). These systems exist and have caused real failures; the engineer should not assume "raise the gain until oscillation" as a tuning method without checking the topology.
+
+\section{PID design and tuning}\pathtag{core}
+
+The proportional-integral-derivative controller, $C(s) = K_p + K_i/s + K_d s$, is the workhorse of industrial control. The three terms contribute: proportional reduces steady-state error and increases bandwidth; integral eliminates steady-state error to step inputs; derivative adds phase lead and damping. Practical PID controllers add filtering to the derivative term to limit high-frequency noise amplification: $K_d s \to K_d s / (1 + \tau_d s)$ with $\tau_d$ chosen to roll off noise above the bandwidth of interest.
+
+The Ziegler-Nichols methods are classical tuning rules. Open-loop method: identify the first-order plus delay model from a step response; set $K_p$, $K_i$, $K_d$ from tabulated rules. Closed-loop method: increase proportional gain until sustained oscillation; record the ultimate gain $K_u$ and ultimate period $T_u$; set the PID gains from $K_u$ and $T_u$. The methods give a starting point; tuning by inspection of the closed-loop response usually improves on the starting point.
+
+Modern PID tuning includes auto-tuning (the controller injects a test signal, identifies the plant, and computes the gains automatically; common in DCS and PLC systems), model-based tuning (the controller is designed from a plant model with explicit objectives), and direct synthesis (the controller is chosen so the closed loop matches a desired response). The lambda-tuning method (a special case of direct synthesis) chooses the closed-loop time constant as a single design parameter, simplifying the trade-off between speed and robustness.
+
+PID limitations include: limited ability to handle high-order plants or plants with right-half-plane zeros; limited ability to address robustness explicitly; degraded performance under significant operating-point changes. For these cases, the controller is augmented (gain scheduling, feedforward) or replaced (model-predictive, state feedback). PID remains the right answer for the majority of single-loop industrial control problems.
+
+\section{Lead-lag compensators}\pathtag{standard}
+
+Lead and lag compensators are first-order transfer functions used to shape the Bode plot for desired stability margins and performance.
+
+A lag compensator is $C(s) = K (s/z + 1)/(s/p + 1)$ with $z > p$. The compensator has high gain at low frequency and low gain at high frequency, with a phase lag in the transition. The lag is added at low frequency to improve steady-state tracking without changing the crossover frequency or phase margin significantly. The phase lag is moderate (less than $-60^\circ$) and the compensator is placed an order of magnitude or more below crossover.
+
+A lead compensator is $C(s) = K (s/z + 1)/(s/p + 1)$ with $z < p$. The compensator has low gain at low frequency, rising gain through the transition, and high gain at high frequency, with a phase lead in the transition. The maximum phase lead is $\sin^{-1}((p-z)/(p+z))$ at the geometric mean of $z$ and $p$. The lead is placed at the desired crossover frequency to add phase margin.
+
+A lead-lag compensator is the cascade of a lag and a lead. It combines the steady-state improvement of the lag with the bandwidth and phase-margin improvement of the lead.
+
+The compensator design procedure: identify the open-loop frequency response; identify the desired crossover frequency from performance specifications; identify the required phase margin; design the lead to provide the missing phase at crossover; design the lag (if needed) to provide low-frequency gain without affecting the lead; combine. The resulting controller is a transfer function; the implementation can be analog (op-amps and passive components) or digital (discrete-time approximation).
+
+\section{Failure: gain margin and phase margin too low; resonance amplification}\pathtag{core}
+
+Linear feedback loops fail in characteristic ways.
+
+\textbf{Marginal stability:} the design gain margin or phase margin is below the standard targets ($6\,\text{dB}$ and $45^\circ$). Small parameter variations (component tolerance, operating-point shifts, aging) push the loop across the stability boundary; the system oscillates or saturates. Mitigation: design with adequate margins from the start; test across the parameter envelope; monitor margins in service.
+
+\textbf{Resonance amplification:} the loop has a lightly-damped mode near the crossover frequency; the closed-loop response has a resonance peak that amplifies disturbances and reference content at that frequency. The sensitivity transfer function $S(s) = 1/(1 + L(s))$ has a peak; the peak value is the magnitude of the sensitivity at the resonance. A sensitivity peak above $6\,\text{dB}$ ($M_s > 2$) is generally considered unacceptable. Mitigation: notch filtering to remove the mode from the loop; redesign of the controller; redesign of the plant to add damping.
+
+\textbf{Time delay:} unmodelled time delay reduces phase margin; sufficient delay destabilises the loop. The Pad\'e approximation models the delay for analysis; the design must accommodate the delay's phase loss. Long-delay processes (chemical reactors, dead-time-dominant plants) require special techniques (Smith predictor, model-predictive control).
+
+\textbf{Integrator windup:} the integrator in a PID controller accumulates error when the command saturates against actuator limits; the integrator state grows large, and when the saturation is released, the response is sluggish or overshoots dramatically. Mitigation: anti-windup mechanisms (back-calculation, clamping, tracking) that hold the integrator state when saturation occurs.
+
+\textbf{Quantisation and sampling:} digital implementation of analog control introduces quantisation in the ADC and DAC, and sampling at finite rates. The effective phase loss from sampling at rate $T_s$ is $\omega T_s/2$ radians; at high frequencies this can be significant. Quantisation introduces noise and limit cycles. Mitigation: sufficient sampling rate (10-30 times the closed-loop bandwidth); adequate ADC and DAC resolution; anti-aliasing filters.
+
+\textbf{Sensor noise amplification:} the controller's high-frequency gain amplifies sensor noise into the command, which propagates into the plant. Excessive noise can wear actuators, saturate amplifiers, and exhibit visibly in the output. Mitigation: roll off the controller at high frequency; choose actuators and sensors with bandwidth matched to the loop.
+
+\textbf{Operating-point shifts:} the linearised plant model is valid in a neighbourhood of the design operating point; large excursions move the plant outside that neighbourhood. Symptoms: performance degrades or stability is lost away from the nominal point. Mitigation: gain scheduling, robust control design, or nonlinear control methods.
+
+\textbf{Aging and parameter drift:} the plant parameters change over time; the original controller's margins erode. Symptoms: gradual loss of performance, eventually marginal stability. Mitigation: scheduled re-tuning, adaptive control, condition monitoring of the closed-loop margins.
+
+The 1996 Ariane 5 Flight 501 (\cite{acc:ariane501-ifr}) is often discussed for its software-related root cause; the linear-control aspect is that the inertial measurement unit's inputs (designed for Ariane 4 trajectories) saturated under the larger Ariane 5 dynamics, triggering an exception that the controller responded to incorrectly. The controller had not been verified against the actual trajectory envelope; the consequence was loss of the vehicle.
+
+\begin{principle}[The gain-and-phase-margin principle]
+A feedback loop is operated within stability margins, not at the boundary. The design targets ($6\,\text{dB}$ gain margin, $45^\circ$ phase margin, sensitivity peak below $6\,\text{dB}$) are conservative for a reason: real plants differ from models, real components have tolerances, real operating envelopes shift. A loop designed to the boundary of stability is one parameter variation from instability. The disciplined engineer leaves room for the things the model did not capture.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Tune a PID for a real plant]
+\textbf{Objective.} Tune a PID controller for a real physical plant. Achieve specifications: rise time, settling time, overshoot, steady-state error, disturbance rejection. Document the tuning procedure and the trade-offs.
+
+\textbf{Method.} Choose a plant: a DC motor with encoder; a thermal chamber with heater and thermometer; a water level in a tank with valve actuation; a small inverted pendulum. Build or use a microcontroller-based controller with an ADC, a DAC or PWM, and a real-time loop. Identify the plant (step response, frequency sweep). Choose initial gains via Ziegler-Nichols or lambda-tuning. Test the closed-loop response: step changes in reference, step disturbances. Adjust gains to meet specifications. Test at multiple operating points.
+
+\textbf{Deliverables.} The hardware setup with photographs; the identified plant model; the PID gains and the tuning procedure; the measured closed-loop response (step, disturbance, multiple operating points); a Bode plot or simulation comparison; a written analysis of the trade-offs encountered during tuning.
+
+\textbf{Hazard.} Mechanical hazards if a motor or pendulum is involved; electrical hazards from supply voltages; runaway risk if the controller has a programming error (use software speed/torque limits and a physical kill switch).
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 40 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A unity-feedback loop has $G(s) = 5/(s+2)(s+5)$. Compute the closed-loop transfer function for proportional gain $K_p = 4$.
+\end{exercise}
+
+\begin{exercise}
+A first-order plant $G(s) = 2/(s+1)$ is controlled by $C(s) = 3$. Compute the closed-loop time constant.
+\end{exercise}
+
+\begin{exercise}
+A second-order closed-loop system has $\omega_n = 5\,\text{rad/s}$ and $\zeta = 0.5$. Compute the rise time, settling time ($2\%$), and percent overshoot for a step input.
+\end{exercise}
+
+\begin{exercise}
+A unity-feedback loop has $L(s) = 10/s(s+10)$. Compute the gain margin, phase margin, and crossover frequency.
+\end{exercise}
+
+\begin{exercise}
+A PID controller has $K_p = 2$, $K_i = 0.5$, $K_d = 0.1$. Compute the controller's transfer function and its magnitude and phase at $\omega = 1\,\text{rad/s}$.
+\end{exercise}
+
+\begin{exercise}
+A plant has step response with peak time $1\,\text{s}$, peak value $1.4$, and steady-state value $1$. Compute the natural frequency and damping ratio of a second-order model.
+\end{exercise}
+
+\begin{exercise}
+For a plant $G(s) = 1/(s^2 + 2s + 5)$, compute the root locus's asymptotes and the breakaway points.
+\end{exercise}
+
+\begin{exercise}
+A lead compensator has zero at $-2$ and pole at $-20$. Compute the maximum phase lead and the frequency at which it occurs.
+\end{exercise}
+
+\begin{exercise}
+A loop has $L(s) = 100/(s(s+10)(s+100))$. Compute the gain crossover frequency and phase margin.
+\end{exercise}
+
+\begin{exercise}
+For a closed-loop system with $T(s) = 4/(s^2 + 2s + 4)$, compute the sensitivity at $\omega = 1\,\text{rad/s}$ and at $\omega = 4\,\text{rad/s}$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the closed-loop transfer function from reference to output for a unity-feedback loop with controller $C(s)$ and plant $P(s)$.
+\end{exercise}
+
+\begin{exercise}
+Derive the closed-loop transfer function from input disturbance to output, with the same architecture.
+\end{exercise}
+
+\begin{exercise}
+Derive the Routh-Hurwitz stability conditions for a third-order polynomial $s^3 + a_2 s^2 + a_1 s + a_0$.
+\end{exercise}
+
+\begin{exercise}
+Derive the relationship between phase margin and the maximum closed-loop sensitivity for a typical low-order system.
+\end{exercise}
+
+\begin{exercise}
+Derive the Pad\'e approximation for a pure time delay; show that a first-order Pad\'e introduces a right-half-plane zero.
+\end{exercise}
+
+\begin{exercise}
+Derive the Ziegler-Nichols PID tuning rules from the ultimate gain $K_u$ and ultimate period $T_u$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the closed-loop bandwidth achievable for a plant with $30\,\text{ms}$ unmodelled time delay, with $60^\circ$ phase margin target.
+\end{exercise}
+
+\begin{exercise}
+Estimate the integrator-windup duration during a $30\%$ saturation event in a PID loop with $K_i = 0.5$ and saturation duration $10\,\text{s}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the sampling rate required for a digital implementation of a controller designed for closed-loop bandwidth $50\,\text{rad/s}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the gain margin reduction from $1\%$ uncertainty in the plant's high-frequency gain.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a PID controller on a first-order plus delay plant for three tunings: aggressive, moderate, conservative. Plot the step response and the response to an input disturbance.
+\end{exercise}
+
+\begin{exercise}
+Simulate the closed-loop response to sensor noise in a PID loop. Compare three values of the derivative-filter time constant.
+\end{exercise}
+
+\begin{exercise}
+Simulate the closed-loop response of a process with a right-half-plane zero. Identify the inverse response and quantify how it limits the bandwidth.
+\end{exercise}
+
+\begin{exercise}
+Simulate the integrator-windup behaviour of a PID loop without anti-windup, and compare to the same loop with back-calculation anti-windup.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a PID controller for a DC motor: $\tau = 0.1\,\text{s}$, $K = 10\,\text{rad/(s\,V)}$, target rise time $50\,\text{ms}$, overshoot under $5\%$, no steady-state error.
+\end{exercise}
+
+\begin{exercise}
+Design a lead compensator to add $40^\circ$ phase margin at $\omega = 5\,\text{rad/s}$ to a plant $G(s) = 10/s(s+2)$.
+\end{exercise}
+
+\begin{exercise}
+Design a lag compensator to improve the steady-state error of a unity-feedback loop by a factor of $10$ without changing the crossover frequency.
+\end{exercise}
+
+\begin{exercise}
+Design a controller for a chemical-reactor temperature loop with $\tau = 300\,\text{s}$, $\tau_d = 30\,\text{s}$, target closed-loop time constant $60\,\text{s}$.
+\end{exercise}
+
+\begin{exercise}
+Design an anti-windup mechanism for a PID controller in a saturating actuator system. State the back-calculation gain choice.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's PID loop oscillates at $10\,\text{Hz}$. State three engineering hypotheses and the corresponding investigations.
+\end{exercise}
+
+\begin{exercise}
+A team's process control has slow response to disturbances and meets the steady-state target. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team is considering replacing a PID controller with a model-predictive controller for a process with significant time delay. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's PID loop has been retuned several times in service and is again degrading. State the engineering response and the role of plant aging.
+\end{exercise}
+
+\begin{exercise}
+A team's loop performs well in simulation and oscillates on hardware. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team's controller saturates frequently in operation. State the engineering responses: better tuning, larger actuator, anti-windup, feedforward.
+\end{exercise}
+
+\begin{exercise}
+A team's loop has $20^\circ$ phase margin and $4\,\text{dB}$ gain margin. State the engineering judgement: acceptable, marginal, unacceptable, and the rationale.
+\end{exercise}
+
+\begin{exercise}
+A team is integrating a manually-tuned PID into a safety-relevant application. State the engineering questions, the documentation requirements, and the verification approach.
+\end{exercise}
+
+\begin{exercise}
+A team finds that the same PID parameters produce different responses on nominally identical units. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's open-loop Bode plot shows a non-minimum-phase zero at the desired crossover frequency. State the engineering implications and the design options.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to control a plant whose open-loop transfer function is unknown. State the systematic engineering procedure: identification, model validation, controller design, and verification.
+\end{exercise}

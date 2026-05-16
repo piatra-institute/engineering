@@ -1,37 +1,277 @@
 \chapter{Multi-agent and game-theoretic systems}
 \label{vol09:ch12}
 
-\epigraph{}{}
+\epigraph{When the actors respond to each other, the equilibrium is not a sum; it is a fixed point.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: balance, control, ethics. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: balance, control, coupling. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 12. Approx 110 pp.}
+Many engineering systems involve multiple actors making decisions in response to each other: bidders in an auction, generators in an electricity market, drivers on a road, planes in airspace, agents in a financial market, robots in a warehouse. The classical control and optimisation frameworks treat the system as having one decision-maker (the controller, the optimiser); multi-agent systems treat it as having many, each with its own objectives. The mathematics shifts from optimisation to game theory; the engineering shifts from designing the controller to designing the rules of the game so that the players' equilibrium behaviour serves the system designer's objectives. This chapter develops game theory in an engineer-first form, Nash equilibrium and dominant strategies, mechanism design and auctions, coordination and consensus in multi-agent systems, swarm intelligence and stigmergy, coupled-agent failure modes, and the characteristic failures of races to the bottom and tragedies of the commons.
 
-\section{Game theory engineering-first}
-\TODO{Section prose.}
+\section{Game theory engineering-first}\pathtag{standard}
 
-\section{Nash equilibria, dominant strategies}
-\TODO{Section prose.}
+A game in normal form has players, strategies, and payoffs. Each player chooses a strategy; the combination of strategies determines the outcome; each player's payoff depends on the combination. The game's solution concepts describe what strategies the players will choose.
 
-\section{Mechanism design and auctions}
-\TODO{Section prose.}
+Standard examples that an engineer encounters:
 
-\section{Coordination and consensus in multi-agent systems}
-\TODO{Section prose.}
+\textbf{Prisoner's dilemma:} two players each choose cooperate or defect; mutual cooperation is best for both; the dominant strategy for each is to defect; the resulting outcome is worse than mutual cooperation. The dilemma captures the structure of many engineering problems: pollution control, public goods, antibiotic resistance, security investment. The engineering question is how to escape the dilemma (commitment devices, repeated play, third-party enforcement, mechanism design).
 
-\section{Swarm intelligence and stigmergy: indirect coordination through environment}
-\TODO{Section prose.}
+\textbf{Coordination game:} multiple strategies are Nash equilibria; the players prefer to coordinate on one but face uncertainty about which the other will choose. Standards adoption, network effects, language conventions, technology platforms all have coordination structure.
 
-\section{Coupled-agent failure modes}
-\TODO{Section prose.}
+\textbf{Battle of sexes:} two players prefer to coordinate but disagree on the coordination point. Negotiation between parties with different preferences; many real-world conflicts have this structure.
 
-\section{Failure: races to the bottom, tragedies of the commons in engineered systems}
-\TODO{Section prose.}
+\textbf{Stag hunt:} cooperation produces a high payoff; defection produces a low but guaranteed payoff. Risk-dominant equilibrium (everyone hunts a hare) often wins over payoff-dominant (everyone hunts a stag) in real populations.
 
+\textbf{Auctions:} bidders compete for goods; the auction format affects who wins and at what price. Auctions are everywhere: spectrum auctions, online advertising, electricity markets, procurement.
 
-\section{Project}
-\TODO{simulate a market or auction; verify equilibrium properties}
+For engineering, game theory is the analytical framework for understanding behaviour when multiple actors interact. The framework's insights matter even when the engineer cannot control the game directly: the structure of the game determines the outcome.
+
+\begin{archetype}[coupling: game theory as the multi-agent equilibrium problem]
+A game is the coupling structure where each agent's behaviour depends on the others' behaviour. The equilibrium is a self-consistent state where each agent's choice is best given the others' choices. The equilibrium is not optimised by anyone; it emerges from the agents' rational responses. The engineering question is whether the equilibrium is desirable; if not, the engineer changes the rules of the game (mechanism design) to shift the equilibrium.
+\end{archetype}
+
+\section{Nash equilibria, dominant strategies}\pathtag{core}
+
+A Nash equilibrium is a strategy profile in which no player can improve their payoff by unilaterally changing their strategy. The equilibrium is a fixed point of best response: each player's strategy is a best response to the others' strategies.
+
+For finite games, Nash equilibria are guaranteed to exist (in mixed strategies, possibly) by Nash's theorem. The equilibria may not be unique; some games have multiple equilibria. The equilibria may not be efficient; Pareto-superior outcomes may exist that are not equilibria.
+
+A dominant strategy is one that is optimal regardless of what the other players do. When all players have dominant strategies, the unique Nash equilibrium is the combination of dominant strategies. Most games do not have dominant strategies for all players; the equilibrium concept generalises to handle conditional responses.
+
+Computing Nash equilibria: for two-player zero-sum games, equilibria are found by linear programming (the minimax theorem). For general games, equilibrium computation is PPAD-complete in the worst case; algorithms (Lemke-Howson, support enumeration) handle moderate-size games.
+
+Refinements of Nash equilibrium address its limitations: subgame perfection (the equilibrium remains an equilibrium in every subgame); trembling-hand perfection (robust to small mistakes by other players); evolutionarily stable strategies (robust to invasion by alternative strategies). Each refinement captures a desirable property and rules out some equilibria.
+
+In engineering practice, the Nash equilibrium is the prediction of what rational, self-interested agents will do. The prediction may not be Pareto-efficient (the prisoner's dilemma); the prediction may not be unique (coordination games); the prediction may not match observed behaviour (real humans deviate from rational play in measurable ways). The framework provides the baseline; deviations from the framework are themselves engineering questions.
+
+\section{Mechanism design and auctions}\pathtag{standard}
+
+Mechanism design is the inverse of game theory: given a desired outcome, design the rules of the game so that the players' equilibrium behaviour produces it. The designer is choosing the game; the players play it.
+
+The revelation principle: any incentive-compatible mechanism can be implemented as a direct-revelation mechanism (the players report their preferences truthfully to a centralised mechanism). The principle simplifies design: focus on the truthful-revelation case; the practical implementation can be reverse-engineered.
+
+Vickrey-Clarke-Groves (VCG) mechanism: in a multi-good auction, each bidder pays the externality their winning imposes on the other bidders. The mechanism is incentive-compatible (truthful bidding is dominant) and efficient (the goods go to the bidders who value them most). VCG is the foundational mechanism design result; many practical mechanisms are VCG variants.
+
+Standard auction formats:
+
+\textbf{English (ascending):} the price rises until only one bidder remains. The winner pays the second-highest valuation; the equilibrium is to drop out at one's own valuation. The format is intuitive and the equilibrium is robust.
+
+\textbf{Dutch (descending):} the price falls from a high starting point; the first bidder to accept wins. The equilibrium is more complex (strategic shading depending on beliefs about others' valuations) but the format is fast.
+
+\textbf{First-price sealed-bid:} each bidder submits a sealed bid; the highest bidder wins and pays their bid. The equilibrium requires shading (bid below one's valuation); the optimal shade depends on the number of bidders and the value distribution.
+
+\textbf{Second-price sealed-bid (Vickrey):} each bidder submits a sealed bid; the highest bidder wins and pays the second-highest bid. The equilibrium is truthful bidding (a dominant strategy).
+
+Revenue equivalence: under standard conditions, all four formats yield the same expected revenue. The choice between them is driven by practical considerations (speed, robustness, transparency, collusion resistance).
+
+Practical mechanism design has produced spectacular results: the FCC spectrum auctions raised tens of billions; online advertising auctions generate hundreds of billions annually; electricity markets coordinate the operation of thousands of generators. The mechanisms are not always perfect (collusion, complementarities, common-value problems persist) but they are far better than non-mechanism alternatives.
+
+\section{Coordination and consensus in multi-agent systems}\pathtag{standard}
+
+Multi-agent systems coordinate the actions of multiple autonomous agents to achieve a common goal. Standard problems:
+
+\textbf{Consensus:} agents converge on a common value. Applications: clock synchronisation, distributed sensor fusion, formation control, blockchain agreement. The classical result (DeGroot 1974, Olfati-Saber-Murray 2007): linear iterative averaging converges to consensus if the communication graph is connected.
+
+\textbf{Formation control:} agents maintain a specified spatial configuration. Applications: UAV formations, robot swarms, satellite constellations. Distributed control laws based on local information (relative positions, local sensors) achieve global formation.
+
+\textbf{Distributed optimisation:} agents collectively minimise a global objective. Each agent contributes a local objective; the global is the sum. Standard methods: ADMM, dual decomposition, gradient consensus. Applications: power-system optimisation, traffic management, distributed machine learning.
+
+\textbf{Task allocation:} agents take on different tasks to maximise the team's performance. Standard methods: market-based mechanisms, distributed assignment algorithms, contract nets. Applications: warehouse robotics, sensor coverage, multi-robot exploration.
+
+\textbf{Coordination under uncertainty:} agents must coordinate without certain knowledge of each other's state or intentions. Standard methods: belief-space planning, game-theoretic equilibria, communication protocols.
+
+The discipline of multi-agent system design includes the architectural choice (centralised, hierarchical, distributed), the communication topology, the local decision rules, and the verification of global properties. Modern autonomous systems (multi-robot teams, drone swarms, autonomous-vehicle platoons) increasingly require this discipline.
+
+\section{Swarm intelligence and stigmergy: indirect coordination through environment}\pathtag{mastery}
+
+Swarm intelligence is the collective behaviour of decentralised, self-organised systems. The classical examples come from biology: ant colonies, bee swarms, bird flocks, fish schools. Each individual follows simple local rules; the collective produces complex emergent behaviour without central control.
+
+\textbf{Stigmergy} (Grass\'e, 1959) is indirect coordination through the environment: agents modify the environment, which then influences other agents. Ants lay pheromone trails (modifying the environment); other ants follow the trails (responding to the modification); the trail network self-organises into efficient paths. The mechanism requires no direct communication between ants; the environment is the communication channel.
+
+Stigmergy applies in engineering:
+
+\textbf{Robotic swarms:} robots leave digital pheromones (in shared databases) that influence other robots' behaviour. Applications: search and rescue, exploration, surveillance.
+
+\textbf{Wikipedia and Stack Overflow:} contributors edit shared content (modifying the environment); other contributors read and re-edit (responding to the modification). The collective knowledge base emerges without central coordination.
+
+\textbf{Software development:} git and pull-request workflows are stigmergic: developers modify the codebase; others read and respond. The codebase is the shared environment.
+
+\textbf{Traffic systems:} drivers' choices modify the road state (congestion, accident reports); other drivers respond. Traffic flow self-organises.
+
+\textbf{Open-source ecosystems:} the public availability of code, issues, and pull requests is a stigmergic environment. Maintainers, contributors, and users coordinate through the visible state of the project.
+
+The engineering insight: stigmergic coordination can scale to large numbers of agents without the communication overhead of direct coordination. The design challenge is the shared environment: it must be reliable, scalable, and observable.
+
+\section{Coupled-agent failure modes}\pathtag{standard}
+
+Multi-agent systems fail in characteristic ways arising from the agent coupling.
+
+\textbf{Information cascades:} early adopters' choices influence later adopters who have less information; the cascade can lock in suboptimal choices. Examples: stock market bubbles, technology adoption (Beta vs VHS), pandemic-era buying behaviour. Mitigation: introduce independent information sources; reward unconventional choices when warranted.
+
+\textbf{Coordination failures:} the agents fail to converge on the same equilibrium; the system gets stuck at a suboptimal point. Examples: standardisation wars, alliance breakdowns, distributed-system divergence. Mitigation: focal-point conventions, coordination mechanisms, central guidance.
+
+\textbf{Free-riding:} agents benefit from a public good without contributing. Examples: open-source-software users who do not contribute, traffic-network users who do not pay tolls, climate-treaty signatories who do not reduce emissions. Mitigation: exclude non-contributors, enforce contribution, design incentive-compatible mechanisms.
+
+\textbf{Predatory pricing:} an agent prices below cost to drive competitors out, then raises prices. Mitigation: regulatory limits, competition policy, market design with anti-predation features.
+
+\textbf{Collusion:} agents coordinate against the system designer's objectives. Examples: bid rigging in auctions, price collusion in markets, exam cheating. Mitigation: incentive-compatible mechanisms, monitoring, enforcement.
+
+\textbf{Race to the bottom:} agents reduce their standards to compete; the resulting outcome is worse for all than maintaining higher standards. Examples: regulatory arbitrage across jurisdictions, ad-content quality, security investment in race to be cheaper. Mitigation: regulatory floors, third-party certification, mechanism redesign.
+
+\textbf{Cascading failures across agents:} one agent's failure stresses others, which then fail. Examples: bank runs, network congestion, supply-chain disruption. Mitigation: capacity buffers, circuit breakers, isolation between agents.
+
+\textbf{Adversarial behaviour:} an agent acts against the system's interests. Examples: cyberattackers, market manipulators, malicious users. Mitigation: security design, adversary modelling, monitoring.
+
+The 2008 financial crisis had multi-agent dynamics: each bank's risk management was tied to others through the financial network; one bank's failure transmitted to others. The 2010 Flash Crash involved algorithmic trading agents responding to each other in a feedback loop that pushed prices abnormally. The 2003 Northeast blackout cascaded across utility systems' protection algorithms responding to each other.
+
+\section{Failure: races to the bottom, tragedies of the commons in engineered systems}\pathtag{core}
+
+Engineering systems involving multiple agents exhibit failures unique to the multi-agent structure.
+
+\textbf{Tragedy of the commons:} a shared resource is overused because each user gets the benefit of use while sharing the cost of degradation. The fishery is overfished; the road is congested; the atmosphere is polluted. The pattern is universal in shared-resource systems.
+
+Mitigations include privatisation (assign the resource to owners who internalise the cost), regulation (limit use directly), and mechanism design (charge for use in a way that recovers the externality). Each mitigation has costs and limitations; some commons resist mitigation entirely (global atmospheric pollution).
+
+\textbf{Race to the bottom:} agents compete by reducing standards; the equilibrium is below what any agent prefers. The dynamic is common in industries where regulation differs across jurisdictions, where consumers cannot easily distinguish quality, or where standards costs are visible while benefits are diffuse.
+
+\textbf{Monopoly capture:} one agent achieves enough market power to set terms. Engineering systems are vulnerable when network effects, switching costs, or specialised assets favour a single provider. Mitigation: open standards, interoperability requirements, antitrust enforcement.
+
+\textbf{Adverse selection:} agents with information advantage drive out those without. The insurance market suffers when the insured know more than the insurer about their risk; the resale market suffers when the seller knows more about quality. Engineering applications: contract design with information asymmetry, verification of supplier claims.
+
+\textbf{Moral hazard:} an agent takes more risk when insulated from the consequences. The driver with insurance drives less carefully; the manager whose company is "too big to fail" takes more risk. Mitigation: alignment of incentives, deductibles, accountability mechanisms.
+
+\textbf{Coordination at the wrong level:} the system optimises at one level (department, plant, agency) but the consequence operates at another (corporation, industry, society). Local optimisation produces global suboptimality. Mitigation: governance structures that match the optimisation level to the consequence level.
+
+\textbf{Free-riding on safety:} in a system with multiple agents responsible for safety, each agent under-invests, expecting others to compensate. The 1986 Chernobyl accident (\cite{acc:iaea-insag7-1992}) had elements of this: the operating crew assumed the design's safety margins; the design assumed the crew's adherence to procedures; the regulator assumed both. Each agent under-checked the others' assumptions.
+
+\textbf{System-wide vulnerability:} a single point of failure that all agents depend on. The 2017 Equifax breach affected millions because so many credit-related services depended on Equifax data; the 2024 CrowdStrike outage affected millions because so many enterprise systems used the same security software. Mitigation: diversity, redundancy, design for graceful degradation.
+
+\begin{principle}[The mechanism-design-as-engineering principle]
+When the engineer cannot directly control the agents' behaviour but can design the rules under which they interact, the engineering work is mechanism design. The discipline applies game theory to choose the rules so that the agents' rational, self-interested behaviour produces the desired system outcome. The engineering shifts from "what should each agent do" to "what game should the agents play"; the analytical framework shifts from optimisation to game theory; the verification shifts from checking individual behaviour to checking equilibrium properties. Mechanism design is the engineering of the rules, not the engineering of the players.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Simulate a market or auction]
+\textbf{Objective.} Simulate a market or auction; verify equilibrium properties; explore how the mechanism rules affect the outcomes.
+
+\textbf{Method.} Choose a mechanism: a sealed-bid auction (first-price or second-price); an English auction; a double auction for a market with buyers and sellers; a VCG mechanism for a multi-good allocation. Implement the mechanism in code. Implement bidder behaviours: truthful, strategic, learning. Run the mechanism with many trials; observe the equilibrium outcomes (winners, prices, efficiency). Modify the mechanism rules and re-run; observe the changes.
+
+\textbf{Deliverables.} The mechanism implementation; the bidder behaviour implementations; results comparing the rules and behaviours; a written analysis of which mechanism produces the most efficient outcomes and under what bidder behaviours.
+
+\textbf{Hazard.} Software only; the simulation is educational.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A two-player normal-form game has the prisoner's-dilemma payoff matrix. Identify the dominant strategies and the Nash equilibrium.
+\end{exercise}
+
+\begin{exercise}
+A coordination game has two pure Nash equilibria. Identify them and compute the mixed-strategy equilibrium.
+\end{exercise}
+
+\begin{exercise}
+A second-price sealed-bid auction has bidders with valuations $\$50, \$70, \$80, \$100$. Compute the winner and the payment.
+\end{exercise}
+
+\begin{exercise}
+A first-price sealed-bid auction with two bidders has each bidder's value uniform on $[0, 1]$. Derive the equilibrium bid strategy (assume risk neutrality).
+\end{exercise}
+
+\begin{exercise}
+A consensus algorithm runs on a 3-agent system with weights $0.5$ on self and $0.25$ on each neighbour. Compute the convergence rate.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the existence of Nash equilibrium for a $2 \times 2$ game using a fixed-point argument.
+\end{exercise}
+
+\begin{exercise}
+Derive the VCG mechanism's payment rule from the principle of internalising externalities.
+\end{exercise}
+
+\begin{exercise}
+Derive the revenue equivalence theorem for the four standard single-good auction formats with independent private values.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the expected revenue in a first-price sealed-bid auction with $n = 5$ bidders and uniform valuations on $[0, 100]$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the welfare loss from non-cooperation in a $5$-player public-goods game.
+\end{exercise}
+
+\begin{exercise}
+Estimate the convergence time for a $100$-agent consensus algorithm with random pairwise interactions.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a repeated prisoner's-dilemma tournament with several strategies (always cooperate, always defect, tit-for-tat, generous tit-for-tat, win-stay-lose-shift); rank by total payoff.
+\end{exercise}
+
+\begin{exercise}
+Simulate a coordination game with random matching across a population; observe the emergence of conventions.
+\end{exercise}
+
+\begin{exercise}
+Simulate a multi-agent consensus algorithm on a graph; vary the connectivity and observe the convergence behaviour.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a procurement mechanism for a buyer purchasing from suppliers with private cost information. State the auction format and the expected outcomes.
+\end{exercise}
+
+\begin{exercise}
+Design a coordination protocol for a swarm of UAVs maintaining a formation while patrolling an area.
+\end{exercise}
+
+\begin{exercise}
+Design an incentive mechanism for a public open-source-software project that promotes contribution.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team is choosing between first-price and second-price sealed-bid auctions for a procurement. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's multi-agent system fails to coordinate during peak load. State the engineering response and the role of coordination mechanisms.
+\end{exercise}
+
+\begin{exercise}
+A team is designing an electricity market; the engineering question is whether to allow purely competitive bidding or to impose market-power mitigation. State the trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's autonomous-vehicle interaction protocol assumes other vehicles follow the protocol; some vehicles violate it. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's market mechanism has been gamed by sophisticated bidders. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to evaluate whether to use a centralised, hierarchical, or distributed architecture for a multi-agent system. State the engineering criteria.
+\end{exercise}
+
+\begin{exercise}
+A team's shared resource (a commons) is being overused; engineering options include privatisation, regulation, mechanism design. State the engineering analysis and the criteria for choosing.
+\end{exercise}
+
+\begin{exercise}
+A team's coordination algorithm assumes accurate inter-agent communication; an adversary degrades the communication channel. State the engineering response and the role of consensus algorithms designed for Byzantine agents.
+\end{exercise}

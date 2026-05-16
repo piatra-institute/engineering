@@ -1,37 +1,291 @@
 \chapter{Network systems}
 \label{vol09:ch13}
 
-\epigraph{}{}
+\epigraph{A network is the engineering of how the parts connect; the parts only matter through the connections.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: transport, scaling, failure. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: transport, scaling, failure, coupling. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 13. Approx 120 pp.}
+Network systems transport energy, information, materials, or people across a graph of interconnected nodes and links. Power grids carry electricity over thousands of kilometres; communication networks carry packets across continents; water and gas networks distribute commodities; transport networks move people and goods. Each network has its own physics and economics but shares a structural property: the connectivity determines what the network can do, how robust it is to failures, and how vulnerable it is to cascades. This chapter develops the engineering of major network classes (power, transport, communication revisited, water and gas), network resilience and graph properties, cascading failure analysis, and the major case studies of network failures (the 2003 North America blackout, the 2012 India blackout, BGP routing cascades).
 
-\section{Power grids: structure and dynamics}
-\TODO{Section prose.}
+\section{Power grids: structure and dynamics}\pathtag{standard}
 
-\section{Transport networks}
-\TODO{Section prose.}
+A power grid has three layers. Generation: power plants (thermal, hydro, nuclear, wind, solar) producing electrical energy. Transmission: high-voltage lines ($110\,\text{kV}$ to $800\,\text{kV}$) carrying power over long distances with low losses. Distribution: medium and low-voltage networks delivering power to end users.
 
-\section{Communication networks revisited from Volume VII}
-\TODO{Section prose.}
+The grid operates as a synchronous AC system: all generators rotate at the same electrical frequency ($60\,\text{Hz}$ in North America, $50\,\text{Hz}$ in Europe), and the active power and reactive power balance instantaneously across the network. Imbalance between generation and load causes frequency to deviate; if not corrected, generators trip and the grid can collapse.
 
-\section{Water and gas networks}
-\TODO{Section prose.}
+Standard analysis tools:
 
-\section{Network resilience and graph properties}
-\TODO{Section prose.}
+\textbf{Power flow:} the steady-state currents and voltages across the network given generation and load. The flow is governed by nonlinear AC power-flow equations; iterative solvers (Newton-Raphson, fast decoupled) compute the solution. Power-flow analysis is the workhorse of grid planning and operations.
 
-\section{Cascading failure in network systems}
-\TODO{Section prose.}
+\textbf{Short-circuit analysis:} the currents that flow during a fault (line short, generator fault, transformer fault). The currents must be cleared by protective relays before equipment damages.
 
-\section{Failure: 2003 North America blackout, 2012 India blackout, BGP cascades}
-\TODO{Section prose.}
+\textbf{Stability analysis:} the dynamic response to disturbances. Small-signal stability addresses oscillations between generators; transient stability addresses rotor angle excursions after a major event; voltage stability addresses reactive-power balance.
 
+\textbf{Optimal power flow (OPF):} the economic dispatch of generators that meets demand at minimum cost subject to network constraints. The basic OPF is a non-convex optimisation; modern solvers (using semidefinite relaxations or DC approximation) handle large grids in seconds.
 
-\section{Project}
-\TODO{model a small grid; simulate a cascading failure}
+The grid's protection is hierarchical: local protection (line-trip relays, generator protection) clears specific faults; system-wide protection (under-frequency load shedding, generator islanding) protects the bulk system from collapse. The coordination of protection is a complex engineering discipline; protection failures are the proximate cause of many grid blackouts.
+
+The renewable transition is reshaping grid engineering: wind and solar are non-synchronous (interfaced through power electronics rather than rotating generators), variable (output depends on weather), and distributed (millions of small generators rather than hundreds of large ones). Grid stability under high renewable penetration is an active research frontier; grid-forming inverters, storage, and demand response are the engineering responses.
+
+\begin{archetype}[coupling: network as constraint topology]
+A network is the topology that constrains how flow can move. The flow's physics (Kirchhoff's laws for electricity, conservation for water, queueing for packets, capacities for transport) is one half; the topology of the network is the other half. The same flow through different topologies produces different system behaviour: redundant paths give resilience; serial chains give vulnerability; meshes give complex routing. The network engineer designs the topology to balance capacity, reliability, and cost.
+\end{archetype}
+
+\section{Transport networks}\pathtag{standard}
+
+Transport networks move people and goods. The standard analysis frameworks include:
+
+\textbf{Static assignment:} given a network and origin-destination demand, find the equilibrium flow on each link assuming travellers choose the shortest path. The Wardrop equilibrium (1952): no traveller can reduce their travel time by switching paths.
+
+\textbf{Dynamic traffic assignment:} the assignment varies over time as demand and conditions change; congestion forms and dissipates dynamically. Standard tools (DTA models, agent-based models) simulate the dynamics.
+
+\textbf{Transit and public transport:} the network has scheduled service rather than free routing. The frequency, route structure, and transfer connections determine ridership and operating cost.
+
+\textbf{Logistics networks:} freight movement through ports, hubs, and warehouses. The discipline overlaps with operations research (vehicle routing, hub location, inventory).
+
+\textbf{Aviation networks:} airline routes form hub-and-spoke or point-to-point networks. The structure determines the airline's economics and the passenger experience.
+
+\textbf{Multimodal networks:} combinations of modes (auto, transit, walk, bike, freight rail, truck) interact through shared infrastructure and travellers' modal choices.
+
+Engineering questions on transport networks include capacity planning (when to expand which corridor), pricing (congestion charges, road tolls, transit fares), service design (route structure, frequency, vehicle assignment), and operations management (signal timing, incident response, dispatch).
+
+The induced-demand effect: adding capacity to a network often produces additional demand that consumes the new capacity. The 405 freeway in Los Angeles, the M25 around London, and many other expensive expansions did not reduce congestion; the equilibrium adjusted. Engineering responses include demand management, mode shift, and explicit acceptance that capacity expansion may not solve the problem.
+
+\section{Communication networks revisited from Volume VII}\pathtag{standard}
+
+Volume VII Chapter 8 covered communication theory and Chapter 14 covered networking; this section revisits communication as a network system, focusing on the system-level properties.
+
+The internet's layered architecture (physical, link, network, transport, application) separates concerns. Each layer interacts with adjacent layers through standard interfaces; each layer can be engineered independently. The architecture has scaled from thousands of hosts in 1990 to billions in 2025; the same protocols work, with extensions where needed.
+
+Routing in the internet is hierarchical. Inside an autonomous system (AS), interior gateway protocols (OSPF, IS-IS) compute shortest paths. Between ASes, Border Gateway Protocol (BGP) exchanges reachability information. BGP is a path-vector protocol designed for policy expression; ASes can prefer some routes over others for business reasons.
+
+BGP's policy expression is also its weakness: policy errors or attacks can propagate routes that misdirect traffic. Routing leaks and route hijacks happen regularly; the YouTube blackout of 2008 (Pakistan-originated route to YouTube propagated globally), the 2010 China telecom incident (about $15\%$ of internet traffic briefly routed through China), and many smaller events illustrate the fragility. Mitigation: RPKI (resource public-key infrastructure) signs route announcements; BGPsec extends RPKI to path verification; deployment is increasing but not universal.
+
+Quality of service in modern networks is delivered through over-provisioning, traffic engineering (MPLS, segment routing), congestion control (TCP variants, BBR), and edge content delivery (CDNs). The network's emergent behaviour under load is complex; the standard tools (queueing theory, network simulation, packet capture) reveal characteristics that pure analysis cannot predict.
+
+The internet is a system of systems: many independently-operated networks interconnect through commercial and technical arrangements. The system's reliability depends on each operator's investments and the relationships among them. Outages and disruptions arise from BGP misconfigurations, fibre cuts, DDoS attacks, certificate failures, and software bugs in widely-deployed code.
+
+\section{Water and gas networks}\pathtag{standard}
+
+Water and gas networks distribute commodities through pipes from sources to consumers. The physics (incompressible flow for water, compressible for gas), the topology (typically tree-like or meshed), the operations (pumping for water, compression for gas), and the failures (leaks, contamination, depletion) are characteristic.
+
+Water network engineering includes:
+
+\textbf{Hydraulic analysis:} the pressures and flows in the network given consumer demand. The governing equations (Bernoulli plus continuity plus head loss) are solved iteratively; standard software (EPANET, WaterGEMS) handles networks of tens of thousands of nodes.
+
+\textbf{Demand modelling:} consumer water use varies by hour, day, season; the network must serve peak demand at acceptable pressure. Demand forecasts inform capacity expansion and reservoir sizing.
+
+\textbf{Water quality:} the network can degrade water quality through aging pipes, biofilm growth, disinfection by-products, and contamination from cross-connections. Monitoring and management are continuous.
+
+\textbf{Leak detection:} pipes leak; mains break; service connections fail. The water lost to leakage in many cities is $15\%$ to $40\%$ of supply. Detection methods include acoustic monitoring, pressure-based analysis, and water-balance metering.
+
+Gas networks have similar structure with different physics (compressible flow), different failure modes (leaks are explosive), and different safety requirements (odorisation, leak detection, pressure-relief systems). The Wuhan-area pipeline explosion in 2014 and similar incidents are reminders of the safety-critical nature.
+
+Both water and gas networks face aging infrastructure: pipes installed decades ago are at or past their design life; replacement programmes are expensive and slow. The engineering challenge is prioritising replacement, monitoring condition, and minimising disruption during work.
+
+\section{Network resilience and graph properties}\pathtag{standard}
+
+Network resilience is the capacity to maintain function in the face of failures. The standard metrics include:
+
+\textbf{Connectivity:} the network remains connected (some path between any pair of nodes) after the removal of some nodes or edges.
+
+\textbf{Diameter:} the maximum shortest-path distance between any pair of nodes. Small-diameter networks deliver messages or commodities quickly.
+
+\textbf{Degree distribution:} the distribution of node degrees. Power-law degree distributions (a few hubs with very high degree, many leaves with low degree) characterise many real-world networks; the distribution determines the network's robustness to random vs targeted attacks.
+
+\textbf{Algebraic connectivity:} the second smallest eigenvalue of the Laplacian matrix; large values indicate well-connected networks.
+
+\textbf{Betweenness centrality:} the fraction of shortest paths that pass through a node. High-betweenness nodes are critical for connectivity; their failure disrupts disproportionately.
+
+Random graphs (Erd\H{o}s-R\'enyi) have Poisson degree distribution; scale-free graphs have power-law distribution; small-world graphs have short paths despite local clustering. Real networks (internet, social networks, biological networks) are typically scale-free or small-world; engineered networks are designed with specific topological properties.
+
+The engineering question: how does the network's structure affect its function? Highly clustered networks tolerate random failures well (many alternative paths) but are vulnerable to targeted attacks on hubs. Tree-structured networks are simple and economical but fragile (any link failure disconnects). Meshed networks balance cost and resilience.
+
+\section{Cascading failure in network systems}\pathtag{core}
+
+Cascading failure is the propagation of failure through a network: one component's failure stresses others, which then fail; the cascade can bring down large fractions of the network from a small initial event.
+
+The standard cascading-failure models:
+
+\textbf{Load redistribution:} when a node or link fails, its load is redistributed to others; the redistribution may overload others. Used for power grids, transport networks. The cascade depends on the load tolerance and the redistribution rule.
+
+\textbf{Epidemic models:} the failure propagates from node to node like an infection. Used for software bugs in distributed systems, financial contagion, BGP route propagation.
+
+\textbf{Threshold models:} a node fails when more than a threshold fraction of its neighbours have failed. Used for social-influence cascades, decision processes.
+
+\textbf{Game-theoretic models:} the agents respond strategically to the cascade; defenders may have time to react. Used for security incidents.
+
+Cascading-failure analysis informs network design: where to place protection, how to size capacity margins, where to introduce isolation between subsystems. The analysis is computationally intensive (the cascade is a path-dependent process with combinatorial state); simulation and heuristic methods dominate.
+
+The general lesson: a network's response to a failure depends on the structure, the load level, and the protection schemes. Networks operating near capacity have less margin to absorb redistribution; the cascade propagates further. Conservatively-loaded networks absorb perturbations without cascading.
+
+\begin{estimation}
+\textbf{Question.} Estimate the failure-margin threshold below which a meshed network's cascading-failure risk grows rapidly.
+
+\textbf{Working.} Consider a network of $N$ links each carrying load $L$ with capacity $C$ and a failure that redistributes $L$ across $k$ neighbouring links. After redistribution, each neighbour carries $L + L/k$. For the network to absorb the failure without cascading, the new load must remain below capacity: $L(1 + 1/k) < C$, or $L/C < k/(k+1)$. For $k = 3$ (typical meshed network), the load fraction must be below $0.75$ to absorb a single failure without further failures. For $k = 5$ (more meshed), below $0.83$. Real cascades are more complex (redistribution depends on the network's physics, not uniform), but the order of magnitude is correct: $10\%$ to $25\%$ capacity margin is typical for resilient networks; below this margin, even small failures can cascade.
+\end{estimation}
+
+\section{Failure: 2003 North America blackout, 2012 India blackout, BGP cascades}\pathtag{core}
+
+Network failures have characteristic patterns.
+
+\textbf{2003 North America blackout:} on August 14, 2003, a series of cascading events left $55$ million customers without power across the northeastern US and Ontario. The initial event was vegetation contact with a high-voltage transmission line in northern Ohio; the resulting line trip should have been absorbed by the grid but was not, due to inadequate situational awareness at the utility's control centre, inadequate communication between adjacent utilities, and protection-system limits that had not been updated as the grid evolved. The blackout lasted up to $48$ hours in some areas and cost an estimated $\$6\,\text{billion}$. The investigation produced extensive recommendations on reliability standards, situational awareness, and protection.
+
+\textbf{2012 India blackout:} on July 30-31, 2012, the largest blackout in history left over $620$ million people without power across northern India. The root cause was excess demand on the grid (drought-induced agricultural pumping pushed demand beyond supply); the proximate failure was the disconnection of a key inter-regional transmission line, which triggered cascading frequency excursions and the disconnection of many generators and substations. The investigation found a combination of poor coordination, inadequate reserve margin, and protection-system action under stressed conditions. The Indian grid's redesign included increased capacity, improved coordination, and modernised protection.
+
+\textbf{BGP cascades:} BGP routing leaks and hijacks propagate misrouted traffic across the internet. Examples: the 2008 Pakistan-YouTube incident (a Pakistani ISP announced a YouTube IP range, propagated globally, taking YouTube offline for hours); the 2010 China incident ($15\%$ of internet traffic briefly routed through China); the 2017 Google leak (Verizon propagated a leaked route, affecting Google services). Each incident reflects the policy-flexibility of BGP combined with insufficient cryptographic protection. Mitigation: RPKI deployment is increasing but not universal.
+
+\textbf{2010 Flash Crash:} on May 6, 2010, US stock markets experienced a sudden price drop of nearly $10\%$ within minutes, then recovered. The proximate cause was a large sell algorithm interacting with high-frequency trading algorithms in a feedback loop. The cascade was a multi-agent network effect: each algorithm responded to others' actions, the responses amplified the perturbation, and the market fell into chaos. The 2024 SEC investigation into similar events (algorithmic feedback loops) continues; circuit breakers (trading halts when price moves exceed thresholds) are a partial mitigation.
+
+\textbf{Common pattern:} network failures often follow a similar pattern: initial perturbation, inadequate situational awareness, protection systems acting on local conditions without global coordination, cascade through coupled subsystems, large impact. The engineering response: monitor at scale, coordinate across subsystems, isolate before cascading, design with capacity margin.
+
+\begin{principle}[The capacity-margin-and-coordination principle]
+A resilient network has two engineering properties: capacity margin (the ability to absorb perturbations without cascading) and coordination (the ability of subsystems to respond to perturbations consistently with the system's overall objective). Margin alone is insufficient if subsystems disagree about the appropriate response; coordination alone is insufficient if there is no margin to coordinate. The engineering discipline includes both: design for margin, operate with coordination, monitor for both, and act before the cascade begins.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Model a small grid; simulate a cascading failure]
+\textbf{Objective.} Model a small electrical grid; simulate a cascading failure under different stress conditions; quantify the impact and identify mitigation strategies.
+
+\textbf{Method.} Choose or construct a small electrical grid (the IEEE 14-bus test case, the IEEE 39-bus New England case, or a custom small network). Implement a DC power-flow analysis. Define a failure scenario (line trip) and the redistribution that follows. Simulate the cascade: a line trips, current redistributes, other lines may exceed capacity and trip, etc. Vary the initial loading and the line capacity margins; observe the cascade extent. Identify the lines whose failure is most catastrophic; consider mitigation (capacity increase, protection coordination, load shedding).
+
+\textbf{Deliverables.} The grid model and parameters; the simulation code; the cascade results for various scenarios; the identification of critical lines and the proposed mitigations; a written analysis of the results' sensitivity to assumptions.
+
+\textbf{Hazard.} Software only; the simulation is educational.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A three-bus power network has two generators and one load. Given the line impedances and active powers, compute the DC power flow on each line.
+\end{exercise}
+
+\begin{exercise}
+A communication network's average node degree is $3$; the network has $100$ nodes. Compute the average number of links and the network diameter for a small-world topology.
+\end{exercise}
+
+\begin{exercise}
+A transportation network has $100$ nodes; the betweenness centrality of one hub is $0.4$. Compute the fraction of shortest paths affected if the hub is removed.
+\end{exercise}
+
+\begin{exercise}
+A water network has $20{,}000\,\text{m}$ of pipe and $5\%$ leakage rate; the average consumer uses $200\,\text{L/day}$. Compute the leakage volume per day.
+\end{exercise}
+
+\begin{exercise}
+A power grid's load is $80\,\text{GW}$; spinning reserve is $5\%$. State whether a $10\,\text{GW}$ generator trip can be absorbed without load shedding.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the DC power-flow approximation from the AC power-flow equations.
+\end{exercise}
+
+\begin{exercise}
+Derive the Wardrop equilibrium for a small transportation network with two parallel routes.
+\end{exercise}
+
+\begin{exercise}
+Derive the cascade-extent expression for a uniform-redistribution model with load fraction $\rho$ and capacity-margin fraction $\alpha$.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the spinning-reserve requirement for a $100\,\text{GW}$ grid serving a population of $50$ million, with the largest generator at $1\,\text{GW}$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time to detect a major water-main leak in a $10{,}000$-pipe network with pressure monitoring at $10\%$ of nodes.
+\end{exercise}
+
+\begin{exercise}
+Estimate the impact of a $10\%$ capacity reduction on a highway corridor's commute-hour delay.
+\end{exercise}
+
+\begin{exercise}
+Estimate the resilience improvement from doubling the inter-regional transmission capacity in a power grid.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a power-grid cascading failure on the IEEE 14-bus test case with various loading levels.
+\end{exercise}
+
+\begin{exercise}
+Simulate a BGP route propagation through a small autonomous-system network; observe how a single bad announcement propagates.
+\end{exercise}
+
+\begin{exercise}
+Simulate transit ridership on a small transit network under various frequency and route configurations.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a small-scale resilient power network: state the topology choice, the capacity margin, the protection coordination strategy.
+\end{exercise}
+
+\begin{exercise}
+Design a water-network monitoring strategy that detects leaks within $24\,\text{hr}$ for $90\%$ of significant leaks.
+\end{exercise}
+
+\begin{exercise}
+Design an emergency-response protocol for a cascading power-grid failure: monitoring, decision authority, load shedding, communication.
+\end{exercise}
+
+\begin{exercise}
+Design a BGP-protection strategy for an internet service provider: RPKI deployment, route filtering, anomaly detection.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's power grid is operating at $90\%$ of capacity; demand is growing. State the engineering options for handling future load.
+\end{exercise}
+
+\begin{exercise}
+A team's transport-network expansion has produced induced demand and no net improvement in congestion. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's water network has $30\%$ leakage; the city's budget allows limited replacement. State the engineering investment criteria.
+\end{exercise}
+
+\begin{exercise}
+A team's communication network experiences a major outage; the cause is a BGP route hijack. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between a hub-and-spoke and a point-to-point structure for an aviation network. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's grid has been designed with $20\%$ capacity margin; a recent expansion has reduced the margin to $10\%$. State the engineering judgement.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to integrate large-scale renewable generation into an existing grid. State the engineering considerations and the role of grid-forming inverters and storage.
+\end{exercise}
+
+\begin{exercise}
+A team's network has a single critical hub; the engineering question is whether to add a parallel hub or to reinforce the existing one. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A team's communication network is dependent on a single internet exchange point; a regional disruption could isolate the network. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's power-grid protection algorithm is well-coordinated within each utility but not across the inter-utility boundary; a recent near-miss highlighted the gap. State the engineering response and the relevant reliability-coordinator's role.
+\end{exercise}
+
+\begin{exercise}
+A team's gas-pipeline network has aged infrastructure with rising leak-incident rates; the budget allows replacement of a fraction of the network. State the engineering criteria for prioritising replacement segments and the role of risk-based asset management.
+\end{exercise}

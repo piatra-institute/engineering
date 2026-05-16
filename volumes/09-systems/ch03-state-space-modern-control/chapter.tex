@@ -1,40 +1,285 @@
 \chapter{State-space and modern control}
 \label{vol09:ch03}
 
-\epigraph{}{}
+\epigraph{The state is what you need to know about the past to predict the future.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, optimisation. Exercise target: 35. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: control, optimisation, coupling. Exercise target: 35. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 3. Approx 120 pp.}
+State-space methods replace the transfer-function representation of a system with a vector of state variables and a set of first-order differential equations. The state-space view scales to multi-input multi-output (MIMO) systems, handles arbitrary-order dynamics uniformly, admits explicit optimal-control formulations, and supports modern computational tools. Modern control theory built on state-space foundations from the late 1950s (Kalman, Bellman, Pontryagin) gives the engineer optimal and robust designs that classical methods cannot reach. This chapter develops the state-space representation, the algebraic conditions for controllability and observability, pole placement, linear-quadratic regulator (LQR), state observers and the Kalman filter preview, linear-quadratic-Gaussian (LQG) control, discrete-time state-space, and the failure modes that arise from unmodelled dynamics and lost observability.
 
-\section{State-space representation}
-\TODO{Section prose.}
+\section{State-space representation}\pathtag{core}
 
-\section{Controllability and observability}
-\TODO{Section prose.}
+A linear time-invariant continuous-time state-space model is:
+$$\dot{\mathbf{x}} = A \mathbf{x} + B \mathbf{u}, \quad \mathbf{y} = C \mathbf{x} + D \mathbf{u}$$
+where $\mathbf{x} \in \R^n$ is the state vector, $\mathbf{u} \in \R^m$ is the input vector, $\mathbf{y} \in \R^p$ is the output vector, and $A$, $B$, $C$, $D$ are matrices of appropriate dimensions. The state-space form generalises directly to MIMO systems; the same equations cover one input and one output, or many of each.
 
-\section{Pole placement}
-\TODO{Section prose.}
+The state vector represents the system's memory: knowing $\mathbf{x}(t_0)$ and $\mathbf{u}(t)$ for $t \geq t_0$ determines $\mathbf{x}(t)$ for $t \geq t_0$ uniquely. The choice of state is not unique: any invertible transformation $\mathbf{z} = T \mathbf{x}$ produces an equivalent state-space model with $\tilde{A} = T A T^{-1}$, $\tilde{B} = T B$, $\tilde{C} = C T^{-1}$, $\tilde{D} = D$. Canonical forms (controllable canonical, observable canonical, Jordan canonical, modal canonical) are useful for specific analyses.
 
-\section{LQR}
-\TODO{Section prose.}
+The relation to transfer functions: for a single-input single-output system, $G(s) = C(sI - A)^{-1} B + D$, a $1 \times 1$ matrix. For MIMO, $G(s)$ is a $p \times m$ matrix of transfer functions. The poles of $G(s)$ are eigenvalues of $A$ (or a subset, if uncontrollable or unobservable modes are excluded); the zeros of $G(s)$ are roots of a polynomial computed from $A$, $B$, $C$, $D$.
 
-\section{Observers and Kalman filtering preview}
-\TODO{Section prose.}
+The system response: for zero initial conditions, $\mathbf{y}(t) = \int_0^t (C e^{A(t-\tau)} B + D \delta(t-\tau)) \mathbf{u}(\tau) d\tau$. The matrix exponential $e^{At}$ is the state transition matrix; its eigenvalues are $e^{\lambda_i t}$ where $\lambda_i$ are eigenvalues of $A$. Stability requires all eigenvalues of $A$ to have negative real part (continuous time); for discrete time, all eigenvalues inside the unit circle.
 
-\section{LQG}
-\TODO{Section prose.}
+\begin{archetype}[control: state-space as the canonical multi-variable form]
+State-space is the canonical form for multi-input multi-output dynamics. The cross-coupling between inputs and outputs that classical transfer-function methods handle by piecemeal SISO loops is handled directly in state-space: the matrix $A$ captures all the coupling, the matrices $B$ and $C$ capture the connections to inputs and outputs, and the algebra of matrices replaces the algebra of polynomials. Modern aircraft control, multi-axis robot control, multi-mode chemical-process control, and many other MIMO problems are solved in state-space because the SISO methods cannot represent the coupling.
+\end{archetype}
 
-\section{Discrete-time state-space}
-\TODO{Section prose.}
+\section{Controllability and observability}\pathtag{core}
 
-\section{Failure: unmodelled dynamics, observability loss in real systems}
-\TODO{Section prose.}
+A system is controllable if for any initial state $\mathbf{x}_0$ and any desired state $\mathbf{x}_f$, there exists an input $\mathbf{u}(t)$ on $[0, t_f]$ that drives the state from $\mathbf{x}_0$ to $\mathbf{x}_f$. The algebraic condition: the controllability matrix $\mathcal{C} = [B, AB, A^2B, \ldots, A^{n-1}B]$ has full row rank $n$. Equivalently, no eigenvector of $A^T$ is orthogonal to all columns of $B$.
 
+A system is observable if from the output $\mathbf{y}(t)$ and the input $\mathbf{u}(t)$ on $[0, t_f]$, the initial state $\mathbf{x}_0$ can be reconstructed. The algebraic condition: the observability matrix $\mathcal{O} = [C; CA; CA^2; \ldots; CA^{n-1}]$ has full column rank $n$. Equivalently, no eigenvector of $A$ is in the null space of $C$.
 
-\section{Project}
-\TODO{design an LQR controller for a coupled-pendulum system; verify in simulation}
+Controllability and observability are dual: $\mathcal{O}^T$ for the system $(A, C)$ has the same structure as $\mathcal{C}$ for the system $(A^T, C^T)$. Algorithms and theorems developed for one transfer to the other.
+
+The Kalman decomposition partitions the state-space into four subspaces: controllable observable, controllable unobservable, uncontrollable observable, uncontrollable unobservable. Only the controllable-observable subspace appears in the transfer function; the rest is hidden by the input-output relationship but is part of the internal dynamics.
+
+Stabilisability is the weaker condition that all unstable modes are controllable; detectability is the weaker condition that all unstable modes are observable. For a system that is stabilisable and detectable, a controller and observer can be designed even though full controllability and observability fail; the uncontrollable and unobservable modes are stable on their own.
+
+The practical implications: controllability tells the engineer that the actuator placement is adequate; observability tells the engineer that the sensor placement is adequate. Loss of controllability or observability under operating-point changes is a serious failure mode; the gimbal lock of three-axis attitude control with Euler angles is the classical example.
+
+\section{Pole placement}\pathtag{standard}
+
+Pole placement is the design of a state-feedback controller $\mathbf{u} = -K \mathbf{x}$ that places the closed-loop poles at specified locations. Closed-loop dynamics: $\dot{\mathbf{x}} = (A - BK) \mathbf{x}$; the eigenvalues of $A - BK$ are the closed-loop poles. For a controllable system, $K$ can be chosen to place all poles arbitrarily.
+
+The single-input case is solved by Ackermann's formula: $K = [0, 0, \ldots, 1] \mathcal{C}^{-1} \phi(A)$, where $\phi(s)$ is the desired closed-loop characteristic polynomial. The MIMO case admits multiple $K$ matrices that achieve the same pole placement; selection criteria (eigenvector placement, gain magnitude, robustness) distinguish among them.
+
+The choice of pole locations is the design problem. Aggressive poles (far in the left half-plane) give fast response but require large control effort, amplify sensor noise, and reduce robustness. Conservative poles give slower response but smaller effort and better robustness. The Bessel and ITAE filter designs offer prototype pole patterns balancing speed and overshoot.
+
+Pole placement assumes the full state is available for feedback. In practice, only the output is measured; an observer reconstructs the state from the output (next section).
+
+\section{LQR}\pathtag{core}
+
+The linear-quadratic regulator solves the optimal-control problem: minimise
+$$J = \int_0^\infty (\mathbf{x}^T Q \mathbf{x} + \mathbf{u}^T R \mathbf{u}) dt$$
+subject to $\dot{\mathbf{x}} = A \mathbf{x} + B \mathbf{u}$, where $Q \geq 0$ and $R > 0$ are design weights. The optimal control is linear state feedback: $\mathbf{u}^* = -K \mathbf{x}$, where $K = R^{-1} B^T P$ and $P$ solves the algebraic Riccati equation $A^T P + P A - P B R^{-1} B^T P + Q = 0$.
+
+The LQR has remarkable structural properties: guaranteed stability (the closed-loop system is stable provided $(A, B)$ is stabilisable and $(A, Q^{1/2})$ is detectable), guaranteed gain margin (at least $6\,\text{dB}$ at each input), guaranteed phase margin (at least $60^\circ$), and an explicit formula for the controller given the weights. The robustness properties make LQR a desirable starting point for design.
+
+The design parameters are $Q$ and $R$. Bryson's rule offers a starting point: $Q_{ii} = 1/x_{max,i}^2$, $R_{jj} = 1/u_{max,j}^2$, normalising each variable's contribution to the cost by its acceptable maximum. From the starting point, the designer iterates: increasing $Q$ relative to $R$ produces a more aggressive controller (faster response, larger effort); decreasing $Q$ relative to $R$ produces a more conservative controller. The trade-off is explicit and adjustable.
+
+LQR generalises to time-varying problems, finite-horizon problems, problems with terminal costs, problems with cross-coupling terms in the cost, problems with stochastic disturbances. The corresponding Riccati equations are computed numerically; the standard tools (MATLAB \texttt{lqr}, Python \texttt{control.lqr}, Julia \texttt{ControlSystems.lqr}) provide robust implementations.
+
+LQR limitations include: requires the full state (combined with an observer in LQG, below); the weights $Q$ and $R$ have unclear physical meaning and require tuning; does not directly handle constraints (use model-predictive control for hard constraints); robustness margins are guaranteed only at the input, not at the output (a model error in the sensor side can degrade margins).
+
+\section{Observers and Kalman filtering preview}\pathtag{standard}
+
+An observer reconstructs the state from the output: $\dot{\hat{\mathbf{x}}} = A \hat{\mathbf{x}} + B \mathbf{u} + L(\mathbf{y} - C \hat{\mathbf{x}})$, where $L$ is the observer gain. The estimation error $\tilde{\mathbf{x}} = \mathbf{x} - \hat{\mathbf{x}}$ satisfies $\dot{\tilde{\mathbf{x}}} = (A - LC) \tilde{\mathbf{x}}$; the eigenvalues of $A - LC$ are the observer poles.
+
+For an observable system, $L$ can be chosen to place the observer poles arbitrarily. The dual of pole placement: Ackermann's formula applies with the observability matrix in place of the controllability matrix. The standard guidance: observer poles should be roughly $5$ to $10$ times faster than the controller poles, so that the state estimate converges before the controller acts.
+
+When the state is reconstructed by an observer, the state feedback uses $\hat{\mathbf{x}}$ instead of $\mathbf{x}$: $\mathbf{u} = -K \hat{\mathbf{x}}$. The separation principle says that the closed-loop poles consist of the controller poles (eigenvalues of $A - BK$) and the observer poles (eigenvalues of $A - LC$), each designed independently of the other. The principle holds for the linear deterministic case; it extends to the stochastic case (LQG) but does not hold in general.
+
+The Kalman filter is the observer for the stochastic case: process noise $\mathbf{w}$ enters the state equation as $\dot{\mathbf{x}} = A \mathbf{x} + B \mathbf{u} + G \mathbf{w}$, measurement noise $\mathbf{v}$ enters the output as $\mathbf{y} = C \mathbf{x} + \mathbf{v}$, both Gaussian with covariances $Q_w$ and $R_v$. The Kalman gain $L = P_e C^T R_v^{-1}$, where $P_e$ solves a dual Riccati equation, minimises the variance of the state estimate. The Kalman filter and LQR are dual problems with dual solutions.
+
+Chapter 6 of this volume develops Kalman filtering in full; the preview here suffices for the LQG combination.
+
+\section{LQG}\pathtag{standard}
+
+The linear-quadratic-Gaussian controller combines an LQR controller with a Kalman filter estimating the state. The full controller: $\dot{\hat{\mathbf{x}}} = A \hat{\mathbf{x}} + B \mathbf{u} + L(\mathbf{y} - C \hat{\mathbf{x}})$ and $\mathbf{u} = -K \hat{\mathbf{x}}$, where $K$ is the LQR gain and $L$ is the Kalman gain.
+
+The LQG closed-loop dynamics partition into the controller dynamics (eigenvalues of $A - BK$) and the observer dynamics (eigenvalues of $A - LC$), as in the deterministic case. The optimal cost in the stochastic case is $\E[J] = \text{tr}(P_{ctrl} G Q_w G^T) + \text{tr}(K^T R K P_e)$, the sum of disturbance-driven and estimation-error-driven costs.
+
+LQG loses the LQR's robustness guarantees: the gain and phase margins at the actuator can be arbitrarily poor. The 1978 Doyle paper "Guaranteed Margins for LQG Regulators" is the classical reference: LQG can be made fragile by adversarial choice of noise covariances. The fix is loop-transfer recovery (LTR), which adjusts the Kalman filter to recover the LQR margins at the cost of higher estimation error. Modern robust-control methods ($H_\infty$, $\mu$-synthesis) avoid the LQG fragility by direct robustness optimisation.
+
+The 1996 Ariane 5 Flight 501 (\cite{acc:ariane501-ifr}) illustrates the failure mode of a control design that did not anticipate the actual envelope: the inertial measurement unit's outputs saturated under Ariane 5 dynamics that were larger than Ariane 4 dynamics, an LQG-like estimator threw an exception, and the launcher destroyed itself. The control law was correct for its design envelope; the design envelope was wrong.
+
+\section{Discrete-time state-space}\pathtag{standard}
+
+Digital implementation of control replaces continuous-time integration with discrete-time difference equations. The discrete-time state-space form: $\mathbf{x}[k+1] = A_d \mathbf{x}[k] + B_d \mathbf{u}[k]$, $\mathbf{y}[k] = C_d \mathbf{x}[k] + D_d \mathbf{u}[k]$, where $k$ is the sample index and $A_d$, $B_d$ are the discrete-time system matrices.
+
+The discretisation of a continuous-time system with sampling period $T_s$ yields $A_d = e^{A T_s}$, $B_d = \int_0^{T_s} e^{A \tau} d\tau B$, $C_d = C$, $D_d = D$ (for zero-order hold). The discrete-time system is stable if all eigenvalues of $A_d$ lie within the unit circle (rather than the left half-plane).
+
+Discrete-time LQR, observer design, and LQG follow the same pattern as continuous-time with the corresponding discrete-time Riccati equations. The choice of sampling rate is a design parameter: too low and the sampling introduces excessive phase loss; too high and computational and noise burdens increase. The rule of thumb: sample at $20$ to $30$ times the closed-loop bandwidth.
+
+Quantisation and finite-precision effects in the digital implementation introduce limit cycles, gain errors, and noise. Modern microcontrollers and DSPs offer enough precision and speed that these effects are negligible for most applications; high-precision instrumentation and high-speed control may require careful arithmetic.
+
+\section{Failure: unmodelled dynamics, observability loss in real systems}\pathtag{core}
+
+State-space and modern control fail in characteristic ways.
+
+\textbf{Unmodelled dynamics:} the design model is a finite-order linear approximation; the real plant has unmodelled high-frequency modes, nonlinearities, time delays, and parameter variation. Aggressive state-feedback (high-gain LQR with light $R$ weighting) excites unmodelled modes; the closed-loop system oscillates or destabilises. Mitigation: include a margin between the design bandwidth and the next unmodelled mode; verify the design across the parameter envelope; use robust-control methods.
+
+\textbf{Observability loss:} the plant operating-point change reduces the rank of the observability matrix; the observer can no longer reconstruct certain state components from the available output. Examples: gimbal lock in Euler-angle attitude control; loss of yaw observability for a stationary mobile robot; loss of state observability in a satellite during certain manoeuvres. Mitigation: redundant sensors; backup state-estimation algorithms; operating constraints that avoid the unobservable regimes.
+
+\textbf{Controllability loss:} an actuator failure or operating-point change reduces the rank of the controllability matrix; some state components become uncontrollable. Mitigation: redundant actuators; reconfigurable control; degraded modes that operate the uncontrollable states open-loop.
+
+\textbf{Integrator windup:} the same windup issue as in classical PID, generalised to state-feedback with integral action. Anti-windup mechanisms are available for state-feedback architectures and should be included whenever actuators saturate.
+
+\textbf{Numerical conditioning:} the discrete-time Riccati equations and observability/controllability tests are computed numerically; ill-conditioned plants produce numerically singular matrices and unreliable gains. Mitigation: scale the state, input, and output variables to dimensionless quantities of order unity; use double-precision arithmetic; verify the design by computing the closed-loop poles and the response.
+
+\textbf{Model identification errors:} the state-space matrices come from system identification or first-principles modelling; errors in the matrices propagate to the controller. Mitigation: validate the model on data not used for fitting; design the controller with robustness to expected errors; monitor closed-loop performance in service and re-identify when performance degrades.
+
+\textbf{State definition non-unique:} the same plant can be described by different state choices; controller and observer designs assume one choice. Coordinated changes across the control system are needed if the state definition changes; missing one place produces inconsistency.
+
+\textbf{Operator misunderstanding:} the state-feedback law is mathematically clean but operators may not understand its behaviour. Aggressive LQR can produce control actions that surprise an operator accustomed to classical PID. Mitigation: training; operator-friendly interfaces; consideration of operator expectations in the design.
+
+\begin{principle}[The state-space-as-tool principle]
+State-space is a tool, not a methodology. The same problems that classical control addresses (stability, tracking, disturbance rejection, robustness) are addressed in state-space with a different toolkit. The advantage of state-space is uniform handling of MIMO, optimal-control formulations, and computational tractability; the disadvantage is the loss of frequency-domain intuition. The competent control engineer uses both: classical methods for SISO loops with simple objectives, state-space for MIMO loops or where optimal-control structures matter. The choice is the engineer's, not the textbook's.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[LQR controller for a coupled-pendulum system]
+\textbf{Objective.} Design and simulate an LQR controller for a coupled-pendulum system: two pendulums connected by a spring, with a single actuator (force on one pendulum's base). Stabilise the upright (inverted) equilibrium of both pendulums.
+
+\textbf{Method.} Derive the equations of motion of the coupled pendulum system using Lagrangian mechanics. Linearise about the upright equilibrium. Cast the linearised dynamics in state-space form. Verify controllability and observability with a single force input and a single angle measurement (or two angle measurements). Design an LQR controller with weights chosen by Bryson's rule. Design a Kalman filter for state estimation from the available measurements. Combine into an LQG controller. Simulate the closed-loop system; verify stabilisation; test robustness to parameter uncertainty.
+
+\textbf{Deliverables.} The equations of motion and the linearisation; the state-space model; the controllability and observability analysis; the LQR gains; the Kalman gains; the simulation results showing stabilisation; a sensitivity analysis showing how the design degrades with parameter variation.
+
+\textbf{Hazard.} This project is simulation; the physical coupled pendulum is dangerous to attempt without significant infrastructure.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 35 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Write the state-space representation of a mass-spring-damper ($m\ddot{x} + b\dot{x} + kx = F$) with state $\mathbf{x} = (x, \dot{x})^T$ and input $F$. Compute $A$, $B$, $C$, $D$.
+\end{exercise}
+
+\begin{exercise}
+For $A = \begin{pmatrix} 0 & 1 \\ -2 & -3 \end{pmatrix}$, $B = \begin{pmatrix} 0 \\ 1 \end{pmatrix}$, compute the controllability matrix and check if the system is controllable.
+\end{exercise}
+
+\begin{exercise}
+For $A$ as above, $C = (1, 0)$, compute the observability matrix and check if the system is observable.
+\end{exercise}
+
+\begin{exercise}
+Compute the transfer function from input to output for the system in the previous exercise (with $D = 0$).
+\end{exercise}
+
+\begin{exercise}
+For the same system, design a state-feedback gain $K$ to place the closed-loop poles at $-3 \pm 2j$.
+\end{exercise}
+
+\begin{exercise}
+For a controllable system with $A$, $B$, design the LQR controller with $Q = I$, $R = 1$. State the algebraic Riccati equation but do not solve symbolically; instead, write the equation that defines $P$.
+\end{exercise}
+
+\begin{exercise}
+A discrete-time system has $A_d = \begin{pmatrix} 0.9 & 0 \\ 0 & 1.05 \end{pmatrix}$. Is it stable?
+\end{exercise}
+
+\begin{exercise}
+A continuous-time system with $A = \begin{pmatrix} 0 & 1 \\ 0 & -2 \end{pmatrix}$ is discretised with $T_s = 0.1\,\text{s}$. Compute $A_d$.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the transfer function $G(s) = C(sI - A)^{-1}B + D$ from the state-space form $\dot{\mathbf{x}} = A\mathbf{x} + B\mathbf{u}$, $\mathbf{y} = C\mathbf{x} + D\mathbf{u}$.
+\end{exercise}
+
+\begin{exercise}
+Derive the controllability and observability matrices for an $n$-dimensional system; show that controllability is preserved under invertible state transformations.
+\end{exercise}
+
+\begin{exercise}
+Derive the algebraic Riccati equation for the infinite-horizon LQR problem.
+\end{exercise}
+
+\begin{exercise}
+Derive the separation principle for the deterministic LQ problem with state estimation by a Luenberger observer.
+\end{exercise}
+
+\begin{exercise}
+Derive the discrete-time state transition matrix from the continuous-time matrix exponential, including the input integration.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the LQR weights for a satellite attitude controller: state is attitude error and rate, input is wheel torque. Use Bryson's rule with $1^\circ$ attitude error and $0.01\,^\circ/\text{s}$ rate as maxima, and $0.1\,\text{Nm}$ torque as maximum.
+\end{exercise}
+
+\begin{exercise}
+Estimate the observer pole locations for a system whose controller poles are at $-2 \pm 2j$; apply the "$5$ to $10$ times faster" rule.
+\end{exercise}
+
+\begin{exercise}
+Estimate the closed-loop bandwidth of an LQR-LQG controller for a plant with crossover frequency $5\,\text{rad/s}$ and target margin $60^\circ$.
+\end{exercise}
+
+\begin{exercise}
+Estimate the loss of LQR margins from a $20\%$ underestimate of the actuator gain.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate an LQR controller for a double integrator $\ddot{x} = u$ with $Q = \text{diag}(1, 0)$ and $R = 1$. Plot the response from $\mathbf{x}_0 = (1, 0)^T$.
+\end{exercise}
+
+\begin{exercise}
+Simulate a state-feedback controller designed by pole placement and one designed by LQR for the same plant. Compare the responses and control efforts.
+\end{exercise}
+
+\begin{exercise}
+Simulate an LQG controller for a system with input disturbance and measurement noise. Vary the noise covariances and observe the resulting performance.
+\end{exercise}
+
+\begin{exercise}
+Simulate an LQR design that loses its guaranteed margins due to multiplicative uncertainty at the actuator. Identify the failure mode.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a state-feedback controller for an inverted pendulum on a cart, stabilising the upright equilibrium. State the linearisation, the LQR weights, and the verification approach.
+\end{exercise}
+
+\begin{exercise}
+Design an LQG controller for a three-axis attitude controller for a small satellite, with reaction wheels as actuators and a star tracker plus gyros as sensors.
+\end{exercise}
+
+\begin{exercise}
+Design a discrete-time observer for a plant sampled at $100\,\text{Hz}$ with continuous-time dynamics. State the sampling-period choice and the observer poles.
+\end{exercise}
+
+\begin{exercise}
+Design an LQR controller that achieves both fast disturbance rejection and limited actuator effort, with cost weights tuned to balance the two.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's LQR controller works in simulation and oscillates on hardware. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team's Kalman filter shows large estimation error in transient conditions. State three engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team's LQG controller has poor robustness to actuator gain variation. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between PID and state-feedback (LQR with observer) for a single-input single-output process. State the engineering trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's controller loses observability at a particular operating point. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's LQR cost weights have been tuned empirically over months. State the engineering judgement: rigorous, acceptable, or improperly grounded, and the rationale.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to verify a state-feedback controller designed in continuous time against its discrete-time implementation. State the engineering investigation.
+\end{exercise}
+
+\begin{exercise}
+A team's plant model has been identified from data; the LQR design is based on the identified model. State the engineering response to a $30\%$ change in identified parameters between identification and deployment.
+\end{exercise}
+
+\begin{exercise}
+A team is considering using LQR for a safety-critical aerospace application. State the engineering considerations: certification standards, robustness analysis, and the role of $H_\infty$ or $\mu$-synthesis as alternatives.
+\end{exercise}
+
+\begin{exercise}
+A team's state-space controller has $50$ states; the implementation in firmware exceeds the controller's CPU budget. State the engineering responses including model reduction.
+\end{exercise}

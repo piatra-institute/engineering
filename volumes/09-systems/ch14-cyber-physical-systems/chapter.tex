@@ -1,40 +1,279 @@
 \chapter{Cyber-physical systems}
 \label{vol09:ch14}
 
-\epigraph{}{}
+\epigraph{The physical world has consequences that the digital world does not; the cyber-physical system inherits both.}{}
 
-\chapmeta{Half-life: medium-life. Archetypes: control, failure, ethics. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: control, failure, coupling. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 9, Chapter 14. Approx 120 pp.}
+A cyber-physical system (CPS) tightly integrates computation, networking, and physical processes. The defining feature is the closed loop between the cyber world (sensors, networks, controllers, decisions) and the physical world (motion, force, energy, matter). Modern engineering systems are increasingly cyber-physical: smart grids, autonomous vehicles, industrial control systems, medical devices, building automation, robotic manufacturing. The discipline inherits the rigour of control engineering, the security concerns of computer networks, and the reliability demands of physical infrastructure; failures cross the cyber-physical boundary and can have physical-world consequences. This chapter develops the engineer's working understanding of cyber-physical systems: what they are, the standard architectures, real-time and safety-critical considerations, SCADA and industrial control systems, industrial IoT, cyber-physical security with attention to known attacks, verification and validation, and a synthesis of CPS failure modes.
 
-\section{What CPS are}
-\TODO{Section prose.}
+\section{What CPS are}\pathtag{standard}
 
-\section{Sensor-actuator-network-controller architectures}
-\TODO{Section prose.}
+A cyber-physical system has three coupled components: a physical process (the plant), a sensing-and-actuation interface (sensors and actuators connecting the plant to the cyber world), and a cyber subsystem (computation and communication that processes sensor data and commands actuators). The boundary between cyber and physical is the sensor-actuator interface; the closed loop crosses it many times per second.
 
-\section{Real-time and safety-critical CPS}
-\TODO{Section prose.}
+Examples that illustrate the CPS class:
 
-\section{SCADA and ICS}
-\TODO{Section prose.}
+\textbf{Modern automobiles:} dozens of microcontrollers (engine, transmission, brakes, stability control, infotainment, driver assistance) connected by CAN, FlexRay, and Ethernet networks, sensing and actuating through hundreds of sensors and actuators. The car is a CPS; its safety, reliability, and security are CPS engineering concerns.
 
-\section{Industrial IoT}
-\TODO{Section prose.}
+\textbf{Smart grid:} the traditional power grid augmented with sensors (PMU, smart meters), communication (fibre, wireless), computation (substation automation, distribution management), and control (demand response, distributed generation control). The smart grid is a CPS at infrastructure scale.
 
-\section{Cyber-physical security (Stuxnet, water-utility attacks)}
-\TODO{Section prose.}
+\textbf{Surgical robots:} medical robots that combine surgeon input, real-time imaging, force feedback, and tool actuation. The surgeon and the patient are part of the system; the CPS coordinates them.
 
-\section{Verification and validation of CPS}
-\TODO{Section prose.}
+\textbf{Autonomous-vehicle systems:} perception, planning, and control loops running at multiple time scales, integrated with the vehicle's mechanical and electrical subsystems. The CPS is the heart of the autonomy.
 
-\section{Failure: the entire chapter is a failure section, with synthesis}
-\TODO{Section prose.}
+\textbf{Industrial automation:} PLCs, drives, sensors, robots, and HMIs running production lines. The CPS is the factory floor; uptime, reliability, and worker safety depend on it.
 
+The discipline of CPS engineering brings together: control theory (the closed-loop physics), real-time systems (the timing constraints), networked systems (the communication), software engineering (the code), security engineering (the attack surface), reliability engineering (the failure tolerances), human factors (the operator interface). No single discipline is sufficient; the integration is the work.
 
-\section{Project}
-\TODO{build a small CPS demo with simulated attack and defence}
+\begin{archetype}[coupling: CPS as cyber-physical loop]
+A CPS is the closed loop that crosses the cyber-physical boundary. Each loop traversal samples the physical world, transmits across the network, processes in the controller, transmits the command, and acts on the actuator. The loop's timing, bandwidth, reliability, and security determine the system's behaviour. The engineer designs each leg of the loop and the integration; the integration is the part that introduces the most failures and the most surprises.
+\end{archetype}
+
+\section{Sensor-actuator-network-controller architectures}\pathtag{standard}
+
+CPS architectures are characterised by where the computation lives, where the data flows, and how the loops close.
+
+\textbf{Centralised:} all computation is in a central controller; sensors transmit data to the controller; actuators receive commands. Simple to reason about and verify; vulnerable to controller failure and network bottleneck. Suitable for small-to-moderate systems with deterministic networks.
+
+\textbf{Distributed:} computation is at multiple nodes near the sensors and actuators. Each node processes locally; nodes coordinate over the network. Scalable and robust to single-point failure; harder to verify; depends on network reliability for coordination.
+
+\textbf{Hierarchical:} a hierarchy of controllers, with local controllers handling fast loops and higher-level controllers handling slower planning. Standard for industrial automation (ISA-95): physical processes (level 0), basic control (level 1), supervisory control (level 2), manufacturing operations management (level 3), business planning (level 4). The hierarchy decouples time scales and responsibilities.
+
+\textbf{Edge-cloud hybrid:} time-critical loops run at the edge (near the plant); analytics and long-term planning run in the cloud. The architecture is increasingly common in industrial IoT and connected products.
+
+The architectural choice depends on the application: real-time requirements, network reliability, computational requirements, security posture, cost, scalability. There is no one best architecture; the choice is part of the engineering work.
+
+\section{Real-time and safety-critical CPS}\pathtag{standard}
+
+Real-time CPS must respond within bounded time. The standard categories:
+
+\textbf{Hard real-time:} the response must occur within the deadline, or the system has failed. Examples: aircraft flight control, vehicle airbag deployment, nuclear reactor protection. The verification must guarantee the deadline.
+
+\textbf{Soft real-time:} occasional deadline misses are tolerable, possibly with degraded performance. Examples: video streaming, web responsiveness, factory throughput.
+
+\textbf{Firm real-time:} deadlines must be met for the response to be useful, but missing a deadline is not catastrophic; the response is simply discarded. Examples: video conferencing audio packets.
+
+Real-time analysis (Chapter 6 of Volume VIII) gives the formal tools for verifying timing: rate-monotonic and earliest-deadline-first scheduling theory, response-time analysis, worst-case execution time analysis. The discipline includes designing the software so that the timing can be analysed (no unbounded loops, no unbounded allocations, no unbounded synchronisation).
+
+Safety-critical CPS have additional discipline: rigorous development processes (ISO 26262 for automotive, IEC 61508 for industrial, DO-178C/DO-254 for aerospace, IEC 62304 for medical software), independent verification, certification by regulators. The cost of these disciplines is significant but justified by the consequence of failure.
+
+The 2009 Air France Flight 447 (\cite{acc:bea-af447}) demonstrated CPS complexity in safety-critical aviation: the aircraft's flight envelope protection systems disengaged when sensors gave inconsistent data; the pilots, operating outside their normal envelope, responded in ways that triggered a stall. The CPS was working as designed; the human-CPS coupling was the failure surface.
+
+\section{SCADA and ICS}\pathtag{standard}
+
+Supervisory control and data acquisition (SCADA) and industrial control systems (ICS) are the established categories of CPS in industrial environments. They are distinct but overlapping.
+
+ICS encompasses PLCs (programmable logic controllers, the dominant industrial control device), DCS (distributed control systems, used in process industries), HMI (human-machine interface), and the network infrastructure connecting them. The standards (IEC 61131 for PLC programming, OPC UA for connectivity, IEC 61850 for substation automation) define common interfaces.
+
+SCADA refers to the supervisory layer above the ICS: data collection from many ICS systems, presentation to operators, configuration of setpoints, alarm management. SCADA systems typically run on industrial PCs or servers, communicating with ICS through industrial protocols (Modbus, DNP3, IEC 60870-5).
+
+The engineering of SCADA and ICS includes: real-time scheduling (each PLC scan must complete within milliseconds); reliability (hot-standby controllers, redundant networks); operator interface design (alarm flooding is a known failure mode of poorly-designed HMI); change management (production downtime for software updates is expensive); security (originally air-gapped, now increasingly connected, with significant attack surface).
+
+ICS lifetimes are long: factories operate the same control systems for decades; oil-and-gas SCADA systems may run for $30$ years; substation automation has similar lifetimes. The engineering discipline includes obsolescence management, security retrofits, and incremental modernisation.
+
+\section{Industrial IoT}\pathtag{standard}
+
+Industrial Internet of Things (IIoT) extends the SCADA/ICS paradigm with cloud connectivity, machine learning, and increased sensor density. The vision: every machine reports its state continuously; analytics across the data identifies inefficiencies, predicts failures, optimises operations.
+
+IIoT deployments include: predictive maintenance (vibration, temperature, acoustic data analysed for impending failure); production optimisation (data-driven adjustment of process parameters); quality monitoring (continuous inspection rather than sampling); asset tracking (RFID, GPS, accelerometers); energy management (real-time consumption data with optimisation feedback).
+
+The architecture combines edge (data acquisition, local control) with cloud (analytics, dashboards, machine learning). The edge handles real-time loops; the cloud handles non-real-time analysis. Data movement between them is via gateways and standard protocols (MQTT, AMQP, OPC UA).
+
+The engineering challenges include: integration with existing SCADA/ICS (often legacy systems); security across the expanded attack surface; data ownership and privacy (especially in shared-tenant cloud deployments); ROI quantification (the business case for IIoT investment is often hard to make explicitly); skills (the workforce is generally not yet fluent in both industrial control and modern data engineering).
+
+\section{Cyber-physical security (Stuxnet, water-utility attacks)}\pathtag{core}
+
+CPS security is a distinct discipline from IT security: the consequences of compromise are physical, not just informational. An attacker who steals data causes data breach; an attacker who modifies a control command can cause equipment damage, environmental release, or loss of life.
+
+The notorious attacks:
+
+\textbf{Stuxnet (2010):} the first widely-known CPS attack. The malware targeted Siemens PLCs in Iranian uranium enrichment facilities; it modified centrifuge speed commands to damage the centrifuges over time, while reporting normal operation to operators. The sophistication (signed kernel-mode rootkit, multiple zero-day exploits, knowledge of specific Siemens hardware) attributed to a nation-state actor. Stuxnet demonstrated that CPS attacks could be precise, persistent, and devastating.
+
+\textbf{Ukrainian power grid (2015, 2016):} Russian-attributed attackers compromised SCADA systems at three Ukrainian electricity distribution companies, disabling circuit breakers and switching off power to approximately $230{,}000$ customers for hours. The attack used standard IT-side techniques (spear phishing, credential theft) to reach the SCADA layer. The 2016 attack used custom CrashOverride malware for more direct SCADA manipulation.
+
+\textbf{Triton/Trisis (2017):} attackers compromised Triconex safety-instrumented systems (SIS) at a Saudi petrochemical facility. The SIS is the last line of defence before equipment damage or release; modifying it could allow the attackers to cause physical damage while bypassing safety interlocks. The attack failed (caused a plant trip rather than the intended damage) but the capability raised alarm.
+
+\textbf{Oldsmar Florida water utility (2021):} an attacker accessed remote-control software and briefly increased the lye dosing in the city's water supply. The attempt was detected and reversed before consumers were affected; the incident exposed widespread weaknesses in small-utility security.
+
+\textbf{Colonial Pipeline (2021):} a ransomware attack on the business systems of a major US pipeline operator caused the operator to shut down operations as a precaution. The pipeline itself was not directly attacked, but the consequence was a major fuel shortage. The incident illustrated that even attacks on IT systems can have physical-world consequences.
+
+The discipline of CPS security includes: network segmentation (the OT network separate from IT); access control (least privilege for operator workstations); patch management (notably difficult for ICS with long lifetimes and tight uptime requirements); incident response (rehearsed playbooks); monitoring (anomaly detection on industrial protocols); supply-chain security (third-party software and hardware should be verified); regulatory frameworks (NERC CIP for North American power, EU NIS2, sector-specific requirements).
+
+The engineering response is multi-layered: assume some compromise will occur; design controls that limit the damage; monitor for compromise; rehearse the response; learn from incidents in the community.
+
+\section{Verification and validation of CPS}\pathtag{standard}
+
+Verification and validation (V\&V) of CPS is harder than V\&V of pure software or pure hardware. The discipline must address: timing (the system meets real-time deadlines); functional correctness (the system performs as specified); safety (the system does not cause harm); security (the system resists adversarial action); reliability (the system continues to function under failures); usability (operators can use the system effectively).
+
+Standard V\&V approaches:
+
+\textbf{Model-based design:} the system is modelled (in MATLAB/Simulink, Modelica, or other tools); the model is verified against requirements; the implementation is generated or hand-coded from the model; the implementation is tested. The flow is supported by standard tools and is the dominant approach in automotive and aerospace.
+
+\textbf{Hardware-in-the-loop (HIL) testing:} the controller hardware is connected to a simulated plant; the controller is tested across the full operating envelope, including conditions difficult or dangerous to reproduce on the real plant. HIL is the standard for automotive and aerospace controller verification.
+
+\textbf{Formal verification:} mathematical proof that the system satisfies its specification. Limited to specific properties (timing, safety invariants) and to the scale that current verification tools can handle; not yet a routine substitute for testing.
+
+\textbf{Software-in-the-loop (SIL) testing:} the controller code is run against a simulated plant on the development workstation. Faster than HIL but less faithful to the deployed environment.
+
+\textbf{System integration testing:} the full system (hardware, software, network, plant) is tested. Tests cover normal operation, abnormal conditions, fault recovery, and operator interaction.
+
+\textbf{Operational test and certification:} the system is operated in the deployment environment under controlled conditions, with certification authority observation. Required for safety-critical applications in aerospace, automotive, medical.
+
+The cost of comprehensive V\&V is significant: for aerospace flight-control software, V\&V typically costs more than development. The cost is justified by the consequence of failure; for less safety-critical CPS, V\&V is correspondingly lighter.
+
+\section{Failure: the entire chapter is a failure section, with synthesis}\pathtag{core}
+
+CPS failures inherit from each constituent discipline: control failures, software failures, network failures, security failures, hardware failures, operator failures. The synthesis: CPS failures are typically multi-causal, with cyber and physical components both contributing.
+
+Standard patterns:
+
+\textbf{Modelling-execution gap:} the model used for control design differs from the plant's actual behaviour. The control law works in simulation and fails on hardware. Mitigation: thorough plant characterisation, robust control methods, conservative deployment.
+
+\textbf{Network delay or loss:} the cyber subsystem assumes timely, reliable communication; the network fails to deliver. Mitigation: explicit modelling of network behaviour, conservative deadline design, fallback modes for communication loss.
+
+\textbf{Sensor or actuator failure:} the sensor reports incorrect data, or the actuator fails to execute the command. Mitigation: redundancy, plausibility checking, graceful degradation.
+
+\textbf{Software bug:} a coding error or design flaw produces incorrect behaviour. Mitigation: rigorous development, code review, static analysis, structural-coverage testing.
+
+\textbf{Security compromise:} an attacker accesses the cyber subsystem and modifies behaviour. Mitigation: defence-in-depth, monitoring, response procedures.
+
+\textbf{Operator error or mis-trust:} the operator misuses the system, or trusts it inappropriately. The 2018 Uber autonomous vehicle pedestrian fatality involved an operator (the safety driver) who was not adequately attentive; the system identified the pedestrian but did not brake in time; the operator did not intervene. The CPS, the operator, and the operating procedure all contributed.
+
+\textbf{Cross-layer failure:} a failure at one layer (network, software, hardware) propagates to other layers in unexpected ways. The 2017 NotPetya attack (originally aimed at Ukrainian financial systems) spread to global shipping (Maersk), pharmaceutical (Merck), and manufacturing (Mondelez), causing tens of billions in damages. The attack was IT-system-targeted but had massive physical-supply-chain consequences.
+
+\textbf{Aging and obsolescence:} CPS components age; software stops being supported; vulnerabilities are discovered without patches. Mitigation: planned modernisation; compensating controls.
+
+\textbf{Specification gaps:} the requirements omit important behaviours; the system as built does not handle conditions not in the requirements. Mitigation: comprehensive scenario coverage, edge-case analysis, operational experience integration.
+
+The Therac-25 incidents (\cite{paper:leveson-turner1993}) remain the canonical CPS failure: the radiation-therapy machine combined software, hardware, sensors, and actuators; a software bug allowed a specific operator-input sequence to deliver lethal radiation doses; the hardware interlock that would have prevented this in the previous machine generation had been removed. The failure crossed software, hardware, operator-procedure, and safety-engineering layers.
+
+\begin{principle}[The cyber-physical-integrity principle]
+A cyber-physical system has integrity if its physical-world behaviour matches its specification, despite the cyber subsystem's complexity, the network's unreliability, the security threats, the operator's errors. The integrity is not a property of any single layer; it is a property of the integration. The discipline is to design each layer with the integration in mind, to verify the integrated system across realistic conditions, and to monitor in operation for divergence from expected behaviour. CPS integrity is engineering integrity; it is the engineer's responsibility regardless of which layer the failure happens at.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Build a small CPS demo with simulated attack and defence]
+\textbf{Objective.} Build a small cyber-physical demonstration system; simulate an attack on it; implement and test a defence. Document the engineering of attack-resistant CPS.
+
+\textbf{Method.} Choose a small CPS: a temperature-controlled chamber with a microcontroller, sensor, and relay-controlled heater; a small robot with sensors and actuators; a simulated water-distribution system. Build the physical CPS (or simulate it). Implement the normal control loop. Identify an attack vector: a falsified sensor reading; a modified command; a man-in-the-middle on the network. Implement the attack and observe the consequence. Implement a defence: input plausibility checking; cryptographic integrity; redundant sensors; behavioural anomaly detection. Verify the defence by repeating the attack.
+
+\textbf{Deliverables.} The CPS demonstration; the attack scenario and its effect; the defence design and implementation; verification of the defence; a written analysis of the engineering trade-offs (performance, security, cost).
+
+\textbf{Hazard.} Physical hazards from the chosen CPS (electrical, mechanical); attacks should be conducted only on systems the team owns or has explicit permission to attack.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A CPS control loop has $5\,\text{ms}$ computation, $2\,\text{ms}$ network delay, $1\,\text{ms}$ actuator transit. Compute the total loop time and the maximum achievable closed-loop bandwidth.
+\end{exercise}
+
+\begin{exercise}
+A PLC has scan time $20\,\text{ms}$; a sensor changes value mid-scan; compute the worst-case detection latency.
+\end{exercise}
+
+\begin{exercise}
+A real-time scheduler must handle three tasks: $50\,\text{ms}/100\,\text{ms}$, $20\,\text{ms}/50\,\text{ms}$, $10\,\text{ms}/25\,\text{ms}$. State whether rate-monotonic scheduling is feasible.
+\end{exercise}
+
+\begin{exercise}
+A SCADA system has $1000$ field devices polled at $1\,\text{Hz}$; each poll requires $20\,\text{bytes}$ at $9600\,\text{bps}$. Compute the per-cycle bandwidth requirement.
+\end{exercise}
+
+\begin{exercise}
+A CPS network connects $50$ nodes with $100\,\text{Mbps}$ bandwidth; one of the nodes initiates a denial-of-service attack at $100\,\text{Mbps}$. State the effect on other nodes' communication.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the response-time formula for a periodic task in a fixed-priority preemptive scheduling system.
+\end{exercise}
+
+\begin{exercise}
+Derive the maximum tolerable network delay for closed-loop stability of a digital control system with sample time $T$ and plant bandwidth $\omega_b$.
+\end{exercise}
+
+\begin{exercise}
+Derive a simple model of attack-detection probability given anomaly-detection sensitivity and attack stealth.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the cost-of-failure for a SCADA-controlled water treatment plant during a control outage of one hour.
+\end{exercise}
+
+\begin{exercise}
+Estimate the verification effort for a safety-critical aviation flight-control software system; compare to a non-safety-critical commercial system.
+\end{exercise}
+
+\begin{exercise}
+Estimate the patch-deployment latency for an industrial control system with high uptime requirements.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a CPS control loop with network delay variations; observe the closed-loop performance degradation.
+\end{exercise}
+
+\begin{exercise}
+Simulate a Stuxnet-style attack on a controller: small modifications to the setpoint that accumulate to system damage over time. Test detection methods.
+\end{exercise}
+
+\begin{exercise}
+Simulate hardware-in-the-loop testing of a simple controller: the plant is simulated, the controller is real code; observe the integration issues.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a CPS architecture for a precision-agriculture system: soil sensors, irrigation actuators, weather data, cloud analytics, edge control.
+\end{exercise}
+
+\begin{exercise}
+Design a security architecture for an industrial SCADA system: network segmentation, access control, anomaly detection.
+\end{exercise}
+
+\begin{exercise}
+Design a redundancy and fault-tolerance strategy for an autonomous vehicle's perception system.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's CPS works in the lab; in deployment, network delays produce unstable behaviour. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is integrating a cloud-based ML model into a real-time CPS. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's SCADA system has been compromised; the attacker has access for several months. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's CPS V\&V budget is half what the analysis says is needed. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between distributed and hierarchical architecture for a smart-grid CPS. State the trade-offs.
+\end{exercise}
+
+\begin{exercise}
+A team's CPS has been certified to safety standard A; an attacker has demonstrated a vulnerability not anticipated by the standard. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's industrial controller is running 25-year-old firmware with known vulnerabilities; replacement would require $\$10\text{M}$ of downtime. State the engineering analysis and the compensating-control options.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to certify a CPS that includes a machine-learning component for perception, knowing that a separate software bug occurs once per million operations. State the engineering considerations: training-data verification, runtime monitoring, fallback behaviour, structural coverage testing, and certification standards.
+\end{exercise}
