@@ -19,6 +19,10 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | Status | Year | Name | Primary source |
 |---|---|---|---|
 | V | 1954 | [de Havilland Comet](comet-1954.md) | `acc:cohen-comet-report-1955` |
+| V | 1972 | [Eastern Air Lines Flight 401](eastern-401-1972.md) | `acc:ntsb-aar73-14` |
+| V | 1977 | [Tenerife airport disaster](tenerife-1977.md) | `acc:ciaiac-tenerife-1978` |
+| V | 1994 | [American Eagle Flight 4184 (Roselawn ATR-72 icing)](american-eagle-4184-1994.md) | `acc:ntsb-aar96-01` |
+| V | 2006 | [Comair Flight 5191](comair-5191-2006.md) | `acc:ntsb-aar07-05` |
 | V | 1983 | [Air Canada Flight 143](air-canada-143-1983.md) | `acc:lockwood-gimli1985` |
 | V | 1986 | [Space Shuttle Challenger](challenger-1986.md) | `acc:nasa-challenger` |
 | V | 1988 | [Aloha Airlines Flight 243](aloha-airlines-243-1988.md) | `acc:ntsb-aar94-04` |
@@ -29,6 +33,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | V | 1997 | [Mars Pathfinder priority inversion](mars-pathfinder-1997.md) | `paper:jones-pathfinder-1997` |
 | V | 2009 | [Air France Flight 447](air-france-447-2009.md) | `acc:bea-af447` |
 | V | 2013 | [Boeing 787 lithium-ion battery incidents](boeing-787-battery-2013.md) | `acc:ntsb-aar14-01-787-battery` |
+| V | 2018-2019 | [Boeing 737 MAX MCAS](boeing-737-max-mcas-2018-2019.md) | closest-equivalent: `acc:house-737max-2020` |
 
 ### Civil
 
@@ -37,6 +42,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | V | 1940 | [Tacoma Narrows Bridge](tacoma-narrows-1940.md) | `acc:tacoma-narrows-1941` |
 | V | 1981 | [Hyatt Regency walkway collapse](hyatt-regency-1981.md) | `acc:nbs-hyatt-1982` |
 | V | 2000 | [London Millennium Footbridge](millennium-bridge-2000.md) | `acc:dallard-millennium-2001` |
+| V | 2018 | [Genoa Morandi Bridge](genoa-morandi-bridge-2018.md) | `acc:mit-morandi-2018` |
 
 ### Process
 
@@ -52,6 +58,12 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 |---|---|---|---|
 | V | 1979 | [Three Mile Island](three-mile-island-1979.md) | `acc:kemeny-tmi-1979` |
 | V | 1986 | [Chernobyl](chernobyl-1986.md) | `acc:iaea-insag7-1992` |
+
+### Environmental
+
+| Status | Year | Name | Primary source |
+|---|---|---|---|
+| V | 2014-2019 | [Flint water crisis](flint-water-crisis-2014-2019.md) | `acc:fwatf-2016` |
 
 ### Medical
 
@@ -69,20 +81,20 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 
 ## Counts
 
-- Aerospace: 11
-- Civil: 3
+- Aerospace: 16
+- Civil: 4
 - Process: 3
 - Power: 2
+- Environmental: 1
 - Medical: 1
 - Software: 3
-- **Total: 23**
+- **Total: 30**
 
 ## Pending entries (~18-20)
 
 Accumulate as chapters cite them. Listed here for forward planning, not as commitment:
 
-- Aerospace: Boeing 737 MAX (2018-2019).
-- Civil: Tay Bridge (1879), Citicorp Tower (1978-1979, averted), Genoa Morandi (2018), Aberfan (1966), Vajont Dam (1963).
+- Civil: Tay Bridge (1879), Citicorp Tower (1978-1979, averted), Aberfan (1966), Vajont Dam (1963).
 - Process: Flixborough (1974), Buncefield (2005), Deepwater Horizon (2010).
 - Power: Fukushima (2011), Northeast blackout (2003), Texas grid failure (2021).
 - Software: Knight Capital (2012).

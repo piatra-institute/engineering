@@ -1,34 +1,267 @@
 \chapter{Common-mode failure}
 \label{vol10:ch08}
 
-\epigraph{}{}
+\epigraph{Two parallel channels with one shared cause is one channel pretending to be two.}{}
 
-\chapmeta{Half-life: durable. Archetypes: failure, balance. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: failure, balance. Exercise target: 25. Project track: hybrid.}
 
 \noindent
-\TODO{Volume 10, Chapter 8. Approx 100 pp.}
+Common-mode failure is the disposition by which multiple components, each individually redundant, fail together because they share a cause. The redundancy is nominal; the failures are independent only in the design document. When a single trigger reaches every channel, the system that the safety analysis treated as $1 - (1 - p)^n$ behaves as $p$. Volume IX Chapter 13 introduced common-mode failure in the network setting; this chapter is the failure-mode treatment: how shared causes hide inside redundant architectures, how to find them, and how the catastrophic post-mortems read.
 
-\section{Why redundancy sometimes does not help}
-\TODO{Section prose.}
+\section{Why redundancy sometimes does not help}\pathtag{core}
 
-\section{Identifying common-mode dependencies}
-\TODO{Section prose.}
+The standard model of redundant systems is that each channel fails independently with probability $p$, and the probability that all $n$ channels fail together is $p^n$. With $p = 10^{-3}$ and $n = 3$, the model predicts a triple-channel failure rate of $10^{-9}$. The model is correct under one assumption: the failures are independent. The assumption is rarely true in built systems.
 
-\section{Latent shared causes}
-\TODO{Section prose.}
+A common-mode dependency is any pathway through which a single cause produces simultaneous (or rapidly sequential) failure in multiple channels. Examples that have actually defeated multi-channel architectures:
 
-\section{Cosmic rays, EMP, environmental common-mode}
-\TODO{Section prose.}
+\textbf{Shared input.} Both channels read from the same sensor (737 MAX MCAS; a single AoA vane drove a control function that the safety analysis treated as having two channels of input \cite{acc:house-737max-2020}).
 
-\section{Software in redundant systems}
-\TODO{Section prose.}
+\textbf{Shared power supply.} Both channels are powered from the same bus; a bus fault takes both down.
 
-\section{Case: Three Mile Island common-mode loss, Boeing 737 MAX MCAS dual-channel collapse}
-\TODO{Section prose.}
+\textbf{Shared cooling, ventilation, or environment.} Both channels are in the same cabinet, room, or building; a fire, flood, temperature excursion, or contamination event reaches both.
 
+\textbf{Shared software.} Both channels run the same firmware with the same bug; the bug fires on both at the same input.
 
-\section{Project}
-\TODO{identify common-mode dependencies in one redundant system the reader uses}
+\textbf{Shared maintenance.} Both channels were calibrated by the same technician using the same procedure; the procedure's error appears on both.
+
+\textbf{Shared design.} Both channels were designed by the same team against the same specification; an error in the specification or in the team's understanding appears on both.
+
+\textbf{Shared environment in operation.} Both channels are exposed to the same external event, EMP, lightning, cosmic ray flux, vibration, radiation; the event reaches both.
+
+\textbf{Shared aging.} Both channels were installed at the same time, made from the same lot of material; they age together and fail together.
+
+\textbf{Shared trigger.} A specific operational state, time of day, configuration, or input pattern triggers both channels' failure modes simultaneously.
+
+The list is not exhaustive. Common-mode dependencies are recursive: the diversity introduced to defeat one shared cause may itself introduce a new shared cause (two different firmware images running on the same hardware share the hardware; two different hardware platforms running the same algorithm share the algorithm). The discipline is not to eliminate shared causes (impossible) but to identify them and bound the consequences.
+
+The relationship between common-mode probability $\beta$ and overall system unavailability is captured by the beta-factor model, the simplest engineering accounting for common-mode failure. If the per-channel failure probability is $p$ and a fraction $\beta$ of that probability is shared across all channels, then the $n$-channel system fails with probability approximately $\beta p + (1 - \beta)^n p^n$. The first term dominates for any nontrivial $\beta$. With $\beta = 0.05$ and $p = 10^{-3}$, the three-channel system has unavailability $\approx 5 \times 10^{-5}$, not $10^{-9}$. The four-orders-of-magnitude gap between the naive calculation and the beta-factor estimate is the size of the design error that ignoring common-mode produces.
+
+\begin{principle}[Common-mode dominates]
+For any redundant system with non-zero $\beta$, the common-mode term dominates total failure probability for any practical $n$. Adding channels is a logarithmic-cost-to-benefit improvement under independence and a zero-benefit improvement under common-mode dominance. The engineering effort to reduce $\beta$ has higher leverage than the engineering effort to add channels beyond two.
+\end{principle}
+
+\section{Identifying common-mode dependencies}\pathtag{core}
+
+Identifying common-mode dependencies in a real system requires a systematic search that does not stop at the level of abstraction at which the system was specified. The architect declares "redundant channels A and B"; the search must descend through every layer of the implementation looking for shared causes.
+
+The standard technique is the common-cause analysis (CCA), conducted as part of system safety assessment. A CCA enumerates plausible common causes and, for each, asks whether more than one channel of any redundant function is exposed. The enumeration uses a checklist of categories: shared physical location, shared power, shared cooling, shared signal source, shared computer, shared software, shared manufacturer, shared installation date, shared maintenance procedure, shared operating environment, shared external event vulnerability (fire, flood, seismic, EMP, lightning, dust, water ingress, vermin). The checklist is mundane; the discipline is to actually walk every redundant function down the list rather than declaring independence by inspection.
+
+Three concrete techniques sharpen the search:
+
+\textbf{Zonal analysis.} A walk through the physical installation that asks, for each zone (cabinet, bay, compartment, room, building), what functions have components in that zone and what zone-level events (fire, flooding, single penetration, single supply failure) could affect them. The output is a zone-to-function matrix; any zone that contains multiple channels of the same redundant function is a red entry.
+
+\textbf{Particular-risks analysis.} A catalogue of external events the system must tolerate (engine debris, bird strike, lightning, EMP, hail, runway debris, wave action, seismic, blast). For each event, the analysis identifies the physical envelope reached by the event and lists the functions with components in that envelope. The output is an event-to-function matrix.
+
+\textbf{Cascading-effects analysis.} For each component failure, the analysis traces the secondary effects on neighbouring components: heat release, fluid release, debris release, pressure release, electromagnetic emission, structural deformation. The output is a component-to-component propagation matrix; the redundant channels' columns are inspected for entries.
+
+These three matrices in combination produce the conservative bound on $\beta$. The bound is conservative because it counts every plausible shared cause, not just the dominant ones. The non-conservative practice (declaring functions independent by architectural inspection without performing the matrices) is what produces the $\beta \to 0$ assumption that the beta-factor model warns against.
+
+\begin{archetype}[failure]
+Common-mode failure is the archetype's purest expression in this volume. Two channels exist; they share a cause; the cause fires; both fail. The system's failure probability is governed by the shared-cause probability, not by the multi-channel architecture.
+\end{archetype}
+
+\section{Latent shared causes}\pathtag{standard}
+
+Some common-mode causes are not present at design time but accumulate during operation. These are latent in the architecture and only become active when an operational event recruits them.
+
+\textbf{Aging.} Both channels were installed at the same time. They age at the same rate (same materials, same environment). They reach end-of-life together. A maintenance schedule that replaces them on the same calendar reinstalls the synchronisation. Aging-driven common-mode is defeated by staggered installation and staggered replacement.
+
+\textbf{Calibration drift.} Both channels were calibrated against the same reference at the same time. The reference drifts; both channels drift with it; the drift produces correlated readings (and a check that compares the two for agreement does not detect the drift). Defeated by calibrating against different references, calibrating at different times, and tracking absolute calibration history.
+
+\textbf{Common contaminant.} Both channels were filled, lubricated, or coated with material from the same batch. A defect in the batch (contamination, wrong composition, expired material) affects both. Defeated by lot diversity for safety-critical fluids and by lot tracking.
+
+\textbf{Latent specification error.} The original specification contained an error; both channels were built to satisfy the (erroneous) specification; the specification's error appears as identical channel behaviour. The error remains latent until an operational input exposes it. This is the dominant mechanism in software common-mode and is not defeated by software-channel "diversity" at the implementation level if both implementations were verified against the same erroneous specification.
+
+\textbf{Latent maintenance error.} A maintenance action was performed incorrectly on both channels at the same time (or on one channel, recorded as done on both, with the discrepancy uncovered later). The error remains latent until operational use exposes the affected function. Defeated by procedure design that requires per-channel confirmation, by independent verification, and by post-maintenance functional tests that exercise each channel separately.
+
+\textbf{Shared dormancy.} Both channels are seldom exercised in operation (standby systems, emergency systems, last-resort protections). Both could be failed without anyone knowing. Their shared dormancy is the common cause; the cause is the absence of operational signal that would reveal the failure. Defeated by regular surveillance testing.
+
+Surveillance testing for dormant common-mode failure is itself a source of common-mode risk: the test that exercises both channels at the same time can fail both at the same time. The protective-system literature documents this; the resolution is to stagger surveillance and to perform individual-channel rather than system-level surveillance where possible.
+
+\section{Cosmic rays, EMP, environmental common-mode}\pathtag{standard}
+
+External events reach multiple channels simultaneously when the channels share the envelope the event affects.
+
+\textbf{Cosmic-ray single-event effects.} High-energy particles transit semiconductor devices and deposit charge that can flip a bit, induce a transient current, or in rare cases destroy a device. The flux is altitude-dependent (about 300 times greater at 12 km altitude than at sea level) and latitude-dependent. Two electronics channels at the same altitude experience the same flux; an event that affects two devices simultaneously is rare per device-second but cumulative over a fleet-lifetime. The aviation community uses radiation-hardened parts, EDAC (error detection and correction), and architectural diversity (different chip technologies in different channels) to bound the contribution. Sea-level cosmic-ray effects matter for high-reliability ground systems (large server farms, control systems) and have been documented to cause measurable bit-flip rates in commodity DRAM.
+
+\textbf{Lightning and electrostatic discharge.} A nearby strike couples electromagnetic energy into every conductor in the affected envelope. Channels separated by tens of meters in the same building, or by tens of centimeters in the same aircraft, share the envelope. Defeated by shielding (Faraday-cage geometry), by surge suppression on every interface, by fibre-optic isolation where electrical isolation is needed, and by lightning-zone analysis that classifies which equipment is in which lightning environment.
+
+\textbf{Electromagnetic pulse (EMP).} A high-altitude nuclear detonation produces an E1 pulse (~50 kV/m, rise time nanoseconds) that affects every electronic system in a continental footprint and an E3 pulse (slower, induces ground currents in long conductors) that stresses power grids. Multiple-channel redundancy is no defence if all channels are in the affected footprint; the defence is shielded compartments (the E1 pulse couples to small antennas, hence to small loops in unshielded equipment), lightning-style surge protection (effective for E3), and architectural assumption that the EMP event is part of the threat model. The civilian power grid has limited EMP hardening; the military communications and weapons-control infrastructure does.
+
+\textbf{Solar storms.} The geomagnetic storm of March 1989 (Hydro-Quebec blackout) and the Carrington event of 1859 demonstrate that solar coronal mass ejections can induce ground currents large enough to damage continental-scale power infrastructure. The common-mode footprint is continental, even global; redundant transformers in the same geomagnetic latitude band share the cause. Defeated by current-blocking devices on long transmission lines and by load-shedding plans triggered by space-weather forecasts.
+
+\textbf{Fire, flood, seismic.} Local environmental events with envelopes from meters (a single cabinet fire) to kilometers (a flood) to hundreds of kilometers (a regional earthquake). Redundant channels in the same physical envelope share the cause. Defeated by spatial separation; the separation distance is set by the envelope of the events being defended against. Aerospace standards specify minimum separation distances for redundant systems; civil-aircraft fly-by-wire systems mount the channels on opposite sides of the aircraft against single-event damage.
+
+\textbf{Temperature, humidity, vibration excursion.} Two channels in the same operating environment experience the same excursions. A heat-wave failure pattern that breaks one cooling unit may break the redundant unit shortly after.
+
+\textbf{Pest, contamination, intrusion.} Vermin in a cable tray. Volcanic ash in an engine intake. Dust accumulation in a cooling fan. Bird strike. Drone strike. Each affects everything in the affected envelope.
+
+\begin{estimation}
+\textbf{Question.} A two-channel computer system has channels in adjacent racks in a data centre. Both channels use commodity DRAM with single-bit error rate $10^{-12}$ per bit per hour from soft errors (combined cosmic-ray and alpha-particle sources). Each channel has $10^{12}$ bits ($1\,\text{TB}$). Estimate the rate of simultaneous (same-hour) single-bit errors on both channels in the absence of any spatial common-mode amplification.
+
+\textbf{Approach.} Per-channel error rate: $10^{-12} \times 10^{12} = 1$ error per hour. Probability of a same-hour error: 1 (the rate is approximately one per hour). Probability of simultaneous error on the second channel in the same hour, treated as independent: also 1. So both channels see about one error each per hour by accident; the relevant question is not whether they coincide in time but whether they coincide in address or function. With $10^{12}$ addresses per channel, the probability that two independent random addresses match is $10^{-12}$, so meaningful coincidences are negligible. ECC corrects single-bit errors at no penalty; chipkill ECC corrects single-chip failures. The naive "two errors at the same time" rate is meaningless without specifying what coincidence matters; for protected memory, the answer is governed by the unrecoverable-error rate, not the soft-error rate.
+
+\textbf{Lesson.} Common-mode probability calculations must specify what "common" means: same time, same function, same effect. The choice changes the answer by orders of magnitude.
+\end{estimation}
+
+\section{Software in redundant systems}\pathtag{core}
+
+Software common-mode is the dominant failure mode in modern flight-control, train-control, nuclear-protection, and automotive-safety systems, because the software is identical across the redundant channels. The naive argument that redundancy provides independence collapses immediately for software: copies of the same program have a coupling coefficient of one. The architecture of three identical computers running three identical programs voting on the result protects against transient hardware failure (cosmic ray hits one machine; the other two outvote it) and against single-machine permanent failure, but provides exactly no protection against any failure mode that the program itself produces.
+
+Three architectural responses to software common-mode have been tried, with different track records:
+
+\textbf{N-version programming.} Multiple teams independently write multiple implementations of the same specification; the implementations vote. The premise is that independent teams will not make identical mistakes. Knight and Leveson's empirical study published in 1986 in IEEE Transactions on Software Engineering examined this premise and found that independently-written programs had correlated failures at rates substantially higher than would be expected if errors were independent; the result was that N-version programming did not deliver the reliability gains its proponents claimed. The technique is used in narrow safety-critical applications (some Airbus flight-control configurations; some rail interlocking) but is not a general solution.
+
+\textbf{Diverse architecture for the same function.} The primary and backup channels are not the same program written by different teams but different solutions to the same problem: a digital channel and an analogue channel; a complex digital channel and a simple digital channel with a small assured logic. The analogue back-up in some nuclear reactor protection systems is an example; the analog elements share no software with the digital primary. The architecture trades performance and complexity for robust independence.
+
+\textbf{Monitor and fall-back to safe state.} A complex primary function runs unchecked; a simple monitor (an order of magnitude smaller and assurable to a higher integrity) checks that the primary's output is in bounds and triggers a fail-safe transition if it is not. The primary may suffer common-mode failure; the monitor catches the bounded output and forces the system to a state in which the failure is contained. This is the dominant pattern in modern safety-critical software architecture (the safety standards ISO 26262 for automotive and IEC 61508 for industrial both rely on it as a structural recommendation).
+
+The 737 MAX MCAS failure illustrates the danger of single-channel input feeding a function presumed redundant at the architecture level \cite{acc:house-737max-2020}. The aircraft had two angle-of-attack sensors; MCAS used only one per flight (alternating per power cycle). A failed AoA sensor therefore produced a fully-trusted input to a function with substantial control authority. The architectural premise of dual AoA was not realised in the MCAS implementation. The post-accident redesign reads both sensors, compares them, and inhibits MCAS on disagreement; the redesign is a textbook example of how a presumed dual-channel function should have been implemented from the start.
+
+Therac-25 is the canonical case where software common-mode (a single race condition in a single program running on each treatment unit) defeated the assumption that an interlock would prevent gross overdose \cite{paper:leveson-turner1993}. The interlock had been moved from hardware to software in the Therac-25 design; the software interlock's race condition fired under fast operator data-entry; the same software ran on every Therac-25; every Therac-25 had the same failure mode latent in it; the failure surfaced at multiple installations in 1985-1987 before the mechanism was diagnosed. The hardware interlock that existed on the Therac-20 had been removed; the redundancy that the predecessor possessed had been engineered away.
+
+\section{Case: Three Mile Island common-mode loss, Boeing 737 MAX MCAS dual-channel collapse}\pathtag{core}
+
+\subsection*{Three Mile Island, 1979}
+
+The TMI-2 accident begins with a common-mode loss-of-feedwater event. The condensate-polishing system tripped, removing main feedwater \cite{acc:kemeny-tmi-1979}. The auxiliary feedwater system was designed as a redundant backup; its three pumps started. The pumps were ineffective because their discharge valves had been left closed after maintenance, and the closed-valve indication was missing from the control-room boards. A single maintenance action had defeated all three auxiliary feedwater channels: the maintenance procedure (or its execution) was the common-mode cause. The architectural redundancy of three pumps was nominal; the operational state, valves shut on all three, made the function unavailable.
+
+The Kemeny Commission's recommendations on this point focused on post-maintenance verification, on the visibility of valve-position indication in the control room, and on procedure design that requires per-channel confirmation before the maintenance is signed off. The general lesson is that maintenance actions are a privileged source of common-mode failure because they affect multiple channels by the same hand on the same day; the surveillance regime must close the loop on every channel independently.
+
+The PORV-stuck-open sequence that followed was not common-mode in itself, but the misleading indicator (a single instrument whose ambiguity affected the entire control crew's understanding of the plant state) is structurally similar: a single source of bad information drove correlated decisions across an entire crew. Where the safety analysis treated the crew as a multi-channel monitor of the plant, the misleading indicator showed how a single shared input collapses the crew's redundancy to single-channel.
+
+\subsection*{Boeing 737 MAX MCAS, 2018-2019}
+
+The 737 MAX accidents are the cleanest case of dual-channel architecture defeated by single-channel input in recent aerospace history \cite{acc:house-737max-2020}. The aircraft has two angle-of-attack vanes, one on each side of the forward fuselage. The Maneuvering Characteristics Augmentation System (MCAS) was added to compensate for the aerodynamic pitch behaviour introduced by the larger and more forward-mounted LEAP-1B engines. The system safety assessment treated MCAS as a function whose inputs benefited from the dual-AoA architecture. The implementation took input from only one vane per flight (alternating per power cycle); the AoA-disagree alert that would have warned of sensor disagreement was inoperative on most delivered aircraft due to a software issue Boeing identified in 2017 and did not disclose to the FAA for over a year \cite{acc:house-737max-2020}.
+
+The MCAS authority was substantial. The system could command nose-down stabiliser trim at 0.27 degrees per second for up to 9.26 seconds; the command could repeat after a five-second pause; the cumulative trim authority exceeded the elevator's pitch-up authority \cite{acc:house-737max-2020}. A single failed AoA vane therefore produced repeated, full-authority, automatic nose-down trim. On Lion Air 610 (29 October 2018), MCAS activated repeatedly as the crew countered with manual electric trim; the cycle continued for the duration of the flight until the aircraft entered an unrecoverable dive \cite{acc:knkt-lion-air-610-2019}. On Ethiopian 302 (10 March 2019), the crew followed the runaway-stabiliser procedure and disabled electric trim, after which aerodynamic loads on the mis-trimmed stabiliser made manual wheel trim physically infeasible at the flight's airspeed \cite{acc:ecaa-et302-2022}.
+
+The Joint Authorities Technical Review (JATR) report identified the single-AoA architecture as a finding inconsistent with prevailing certification practice for a function of MCAS's authority \cite{acc:jatr-737max-2019}. The House Committee on Transportation and Infrastructure report identified the underlying mechanism: MCAS's authority had been expanded during development (the original authority was significantly smaller) and the system safety assessment was not rerun against the expanded authority \cite{acc:house-737max-2020}. The single-AoA architecture, adequate for the original limited authority, was now feeding a function whose failure mode was effectively a runaway pitch-control system.
+
+The organisational mechanism that produced the design centred on a commercial premise: that the MAX would require no simulator training for 737NG-rated pilots, a premise that shaped how MCAS could be documented and what could appear in training. MCAS was not documented in the operator manuals provided to airlines, and the AoA-disagree alert's non-installation was not disclosed. The crews who encountered the failure had no documentation of the system's existence, no training for its failure mode, and no annunciation when its single-channel input disagreed with the other AoA vane \cite{acc:house-737max-2020}.
+
+The lessons aggregate to the common-mode theme: dual-channel architecture defeated by single-channel input; the cross-comparison that would have caught the failed sensor was specified but not implemented in the active MCAS path; the AoA-disagree alert that would have given crews advance warning was suppressed by a software defect; the function's authority was expanded without rerunning the assessment that constrained its single-input design. The post-accident redesign reads both AoA vanes, inhibits MCAS on disagreement, limits authority, and is documented to operators. The redesign is what the original implementation should have been.
+
+\begin{principle}[Trace every input]
+The architecture of a redundant function is not the architecture of the underlying sensors and inputs the function depends on. A two-channel computer voting on a single sensor's signal is single-channel against sensor failure. The common-mode analysis traces every input to its source and treats the source's failure as the function's failure. Architectural dual-redundancy that does not extend to inputs is theatre.
+\end{principle}
+
+\begin{project}[Common-mode audit of a redundant system the reader uses]
+Identify one redundant system the reader interacts with at work or at home (the home's two smoke detectors; the car's redundant brake circuits; a server's redundant network interfaces; a building's two emergency exits; a household's two routes to reach a charged phone). Enumerate the components in each channel of the redundancy. For each plausible common-mode category, ask whether the channels share a cause: shared power, shared location, shared maintenance, shared supplier, shared installation date, shared environment, shared software, shared signal. Estimate $\beta$ (the fraction of failures expected to be common-mode) qualitatively (low, medium, high) for each category. Identify the dominant common-mode pathway and propose one mitigation that would reduce it. Deliverable: two pages: a channel-by-channel matrix, an estimated dominant $\beta$ source, a proposed mitigation, a discussion of what the mitigation would cost and whether it is worth doing.
+
+\textbf{Hazard.} The exercise often reveals that the redundancy the reader was relying on is less than they thought. The smoke detectors share a battery brand and a purchase date; the car's brake circuits share a master cylinder; the routers share a single uplink. The point is not to alarm but to calibrate expectations; some single-channel-in-disguise redundancy is acceptable, and the calibration is the engineering work.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A three-channel system has per-channel failure probability $p = 5 \times 10^{-4}$ per demand. Under the independence assumption, what is the system failure probability per demand? Under the beta-factor model with $\beta = 0.02$, what is the system failure probability per demand? Compute the ratio.
+\end{exercise}
+
+\begin{exercise}
+A two-channel system uses identical software with software failure probability $p_s = 10^{-4}$ per demand and identical hardware with hardware failure probability $p_h = 10^{-3}$ per demand. Assume software failures are fully common-mode (both channels fail together when the software fails) and hardware failures are independent. Compute the system failure probability per demand. Identify which term dominates.
+\end{exercise}
+
+\begin{exercise}
+A surveillance test exercises both channels of a two-channel emergency system once every $T = 720$ hours. The per-channel failure rate is $\lambda = 10^{-5}$ per hour. Compute the average channel unavailability (assume the test detects failure immediately and the channel is repaired instantly). Now suppose the test itself, by exercising both channels at the same time, has a common-mode failure probability of $\beta = 0.01$ per test. Compute the contribution of test-induced common-mode failure to the average unavailability and compare to the dormancy term.
+\end{exercise}
+
+\begin{exercise}
+For the 737 MAX MCAS, MCAS commanded nose-down stabiliser trim at $0.27\,\text{deg/s}$ for up to $9.26\,\text{s}$ per activation. Compute the trim displacement per activation. If the elevator's pitch-up trim authority is $\approx 1.7$ degrees of equivalent stabiliser displacement, how many MCAS activations exhaust the elevator's compensating authority?
+\end{exercise}
+
+\begin{exercise}
+A data centre has two redundant cooling units. Each fails at rate $\lambda = 10^{-4}$ per hour. The mean time to repair is 4 hours. Compute steady-state unavailability of each unit. Compute the probability of simultaneous failure under independence. Now suppose the building's chilled-water supply (common to both) fails at rate $\lambda_w = 10^{-5}$ per hour with MTTR 8 hours; compute the unavailability contribution from the shared water supply and compare to the dual-cooling-unit independent term.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the beta-factor model $P_{\text{sys}} = \beta p + (1 - \beta)^n p^n$ from a model in which each demand has probability $\beta$ of being a common-cause demand (which fails all channels) and probability $1 - \beta$ of being an independent demand (in which case channels fail independently with probability $p$). Identify the conditions under which the model is a good approximation and the conditions under which it is not.
+\end{exercise}
+
+\begin{exercise}
+For a function depending on three sensors, with each sensor failing independently with probability $p_s$ and a voting algorithm that requires two-of-three agreement, derive the probability that the function gives an incorrect output. Now suppose all three sensors are calibrated against the same reference whose error rate is $p_r$; modify the derivation to account for the shared-reference common-mode.
+\end{exercise}
+
+\begin{exercise}
+Derive the expression for the probability that a single cosmic-ray event affects multiple devices in a redundant set, given particle flux $\Phi$ (particles per cm$^2$ per second), per-device cross-section $\sigma$ (cm$^2$ per device for a single-event upset), and physical separation $d$. Identify the geometric regime in which independence is a good assumption and the regime in which it fails.
+\end{exercise}
+
+\begin{exercise}
+For a redundant emergency system with $n$ channels each tested independently at staggered times $T/n$ apart, derive the average unavailability and compare to the case in which all $n$ channels are tested simultaneously every $T$ hours. Identify the trade-off between dormancy benefit and common-mode test exposure.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate $\beta$ for two identical electronic flight-control channels separated by 1 m and powered from a single bus. Categorise the dominant contributions (shared software, shared bus, shared environment, shared design). Identify which single mitigation reduces $\beta$ the most.
+\end{exercise}
+
+\begin{exercise}
+Estimate the soft-error rate (single-event upsets per bit per hour) for SRAM at sea level versus at 12-km cruise altitude. Use the rule of thumb that cosmic-ray flux at altitude is roughly 300 times sea-level flux. Discuss the implications for ECC design in commercial avionics.
+\end{exercise}
+
+\begin{exercise}
+Estimate the common-mode failure probability per demand for the auxiliary feedwater system at TMI-2 (three pumps, all with discharge valves left closed by the same maintenance action). Compare to the independent-failure estimate that would have been used in a generic safety analysis.
+\end{exercise}
+
+\begin{exercise}
+Estimate the dominant common-mode contributions for a residential smoke-detection system with two battery-powered detectors purchased on the same day from the same retailer. Identify which contributions matter at the timescale of one year and which at the timescale of ten years.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Implement a Monte Carlo simulation of a three-channel voting system with a beta-factor common-mode model. Sweep $\beta$ from $0$ to $0.1$ and plot system unavailability versus $\beta$ on log axes. Verify the beta-factor formula is recovered.
+\end{exercise}
+
+\begin{exercise}
+Simulate a population of 100 instances of a two-channel system over 10,000 hours. Each channel has independent failure rate $\lambda = 10^{-4}$ per hour; in addition, common-mode events arrive at Poisson rate $\lambda_c = 10^{-5}$ per hour and fail both channels of the affected instance. Plot the histogram of inter-failure times for both-channel-failed events and identify the bimodal structure.
+\end{exercise}
+
+\begin{exercise}
+Simulate a software-common-mode population: 1000 copies of identical software, each with a latent bug that fires with probability $10^{-6}$ per demand independent across demands but identical across copies. Show that the demand at which the first copy fails is approximately the demand at which all copies fail.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design the architectural changes for the 737 MAX MCAS that the JATR's findings recommended: dual-AoA input with cross-comparison, MCAS inhibit on disagreement, bounded authority. Sketch the required additions to the system safety assessment to verify the changes.
+\end{exercise}
+
+\begin{exercise}
+Design a common-cause analysis worksheet for a redundant emergency power system (two diesel generators feeding redundant electrical buses). Enumerate the common-cause categories and propose at least one specific check for each.
+\end{exercise}
+
+\begin{exercise}
+Design a post-maintenance verification procedure for a three-pump auxiliary feedwater system that ensures the failure mode at TMI-2 (all three discharge valves left closed by maintenance) cannot recur. Specify what is checked, by whom, when, and what record is made.
+\end{exercise}
+
+\begin{exercise}
+Design a surveillance schedule for a four-channel emergency system that minimises common-mode test exposure while maintaining required average unavailability. State the assumptions about per-channel reliability and test-induced failure probability.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{mastery}
+
+\begin{exercise}
+A safety analysis treats two channels of a flight-control function as independent because they are powered from separate buses, located in separate equipment bays, and developed by separate teams. The functional inputs come from a single sensor. Critique the analysis. What is the correct treatment?
+\end{exercise}
+
+\begin{exercise}
+A vendor proposes that two channels of a safety-critical control system run "different versions of the same operating system" (Linux on one channel; FreeBSD on the other) as a diversity measure against operating-system common-mode. Discuss the evidence for and against this claim of diversity. Reference the N-version programming empirical literature.
+\end{exercise}
+
+\begin{exercise}
+The 737 MAX MCAS expanded its authority during development without the system safety assessment being rerun. The single-AoA architecture, adequate for the original limited authority, was inadequate for the expanded authority \cite{acc:house-737max-2020}. Identify the organisational process change that would have caught the inadequacy. What review trigger should have fired?
+\end{exercise}
+
+\begin{exercise}
+Argue both sides: "for safety-critical software, N-version programming with independently-developed implementations gives reliability that single-version development cannot achieve" versus "for safety-critical software, a single rigorously-verified implementation with an independent monitor gives reliability that N-version programming cannot achieve at acceptable cost." Identify the architecture features that determine which side is correct in a given setting.
+\end{exercise}
+
+\begin{exercise}
+A reader's home has two smoke detectors, installed 2 years ago, powered by 9 V batteries replaced annually on the same date. Identify the common-mode failure modes. Propose an alternative architecture that reduces the dominant $\beta$.
+\end{exercise}

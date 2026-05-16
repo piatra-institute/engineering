@@ -1,37 +1,316 @@
 \chapter{Concurrency and distributed failure}
 \label{vol10:ch06}
 
-\epigraph{}{}
+\epigraph{In a distributed system, the difference between something not happening and something taking too long is everything.}{}
 
-\chapmeta{Half-life: durable. Archetypes: failure, control. Exercise target: 25. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: failure, coupling, control. Exercise target: 25. Project track: simulation.}
 
 \noindent
-\TODO{Volume 10, Chapter 6. Approx 110 pp.}
+Concurrent and distributed systems multiply the failure modes available to a single sequential program: races, deadlocks, partial failures, time disagreements, Byzantine failures, network partitions, message loss, message duplication, message reordering. Each failure mode is well-understood in isolation; in combination they produce the complex outages of modern cloud computing, financial trading systems, and global communication networks. This chapter develops the hard problem of partial failure, the standard concurrency bugs (races, deadlocks, livelocks, starvation), distributed-system failure modes, time and clock issues, Byzantine failure, and major case studies including the Therac-25 race, AWS S3 2017 outage, and Cloudflare 2020 outage.
 
-\section{The hard problem of partial failure}
-\TODO{Section prose.}
+\section{The hard problem of partial failure}\pathtag{core}
 
-\section{Race conditions}
-\TODO{Section prose.}
+In a sequential program, an operation either completes (with the expected result or an explicit error) or it does not (the program crashes). The dichotomy is clean. In a distributed system, a third option appears: the operation may have completed but the caller does not know. The message asking for the operation was sent; the response was not received; the operation may have happened, may not have happened, may have happened partially. The state is unknown until additional communication resolves it.
 
-\section{Deadlock, livelock, starvation}
-\TODO{Section prose.}
+The implications:
 
-\section{Distributed-system failure modes}
-\TODO{Section prose.}
+\textbf{Idempotency:} operations should be safe to repeat. If the caller does not know whether the operation succeeded, the safe response is often to retry. If the operation is idempotent (running it twice produces the same result as running it once), retry is safe. Otherwise, the system must track operation status explicitly (transaction logs, exactly-once semantics).
 
-\section{Time, clocks, ordering, the missing common substrate}
-\TODO{Section prose.}
+\textbf{Transactions:} multiple related operations must succeed or fail together. Distributed transactions (two-phase commit, three-phase commit, Paxos-based consensus) coordinate the operations across multiple nodes. The cost is latency, complexity, and exposure to coordinator failures.
 
-\section{Byzantine failure}
-\TODO{Section prose.}
+\textbf{Eventual consistency:} accepting that different nodes may temporarily disagree, with the system converging to a consistent state over time. Useful for high availability when strict consistency is not required.
 
-\section{Case: Therac-25 (race), the 2017 AWS S3 outage, the 2020 Cloudflare outage}
-\TODO{Section prose.}
+\textbf{Failure detection:} distinguishing "slow" from "failed" is fundamentally hard. Heartbeat mechanisms, timeouts, and probabilistic failure detectors give engineering trade-offs between false positives (declaring a slow node failed) and false negatives (waiting too long).
 
+\textbf{Asynchrony vs synchrony:} synchronous distributed systems have bounded delays and known clocks; asynchronous systems do not. Most real systems are partially synchronous: usually responsive but occasionally not. The FLP impossibility result (Fischer-Lynch-Paterson, 1985) shows that no asynchronous consensus protocol can be both safe and live; engineering acceptances include failure-detector requirements or randomisation.
 
-\section{Project}
-\TODO{reproduce a known concurrency bug from a paper; verify and fix}
+\textbf{CAP theorem:} in a network partition, a distributed system must sacrifice either consistency or availability (Brewer's conjecture, formalised by Gilbert-Lynch). The engineering response is system-specific; CP (consistent under partition, may be unavailable) and AP (available under partition, may be inconsistent) are both valid choices for different applications.
+
+\textbf{Cascading slowness:} a slow node propagates slowness to its callers; the system as a whole becomes slow; eventually nodes time out and the slowness becomes failure. The cascading-slowness pattern is common in microservice architectures and is harder to debug than abrupt failure.
+
+\begin{archetype}[failure: as partial-knowledge ambiguity]
+The defining feature of distributed-system failure is partial knowledge. The single node knows what it did locally; the system as a whole does not have a single source of truth about what has happened. Each node observes the system through messages, with their delays and losses; the observations may be inconsistent; the system's coherent state emerges (or fails to) from the protocols. The engineering work is acknowledging the partial knowledge, designing protocols that produce coherent behaviour despite it, and handling the cases where coherence cannot be maintained.
+\end{archetype}
+
+\section{Race conditions}\pathtag{standard}
+
+A race condition occurs when the program's correctness depends on the timing of events. The race is not always lost (the program may work most of the time) but it can be lost (under particular conditions, the program fails). The intermittency makes races particularly hard to debug.
+
+Standard race patterns:
+
+\textbf{Check-then-act:} the program checks a condition and acts on the result, but the condition may change between check and act. Standard examples: time-of-check-to-time-of-use security bugs (the file's permissions are checked, then the file is opened); atomicity violations (the counter is read, incremented locally, written back, but another thread changes the counter in between).
+
+\textbf{Read-modify-write:} multiple threads read the same value, modify it locally, and write back; the writes overwrite each other; some updates are lost.
+
+\textbf{Initialisation races:} an object is being initialised by one thread while another tries to use it; the partially-initialised state is observed; behaviour is incorrect.
+
+\textbf{Double-checked locking:} an optimisation that fails on weakly-ordered processors; the optimisation requires explicit memory barriers or use of language-provided atomics.
+
+\textbf{State-machine races:} the system's state machine has transitions that depend on event ordering; specific event orderings produce inconsistent states. The Therac-25 race (operator sequence faster than the software state machine could process) is the canonical case (\cite{paper:leveson-turner1993}).
+
+Mitigation:
+
+\textbf{Mutual exclusion:} use locks (mutexes, semaphores) to enforce serialisation of critical sections. The discipline includes consistent lock ordering, minimal lock scope, and avoidance of nested locks.
+
+\textbf{Atomic operations:} use the language's atomic types and compare-and-swap operations to avoid race-prone patterns.
+
+\textbf{Lock-free algorithms:} design algorithms that do not use locks (using atomic operations and careful memory ordering). The discipline is challenging but produces lower-latency code.
+
+\textbf{Immutability:} immutable data cannot have races (no thread can change what another reads). Functional programming styles reduce race risk.
+
+\textbf{Higher-level concurrency primitives:} channels (Go), actors (Erlang, Akka), futures (Java, C++) encapsulate the synchronisation; the programmer reasons at higher level.
+
+\textbf{Race detectors:} tools like ThreadSanitizer detect potential data races at runtime; useful in test environments.
+
+\textbf{Formal verification:} for safety-critical concurrent code, model-checking (TLA+, SPIN) verifies absence of races.
+
+\section{Deadlock, livelock, starvation}\pathtag{standard}
+
+\textbf{Deadlock:} two or more threads each hold a resource the others need; none can proceed. The Coffman conditions (mutual exclusion, hold-and-wait, no preemption, circular wait) all must be present; breaking any one prevents deadlock.
+
+Mitigation strategies:
+
+\textbf{Lock ordering:} acquire locks in a globally-consistent order; the circular wait condition is broken.
+
+\textbf{Timeouts:} acquire locks with timeout; if cannot acquire, release all held locks and retry. The hold-and-wait condition is broken at the cost of livelock potential.
+
+\textbf{Banker's algorithm:} the resource allocator checks whether each allocation leaves a feasible state; refuses allocations that would lead to deadlock. The algorithm requires knowledge of maximum resource needs; not always practical.
+
+\textbf{Detection and recovery:} let deadlocks happen; detect them with a cycle-detection algorithm; recover by aborting one of the involved threads. Used in some database systems.
+
+\textbf{Livelock:} threads are active but not making progress. Two threads each trying to release the lock to let the other proceed, each repeatedly seeing the lock unavailable and re-trying. Mitigation: randomised backoff; explicit ordering of who proceeds.
+
+\textbf{Starvation:} a thread is repeatedly delayed by other threads. Producer-consumer with priority queue; lower-priority producers may never get the consumer's attention. Mitigation: fair scheduling (round-robin, lottery, fair-queueing); aging (boost priority of long-waiting threads).
+
+\textbf{Priority inversion:} a high-priority thread is blocked by a low-priority thread holding a needed resource; a medium-priority thread runs, preventing the low-priority thread from releasing the resource. The 1997 Mars Pathfinder incident (\cite{paper:jones-pathfinder-1997}) is the canonical case. Mitigation: priority inheritance (the low-priority thread temporarily inherits the high-priority thread's priority while holding the resource).
+
+\section{Distributed-system failure modes}\pathtag{standard}
+
+Distributed systems have failure modes specific to their structure:
+
+\textbf{Network partition:} the network divides into subsets that cannot communicate. Each subset may continue to operate; when the partition heals, the divergent states must be reconciled. The 2018 GitHub outage (described in Vol IX Ch 14) was a network-partition incident.
+
+\textbf{Crash failures:} a node stops working completely. The other nodes detect the crash through timeout or heartbeat; the system reconfigures around the failed node. Recovery requires the crashed node's work to be redone or its state to be rebuilt.
+
+\textbf{Omission failures:} the node fails to send or receive specific messages; the rest of the messages flow normally. Hardest to detect; often manifests as unexpected behaviour rather than outright failure.
+
+\textbf{Performance failures:} the node responds, but slowly. The slowness propagates through the system; users observe latency degradation rather than outright failure.
+
+\textbf{Configuration failures:} the node's configuration is incorrect; it behaves unpredictably or refuses to participate. The 2017 AWS S3 outage was triggered by a configuration error during routine maintenance; the error took down the storage service used by many applications.
+
+\textbf{Software-update failures:} the system update introduces a defect; the defect propagates as the update is rolled out. Canary deployments and progressive rollouts mitigate the blast radius.
+
+\textbf{Data-corruption failures:} stored data is corrupted by hardware error, software bug, or operator action; the corruption may spread as the data is read and re-written. Checksums and replication mitigate; explicit data-integrity verification is part of the discipline.
+
+\textbf{Coordination failures:} the consensus protocol fails; the system cannot agree on its state; operations stall or proceed inconsistently. Standard protocols (Raft, Paxos, ZAB) reduce but do not eliminate this risk.
+
+\textbf{Cascading dependency failures:} service A depends on service B depends on service C; when C fails, B's calls to it time out; B's callers see B as slow; A becomes slow; the whole system stalls.
+
+Mitigation:
+
+\textbf{Bulkheads:} isolate failures so they do not propagate. Separate connection pools per dependency, separate thread pools, separate failure modes.
+
+\textbf{Circuit breakers:} when a dependency is failing, fail fast rather than waiting for timeouts. The Hystrix pattern is the standard reference.
+
+\textbf{Retries with backoff:} retry failed operations, but with exponentially-increasing delay to avoid retry storms.
+
+\textbf{Graceful degradation:} when subsystems fail, degrade the service rather than failing entirely.
+
+\textbf{Chaos engineering:} as covered in Vol IX Ch 17; actively inject failures to verify recovery behaviour.
+
+\section{Time, clocks, ordering, the missing common substrate}\pathtag{standard}
+
+Distributed systems struggle with time. Each node has its own clock; clocks drift; clocks can be adjusted; events at different nodes cannot be totally ordered just from timestamps.
+
+\textbf{Wall-clock time:} synchronised across nodes via NTP or similar; accurate to milliseconds in well-managed networks; subject to discontinuities (leap seconds, NTP adjustments, manual changes).
+
+\textbf{Monotonic time:} guaranteed to advance; never goes backward; used for measuring durations. Within a single node, reliable; cannot be compared across nodes.
+
+\textbf{Logical clocks:} Lamport timestamps and vector clocks provide partial orderings based on causality (if event A happened before B, A's timestamp is less than B's). The orderings allow detecting causal relationships without depending on physical clocks.
+
+\textbf{Hybrid logical clocks:} combine physical timestamps with logical counters; useful for distributed databases that need both ordering and rough wall-clock alignment.
+
+\textbf{Atomic time:} GPS, atomic clocks, time-keeping protocols (PTP, IEEE 1588) provide sub-microsecond synchronisation; used in finance, scientific instruments, telecommunications. The expense and complexity limit deployment.
+
+The engineering implications:
+
+\textbf{Don't rely on clock-based ordering:} two events with different timestamps may have occurred in the opposite order from what the timestamps suggest. Use explicit ordering mechanisms (sequence numbers, logical clocks, consensus).
+
+\textbf{Be careful with timeouts:} a timeout's duration is in wall-clock or monotonic time; the relationship to actual system behaviour is uncertain.
+
+\textbf{Plan for clock disagreement:} the system should tolerate some clock skew; the protocols should not assume perfect time agreement.
+
+\textbf{Audit clock-related issues:} leap seconds, DST transitions, time-zone differences, NTP adjustments, hardware failures all can affect clocks; the audit log captures these.
+
+The 2012 leap-second incidents caused widespread outages: services depending on monotonic-or-slightly-fast clocks failed when the leap second made time apparently go backward. Google's "leap smearing" approach (spreading the leap second across $24$ hours) is now widely adopted to avoid the discontinuity.
+
+\section{Byzantine failure}\pathtag{mastery}
+
+Byzantine failures are arbitrary failures: a faulty node may send incorrect messages, conflicting messages to different recipients, no messages, or any combination. The name comes from the "Byzantine Generals Problem" (Lamport, Shostak, Pease 1982): how can the generals agree on an attack plan if some generals (and messages) may be traitorous.
+
+Byzantine failures are the worst-case failure model: any failure that is not a crash failure or omission failure can be modelled as Byzantine. The class includes malicious attacks, hardware faults producing wrong outputs, software bugs producing wrong outputs, and operator errors with similar effect.
+
+Byzantine fault tolerance (BFT) requires $3f + 1$ nodes to tolerate $f$ Byzantine failures (for synchronous Byzantine agreement). Lower bounds and protocol designs are mature theoretical results.
+
+Practical BFT protocols (Practical Byzantine Fault Tolerance, PBFT, by Castro-Liskov 1999; modern variants in HotStuff, LibraBFT, IBFT) achieve Byzantine consensus with $3f + 1$ nodes and bounded latency. Use cases include blockchain consensus, financial-clearing systems, and high-assurance distributed systems.
+
+The cost of Byzantine fault tolerance is high: $3f + 1$ nodes for $f$-tolerance compared to $2f + 1$ for crash tolerance. Most engineering systems accept the crash-fault model (faulty nodes stop rather than send wrong messages) and rely on independent attention to malicious or buggy behaviour.
+
+The discipline of when to use BFT: critical financial transactions, blockchain systems, cross-organisation cooperation, safety-critical voting systems. Most everyday systems do not justify the cost.
+
+\section{Case: Therac-25 (race), the 2017 AWS S3 outage, the 2020 Cloudflare outage}\pathtag{core}
+
+Three concurrent/distributed failure case studies:
+
+\textbf{Therac-25 (1985-1987):} the radiation-therapy machine accidents (\cite{paper:leveson-turner1993}) involved a software race condition in the operator-input handling. A skilled operator entering data quickly could leave the machine in a state where the electron-beam current was selected but the X-ray-mode shielding was not yet in place; the patient received a massive radiation overdose. The race was specific: it required certain operator-key sequences within timing thresholds; less-skilled operators could not produce the failure. The mechanism is a state-machine race; the hardware interlocks that had prevented the failure in earlier Therac generations had been removed; the software was the sole defence. Six known overdose events, three fatal.
+
+The Therac-25 lessons:
+\textbf{Software interlocks are not sufficient:} the race condition was in the software; the software's verification did not catch it; the hardware interlocks that earlier machines had relied on were necessary, not redundant.
+\textbf{User-interface design matters:} the operator could enter data faster than the machine could safely process; the input rate exceeded the system's ability to maintain consistent state.
+\textbf{Cost-reduction at the expense of safety:} the Therac-25 was a cost-reduced design relative to the Therac-20; the cost reduction removed safety features without compensating.
+
+\textbf{2017 AWS S3 outage:} a configuration command during routine maintenance was entered incorrectly; the command removed a larger set of servers than intended; key S3 metadata services lost capacity; S3 itself became unavailable across much of the US-East-1 region for $4$ hours. Many AWS-dependent applications (Slack, Trello, Quora, Imgur, and thousands of others) were affected. The investigation identified: the command's intended scope was unclear; the operator's verification was insufficient; the cascade across dependent services was extensive. AWS's response included better tooling for capacity changes, improved canarying, and explicit isolation between metadata services.
+
+\textbf{2020 Cloudflare outage:} a software defect in Cloudflare's edge network caused a sudden CPU-saturation event; the cause was an inadvertent regex with exponential backtracking applied to a specific URL pattern. The pattern was deployed globally; Cloudflare's edge servers became overloaded simultaneously; large portions of the internet that depended on Cloudflare were affected for about $27$ minutes. The investigation identified: the regex's performance had not been tested for pathological inputs; the deployment was global (no canary); the rollback was not as fast as the deployment. Cloudflare's response included tighter regex review, mandatory canary deployment, and faster rollback procedures.
+
+\textbf{Common patterns:}
+
+\textbf{Velocity of deployment:} modern systems deploy fast; defects propagate fast; the time-to-impact is small.
+
+\textbf{Scope of impact:} a single configuration or code change can affect many services or operations simultaneously.
+
+\textbf{Concurrency in deployment:} the deployment itself is a concurrent operation across many nodes; the deployment process is its own source of failure.
+
+\textbf{Insufficient canary:} deploying everywhere at once eliminates the opportunity to catch problems before full impact.
+
+\textbf{Rollback complexity:} reverting from a bad change can be harder than deploying it; the rollback path needs the same engineering attention as the deployment path.
+
+\begin{principle}[The concurrency-and-partition discipline]
+Concurrent and distributed systems require explicit discipline that single-process sequential programs do not. The discipline includes: explicit synchronisation rather than reliance on timing; clear failure-detection thresholds; bounded retry behaviour; explicit ordering rather than wall-clock dependence; canary deployments rather than global rollouts; rollback paths as well as deployment paths. The discipline is engineering; absent it, the systems will fail in characteristic ways that the discipline addresses.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Reproduce a known concurrency bug; verify and fix]
+\textbf{Objective.} Reproduce a known concurrency bug from a published paper or post-mortem; verify the bug occurs; implement and verify the fix.
+
+\textbf{Method.} Choose a concurrency bug from the literature: a classic race-condition example (e.g., the double-checked-locking bug, the unsynchronised counter increment, a TOCTOU race); a published post-mortem of a real production race; an example from an academic concurrency paper. Implement the bugged version. Construct a test that triggers the bug reliably (often requires stress-testing across many threads). Verify the bug occurs (e.g., the counter is wrong; the file is corrupted; the system enters an unexpected state). Implement the fix; verify the bug no longer occurs.
+
+\textbf{Deliverables.} The bug description with source; the bugged implementation; the test demonstrating the bug; the fixed implementation; the test confirming the fix; a written analysis of why the bug occurs and why the fix works.
+
+\textbf{Hazard.} Software only; do not introduce known bugs into production codebases.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 25 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+Two threads each increment a shared counter $10{,}000$ times without synchronisation. After both finish, what is the maximum possible counter value? What is the minimum?
+\end{exercise}
+
+\begin{exercise}
+A distributed system has $7$ nodes with crash-fault model; how many can fail before consensus is impossible? For Byzantine-fault model, how many can fail?
+\end{exercise}
+
+\begin{exercise}
+A circuit breaker opens after $10$ consecutive failures; resets after $30\,\text{s}$. State the failure-mode transitions.
+\end{exercise}
+
+\begin{exercise}
+A service has $200\,\text{ms}$ timeout; the dependency averages $50\,\text{ms}$ but $1\%$ of requests take $500\,\text{ms}$. Compute the timeout failure rate and the effect of reducing the timeout to $100\,\text{ms}$.
+\end{exercise}
+
+\begin{exercise}
+A distributed transaction involves $10$ nodes; each succeeds with $99\%$ probability independently. Compute the probability that all $10$ succeed and the transaction commits.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the FLP impossibility result for asynchronous consensus with a single crash failure.
+\end{exercise}
+
+\begin{exercise}
+Derive the conditions under which Lamport timestamps establish a total ordering and when they do not.
+\end{exercise}
+
+\begin{exercise}
+Derive the lower bound $3f+1$ nodes for Byzantine consensus with $f$ Byzantine failures.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the cost of an additional minute of detection delay for a distributed-service outage.
+\end{exercise}
+
+\begin{exercise}
+Estimate the probability of a network partition in a multi-region cloud deployment over a year.
+\end{exercise}
+
+\begin{exercise}
+Estimate the retry-storm amplification factor for a service with $1{,}000$ clients each retrying $3$ times with $1\,\text{s}$ backoff.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate a Lamport-timestamps protocol with simulated network delay; observe causality preservation.
+\end{exercise}
+
+\begin{exercise}
+Simulate a leader-election protocol (Raft-like); inject node failures and observe leader transitions.
+\end{exercise}
+
+\begin{exercise}
+Simulate a circuit-breaker with stochastic failure rate; observe the open-close transitions and the impact on call latency.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a distributed counter that handles network partitions with CRDT (conflict-free replicated data type) semantics.
+\end{exercise}
+
+\begin{exercise}
+Design a distributed transaction protocol with two-phase commit; identify the failure modes and the mitigations.
+\end{exercise}
+
+\begin{exercise}
+Design a circuit-breaker architecture for a microservice with $20$ downstream dependencies of varying reliability.
+\end{exercise}
+
+\begin{exercise}
+Design a chaos-engineering programme to verify a distributed system's resilience to a specific set of failures.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's distributed system intermittently produces inconsistent reads during high load. State the engineering hypotheses.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between strong consistency and eventual consistency for a new service. State the engineering criteria.
+\end{exercise}
+
+\begin{exercise}
+A team's deployment to all production nodes simultaneously caused a global outage. State the engineering response and the role of canary deployment.
+\end{exercise}
+
+\begin{exercise}
+A team's race-condition bug appears in $1$ of $10^6$ requests; the engineering question is whether to fix immediately or defer. State the engineering analysis.
+\end{exercise}
+
+\begin{exercise}
+A team is asked to deploy a new dependency with stricter consistency requirements than the existing system. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's circuit-breaker library has been opening for transient failures; users see degraded service unnecessarily. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's distributed-system protocol has been deployed; a research paper now identifies a Byzantine-failure vulnerability. State the engineering response and the role of risk assessment.
+\end{exercise}

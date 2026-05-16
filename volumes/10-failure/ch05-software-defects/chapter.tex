@@ -1,40 +1,408 @@
 \chapter{Software defects: types of bugs}
 \label{vol10:ch05}
 
-\epigraph{}{}
+\epigraph{The bug is always more interesting than the feature.}{}
 
-\chapmeta{Half-life: durable. Archetypes: failure, scaling. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: durable. Archetypes: failure, scaling, coupling. Exercise target: 30. Project track: simulation.}
 
 \noindent
-\TODO{Volume 10, Chapter 5. Approx 110 pp.}
+Software defects (bugs) are the failures of code: the program does something other than what was intended. The bug taxonomy is large; the mitigations are well-known; and yet bugs persist in every non-trivial codebase and produce a steady stream of outages, accidents, and financial losses. This chapter develops why software fails differently from hardware, the major bug taxonomies (memory safety, logic, numerical, concurrency, time-related, configuration), the testing and verification disciplines that mitigate them, and the major case studies including Mars Climate Orbiter, Knight Capital, and large-scale internet outages.
 
-\section{Why software fails differently from hardware}
-\TODO{Section prose.}
+\section{Why software fails differently from hardware}\pathtag{standard}
 
-\section{Memory-safety bugs}
-\TODO{Section prose.}
+Hardware fails because components age, materials degrade, environments stress beyond design conditions, manufacturing variation produces defective units. Hardware failure has wear-out distributions, useful-life random failures, and predictable reliability curves. Hardware fails one unit at a time; identical units in identical environments may fail at different times.
 
-\section{Logic and specification bugs}
-\TODO{Section prose.}
+Software fails because the code, as written, contains defects: the implementation does not match the intent. Software defects are deterministic in a precise sense: the same code with the same inputs in the same environment produces the same defect. Software does not "wear out" (the same binary running on the same hardware gives the same answer year over year). Software fails when an input triggers a defect, when the environment changes around the unchanged code, or when interactions between updated and unchanged code produce unintended behaviour.
 
-\section{Numerical bugs}
-\TODO{Section prose.}
+The implications:
 
-\section{Concurrency bugs}
-\TODO{Section prose.}
+\textbf{Failure rates differ:} hardware failure rates are statistical; software bug exposures are deterministic (every instance of the input triggers the bug). The failure-rate concepts of reliability theory transfer awkwardly.
 
-\section{Time-related bugs}
-\TODO{Section prose.}
+\textbf{Population effects differ:} a hardware defect affects one unit at a time; a software defect affects all running instances simultaneously when the triggering input occurs. The 2024 CrowdStrike Falcon update outage took down millions of Windows systems within hours.
 
-\section{Configuration and environment bugs}
-\TODO{Section prose.}
+\textbf{Maintenance differs:} hardware is maintained by inspection, repair, replacement; software is maintained by code change, redeployment, regression testing. The cycle times differ; the failure modes of the maintenance differ.
 
-\section{Case: Mars Climate Orbiter, Knight Capital, GitHub 24-hour outage 2018}
-\TODO{Section prose.}
+\textbf{Verification differs:} hardware is verified by physical testing; software is verified by code review, static analysis, dynamic testing, formal methods. The methods are complementary; no single technique catches all defects.
 
+\textbf{Aging is real but different:} software does not wear out, but it ages: the surrounding environment changes (libraries update, operating systems update, hardware updates); the same code runs in a different context; defects emerge that did not exist before. "Bit rot" is real even for unchanged code.
 
-\section{Project}
-\TODO{deliberately inject five bug classes into one program; design tests that catch each}
+\textbf{Complexity is unbounded:} the state space of even a small program is astronomically large; exhaustive testing is infeasible; rare bug-triggering combinations exist undetected. Hardware's physical embodiment imposes natural limits that software lacks.
+
+\begin{archetype}[failure: as deterministic defect triggered by input or context]
+A software defect is a deterministic property of the code-and-environment pair. The defect produces no failure until the triggering condition is met; the triggering condition may be a specific input, a specific timing, a specific configuration, a specific environmental state. The engineering discipline is to find the defect before the condition triggers it in production: thorough testing, code review, static analysis, fuzzing, formal methods. The discipline is necessary because the defect is invisible until activated; the defect remains in the code until found.
+\end{archetype}
+
+\section{Memory-safety bugs}\pathtag{standard}
+
+Memory-safety bugs arise from incorrect access to memory: reading or writing beyond allocated bounds, using freed memory, double-freeing, using uninitialised memory. The standard categories:
+
+\textbf{Buffer overflow:} writing beyond the bounds of a buffer. The classical security vulnerability: an overflow can overwrite return addresses or function pointers, allowing the attacker to redirect execution. CWE-787 (out-of-bounds write) is consistently in the top of the MITRE CWE Top 25 most dangerous weaknesses.
+
+\textbf{Use-after-free:} accessing memory after it has been deallocated. The freed memory may be reused for another purpose; the access reads or writes incorrect data; security implications include arbitrary code execution.
+
+\textbf{Double-free:} deallocating the same memory twice. The allocator's data structures are corrupted; subsequent allocations may produce overlapping regions or fail unpredictably.
+
+\textbf{Uninitialised use:} reading memory before it has been initialised. The value is whatever was previously in the memory; the program's behaviour depends on stale data; defects are intermittent and hard to reproduce.
+
+\textbf{Null pointer dereference:} accessing memory through a null pointer. The program crashes; in environments without protection (kernel, embedded), arbitrary memory may be corrupted.
+
+\textbf{Memory leak:} memory is allocated and not freed. Over time, the program consumes more memory; eventually it crashes or degrades performance. Long-running services are particularly affected.
+
+Mitigation:
+
+\textbf{Memory-safe languages:} Rust, Java, C\#, Go, Python, Swift, and other modern languages prevent many memory-safety bugs at the language level (bounds checking, garbage collection, ownership). C and C++ remain widely used but require additional discipline.
+
+\textbf{Static analysis:} tools (Coverity, CodeSonar, Clang Static Analyzer, Cppcheck) identify many memory-safety issues at compile time.
+
+\textbf{Dynamic analysis:} AddressSanitizer, Valgrind, Memory Sanitiser detect memory issues at runtime; useful in test environments.
+
+\textbf{Bounded loops and safer APIs:} avoid the dangerous functions (strcpy, gets, sprintf); use the bounded versions (strncpy, fgets, snprintf) with explicit length checking.
+
+\textbf{Fuzzing:} feed the program random or generated inputs to expose unhandled cases. Modern fuzzers (AFL, libFuzzer, honggfuzz) are routine in security-critical software development.
+
+The 2014 Heartbleed vulnerability (CVE-2014-0160) was a memory-safety bug in OpenSSL: the heartbeat extension allowed reading up to $64\,\text{kB}$ of server memory beyond the expected buffer. The vulnerability affected millions of servers; the consequences (exposed private keys, credentials, session tokens) lasted years.
+
+\section{Logic and specification bugs}\pathtag{standard}
+
+Logic bugs are correct code implementing the wrong algorithm; specification bugs are the wrong algorithm in the first place. The distinction matters: logic bugs are caught by testing against the specification; specification bugs are caught only by testing against the intended behaviour.
+
+Standard logic-bug categories:
+
+\textbf{Off-by-one errors:} loop iterates one too many or too few times; index is off by one. The "fencepost problem" is the canonical case.
+
+\textbf{Boundary condition errors:} the algorithm works in typical cases but fails at the edges (empty input, maximum size, exact boundary values).
+
+\textbf{Wrong default behaviour:} the default case is incorrect; users who follow the unmodified path encounter the bug. Surprisingly common in configuration systems and command-line tools.
+
+\textbf{Inverted logic:} the test condition is reversed; the wrong branch is taken. The bug is subtle; tests that exercise both branches catch it.
+
+\textbf{State-machine bugs:} the state transitions are incorrect for some input sequences. The Therac-25 race condition was a state-machine bug at heart: certain operator-input sequences left the machine in an inconsistent state.
+
+\textbf{Wrong reference frame:} the code uses one convention; the data is in another. Coordinate systems, units, sign conventions are all examples.
+
+Specification bugs include:
+
+\textbf{Misunderstood requirements:} the developer's interpretation differs from the customer's intent. The code implements the wrong behaviour even if defect-free.
+
+\textbf{Omitted requirements:} a behaviour required for operation was not specified; the code does not implement it; the behaviour is missing.
+
+\textbf{Conflicting requirements:} two requirements cannot be simultaneously satisfied; the code implements one and ignores the other; the unhandled case is the bug.
+
+\textbf{Evolving requirements:} the requirements changed after the code was written; the code does not match current expectations.
+
+Mitigation:
+
+\textbf{Requirements review:} the requirements are reviewed before coding; ambiguities and conflicts are resolved.
+
+\textbf{Test-driven development:} the tests are written before the code; the tests express the specification; passing tests confirm conformance.
+
+\textbf{Code review:} other developers review the code; logic errors are often visible to fresh eyes.
+
+\textbf{Behaviour-driven development:} the specification is written in executable form; the code is verified against the specification.
+
+\textbf{Property-based testing:} the code is tested with random inputs against algorithmic properties (e.g., that sorting produces a sorted output, regardless of input).
+
+The 1999 Mars Climate Orbiter loss (\cite{acc:nasa-mco-mib}) was a specification bug: the ground software produced thrust commands in pound-force-seconds; the spacecraft expected newton-seconds; the mismatch produced trajectory errors that put the spacecraft on a collision course with Mars. The code was defect-free with respect to its specification; the specification was wrong.
+
+\section{Numerical bugs}\pathtag{standard}
+
+Numerical bugs arise from the finite precision of computer arithmetic. The categories:
+
+\textbf{Floating-point precision:} not all real numbers can be represented exactly; arithmetic produces small errors that accumulate. The 1991 Patriot missile clock-drift incident (\cite{acc:gao-patriot-1992}) is the canonical case: the time was stored as a multiple of $0.1\,\text{s}$; $0.1$ has no exact binary representation; over $100$ hours, the accumulated error was $0.34\,\text{s}$; the radar's range gate was offset; a Scud missile was missed.
+
+\textbf{Integer overflow:} an integer arithmetic operation produces a value outside the representable range; the result wraps around or is truncated. The 1996 Ariane 5 Flight 501 (\cite{acc:ariane501-ifr}) involved a conversion from a $64$-bit floating-point velocity value to a $16$-bit integer; the value overflowed; the navigation system threw an exception; the launcher destroyed itself.
+
+\textbf{Division by zero:} dividing by zero produces special values (infinity, NaN) or exceptions; subsequent calculations may propagate the special values or fail unexpectedly.
+
+\textbf{Catastrophic cancellation:} subtracting two nearly-equal floating-point numbers produces a result dominated by round-off error. Standard mitigation: reformulate the calculation to avoid the subtraction (e.g., use the alternative quadratic-formula form when the discriminant is small relative to $b$).
+
+\textbf{Loss of significant digits:} repeated operations lose precision; the accumulated error becomes significant. Iterative algorithms are particularly vulnerable.
+
+\textbf{Numerical instability:} the algorithm amplifies round-off rather than averaging it; the answer is dominated by numerical error rather than the true result. Forward error analysis identifies this.
+
+\textbf{Algorithm-precision mismatch:} the algorithm assumes precision the floating-point representation does not provide; the result is wrong but appears precise.
+
+Mitigation:
+
+\textbf{Adequate precision:} use double precision (or higher) for sensitive calculations; reserve single precision for cases where the precision is known to suffice.
+
+\textbf{Stable algorithms:} prefer numerically stable formulations (e.g., QR decomposition over Gauss elimination for least squares).
+
+\textbf{Defensive arithmetic:} check for special values (NaN, infinity); handle the edge cases explicitly.
+
+\textbf{Validation:} compare numerical results against analytical solutions, prior implementations, or independent calculations.
+
+The 1994 Intel Pentium FDIV bug (\cite{paper:coe-tang-pratt-1995}) was a numerical defect at the hardware level: certain rare divisions produced incorrect results. The bug was discovered by a mathematician calculating prime numbers; Intel initially downplayed the impact; the eventual recall cost about $\$475\,\text{million}$. The case illustrates that even hardware-implemented arithmetic has defects that escape testing.
+
+\section{Concurrency bugs}\pathtag{core}
+
+Concurrency bugs arise from incorrect coordination between concurrent threads or processes. The categories:
+
+\textbf{Race conditions:} the program's behaviour depends on the timing of concurrent operations. The "winner" of the race produces correct behaviour; the "loser" produces a bug. The bug appears intermittent because the timing varies.
+
+\textbf{Data races:} two threads access the same memory without synchronisation, at least one writes. The result depends on the order; the order is not determined. Modern processors and compilers may reorder operations within constraints; data-race behaviour is genuinely undefined in many languages.
+
+\textbf{Deadlocks:} multiple threads each hold a resource the others need; no thread can proceed. The classical four conditions (mutual exclusion, hold-and-wait, no preemption, circular wait) all must be present.
+
+\textbf{Livelocks:} threads are active but make no progress; they continually adjust to avoid each other but never advance.
+
+\textbf{Starvation:} a thread is repeatedly delayed by other threads; eventually fails to make progress.
+
+\textbf{Priority inversion:} a high-priority thread is blocked by a low-priority thread holding a resource; a medium-priority thread runs, blocking the low-priority release. The 1997 Mars Pathfinder priority inversion (\cite{paper:jones-pathfinder-1997}) is the canonical case.
+
+\textbf{Atomicity violations:} a sequence of operations that must be performed atomically is interrupted; the partial state is observed by another thread; behaviour is incorrect.
+
+\textbf{Memory-ordering bugs:} the compiler or processor reorders memory operations within constraints; the reordering produces a behaviour not allowed by the source code's intent. Modern processors require explicit memory barriers or atomic operations to enforce specific ordering.
+
+Mitigation:
+
+\textbf{Avoid shared mutable state:} immutable data is safe to share; functional programming styles reduce concurrency bugs by reducing shared mutable state.
+
+\textbf{Synchronisation:} mutexes, atomics, semaphores, condition variables enforce ordering. The discipline includes consistent lock ordering, holding locks for the minimum necessary scope, and avoiding callbacks while holding locks.
+
+\textbf{Higher-level concurrency primitives:} channels (Go, Erlang), futures (C++, Java), actor model (Akka, Erlang). The primitives encapsulate the synchronisation; the programmer reasons at a higher level.
+
+\textbf{Concurrency-aware testing:} stress tests, race detectors (ThreadSanitizer, Helgrind), fault-injection testing. Concurrency bugs are notoriously hard to reproduce; testing must explicitly stress timing.
+
+\textbf{Formal verification:} for safety-critical concurrent code, model-checking tools (TLA+, SPIN, mCRL2) verify correctness against specifications.
+
+\section{Time-related bugs}\pathtag{standard}
+
+Time-related bugs depend on real-world time, system time, or relative time. Standard categories:
+
+\textbf{Y2K bugs:} dates stored in two-digit format failed at the century rollover (year $2000$). Most known systems were patched; some residual issues affected legacy systems.
+
+\textbf{Y2038 (Unix epoch) bugs:} times stored as 32-bit seconds since 1970-01-01 will overflow on 2038-01-19. Embedded systems with $32$-bit time are particularly affected; major operating systems have transitioned to $64$-bit time.
+
+\textbf{Leap-second bugs:} the irregular insertion of leap seconds disrupts systems that assume regular time. The 2012 leap-second event caused outages at multiple major sites (LinkedIn, Reddit, Yelp, FourSquare).
+
+\textbf{Daylight-saving bugs:} the time changes by an hour twice per year (in jurisdictions with DST); software that does not handle the transition correctly produces wrong times.
+
+\textbf{Time-zone bugs:} different jurisdictions in different time zones; the user's time zone may differ from the server's; conversions are required and error-prone.
+
+\textbf{Calendar bugs:} leap years (every 4 years, except every 100, except every 400) are mis-handled; specific dates (Feb 29, year start, year end) produce errors.
+
+\textbf{Race conditions on time:} the program assumes time advances monotonically; on systems where the clock can be adjusted (NTP corrections, manual time changes), time may go backward; calculations based on time differences fail.
+
+\textbf{Patriot clock drift:} as covered in numerical bugs; accumulated floating-point error in time-keeping.
+
+Mitigation:
+
+\textbf{Use standard libraries:} the time libraries handle the corner cases; use them rather than rolling custom date arithmetic.
+
+\textbf{Use UTC internally:} store times in UTC; convert to local time only at the display layer.
+
+\textbf{Monotonic clocks:} for time differences, use monotonic clocks that do not jump backward (POSIX CLOCK\_MONOTONIC).
+
+\textbf{Adequate precision:} $64$-bit time avoids the Y2038 problem; the $32$-bit time should be retired.
+
+\textbf{Test time transitions:} the test suite should explicitly cover leap days, DST transitions, leap seconds, year boundaries.
+
+\section{Configuration and environment bugs}\pathtag{standard}
+
+Configuration and environment bugs arise from the program's behaviour depending on its configuration or environment. Standard categories:
+
+\textbf{Wrong configuration:} the configuration file contains incorrect values; the program behaves incorrectly. The Knight Capital incident (2012) involved a deployment that left old code paths active alongside new ones; an unused configuration flag triggered the old code; the trading engine made $\$440\,\text{M}$ in unintended trades in $45$ minutes.
+
+\textbf{Missing configuration:} the configuration is not provided; the program uses defaults that are inappropriate for the deployment.
+
+\textbf{Stale configuration:} the configuration was correct at one time but is no longer; subsequent operation uses outdated settings.
+
+\textbf{Environment mismatch:} the development environment differs from the deployment environment; behaviour that works in development fails in production. The classic "works on my machine" problem.
+
+\textbf{Library version mismatch:} the code was developed against one library version; the deployed environment has a different version; subtle behaviour differences appear.
+
+\textbf{Operating-system updates:} the OS updates change behaviours the application depended on; the application breaks. The 2024 CrowdStrike Falcon outage was triggered by a content update; the kernel-level driver caused widespread Windows BSOD.
+
+\textbf{Database-schema mismatch:} the application expects one schema; the deployed database has another; queries fail or return wrong data.
+
+\textbf{Dependency chains:} the application depends on services that depend on other services; the dependency chain may be unstable, with cascading failures.
+
+Mitigation:
+
+\textbf{Configuration management:} treat configuration as code; version control; review changes; automated deployment.
+
+\textbf{Deployment-environment parity:} development, staging, and production environments should match as closely as possible; containers and infrastructure-as-code support this.
+
+\textbf{Canary deployments:} new code or configuration is deployed to a small fraction of production first; problems are detected before full deployment.
+
+\textbf{Automated rollback:} the deployment system can revert to the previous version automatically on detected failure.
+
+\textbf{Comprehensive integration testing:} the full system (code, configuration, environment) is tested before deployment.
+
+\textbf{Observability:} the system's configuration and behaviour are observable; deviations from expected are detected quickly.
+
+\section{Case: Mars Climate Orbiter, Knight Capital, GitHub 24-hour outage 2018}\pathtag{core}
+
+Three software-defect case studies:
+
+\textbf{Mars Climate Orbiter (1999):} as discussed in the logic/specification bugs section. The unit-conversion error between ground software (English units) and spacecraft software (SI units) sent the spacecraft on a trajectory too close to Mars; the spacecraft was destroyed on entering the atmosphere. The investigation (\cite{acc:nasa-mco-mib}) identified deficiencies in software review, interface specification, and quality assurance. The case is the canonical reference for the importance of explicit interface specifications and unit-aware programming.
+
+\textbf{Knight Capital (2012):} the trading firm deployed new code to its high-frequency trading server; an unused configuration flag was inadvertently activated; the deployment left old "Power Peg" code running on 7 of 8 servers; the old code rapidly generated unintended trades; in $45$ minutes, Knight had bought $\$3.5\,\text{B}$ and sold $\$3.15\,\text{B}$ of securities, resulting in a net loss of about $\$440\,\text{M}$. The investigation found deficiencies in deployment procedures, configuration management, alerting, and risk controls. The case illustrates how minor configuration errors can produce catastrophic losses at high transaction velocity.
+
+\textbf{GitHub 24-hour outage (2018):} a network partition between data centres caused GitHub's MySQL primary-replica configuration to enter an inconsistent state. The system had multiple primaries; conflicting writes; data corruption; recovery required manual intervention to restore consistency. The investigation found that the failover system, which had been designed to handle the partition, had not been tested under the specific conditions that occurred; the recovery procedures were not adequately rehearsed. The case illustrates how complex distributed systems can fail in modes not anticipated by their designers; recovery from such failures may require careful manual intervention.
+
+\textbf{Common patterns:}
+
+\textbf{Deployment errors at velocity:} modern software deployment is fast; errors deploy quickly; consequences accumulate before detection.
+
+\textbf{Configuration as risk surface:} configuration is often outside the rigorous code-review and testing processes that protect code; it is a frequent source of defects.
+
+\textbf{Distributed-system complexity:} the interaction between subsystems produces failure modes not present in the components; testing of integrated behaviour is essential.
+
+\textbf{Insufficient observability:} failures take longer to detect when observability is inadequate; the longer the detection time, the worse the consequence.
+
+\textbf{Inadequate rollback:} the inability to quickly revert to a known-good state extends outages.
+
+\textbf{Rehearsal vs theory:} disaster recovery and failover procedures that exist in documentation but have not been exercised often fail in practice.
+
+\begin{principle}[The software-defect-acknowledgement principle]
+Software defects are inevitable. The discipline is not to eliminate them but to manage them: design for testability, test thoroughly, deploy carefully, monitor in production, respond quickly to failures, learn from each. The engineering investment in defect prevention, detection, and response is the work that makes software systems reliable. The denial of defects (the assertion that the code is correct, that thorough testing has eliminated bugs, that the deployment is safe) is the cultural failure mode that produces the worst incidents.
+\end{principle}
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Deliberately inject five bug classes; design tests that catch each]
+\textbf{Objective.} Take an existing small program; deliberately inject one bug from each of five different classes (memory safety, logic, numerical, concurrency, time-related); design tests that catch each; demonstrate the tests succeeding for the bugged versions and the original.
+
+\textbf{Method.} Choose a small program (a sorting routine, a date-handling utility, a small concurrent server, a file-processing tool). For each of the five bug classes, modify the program to introduce a single defect of that class. Design a test that fails on the defective version and passes on the correct version. Document the bug, the test, and the rationale for the test design.
+
+\textbf{Deliverables.} The original program; the five bugged versions; the five tests; the test results showing each test catches its specific bug; a written analysis of the test-design strategies for each bug class.
+
+\textbf{Hazard.} Software only; ensure that the bug-injection work does not contaminate any production codebase.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{core}
+
+\begin{exercise}
+A 32-bit signed integer overflows at $2^{31} - 1$. A program adds $1$ to this value; what is the result?
+\end{exercise}
+
+\begin{exercise}
+A $32$-bit time-since-epoch overflows on $2038$-$01$-$19$. Compute the time remaining until this rollover from today.
+\end{exercise}
+
+\begin{exercise}
+A floating-point representation has $24$-bit mantissa. Compute the smallest distinguishable difference at value $1{,}000{,}000$.
+\end{exercise}
+
+\begin{exercise}
+A program performs $10^9$ floating-point additions; each contributes round-off error $\sim 10^{-15}$. Estimate the worst-case accumulated error.
+\end{exercise}
+
+\begin{exercise}
+A concurrent system has two locks; one thread takes A then B; the other takes B then A. State the deadlock condition and the operations that lead to it.
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the conditions for catastrophic cancellation in the quadratic formula and a reformulation that avoids it.
+\end{exercise}
+
+\begin{exercise}
+Derive the priority-inversion scenario and show that priority-inheritance protocol prevents it.
+\end{exercise}
+
+\begin{exercise}
+Derive the Coffman conditions for deadlock and show that breaking any one prevents deadlock.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the cost of finding a single critical defect at the various phases of software development (requirements, design, code, test, post-release).
+\end{exercise}
+
+\begin{exercise}
+Estimate the bug density (bugs per thousand lines of code) for a typical commercial software project; compare to high-assurance avionics software.
+\end{exercise}
+
+\begin{exercise}
+Estimate the time to exhaustively test a function with $5$ integer inputs each having $2^{32}$ possible values.
+\end{exercise}
+
+\begin{exercise}
+Estimate the impact of a memory leak of $1\,\text{kB/hour}$ on a service designed to run continuously.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Simulate the Patriot clock-drift: accumulate $0.1\,\text{s}$ in binary floating-point over $100$ hours; report the accumulated error.
+\end{exercise}
+
+\begin{exercise}
+Simulate a race condition: two threads incrementing a shared counter without synchronisation; observe the resulting count after many iterations.
+\end{exercise}
+
+\begin{exercise}
+Simulate the effect of a leap-second discontinuity on a service that depends on monotonic time.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design a code-review checklist for memory-safety bugs in C/C++ code.
+\end{exercise}
+
+\begin{exercise}
+Design a test suite for a date-handling library covering Y2K, Y2038, DST, leap second, time zone, and calendar edge cases.
+\end{exercise}
+
+\begin{exercise}
+Design a deployment process to prevent Knight-Capital-style configuration errors.
+\end{exercise}
+
+\begin{exercise}
+Design a concurrent-data-structure with explicit lock ordering to prevent deadlock.
+\end{exercise}
+
+\begin{exercise}
+Design a fuzzing strategy for a network protocol parser including coverage measurement.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{core}
+
+\begin{exercise}
+A team's intermittent bug appears in production and cannot be reproduced in testing. State the engineering response and the role of distributed tracing.
+\end{exercise}
+
+\begin{exercise}
+A team is choosing between Rust and C for a new embedded system. State the engineering trade-offs from a software-defect perspective.
+\end{exercise}
+
+\begin{exercise}
+A team's high-frequency trading system has been ported from one platform to another; some calculations produce slightly different results. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's database migration has corrupted some records. State the engineering response and the role of recovery procedures.
+\end{exercise}
+
+\begin{exercise}
+A team's safety-critical software has been certified to a high integrity level; a new feature is being added. State the engineering considerations.
+\end{exercise}
+
+\begin{exercise}
+A team's distributed system has a race condition that occurs in $1$ of $10^6$ requests. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's software has been working for years; a recent operating-system update caused failures. State the engineering response.
+\end{exercise}
+
+\begin{exercise}
+A team's leap-second handling caused an outage during the last leap-second event. State the engineering response and the leap-smearing alternative.
+\end{exercise}
+
+\begin{exercise}
+A team's automated test suite has $98\%$ coverage; a production bug occurred in the $2\%$. State the engineering response and the limits of coverage as a quality measure.
+\end{exercise}
+
+\begin{exercise}
+A team's customer reports a defect; the bug has not been reproducible in the lab. State the engineering response and the role of customer log analysis.
+\end{exercise}
+
