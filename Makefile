@@ -11,7 +11,7 @@ ARTIFACTS = *.aux *.bbl *.bbl-SAVE-ERROR *.bcf *.bcf-SAVE-ERROR *.blg *.idx *.il
 all: $(MAIN).pdf
 
 $(MAIN).pdf: $(MAIN).tex preamble.tex eng-macros.sty frontmatter/*.tex volumes/*/_volume.tex volumes/*/*/chapter.tex appendices/*.tex bibliography/*.bib
-	$(LATEXMK) -pdf -interaction=nonstopmode $(MAIN).tex
+	$(LATEXMK) -pdf -f -interaction=nonstopmode $(MAIN).tex
 	rm -f $(ARTIFACTS)
 
 watch:

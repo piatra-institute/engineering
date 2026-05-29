@@ -56,19 +56,19 @@ Previous phases:
 | Vol I chapters at Stage 5 | 9 of 9 |
 | Vols II-XII chapters at Stage 4 | 162 awaiting review |
 | Chapters at Stage 1 | 3 |
-| `main.pdf` page count (last build) | 3289 |
-| Volume I page span | pp 1-328 (~328pp; target ~720) |
-| Volume II page span | pp 329-? (Tier 1+2 except Ch 2 at first-draft; target ~1800) |
-| Volume II page span | pp 221-710 (~490pp; target ~1800) |
-| Volume III page span | pp 711-984 (~274pp; target ~1300) |
-| Volume IV page span | pp 985-1218 (~234pp; target ~1400) |
-| Volume V page span | pp 1219-1456 (~238pp; target ~1200) |
-| Volume VI page span (partial) | pp 1457-1634 (~178pp; target ~1300) |
-| Volume VII page span | pp 1635-1898 (~264pp; target ~1980) |
-| Volume VIII page span | pp 1899-2240 (~342pp; target ~1610) |
-| Volume IX page span | pp 2241-2416 (~176pp; target ~1850) |
-| Volume X page span | pp 2417-2705 (~289pp; target ~1450) |
-| Volume XI page span | pp 2706-2863 (~158pp; target ~1080) |
+| `main.pdf` page count (last build) | 3411 |
+| Volume I page span | pp 1-360 (~360pp; target ~720) |
+| Volume II page span | pp 361-1124 (~764pp; target ~1800) |
+| Volume III page span | pp 1125-1398 (~274pp; target ~1300) |
+| Volume IV page span | pp 1399-1632 (~234pp; target ~1400) |
+| Volume V page span | pp 1633-1870 (~238pp; target ~1200) |
+| Volume VI page span (partial) | pp 1871-2048 (~178pp; target ~1300) |
+| Volume VII page span | pp 2049-2312 (~264pp; target ~1980) |
+| Volume VIII page span | pp 2313-2488 (~176pp; target ~1610) |
+| Volume IX page span | pp 2489-2706 (~218pp; target ~1850) |
+| Volume X page span | pp 2707-2928 (~222pp; target ~1450) |
+| Volume XI page span | pp 2929-3118 (~190pp; target ~1080) |
+| Volume XII page span | pp 3119-3280 (~162pp; target ~1320) |
 
 Bibliography breakdown by category prefix:
 
