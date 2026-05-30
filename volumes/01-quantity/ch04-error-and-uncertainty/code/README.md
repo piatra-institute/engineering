@@ -15,6 +15,7 @@ uv run code/<script>.py
 | `pendulum_mc.py` | Monte Carlo propagation per JCGM 101 for the pendulum $g$-measurement; comparison to linear propagation. | Section 4.3, Simulation exercise 3. |
 | `cauchy_mean.py` | Sample mean of Cauchy variables: CLT fails (Simulation exercise 4). | Simulation exercise 4. |
 | `common_mode.py` | Monte Carlo of $x_1 - x_2$ for correlated normals; common-mode cancellation (Judgment exercise on common-mode). | Section 4.3, Judgment exercise on $y = x_1 - x_2$. |
+| `tolerance_stack.py` | Three-part assembly Monte Carlo with truncated manufacturing distribution; centred vs shifted process; comparison to linear-propagation RSS. | Section 4.3, worked example on tolerance stacks. |
 
 ## Conventions
 

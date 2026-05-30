@@ -23,6 +23,57 @@ statistical report earns trust when it states the data summary, the
 distributional model, the inference from sample to population, and
 the analytical practices it refused.
 
+\begin{mastery}
+\textit{Historical sketch: from Fisher to ASA 2016.}
+
+The vocabulary the chapter uses comes from three intellectual
+generations.
+
+The first, foundational generation worked from the late 1910s to
+the 1930s. Ronald Fisher introduced the analysis of variance, the
+maximum-likelihood estimator, and the design of experiments at
+Rothamsted Experimental Station; his 1925 \textit{Statistical
+Methods for Research Workers} and 1935 \textit{The Design of
+Experiments} are the texts the discipline grew from
+\cite{hist:fisher1925, hist:fisher1935}. Fisher's framework treated
+the $p$-value as a continuous measure of evidence against the null,
+not as a binary decision threshold.
+
+The second generation, working contemporaneously from the late
+1920s through the 1940s, formalised the hypothesis-test as a
+decision procedure. Jerzy Neyman and Egon Pearson introduced the
+distinction between Type I and Type II errors, the power of a test,
+and the long-run frequency interpretation that underlies the
+modern significance test \cite{hist:neyman-pearson-1933}. The
+Neyman-Pearson framework dominated working practice from the 1940s
+onward; the published $p$-values in engineering, biological, and
+social-science literature use Neyman-Pearson semantics even when
+the authors think they are using Fisher's.
+
+The third generation, working from the late 1970s to the present,
+has been re-reading the inferential apparatus in the light of fifty
+years of accumulated evidence about how the apparatus is used.
+Three landmarks: Tukey's exploratory data analysis (1977)
+formalised the practice of looking at data before testing
+hypotheses; Ioannidis's 2005 paper "Why Most Published Research
+Findings Are False" \cite{method:ch08-ioannidis-2005} derived,
+under modest assumptions, that the literature as a whole is heavily
+biased toward false positives; the American Statistical
+Association's 2016 statement on $p$-values
+\cite{method:ch08-wasserstein-asa-2016} restated the working
+principles in six points. The current discipline of pre-registered
+analysis (section 8.6) and the multiple-comparisons corrections
+(section 8.7) are responses to the structural problems the third
+generation surfaced.
+
+A working engineer in 2026 inherits all three frames. The
+hypothesis test is Neyman-Pearson; the $p$-value's interpretation
+is Fisher's continuous measure plus the ASA 2016 caveats; the
+practice of pre-registering analyses is the third generation's
+durable contribution. The chapter uses the vocabulary of all three
+without choosing among them; the working reader does the same.
+\end{mastery}
+
 \section{Summary statistics: mean, median, mode, variance, IQR}\pathtag{core}
 
 A sample is a set of $n$ measurements $x_{1}, x_{2}, \ldots, x_{n}$
@@ -546,6 +597,84 @@ the Poisson mean) gives $p \approx 0.04$. The engineer notes the
 disagreement with nominal but also asks whether the wafer condition
 or the inspection procedure has changed since the nominal was set.
 
+\subsection{Worked end-to-end: a 2-level factorial process screen}
+
+A process engineer wants to determine which of three control
+parameters most affects the surface roughness of a milled steel
+part. The parameters are spindle speed (low: $1000\,\si{\rpm}$;
+high: $2000\,\si{\rpm}$), feed rate (low: $50\,\si{\milli\meter\per
+\minute}$; high: $200\,\si{\milli\meter\per\minute}$), and coolant
+flow (low: $2\,\si{\liter\per\minute}$; high: $5\,\si{\liter\per
+\minute}$). Surface roughness is measured as the arithmetic mean
+deviation $R_{\text{a}}$ in micrometres.
+
+\engterm{Step 1: design the experiment.}
+A full $2^{3}$ factorial design uses every combination of the three
+factors at their two levels: eight design points. The engineer
+plans three replicates at each design point (twenty-four runs
+total) to estimate within-design-point variance. The run order is
+randomised to break any time-trend confounding; the randomisation
+seed and the resulting order are recorded in the laboratory
+notebook before any runs begin. The total of twenty-four runs costs
+approximately \$400 in machine time and \$200 in measurement time.
+
+\engterm{Step 2: collect the data.}
+The twenty-four runs are performed in the randomised order. Each
+finished part's surface roughness is measured with a stylus
+profilometer calibrated to NIST traceable standards. The raw
+measurements are recorded in a structured data file with columns
+for run number, run order index, spindle speed, feed rate, coolant
+flow, and measured $R_{\text{a}}$.
+
+\engterm{Step 3: compute the ANOVA decomposition.}
+The total sum of squares is partitioned into contributions from
+each main effect, each two-way interaction, the three-way
+interaction, and the within-design-point error. For an orthogonal
+design with three replicates per design point, the $2^{3}$ factorial
+yields eight orthogonal contrasts (the grand mean plus seven
+effects: three main effects, three two-way interactions, and one
+three-way interaction). The $F$-statistic for each contrast is the
+mean square of that contrast divided by the within-design-point
+mean square; the within-design-point mean square has
+$8 \times (3 - 1) = 16$ degrees of freedom.
+
+A typical result for this kind of milling screen: feed rate has the
+largest main effect, with $F \approx 45$ and $p < 0.001$; spindle
+speed has a moderate main effect, $F \approx 8$ and $p \approx
+0.012$; coolant flow has a small main effect, $F \approx 1.5$ and
+$p \approx 0.24$. The feed-rate-by-spindle-speed interaction is
+significant ($F \approx 12$, $p \approx 0.003$): the effect of
+spindle speed depends on the feed rate.
+
+\engterm{Step 4: interpret with effect sizes, not just $p$-values.}
+The feed-rate main effect represents an average $R_{\text{a}}$
+increase of $1.8\,\si{\micro\meter}$ when feed rate moves from low
+to high. The spindle-speed main effect is $0.6\,\si{\micro\meter}$.
+The interaction shows that at high feed rate, increasing spindle
+speed reduces $R_{\text{a}}$ by an additional $0.4\,\si{\micro
+\meter}$; at low feed rate, increasing spindle speed has no
+practical effect. The engineering question is whether these
+differences matter for the application: a $1.8\,\si{\micro\meter}$
+shift in $R_{\text{a}}$ is meaningful if the application requires
+$R_{\text{a}} < 3.2\,\si{\micro\meter}$ and the current process
+average is $2.5\,\si{\micro\meter}$.
+
+\engterm{Step 5: confirmation runs and optimisation.}
+Before committing to a new process recipe, the engineer runs a
+confirmation set: five additional parts at the proposed optimal
+combination (low feed rate, high spindle speed, moderate coolant
+flow). The confirmation result is compared against the model
+prediction by a one-sample test; agreement within the model's
+prediction interval is taken as confirmation. The new recipe enters
+production with a control-chart-based verification on each shift.
+
+The worked example walks the standard DoE workflow: design,
+randomise, collect, decompose, interpret with effect sizes, confirm.
+The published methodology is Box, Hunter, and Hunter
+\cite[chs.~5--6]{text:box-hunter-hunter-2005}; Montgomery's
+\textit{Design and Analysis of Experiments}
+\cite{text:montgomery-doe-2019} is the working reference.
+
 \section{Confidence vs prediction intervals}\pathtag{core}
 
 Chapter 4 §4.6 introduced the confidence interval as an engineering
@@ -877,6 +1006,75 @@ Three signals point to Bayesian methods:
 The framework recurs in Volume IX (systems and control) and Volume
 X (failure analysis), where Bayesian network models and Bayesian
 reliability updating are the standard tools.
+
+\subsection{Worked Bayesian update: a sensor's calibration drift}
+
+A pressure transducer was calibrated against a deadweight tester
+six months ago and read $99.85\,\si{\kilo\pascal}$ when the tester
+applied $100.00\,\si{\kilo\pascal}$, a calibration offset of
+$-0.15\,\si{\kilo\pascal}$ at the manufacturer's stated repeatability
+of $\pm 0.05\,\si{\kilo\pascal}$. Today the same transducer reads
+$99.75\,\si{\kilo\pascal}$ when a single check against a working
+standard applies a known $100.00\,\si{\kilo\pascal}$, with check-
+to-check repeatability of $\pm 0.10\,\si{\kilo\pascal}$. The
+question: has the transducer drifted, and if so by how much?
+
+A frequentist would test the null hypothesis "no drift since
+calibration" against the observed difference. With only one new
+data point and the calibration's repeatability of
+$0.05\,\si{\kilo\pascal}$, the test statistic is the difference
+divided by the combined standard error: $(99.75 - 99.85) /
+\sqrt{0.05^{2} + 0.10^{2}} = -0.10/0.112 \approx -0.89$,
+$p \approx 0.37$. The frequentist conclusion: fail to reject the
+null at $\alpha = 0.05$; the apparent drift could be measurement
+noise.
+
+A Bayesian would update the prior belief about the transducer's
+calibration offset using the new measurement. The prior, from the
+six-month-old calibration certificate, is a Gaussian centred at
+$-0.15\,\si{\kilo\pascal}$ with standard deviation $0.05\,\si{\kilo
+\pascal}$. The likelihood, from the new check, is a Gaussian
+centred at $-0.25\,\si{\kilo\pascal}$ (the new measured offset)
+with standard deviation $0.10\,\si{\kilo\pascal}$. The conjugate
+Gaussian-Gaussian update gives a posterior Gaussian whose mean is
+the precision-weighted average and whose variance is the inverse
+sum of precisions.
+
+The precision (inverse variance) of the prior is $1/0.05^{2} = 400$;
+of the likelihood, $1/0.10^{2} = 100$. The posterior precision is
+$400 + 100 = 500$, so the posterior standard deviation is $1/\sqrt{500}
+\approx 0.045\,\si{\kilo\pascal}$. The posterior mean is
+$(400 \times -0.15 + 100 \times -0.25)/500 = -0.17\,\si{\kilo\pascal}$.
+
+The Bayesian conclusion: after the new measurement, the best
+estimate of the calibration offset is $-0.17\,\si{\kilo\pascal}$
+with standard uncertainty $0.045\,\si{\kilo\pascal}$. The
+posterior pulls the prior estimate ($-0.15$) toward the new
+measurement ($-0.25$) by an amount that reflects the new
+measurement's relative precision. The posterior is tighter than the
+prior because the new measurement adds information; it is not as
+tight as it would be with many new measurements because a single
+data point at $0.10\,\si{\kilo\pascal}$ uncertainty cannot
+substantially over-rule a prior at $0.05\,\si{\kilo\pascal}$
+uncertainty.
+
+The engineering decision is whether to recalibrate. The posterior
+expanded uncertainty at $k = 2$ is $\pm 0.09\,\si{\kilo\pascal}$; if
+the application's tolerance is $\pm 0.5\,\si{\kilo\pascal}$, the
+transducer remains fit for purpose and the next routine
+recalibration suffices. If the tolerance is $\pm 0.1\,\si{\kilo
+\pascal}$, the posterior's edge already approaches the tolerance
+and a fresh calibration is warranted.
+
+The frequentist and Bayesian analyses produced different summary
+statements (the frequentist "fail to reject"; the Bayesian "the
+offset is $-0.17 \pm 0.09\,\si{\kilo\pascal}$") from the same data.
+The decisive difference is which question they answered. The
+frequentist test asked whether the new data are surprising under
+no-drift; the Bayesian update asked what the offset is now, given
+all evidence to date. For engineering decisions about whether to
+trust the transducer in the next period, the Bayesian question is
+the operational one.
 
 \section{Sample size and statistical power}\pathtag{standard}
 
@@ -1649,18 +1847,75 @@ confidence interval expression. State explicitly which two
 quantities the interval estimates as the sample size grows.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-For independent $X_{i} \sim \mathcal{N}(\mu, \sigma^{2})$,
-$\Var(\bar{x}) = (1/n^{2}) \sum \Var(X_{i}) = \sigma^{2}/n$, so the
-standard error is $\sigma/\sqrt{n}$. When $\sigma$ is unknown and
-estimated by $s$, the pivot $(\bar{x} - \mu)/(s/\sqrt{n})$ follows
-$t_{n-1}$. The $95 \,\%$ CI is $\bar{x} \pm t_{0.975, n-1} \cdot
-s/\sqrt{n}$. As $n \to \infty$, the half-width tends to zero (the
-sample mean converges to $\mu$ in probability), while the
-prediction interval's half-width tends to $z_{0.975} \cdot \sigma$
-(the population's intrinsic scatter). The CI estimates the
-location of the population mean; the PI estimates the location of
-the next observation.
+\paragraph{Solution.}
+The derivation runs through four steps: the variance of the sample
+mean, the standardised statistic when $\sigma$ is unknown, the
+confidence interval construction, and the contrast with the
+prediction interval.
+
+\emph{Step 1: variance of the sample mean.} For independent
+$X_{i} \sim \mathcal{N}(\mu, \sigma^{2})$, the sample mean
+$\bar{x} = (1/n) \sum X_{i}$ has variance
+\[
+\Var(\bar{x}) = \frac{1}{n^{2}} \sum_{i=1}^{n} \Var(X_{i}) =
+\frac{1}{n^{2}} \cdot n\sigma^{2} = \frac{\sigma^{2}}{n}.
+\]
+The standard error of the mean is therefore $\sigma/\sqrt{n}$.
+The Gaussian sum theorem ensures that $\bar{x}$ is itself
+Gaussian: $\bar{x} \sim \mathcal{N}(\mu, \sigma^{2}/n)$.
+
+\emph{Step 2: the standardised statistic.} If $\sigma$ were known,
+the pivotal quantity $(\bar{x} - \mu)/(\sigma/\sqrt{n})$ would
+follow $\mathcal{N}(0, 1)$, and the $95\%$ confidence interval
+would be $\bar{x} \pm 1.96 \sigma/\sqrt{n}$. In practice $\sigma$
+is unknown and estimated by $s = \sqrt{(1/(n-1))\sum(X_{i} -
+\bar{x})^{2}}$. The sample standard deviation $s$ is itself a
+random variable, so the standardised statistic
+\[
+T = \frac{\bar{x} - \mu}{s/\sqrt{n}}
+\]
+no longer follows the standard normal. It follows Student's
+$t$-distribution with $n - 1$ degrees of freedom, a result first
+derived by William Sealy Gosset in 1908 under the pen name
+"Student".
+
+\emph{Step 3: the confidence interval.} For coverage probability
+$1 - \alpha$, the two-sided critical value is $t_{1-\alpha/2,
+n-1}$, the value such that $\Pr(|T| < t_{1-\alpha/2, n-1}) =
+1 - \alpha$. Solving the probability statement for $\mu$ gives the
+confidence interval
+\[
+\bar{x} \pm t_{1-\alpha/2, n-1} \cdot \frac{s}{\sqrt{n}}.
+\]
+For $\alpha = 0.05$, the values are $t_{0.975, 4} = 2.78$ (sample
+size $5$), $t_{0.975, 9} = 2.26$ (sample size $10$),
+$t_{0.975, 29} = 2.045$ (sample size $30$), and $t_{0.975,\infty}
+= 1.96$ (the Gaussian limit).
+
+\emph{Step 4: contrast with the prediction interval.} The
+confidence interval estimates the location of the population
+mean: as $n \to \infty$, the half-width tends to zero because
+$\bar{x}$ converges to $\mu$ in probability. The prediction
+interval estimates the location of the next single observation:
+its half-width is
+\[
+t_{1-\alpha/2, n-1} \cdot s \cdot \sqrt{1 + \frac{1}{n}},
+\]
+which approaches $z_{0.975} \cdot \sigma \approx 1.96\sigma$ as
+$n \to \infty$, not zero. The population's intrinsic scatter
+$\sigma$ does not vanish with more data; only the uncertainty
+about the population's centre does.
+
+\emph{Step 5: the engineering point.} Confidence intervals tighten
+with more measurements (at $1/\sqrt{n}$ rate); prediction
+intervals do not. A measurement campaign with $n = 100$ readings
+delivers a confidence interval on the mean ten times tighter than
+$n = 1$, but the prediction interval for the next reading is only
+$\sqrt{1.01}\approx 1.005$ times tighter than for $n = 1$. The
+correct interval for a downstream specification (which is
+typically a tolerance on individual units) is the prediction
+interval, not the confidence interval; section 4.6 worked the
+case where confusing the two led to a production failure.
 
 \begin{exercise}
 Starting from the variance formula $\Var(X + Y) = \Var(X) + \Var(Y)
@@ -1688,15 +1943,76 @@ or the direct sum form. If using the moment-generating function,
 state the derivative step explicitly.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Using the MGF: $M(t) = \E[e^{tK}] = \sum_{k \geq 0} e^{tk}
-\lambda^{k} e^{-\lambda}/k! = e^{-\lambda} \sum (\lambda e^{t})^{k}
-/k! = e^{\lambda(e^{t} - 1)}$. First derivative: $M'(t) = \lambda
-e^{t} \cdot M(t)$; at $t = 0$, $M'(0) = \lambda$, so $\E[K] =
-\lambda$. Second derivative: $M''(t) = (\lambda e^{t})^{2} M(t) +
-\lambda e^{t} M(t)$; at $t = 0$, $M''(0) = \lambda^{2} + \lambda$,
-so $\E[K^{2}] = \lambda^{2} + \lambda$ and $\Var(K) = \E[K^{2}] -
-(\E[K])^{2} = \lambda$.
+\paragraph{Solution.}
+The Poisson distribution's mean-equals-variance property is
+distinctive among working engineering distributions. We derive it
+through the moment-generating function, then check by the
+direct-sum form.
+
+\emph{Step 1: write the MGF.} The Poisson probability mass function
+is $\Pr(K = k) = \lambda^{k} e^{-\lambda}/k!$ for $k = 0, 1, 2,
+\ldots$. The moment-generating function is
+\[
+M(t) = \E[e^{tK}] = \sum_{k=0}^{\infty} e^{tk} \cdot \frac{\lambda^{k}
+e^{-\lambda}}{k!}.
+\]
+Combine the exponentials:
+\[
+M(t) = e^{-\lambda} \sum_{k=0}^{\infty} \frac{(\lambda e^{t})^{k}}{k!}
+= e^{-\lambda} \cdot e^{\lambda e^{t}} = e^{\lambda(e^{t} - 1)}.
+\]
+The Taylor series of the exponential function recovers the closed
+form.
+
+\emph{Step 2: compute the mean.} The first derivative of $M$ with
+respect to $t$ evaluated at $t = 0$ gives $\E[K]$. Differentiating,
+\[
+M'(t) = \frac{\dd}{\dd t}\, e^{\lambda(e^{t} - 1)} = \lambda e^{t}
+\cdot e^{\lambda(e^{t} - 1)} = \lambda e^{t} M(t).
+\]
+At $t = 0$, $e^{0} = 1$ and $M(0) = 1$, so $M'(0) = \lambda$.
+Therefore $\E[K] = \lambda$.
+
+\emph{Step 3: compute the second moment.} The second derivative is
+\[
+M''(t) = \frac{\dd}{\dd t}[\lambda e^{t} M(t)] = \lambda e^{t} M(t)
++ \lambda e^{t} M'(t) = \lambda e^{t} M(t) + (\lambda e^{t})^{2}
+M(t).
+\]
+At $t = 0$, $M''(0) = \lambda + \lambda^{2}$, so $\E[K^{2}] =
+\lambda + \lambda^{2}$.
+
+\emph{Step 4: compute the variance.} The variance is the second
+moment minus the squared mean:
+\[
+\Var(K) = \E[K^{2}] - (\E[K])^{2} = \lambda + \lambda^{2} -
+\lambda^{2} = \lambda.
+\]
+Mean and variance are equal to the single Poisson parameter
+$\lambda$.
+
+\emph{Step 5: a check by the direct-sum form.} Using $\E[K] =
+\sum k \cdot \Pr(K = k) = \sum_{k=0}^{\infty} k \cdot \lambda^{k}
+e^{-\lambda}/k! = \lambda e^{-\lambda} \sum_{k=1}^{\infty}
+\lambda^{k-1}/(k-1)! = \lambda e^{-\lambda} \cdot e^{\lambda} =
+\lambda$. The second moment by the same method:
+$\E[K^{2}] = \sum k^{2} \Pr(K = k) = \sum k(k-1) \Pr(K = k) +
+\sum k \Pr(K = k) = \lambda^{2} + \lambda$, recovering Step 3 by
+a different route.
+
+\emph{Step 6: the engineering point.} A Poisson distribution has
+standard deviation $\sqrt{\lambda}$, so the relative fluctuation
+$1/\sqrt{\lambda}$ falls with $\lambda$ exactly like the
+$1/\sqrt{n}$ of independent measurements. A defect-count process
+operating at $\lambda = 100$ defects per wafer has relative
+fluctuation $10\%$; at $\lambda = 10{,}000$ defects per wafer,
+the relative fluctuation is $1\%$. The mean-equals-variance
+property gives a working diagnostic: a count process whose sample
+variance differs substantially from its sample mean is
+\emph{not} Poisson, and the deviation indicates that the
+underlying generating process has additional structure (over-
+dispersion from heterogeneous sources, under-dispersion from a
+regulated process, time-correlation, or other).
 
 \begin{exercise}
 Show that for a two-sample $t$-test with equal sample sizes and
@@ -1980,18 +2296,77 @@ report that an engineering decision would require. Propose at
 least four follow-up questions.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Missing: (i) the effect size and its confidence interval, (ii) the
-pre-registration status of the test (was the test selected after
-the data?), (iii) the power at the engineering-meaningful effect
-size, (iv) the units of measurement and what counts as
-``improvement'' in operational terms, (v) the outlier rule, (vi)
-the distributional check (Q-Q plot or equivalent). Follow-up
-questions: ``what is the effect size and its $95 \,\%$ confidence
-interval?'', ``was the test specified before data collection?'',
-``what would the result have been with a one-sided test at $\alpha
-= 0.05$?'', ``was the change attempted on multiple metrics and
-this is the one that reached significance?''.
+\paragraph{Solution.}
+The report's one number ($p = 0.04$) and one sample-size pair
+($n = 12, n = 10$) are inadequate for an engineering decision. The
+solution enumerates the missing information and the follow-up
+questions an honest review would ask.
+
+\emph{Step 1: identify the missing effect size.} A statistical
+test on its own does not tell the engineer how big the
+improvement was. A $p$-value at $\alpha = 0.05$ can correspond to
+a $0.1\,\%$ improvement that does not change any engineering
+specification, or a $30\,\%$ improvement that justifies a
+production-line change. The engineering decision rests on the
+effect size and its confidence interval, not on the $p$-value.
+
+\emph{Step 2: identify the missing pre-registration status.} The
+report does not state whether the hypothesis, the test, and the
+significance level were chosen before the data were seen. A test
+selected after the data has its $p$-value polluted by the garden
+of forking paths (section 8.7); the apparent significance is not
+reliable evidence of a real effect.
+
+\emph{Step 3: identify the missing power analysis.} For $n = 12$
+and $n = 10$, the test's power to detect an
+engineering-meaningful effect should be stated. A study that
+reaches significance at low power is overrepresented in the
+literature precisely because its effect-size estimate is biased
+upward (the winner's curse, addressed in the next exercise).
+
+\emph{Step 4: identify the missing operational definitions.} What
+does "improvement" mean in the report's measurement units? The
+engineering decision asks whether the improvement clears a
+specification, justifies the cost of a process change, or simply
+identifies a direction worth investigating. The report must state
+the operational threshold.
+
+\emph{Step 5: identify the missing analytical-decision details.}
+\begin{itemize}[leftmargin=*]
+  \item The outlier rule applied to the data (and whether it was
+    pre-specified).
+  \item The distributional check (Q-Q plot or equivalent) that
+    justifies the $t$-test's normality assumption.
+  \item Whether the test was one-sided or two-sided, and which
+    was the pre-registered choice.
+  \item Whether multiple comparisons were corrected for; if the
+    process change was assessed on $k$ metrics and this is the
+    one that crossed $p < 0.05$, the family-wise error rate is
+    much higher than $0.05$.
+\end{itemize}
+
+\emph{Step 6: the follow-up questions.}
+\begin{itemize}[leftmargin=*]
+  \item What is the effect size and its $95\%$ confidence
+    interval?
+  \item Was the test specified before data collection? If yes,
+    where is the pre-registration record?
+  \item What is the power of the test for the smallest
+    engineering-meaningful effect?
+  \item Was the process change assessed on multiple metrics? If
+    yes, what correction was applied?
+  \item What were the operational conditions before and after the
+    change? Were they otherwise identical (no confounding
+    differences)?
+  \item Can the result be replicated on a follow-up sample?
+\end{itemize}
+
+\emph{Step 7: the working engineering rule.} A report with a
+$p$-value alone is incomplete. An engineering decision requires
+the effect size and its confidence interval, the pre-registration
+record, the power, and the operational definition. The chapter's
+principle of pre-registered analysis is the discipline that makes
+all four pieces routinely available.
 
 \begin{exercise}
 A published study reports a $30 \,\%$ improvement in a sensor
@@ -2064,24 +2439,82 @@ trustworthy and what physical or statistical reason might produce
 $\beta < 1$ in a wear-out process.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Fatigue is a wear-out mechanism: the hazard rate increases with
-time, which predicts $\beta > 1$ (often $\beta \in [2, 4]$). A
-fitted $\beta = 0.7$ contradicts the physics. Plausible
-explanations: (i) the sample mixes two failure modes (early
-infant-mortality failures from manufacturing defects together
-with later fatigue failures), producing a bimodal hazard that the
-single-Weibull fit averages into a decreasing rate; (ii) the
-sample is heavily censored at the right and the fit sees mostly
-early failures; (iii) the $20$-unit sample is too small to
-estimate $\beta$ reliably (the standard error of $\beta$ at $n =
-20$ is large enough that the $95 \,\%$ CI may include $\beta = 2$);
-(iv) the fitting code has a sign or convention error. Next steps:
-inspect the lifetime distribution for bimodality, partition the
-sample by failure mode, increase the sample size, and report the
-confidence interval on $\beta$ alongside the point estimate. A
-$\beta$ that disagrees with the physics is a diagnostic that the
-fit, the sample, or the failure-mode model is wrong.
+\paragraph{Solution.}
+The fitted Weibull shape parameter $\beta$ contradicts the
+physics; the failure-analysis question is whether the contradiction
+is in the fit, the sample, or the failure-mode model. The
+discussion proceeds in five steps.
+
+\emph{Step 1: recall what $\beta$ encodes.} For the Weibull
+distribution with shape $\beta$ and scale $\eta$, the hazard rate
+is $h(t) = (\beta/\eta) (t/\eta)^{\beta-1}$. The hazard increases
+with time ($\beta > 1$, "wear-out"), is constant ($\beta = 1$,
+"random failure"), or decreases with time ($\beta < 1$,
+"infant mortality"). Fatigue, as a wear-out mechanism, is
+physically associated with $\beta > 1$, typically $\beta \in
+[2, 4]$ for metallic structures and similar.
+
+\emph{Step 2: the fitted $\beta = 0.7$ contradicts the physics.}
+A fatigue failure mechanism cannot produce a decreasing hazard
+rate. The fit is implausible against the failure-mode model.
+
+\emph{Step 3: enumerate plausible mechanisms for the disagreement.}
+\begin{itemize}[leftmargin=*]
+  \item \emph{Mixed failure modes}: the sample contains two
+    populations, one with early infant-mortality failures (from
+    manufacturing defects, brittle inclusions, or surface
+    contamination) and one with later fatigue failures. The
+    bimodal hazard, when fit by a single Weibull, averages to a
+    decreasing rate that no single failure mechanism actually
+    has. This is the most common explanation.
+  \item \emph{Right-censoring}: the test was stopped before the
+    fatigue population had time to fail. The fit then sees mostly
+    early failures (perhaps non-fatigue) and reports their
+    decreasing-hazard signature.
+  \item \emph{Small sample size}: $n = 20$ is small for Weibull
+    parameter estimation. The standard error of $\beta$ at
+    $n = 20$ is on the order of $\beta/2$, so the $95\%$
+    confidence interval on the fitted $\beta = 0.7$ may comfortably
+    include $\beta = 2$. The point estimate is unreliable.
+  \item \emph{Software or sign error}: a convention mismatch
+    between $\beta$ as defined in the engineering text and as
+    used by the fitting code (some define $\beta$ as the inverse
+    of others). A factor-of-two error in $\beta$ from a wrong
+    convention can convert "wear-out" to "infant-mortality" in
+    the report.
+  \item \emph{Wrong distributional family}: a lognormal, Birnbaum-
+    Saunders, or other distribution may fit the data better. The
+    Weibull is the working default for reliability; a poor fit is
+    evidence the working default is the wrong choice.
+\end{itemize}
+
+\emph{Step 4: the next steps.}
+\begin{enumerate}[leftmargin=*]
+  \item Inspect the lifetime distribution graphically (Weibull
+    plot). A bimodal failure population shows as a concave
+    deviation from the straight-line Weibull-plot expectation.
+  \item Partition the sample by failure mode. Identify each
+    failed unit by post-mortem analysis (which initiation site,
+    which crack-growth direction, which material microstructure).
+    Fit the two populations separately.
+  \item Increase the sample size. $n = 20$ is the educational
+    bound; $n = 50$ to $100$ is the working bound for reliable
+    $\beta$ estimation.
+  \item Report the confidence interval on $\beta$ alongside the
+    point estimate. The reader who sees only the point estimate
+    cannot evaluate the uncertainty.
+  \item Verify the fitting code's convention against the
+    engineering literature's $\beta$.
+\end{enumerate}
+
+\emph{Step 5: the working diagnostic principle.} A fitted
+parameter that disagrees with the failure-mode physics is a
+diagnostic that the fit, the sample, or the model is wrong. The
+engineer's response is not to accept the fit and revise the
+physics; it is to investigate which of the three is the problem,
+fix it, and refit. Engineering reliability work depends on the
+parameter estimates being consistent with the known physics; an
+inconsistency is a warning, not a discovery.
 
 \begin{exercise}
 A widely-cited engineering result, originally published with $n =

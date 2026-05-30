@@ -555,6 +555,163 @@ every number that crosses an interface must carry its unit, range,
 and provenance. Without those, the receiving system cannot know what
 quantity it has received.
 
+\subsection{Long-form case: the Ariane 501 forensic walk}\pathtag{standard}
+
+The three preceding cases each carry a registry entry; the chapter
+narrative compresses each to its lesson. We here walk one of them at
+the level of the post-flight inquiry's reconstruction, to make visible
+the chain of decisions that turn a single representational mismatch
+into a vehicle loss. The case is Ariane 501. The inquiry report is
+\cite{acc:ariane501-ifr}.
+
+\paragraph{Vehicle and mission.} Ariane 5 was the European Space
+Agency's heavy-lift launcher developed during the late 1980s and
+early 1990s to replace Ariane 4. The maiden flight, designated
+Ariane 501, lifted off from Kourou on $4$ June $1996$ carrying the
+Cluster scientific payload. The flight ended at $T+39
+\,\si{\second}$ when the launcher self-destructed at an altitude of
+approximately $4000 \,\si{\meter}$. The Cluster mission was lost.
+The financial cost to the European Space Agency was approximately
+\$370 million for the vehicle and another \$500 million for the
+satellites.
+
+\paragraph{The reused subsystem.} The Inertial Reference System (SRI)
+was a subsystem of the launcher's guidance and control architecture.
+Two redundant SRIs ran in parallel; each performed inertial
+integration of accelerations and angular rates from a three-axis
+gyroscope-and-accelerometer cluster. The SRI hardware and software
+were inherited from Ariane 4 with minimal modification. The
+inheritance decision was a deliberate engineering economy: the
+Ariane 4 SRI was field-proven over more than one hundred flights;
+re-developing the SRI for Ariane 5 would have cost approximately
+\$50 million and added two years to the development schedule.
+
+\paragraph{The alignment routine.} Inside the SRI, a routine
+performed an alignment calculation for the inertial platform. The
+routine had been written for Ariane 4 to support a specific
+pre-launch procedure: it allowed the launch to be paused and resumed
+within a window of $50 \,\si{\second}$ after liftoff, in case of a
+late hold. The procedure was a peculiarity of the Ariane 4 launch
+campaign and was not needed on Ariane 5; the latter's launch
+procedure did not allow a hold-and-resume of this kind. The
+alignment routine was nevertheless retained in the inherited
+software, set to run for $50 \,\si{\second}$ after liftoff on every
+flight as a legacy.
+
+\paragraph{The conversion.} Within the alignment routine, a 64-bit
+floating-point value representing the horizontal velocity component
+was converted to a 16-bit signed integer. The conversion was
+performed without a range check; the assumption embedded in the
+Ariane 4 code was that the value would remain within the
+representable range of $-2^{15}$ to $+2^{15} - 1$ during the
+$50 \,\si{\second}$ window. On Ariane 4, the assumption was correct:
+the horizontal velocity at $T+50 \,\si{\second}$ was bounded below
+the integer-overflow threshold by the launcher's flight profile.
+
+\paragraph{The new envelope.} Ariane 5 had a different
+trajectory. Its booster's higher thrust-to-weight ratio and its
+pitch-over profile gave it higher horizontal velocity earlier in
+flight. At approximately $T+37 \,\si{\second}$, the horizontal
+velocity exceeded the 16-bit signed integer's representable range.
+The conversion in the alignment routine raised an operand-error
+exception.
+
+\paragraph{The exception handler.} The SRI's exception-handling
+software treated the operand error as a hardware failure of the
+inertial platform. The handler followed the system's default
+behaviour: it sent a diagnostic word to the on-board computer,
+recorded the failure in non-volatile memory, and shut down the SRI.
+The exception fired in the active SRI at $T+37.2 \,\si{\second}$;
+the backup SRI took over.
+
+\paragraph{The redundancy fallacy.} The backup SRI was running the
+same software, performing the same alignment calculation, with the
+same range mismatch. The backup SRI's conversion raised the same
+exception approximately $72 \,\si{\milli\second}$ after the primary
+SRI's shutdown. The backup SRI also shut down. The launcher had no
+inertial reference data.
+
+\paragraph{The cascade.} The on-board computer interpreted the
+diagnostic word from the active SRI (which contained the SRI's
+exception trace, not a flight-state vector) as flight data. The
+computer used the bit pattern as if it represented an angle of
+attack. The interpreted angle of attack was nonsense and indicated a
+large nose-up pitch; the guidance system commanded a full nozzle
+deflection of the boosters to correct. The aerodynamic loads
+produced by the nozzle deflection exceeded the structural design
+limits of the booster-to-core attachment. The booster began to
+separate from the core stage. The Range Safety Officer's automatic
+self-destruct system, sensing the breakup, fired the explosive
+charges. The vehicle was destroyed at $T+39 \,\si{\second}$.
+
+\paragraph{The cost layers.} The direct cost was the vehicle and the
+satellites, approximately \$870 million. The indirect cost included
+a one-year delay in the Cluster programme, a two-year delay in
+commercial Ariane 5 service entry, and a re-certification campaign
+for the launcher that consumed approximately \$300 million in
+additional development. The reputation cost to the European Space
+Agency and to Arianespace, the commercial operator, was substantial
+and is the subject of internal documentation we do not narrate
+further.
+
+\paragraph{The decision points.} The inquiry identified the
+following sequence of engineering decisions that, taken together,
+made the failure inevitable.
+
+(i) The inheritance of the SRI software from Ariane 4 without a
+flight-envelope qualification against Ariane 5's trajectory. The
+inquiry's analysis is the closest the report comes to identifying a
+root cause; the report's language is more careful, but the chain of
+recommendations targets the qualification gap directly.
+
+(ii) The retention of the alignment routine that was not needed on
+Ariane 5. The routine was a known legacy at the time of
+integration; the decision to retain it was made on cost grounds and
+on a judgement that ``inherited software is more reliable than new
+software,'' a judgement that holds only when the inheritance
+envelope is unchanged.
+
+(iii) The absence of a range check on the conversion. This decision
+was inherited from Ariane 4 and was a defensible omission on that
+vehicle, because the range was bounded by the flight profile. On
+Ariane 5, the inherited absence was a defect; the qualification
+campaign should have flagged it.
+
+(iv) The redundant SRI architecture's reliance on identical
+software. The architecture was designed against hardware faults,
+which independent units would not share. It was not designed
+against software faults, which identical units would share. The
+inquiry recommended dissimilar-software redundancy for future
+mission-critical reusable subsystems, a recommendation now
+incorporated into ESA's mission-assurance practice.
+
+(v) The exception handler's default behaviour. Treating the operand
+error as a hardware failure and shutting down the SRI was the wrong
+response to a software defect; the handler should have masked the
+failed conversion, used the last valid integer value, and continued
+the alignment calculation degraded rather than terminated. The
+post-Ariane 501 corrective added range checks and graceful-
+degradation paths to the SRI's exception handler.
+
+\paragraph{The chapter's lesson.} The Ariane 501 case is sometimes
+narrated as a software bug. The narrative compresses the failure
+into a single line of code: the unprotected type conversion. The
+single line is real, and the corrective at the software layer is
+real. The deeper lesson is upstream of the software: the inherited
+subsystem carried its qualification envelope with it, and the
+re-qualification step that should have re-validated the envelope
+against the new vehicle was not performed. The single line of
+code is the place where the envelope mismatch surfaced; the
+qualification process is the engineering layer where the mismatch
+should have been caught.
+
+The lesson generalises beyond Ariane 5. Every reused subsystem
+inherits its envelope. Every new vehicle, new mission, or new
+operating condition is an envelope change. The verification step
+that re-establishes the envelope match is the discipline this
+chapter has named in compressed form; the Ariane 501 walk-through
+is the discipline at the scale of an actual launcher loss.
+
 \section{The measurement habit}\pathtag{core}
 
 A measurement is not a single number. A measurement is a number
@@ -850,14 +1007,58 @@ significant figures, then state the exact value (the foot is defined
 as $0.3048 \,\si{\meter}$). Comment on whether ``four significant
 figures'' is the right report.
 
-\paragraph{Solution sketch.} Four significant figures:
-$0.3048 \,\si{\meter}$. Exact: $0.3048 \,\si{\meter}$ by definition;
-the international foot adopted in 1959 is exactly this value, not an
-approximation \cite{std:nist-sp811}. The reading ``four significant
-figures'' implies an uncertainty of order $\pm 0.00005 \,\si{\meter}$,
-which understates the precision: the value is defined, not measured,
-so its uncertainty is zero. The convention for defined constants is
-to state the definition and avoid significant-figure language.
+\paragraph{Solution.}
+We compute the value, name the source of its exactness, distinguish
+defined from measured quantities, and state the engineering
+convention for reporting.
+
+\textit{Step 1, write the four-significant-figure value.}
+$1 \,\text{ft} = 0.3048 \,\si{\meter}$ to four significant figures.
+This is the same value as the exact definition; the rounding to four
+figures has not lost any digits.
+
+\textit{Step 2, identify the source of the exactness.} The
+international foot is defined as exactly $0.3048 \,\si{\meter}$ by the
+International Yard and Pound Agreement of 1959, ratified by the
+United States, the United Kingdom, Australia, Canada, New Zealand,
+and South Africa. The defined value is a constant of the unit system
+\cite{std:nist-sp811}; it is exact in the same sense that
+$1 \,\si{\meter} = 1 \,\si{\meter}$ is exact.
+
+\textit{Step 3, distinguish defined from measured.} The international
+foot is a defined conversion factor: the foot is defined in terms of
+the metre, with no further measurement required. Compare with the
+older Imperial foot (the standard before 1959), which was defined
+through a physical artefact (the Imperial Standard Yard) and was
+therefore subject to measurement uncertainty; its value with respect
+to the metre was approximately $1 \,\text{ft} \approx 0.30479997
+\,\si{\meter}$, with a residual uncertainty in the seventh decimal
+place from the artefact intercomparison. The 1959 redefinition
+eliminated the artefact uncertainty by fixing the foot by definition.
+
+\textit{Step 4, evaluate the significant-figures language.} The
+phrase ``four significant figures'' implies an uncertainty of order
+$\pm 0.00005 \,\si{\meter}$. The defined value has zero uncertainty,
+so the implication is wrong. The four-figure form is not less
+precise than the exact value; it carries the same information at a
+lower display resolution.
+
+\textit{Step 5, identify the working convention.} The convention for
+defined constants in engineering reports is to state the definition
+and avoid the significant-figure framing. ``The foot is defined as
+exactly $0.3048 \,\si{\meter}$,'' or ``$1 \,\text{ft} \equiv 0.3048
+\,\si{\meter}$,'' communicates the exactness directly. The
+significant-figures language is reserved for measured quantities,
+where it carries genuine information about the measurement
+uncertainty.
+
+\textit{Step 6, name the related cases.} The same convention applies
+to several other widely-used conversions that are defined-by-
+international-agreement: $1 \,\text{lb} = 0.45359237 \,\si{\kilogram}$
+exactly; the IT-calorie at $4.1868 \,\si{\joule}$ exactly; the
+nautical mile at $1852 \,\si{\meter}$ exactly. Each is an
+international-agreement constant; each is reported as exact rather
+than as a many-digit approximation.
 \end{exercise}
 
 \begin{exercise}
@@ -867,22 +1068,59 @@ approximately $396 \,\si{\tonne}$. Express this in (a) kilograms,
 US ground engineer, and a European fuelling crew would each
 plausibly use.
 
-\paragraph{Solution sketch.}
-(a) $396 \,\si{\tonne} = 3.96 \times 10^{5} \,\si{\kilogram}$.
-(b) $3.96 \times 10^{5} \,\si{\kilogram} \times 2.2046 \,\text{lb/kg}
-\approx 8.74 \times 10^{5} \,\text{lb}$.
-(c) The slug (US customary unit of mass) satisfies
-$1\,\text{slug} \approx 14.59 \,\si{\kilogram}$, so
-$3.96 \times 10^{5} \,\si{\kilogram} / 14.59 \,\si{\kilogram\per
-slug} \approx 2.72 \times 10^{4}\,\text{slug}$.
-US flight crews work in pounds for weight-and-balance computations.
-US ground engineers (maintenance, structural) work in pounds for
-gross weight but in slugs for any dynamic calculation (the slug is
-the consistent unit in the imperial $F=ma$ system). European fuelling
-crews work in kilograms exclusively. The three populations encode
-weight-and-mass differently; a calculation that uses ``pounds'' as
-both mass and force without the conversion factor $g_c$ is a common
-source of the unit-system errors the chapter discusses.
+\paragraph{Solution.}
+We work each part as a multiplication by an exact ratio equal to one,
+keeping the unit symbols on the right of every numerator.
+
+\textit{Step 1, write the SI value.} The metric tonne is defined as
+$10^{3} \,\si{\kilogram}$, so
+$396 \,\si{\tonne} = 3.96 \times 10^{5} \,\si{\kilogram}$. This is an
+exact conversion within SI; no rounding has occurred.
+
+\textit{Step 2, convert to pounds.} The international avoirdupois pound
+is defined as $0.45359237 \,\si{\kilogram}$ exactly
+\cite{std:nist-sp811}, so
+$1 \,\si{\kilogram} = 1/0.45359237 = 2.2046226\,\text{lb}$. Then
+$3.96 \times 10^{5} \,\si{\kilogram} \times 2.2046\,\text{lb}/\si{
+\kilogram} \approx 8.730 \times 10^{5}\,\text{lb}$.
+
+\textit{Step 3, convert to slugs.} The slug is the unit of mass in
+the imperial $F = ma$ system, defined so that a force of $1\,\text{lbf}$
+applied to $1\,\text{slug}$ produces an acceleration of
+$1\,\text{ft}/\text{s}^{2}$. Using $g_{0} = 9.80665 \,\si{\meter\per
+\second\squared}$ and $1\,\text{ft} = 0.3048 \,\si{\meter}$, the slug
+evaluates to $1\,\text{slug} = 14.5939 \,\si{\kilogram}$. So
+$3.96 \times 10^{5} \,\si{\kilogram} \div 14.5939 \,\si{\kilogram\per
+slug} \approx 2.714 \times 10^{4}\,\text{slug}$.
+
+\textit{Step 4, assign populations.} US flight crews work in pounds
+for weight-and-balance computations because the cockpit weight-and-
+balance worksheet is in pounds and the manufacturer's documentation
+follows. US ground engineers (structural, maintenance) work in pounds
+for gross weight, but switch to slugs the moment the calculation
+becomes dynamic: a load-factor or vibration analysis requires the
+consistent mass unit so that $F = ma$ holds without a $g_{c}$
+correction. European fuelling crews work in kilograms exclusively; the
+SI mass-flow procedures and the airport fuel-uplift documentation are
+in kilograms or in metric tonnes.
+
+\textit{Step 5, sanity-check by inversion.} If $396\,\si{\tonne}$ is
+the maximum take-off weight, the equivalent weight in newtons under
+standard gravity is $396{,}000 \times 9.81 \approx 3.88 \times 10^{6}
+\,\si{\newton}$, or about $873{,}000 \,\text{lbf}$. The pound-mass
+figure in step 2 and the pound-force figure here match numerically
+because $1 \,\text{lbm}$ in standard gravity weighs $1 \,\text{lbf}$;
+the apparent coincidence is the source of the imperial system's
+historical confusion of mass and weight.
+
+\textit{Step 6, name the failure mode.} A calculation that uses
+``pounds'' as both mass and force without distinguishing them, and
+without inserting the dimensional constant $g_{c} \approx 32.2
+\,\text{ft}\cdot\text{lbm}/(\text{lbf}\cdot\text{s}^{2})$, produces
+results wrong by a factor of $g$. This factor-of-thirty-two error is
+the classical engineering trap of the foot-pound-second system, and
+it is one of the reasons SI insists on distinct units for mass
+(kilogram) and force (newton).
 \end{exercise}
 
 \begin{exercise}
@@ -891,22 +1129,63 @@ to foot pounds. A second specification is given as
 $40\,\text{ft}\cdot\text{lbf}$. Convert to newton metres. Comment on whether
 the two are interchangeable in a real-world fastener procedure.
 
-\paragraph{Solution sketch.} The conversion factor is
-$1\,\si{\newton\meter} \approx 0.7376 \,\text{ft}\cdot\text{lbf}$,
-equivalently $1\,\text{ft}\cdot\text{lbf} \approx 1.3558 \,\si{\newton
-\meter}$. Therefore $40\,\si{\newton\meter} \approx 29.5 \,\text{ft}
-\cdot\text{lbf}$ and $40\,\text{ft}\cdot\text{lbf} \approx 54.2 \,\si{
-\newton\meter}$. The two are not interchangeable: a fastener tightened
-to $40 \,\si{\newton\meter}$ when the specification was
-$40 \,\text{ft}\cdot\text{lbf}$ is under-torqued by approximately
-$26 \,\%$; a fastener tightened to $40 \,\text{ft}\cdot\text{lbf}$ when
-the specification was $40 \,\si{\newton\meter}$ is over-torqued by
-approximately $36 \,\%$. A factor-of-two engineering margin does not
-absorb either error reliably; the unit-system labelling on the wrench,
-the procedure, and the torque value must agree. Field practice in
-mixed-fleet maintenance is to label the wrench and the procedure
-explicitly and to keep one calibrated wrench per unit system rather
-than rely on conversion.
+\paragraph{Solution.}
+We compute the conversions, the resulting fastener errors, and the
+field practice that controls the failure mode.
+
+\textit{Step 1, derive the conversion.} A foot-pound-force is the
+torque produced by a force of $1\,\text{lbf}$ at a moment arm of
+$1\,\text{ft}$. Using $1\,\text{ft} = 0.3048\,\si{\meter}$ exactly and
+$1\,\text{lbf} = 4.4482216\,\si{\newton}$ (from $1\,\text{lbm} \times
+9.80665\,\si{\meter\per\second\squared}$, exact), the conversion
+factor is
+$1\,\text{ft}\cdot\text{lbf} = 0.3048 \times 4.4482216 = 1.35582
+\,\si{\newton\meter}$.
+The inverse is $1\,\si{\newton\meter} = 0.737562 \,\text{ft}\cdot
+\text{lbf}$.
+
+\textit{Step 2, convert the two specifications.}
+$40\,\si{\newton\meter} \times 0.7376 = 29.50 \,\text{ft}\cdot\text{
+lbf}$ and $40\,\text{ft}\cdot\text{lbf} \times 1.3558 = 54.23
+\,\si{\newton\meter}$.
+
+\textit{Step 3, compute the resulting errors.} If a fastener with
+specification $40\,\text{ft}\cdot\text{lbf}$ is tightened to a wrench
+reading $40\,\si{\newton\meter}$, the achieved torque is
+$40\,\si{\newton\meter} = 29.5\,\text{ft}\cdot\text{lbf}$, which is
+$1 - 29.5/40 = 26\,\%$ below specification. If a fastener with
+specification $40\,\si{\newton\meter}$ is tightened to a wrench
+reading $40\,\text{ft}\cdot\text{lbf}$, the achieved torque is
+$54.2\,\si{\newton\meter}$, which is $54.2/40 - 1 = 36\,\%$ above
+specification.
+
+\textit{Step 4, evaluate the consequence.} Typical preload tolerance
+bands on threaded fasteners are $\pm 10$ to $\pm 25\,\%$ depending on
+the joint, with the higher tolerances reserved for non-structural
+applications. Neither of the unit-mismatch errors above is absorbed by
+the joint's design margin. The $-26\,\%$ case under-preloads the
+joint; the bolt can loosen under cyclic load and fail in fatigue at
+the thread root. The $+36\,\%$ case over-preloads the joint; the bolt
+can yield at the shank or strip the thread, with the failure occurring
+either at installation or at the first hot thermal cycle.
+
+\textit{Step 5, name the prevention practice.} The field practice in
+mixed-fleet maintenance has three components. The wrench is labelled
+with its calibrated unit system, in writing, on a tag that survives
+handling. The procedure document carries explicit units on every
+torque specification. One calibrated wrench is reserved per unit
+system, and the technician selects the wrench by matching the
+procedure's unit label. Mental conversion at the joint is not
+authorised; if a conversion is required, it is performed by a second
+engineer at the procurement or procedure-revision interface, in
+writing, and recorded in the controlled procedure.
+
+\textit{Step 6, record the audit trail.} The completed torque value
+is logged in the work-order record with both the wrench's calibrated
+unit and the specification's unit; the second engineer's signature
+records the verification that the two match. The record is the
+defence against the failure that the next inspector or accident
+investigator will look for first.
 \end{exercise}
 
 \begin{exercise}
@@ -918,21 +1197,62 @@ syringe resolution that lets the dispenser meet the tolerance.
 Comment on whether an ordinary $1 \,\si{\milli\liter}$ insulin
 syringe is acceptable.
 
-\paragraph{Solution sketch.} Required volume:
-$0.4 \,\si{\milli\gram} \div 50 \,\si{\milli\gram\per\milli\liter}
-= 0.008 \,\si{\milli\liter} = 8 \,\si{\micro\liter}$.
-A $\pm 5\,\%$ tolerance on the dose corresponds to a volume tolerance
-of $\pm 0.4 \,\si{\micro\liter}$. An ordinary insulin syringe with
-$1 \,\si{\milli\liter}$ capacity and $0.01 \,\si{\milli\liter}$
-(i.e., $10 \,\si{\micro\liter}$) graduations cannot meet this
-tolerance: its smallest reliably resolvable volume exceeds the
-required dose. The clinical workflow either pre-dilutes the
-concentrate to a working concentration that the available syringe
-can dispense within tolerance, or uses a $10 \,\si{\micro\liter}$
-positive-displacement micropipette with stated calibration. The
-broader lesson: instrument resolution must be matched to the
-required tolerance at the point of dispensing, not assumed from the
-nominal precision of the instrument.
+\paragraph{Solution.}
+We compute the required volume, the tolerance on volume, the
+resolution of the candidate instrument, and the clinical workflow
+that closes the gap.
+
+\textit{Step 1, compute the dose volume.} From the concentration and
+the prescribed mass,
+$V = m/c = 0.4 \,\si{\milli\gram} \div 50 \,\si{\milli\gram\per\milli
+\liter} = 0.008 \,\si{\milli\liter} = 8 \,\si{\micro\liter}$. The
+required volume is at the microlitre scale, two orders of magnitude
+below the insulin syringe's nominal capacity.
+
+\textit{Step 2, compute the volume tolerance.} The $\pm 5\,\%$
+tolerance on dose translates directly to a $\pm 5\,\%$ tolerance on
+volume (the concentration is fixed). The volume window is
+$8 \,\si{\micro\liter} \times (1 \pm 0.05) = 7.6$ to $8.4 \,\si{
+\micro\liter}$, a $\pm 0.4 \,\si{\micro\liter}$ tolerance on a
+dispensed volume of $8 \,\si{\micro\liter}$.
+
+\textit{Step 3, characterise the candidate instrument.} An ordinary
+$1 \,\si{\milli\liter}$ insulin syringe has graduations every
+$0.01 \,\si{\milli\liter} = 10 \,\si{\micro\liter}$. The reading
+resolution is half a division, so $\pm 5 \,\si{\micro\liter}$ at
+best. The instrument's stated accuracy from the manufacturer is
+typically $\pm 4\,\%$ at full scale, or $\pm 40 \,\si{\micro\liter}$
+at $1 \,\si{\milli\liter}$; at the low end of the scale, the relative
+error grows because the absolute error stays constant.
+
+\textit{Step 4, compare resolution to tolerance.} The instrument's
+resolution of $\pm 5 \,\si{\micro\liter}$ is approximately twelve
+times the required tolerance of $\pm 0.4 \,\si{\micro\liter}$. The
+ordinary insulin syringe is not acceptable; even a perfect operator
+cannot read the meniscus to a precision finer than the half-
+division. The instrument is dispensing at the limit of its
+discrimination, not at the limit of the patient's tolerance.
+
+\textit{Step 5, name the clinical workflow.} Two paths close the gap.
+The first is pre-dilution: the pharmacy dilutes the
+$50 \,\si{\milli\gram\per\milli\liter}$ concentrate by a factor of
+ten to $5 \,\si{\milli\gram\per\milli\liter}$, after which the
+required volume is $80 \,\si{\micro\liter}$ (the tenth division of
+the syringe) with tolerance $\pm 4 \,\si{\micro\liter}$ (within
+reading resolution). The second is instrument substitution: a
+$10 \,\si{\micro\liter}$ positive-displacement micropipette with
+documented calibration delivers $\pm 0.1 \,\si{\micro\liter}$ at
+$8 \,\si{\micro\liter}$ setting, comfortably inside the tolerance.
+
+\textit{Step 6, name the lesson.} Instrument resolution must be
+matched to required tolerance at the point of dispensing. The match
+is made in writing on the procedure document and verified at the
+point of compounding by a second pharmacist; the assumption that
+``the available syringe is precise enough'' is the source of the
+chronic medication-dosing errors the chapter has named. The
+manufacturer's nominal precision applies at full-scale dispensing,
+not at the low end of the scale where the absolute error dominates
+the relative error.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -943,21 +1263,77 @@ measurements, each with standard deviation $\sigma$, is
 $\sigma / \sqrt{n}$. State the assumption that fails when the
 measurements are not independent.
 
-\paragraph{Solution sketch.} Let $X_1, \ldots, X_n$ be independent
-random variables with common mean $\mu$ and common variance
-$\sigma^2$. The sample mean is $\bar{X} = (1/n)\sum_{i=1}^{n} X_i$.
-By linearity of variance for independent variables,
-$\operatorname{Var}(\bar{X}) = (1/n^2) \sum_{i=1}^n \operatorname{Var}
-(X_i) = (1/n^2) \cdot n\sigma^2 = \sigma^2 / n$. Therefore the
-standard deviation of the mean is $\sigma / \sqrt{n}$. The
-independence assumption enters in the additivity step: for correlated
-variables, $\operatorname{Var}(\bar{X}) = (1/n^2)
-\sum_{i,j} \operatorname{Cov}(X_i, X_j)$, which includes off-diagonal
-covariance terms that do not vanish under the $1/n$ averaging.
-Systematic effects, instrument drift, common-mode noise, and shared
-calibration error all violate the independence assumption; the
-$1/\sqrt{n}$ scaling does not apply, and averaging more measurements
-does not reduce the contribution from the correlated component.
+\paragraph{Solution.}
+We derive the result from the definition of variance and identify the
+place where independence is consumed.
+
+\textit{Step 1, set up.} Let $X_{1}, \ldots, X_{n}$ be random variables
+with $\E[X_{i}] = \mu$ and $\operatorname{Var}(X_{i}) = \sigma^{2}$
+for every $i$. Define the sample mean
+$\bar{X} = (1/n) \sum_{i=1}^{n} X_{i}$. We compute
+$\operatorname{Var}(\bar{X})$ from the definition.
+
+\textit{Step 2, apply linearity.} The variance of a scaled sum
+satisfies
+\[
+\operatorname{Var}(\bar{X})
+= \operatorname{Var}\!\left( \frac{1}{n} \sum_{i=1}^{n} X_{i} \right)
+= \frac{1}{n^{2}} \operatorname{Var}\!\left( \sum_{i=1}^{n} X_{i}
+\right).
+\]
+The factor $1/n^{2}$ appears because variance scales with the square
+of a multiplicative constant.
+
+\textit{Step 3, expand the variance of the sum.} The variance of a
+sum can be written in terms of pairwise covariances:
+\[
+\operatorname{Var}\!\left( \sum_{i=1}^{n} X_{i} \right)
+= \sum_{i=1}^{n} \sum_{j=1}^{n} \operatorname{Cov}(X_{i}, X_{j})
+= \sum_{i=1}^{n} \operatorname{Var}(X_{i})
++ \sum_{i \ne j} \operatorname{Cov}(X_{i}, X_{j}).
+\]
+This identity is general; no independence assumption has been used
+yet. The diagonal terms collect the variances; the off-diagonal terms
+collect the covariances.
+
+\textit{Step 4, consume independence.} If the $X_{i}$ are mutually
+independent, then $\operatorname{Cov}(X_{i}, X_{j}) = 0$ for $i \ne
+j$. The off-diagonal sum vanishes, and
+\[
+\operatorname{Var}\!\left( \sum_{i=1}^{n} X_{i} \right)
+= \sum_{i=1}^{n} \sigma^{2}
+= n \sigma^{2}.
+\]
+Combining with step 2,
+$\operatorname{Var}(\bar{X}) = (1/n^{2}) \cdot n \sigma^{2} =
+\sigma^{2}/n$. Taking the square root,
+$\operatorname{SD}(\bar{X}) = \sigma / \sqrt{n}$.
+
+\textit{Step 5, name the failure mode.} The independence assumption is
+consumed exactly once, in step 4. If the measurements are correlated,
+the off-diagonal sum does not vanish. In the worst case (all
+measurements perfectly correlated), every covariance equals
+$\sigma^{2}$, and
+$\operatorname{Var}(\sum X_{i}) = n^{2} \sigma^{2}$, so
+$\operatorname{Var}(\bar{X}) = \sigma^{2}$: averaging gains nothing.
+In the intermediate case (correlation $\rho > 0$ between pairs),
+$\operatorname{Var}(\bar{X}) = \sigma^{2} [1/n + (n-1)\rho/n]
+\to \rho \sigma^{2}$ as $n \to \infty$; averaging hits a floor at
+$\sigma \sqrt{\rho}$ rather than zero.
+
+\textit{Step 6, list the engineering violations.} Sources that
+violate independence in practice include: instrument drift (every
+later reading is correlated with the earlier ones through the slow
+trend); common-mode environmental forcing (every reading on a hot
+afternoon shares the same temperature bias); shared calibration error
+(every reading uses the same reference, so a calibration mistake
+propagates identically); a shared operator (every reading carries the
+same systematic operator bias); a shared computational step (every
+reading is processed through the same buggy script). Each of these
+turns the $1/\sqrt{n}$ promise into a slower decay or a floor; the
+reader who reports the standard deviation of the mean as the
+measurement uncertainty without checking for correlation has hidden
+the dominant error.
 \end{exercise}
 
 \begin{exercise}[\textit{deferred to Chapter 4}]
@@ -1128,18 +1504,69 @@ Plot the apparent standard deviation of the mean and the apparent
 mean against $n$. Demonstrate, with a sentence, why the systematic
 component does not vanish with averaging.
 
-\paragraph{Solution sketch.} The apparent mean approaches
-$\mu + \Delta = 102$ as $n \to \infty$, with the random component
-of error vanishing as $1/\sqrt{n}$. The apparent standard deviation
-of the mean still decays as $5/\sqrt{n}$ because the random
-component is the only contributor to dispersion; the systematic
-component contributes a constant bias, not dispersion. The reported
-``measurement'' converges with high precision on the wrong value.
-A measurement protocol that reports the standard deviation of the
-mean as its uncertainty has hidden the bias entirely; the
-combined-uncertainty machinery of the GUM (Type B evaluation of the
-systematic component plus Type A evaluation of the random component)
-is the engineering response. See
+\paragraph{Solution.}
+We compute each curve, distinguish bias from dispersion, and connect
+the result to the GUM combined-uncertainty machinery.
+
+\textit{Step 1, set up the model.} Each measurement is
+$X_{i} = \mu + \Delta + \varepsilon_{i}$ where $\mu = 100$ is the
+true value, $\Delta = 2$ is a constant systematic offset, and
+$\varepsilon_{i} \sim \mathcal{N}(0, \sigma)$ with $\sigma = 5$ is
+the random component. The two effects enter additively.
+
+\textit{Step 2, compute the apparent-mean curve.} For sample size
+$n$, the apparent mean is
+$\bar{X} = (1/n) \sum_{i} X_{i} = (\mu + \Delta) + (1/n)\sum_{i}
+\varepsilon_{i}$.
+The expected value is $\E[\bar{X}] = \mu + \Delta = 102$ for every
+$n$. As $n \to \infty$, the random term vanishes by the law of
+large numbers, so $\bar{X} \to 102$. The plot of $\bar{X}$ vs $n$
+approaches a horizontal line at $102$, not at $\mu = 100$.
+
+\textit{Step 3, compute the apparent-standard-deviation-of-mean
+curve.} The variance of $\bar{X}$ is
+$\operatorname{Var}(\bar{X}) = \operatorname{Var}((1/n)\sum_{i}
+\varepsilon_{i}) = \sigma^{2}/n$. The standard deviation is
+$\sigma/\sqrt{n} = 5/\sqrt{n}$. The systematic component $\Delta$
+does not appear in the variance: it is a constant, and the variance
+of a random variable plus a constant is the variance of the random
+variable. The plot of $\operatorname{SD}(\bar{X})$ vs $n$ on
+log-log axes is a straight line of slope $-1/2$, passing through
+$5$ at $n = 1$ and $0.5$ at $n = 100$.
+
+\textit{Step 4, distinguish bias from dispersion.} Bias and
+dispersion are independent components of the total error. Averaging
+reduces dispersion as $1/\sqrt{n}$ but does not affect bias at any
+$n$. The reported measurement converges with arbitrarily small
+spread on the wrong value. An observer who tracks only the
+dispersion (the standard deviation of the mean) sees the dispersion
+shrink and concludes that the measurement is becoming more
+accurate; the bias remains, hidden from the dispersion-based
+analysis.
+
+\textit{Step 5, name the working-protocol failure mode.} A
+measurement protocol that reports the standard deviation of the
+mean as the measurement uncertainty has hidden the bias entirely.
+The reported uncertainty is $\sigma/\sqrt{n}$; the actual error of
+the reported value is at least $|\Delta|$ for every $n$ and may be
+much larger if there are multiple unrecognised systematic
+contributors. A reader using the reported uncertainty for
+downstream propagation is being misled.
+
+\textit{Step 6, name the GUM response.} The Guide to the Expression
+of Uncertainty in Measurement (GUM) requires the engineer to
+evaluate both Type A (random, derived from the statistical analysis
+of repeated measurements) and Type B (systematic, derived from
+calibration records, instrument specifications, and known physical
+effects) components. The combined standard uncertainty is the
+quadrature sum: $u_{c} = \sqrt{u_{A}^{2} + u_{B}^{2}}$. In the
+present case, $u_{A} = \sigma/\sqrt{n}$ from the standard deviation
+of the mean, and $u_{B} = |\Delta|/\sqrt{3} \approx 1.15$ if
+$\Delta$ is treated as a uniformly distributed systematic bias
+within $\pm |\Delta|$. The reader who reports $u_{c}$ rather than
+$u_{A}$ alone is reporting an honest measurement; the reader who
+reports $u_{A}$ alone is reporting a precision claim that the
+accuracy does not support. See
 \texttt{code/monte\_carlo\_sigma.py} for the modified simulation.
 \end{exercise}
 
@@ -1149,20 +1576,73 @@ $\sigma_{x} = \sigma_{y} = 1$ and correlation $\rho \in
 \{-0.9, 0, 0.9\}$. Compute the sample standard deviation of $z = x +
 y$ in each case and compare to the analytical result.
 
-\paragraph{Solution sketch.} Analytical: $\operatorname{Var}(z) =
-\sigma_x^2 + \sigma_y^2 + 2\rho\sigma_x\sigma_y = 2(1+\rho)$. For
-$\rho = -0.9$, $\operatorname{Var}(z) = 0.2$, $\sigma_z = 0.447$.
-For $\rho = 0$, $\sigma_z = \sqrt{2} \approx 1.414$. For
-$\rho = 0.9$, $\operatorname{Var}(z) = 3.8$, $\sigma_z = 1.949$.
-The simulation (see \texttt{code/bivariate\_propagation.py}) returns
-sample standard deviations of $0.446$, $1.412$, $1.948$ for the
-three correlations respectively, agreeing with the analytical
-result to three significant figures. The negative-correlation case
-($\rho = -0.9$) is the engineering insight: when two error sources
-are anti-correlated, the sum is more precise than either term,
-because the errors partially cancel. This is the mechanism behind
-differential-measurement instrumentation (a Wheatstone bridge; a
-ratiometric ADC; a common-mode-rejection amplifier).
+\paragraph{Solution.}
+We derive the analytical variance, compute it at each correlation,
+verify against simulation, and connect the negative-correlation case
+to differential-measurement instrumentation.
+
+\textit{Step 1, derive the analytical variance.} For a sum
+$z = x + y$ of two random variables with variances $\sigma_{x}^{2}$,
+$\sigma_{y}^{2}$ and correlation $\rho$,
+\[
+\operatorname{Var}(z)
+= \operatorname{Var}(x) + \operatorname{Var}(y) + 2 \operatorname{Cov}
+(x, y)
+= \sigma_{x}^{2} + \sigma_{y}^{2} + 2 \rho \sigma_{x} \sigma_{y}.
+\]
+With $\sigma_{x} = \sigma_{y} = 1$, this simplifies to
+$\operatorname{Var}(z) = 2(1 + \rho)$.
+
+\textit{Step 2, compute at each correlation.}
+For $\rho = -0.9$, $\operatorname{Var}(z) = 2 \times 0.1 = 0.2$, so
+$\sigma_{z} = 0.447$.
+For $\rho = 0$, $\operatorname{Var}(z) = 2$, $\sigma_{z} = \sqrt{2}
+\approx 1.414$.
+For $\rho = 0.9$, $\operatorname{Var}(z) = 2 \times 1.9 = 3.8$,
+$\sigma_{z} = 1.949$.
+
+\textit{Step 3, verify against simulation.} The simulation
+(see \texttt{code/bivariate\_propagation.py}) draws $1000$ pairs
+$(x, y)$ from a bivariate normal at each correlation value and
+computes the sample standard deviation of $z = x + y$. Representative
+output: $0.446$, $1.412$, $1.948$ for the three correlations
+respectively. The agreement to three significant figures is the
+expected $1/\sqrt{1000} \approx 3\,\%$ statistical uncertainty in
+the sample standard deviation; doubling the sample size halves the
+discrepancy.
+
+\textit{Step 4, identify the engineering insight.} The negative-
+correlation case is the working insight: when two error sources are
+anti-correlated, the sum is more precise than either term, because
+the errors partially cancel. With $\sigma_{x} = \sigma_{y} = 1$ and
+$\rho = -0.9$, the sum has $\sigma_{z} = 0.45$, less than half of
+either input's standard deviation. As $\rho \to -1$ the sum's
+variance approaches zero; the perfect-anti-correlation limit is a
+noiseless difference between two equally noisy inputs.
+
+\textit{Step 5, connect to differential-measurement instrumentation.}
+The negative-correlation mechanism is the structural reason that
+differential measurement reduces noise. The Wheatstone bridge
+measures the small difference between two large resistances; the
+ratiometric ADC compares the measured signal to a reference that
+shares the same supply-noise; the common-mode-rejection amplifier
+subtracts the common-mode component between two input lines. In each
+case, the correlated noise component cancels in the difference, and
+the residual is the small uncorrelated component that carries the
+actual measurement.
+
+\textit{Step 6, name the design pattern.} The pattern generalises:
+whenever two error sources share a common cause (temperature
+drift, power-supply ripple, mechanical vibration, common reference),
+the engineer can subtract them by routing the measurement and a
+matched dummy through the same noise environment. The signal
+appears in the difference; the noise cancels. The instrumentation
+amplifier, the bridge configuration, and the differential ADC are
+three implementations of the same principle, all licensed by the
+$\sigma_{z}^{2} = \sigma_{x}^{2} + \sigma_{y}^{2} - 2\rho \sigma_{x}
+\sigma_{y}$ identity (with sign-flipped second variable, i.e., for
+the difference $z = x - y$ the variance is the same expression with
+$-2\rho$, so positive correlation reduces the difference's variance).
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1256,21 +1736,67 @@ without recalibrating. State three plausible failure modes the wrench
 may now exhibit and propose a household-feasible verification for
 each.
 
-\paragraph{Rubric.} Three credible failure modes: (1) the
-spring-and-cam mechanism that triggers the click is now mis-set,
-producing an offset between the set torque and the click torque;
-verify by clamping the wrench horizontally with a known weight
-applied at a known lever arm and measuring the click torque
-against the computed weight-arm product. (2) The wrench's internal
-detent surfaces are damaged, producing inconsistent click torques
-on repeated trials; verify by repeating the same set torque ten
-times against the same reference and recording the spread. (3) The
-scale display is mechanically misaligned, so the set torque differs
-from the indicated torque; verify by setting the wrench to a known
-position and reading off the indicator with a magnifying glass.
-A working professional response would not rely on household
-verification: a dropped torque wrench is removed from service
-pending calibration at an accredited laboratory.
+\paragraph{Solution.}
+We name three plausible mechanisms, design a household-feasible
+verification for each, and state the working-professional response.
+
+\textit{Step 1, list the failure modes by sub-system.} A click-type
+torque wrench has three load-bearing sub-systems: the calibrated
+spring-and-cam that triggers the click; the detent surfaces that
+release at the set torque; and the scale-and-handle assembly that
+sets the trigger threshold. A drop can damage any of the three.
+
+\textit{Step 2, name failure mode A (offset).} The spring's preload
+or the cam geometry shifts, so the click occurs at a different torque
+than the scale indicates. The result is a systematic offset between
+set torque and applied torque, the same magnitude for every reading.
+Household verification: clamp the wrench horizontally in a vice with
+the head fixed. Hang a known weight $W$ on the handle at a known
+lever arm $L$. The applied torque is $W L$. Set the wrench to $W L$,
+release the load slowly until the click triggers, and compare to the
+computed $W L$. Repeat at three set torques (e.g.,
+$20$, $40$, $60 \,\si{\newton\meter}$) to map the offset across the
+range.
+
+\textit{Step 3, name failure mode B (precision).} The detent surfaces
+or the pivot bushings are damaged, producing an inconsistent release
+torque on repeated trials. The result is a spread of click torques
+around the set value, not a constant offset. Household verification:
+repeat the same set torque ten times against the same reference
+(weight on lever arm, as above). Compute the standard deviation. A
+serviceable wrench shows a spread of $\pm 2$-$4\,\%$ of full scale;
+a damaged wrench shows $\pm 10\,\%$ or larger, with audible roughness
+in the click.
+
+\textit{Step 4, name failure mode C (display).} The scale display or
+the handle's locking ring is mechanically misaligned, so the value
+read off the scale does not match the value set on the spring.
+Household verification: with the wrench horizontal, set the scale to
+a known value (e.g., $40 \,\si{\newton\meter}$), and use a magnifying
+glass to read the indicator. If the indicator is off-axis or the
+locking ring is bent, the displayed value differs from the indicated
+value by a constant amount. The check is visual and does not require
+a load test.
+
+\textit{Step 5, distinguish failure modes A and B from results.} The
+results of step 2 and step 3 distinguish the mechanisms. A constant
+offset across set torques implies mode A; a varying spread at fixed
+set torque implies mode B; both can be present simultaneously and the
+analysis remains valid because the two contribute additively (the
+mean of step 3's ten trials is the offset of mode A; the spread is
+mode B).
+
+\textit{Step 6, state the working response.} The household
+verification is a diagnostic for whether the wrench is fit for
+unsupervised use on non-critical fasteners; it is not a substitute
+for accredited calibration. A working professional removes a dropped
+torque wrench from service immediately, tags it ``do not use,'' and
+sends it to an accredited calibration laboratory. The laboratory
+returns a calibration certificate stating the wrench's accuracy and
+its calibration date; the certificate is the documentation that
+survives the next failure investigation. The household check is for
+the home shop; the professional shop has a recall procedure for
+dropped wrenches.
 \end{exercise}
 
 \begin{exercise}
@@ -1281,24 +1807,62 @@ $5.6\,\text{L}/100\,\text{km}$. State at least three sources of the
 discrepancy, then name the first measurement you would repeat before
 blaming the dashboard algorithm.
 
-\paragraph{Rubric.} Sources of the discrepancy: (1) the odometer
-distance and the actual distance differ (tyre diameter changes with
-wear, pressure, and temperature; the odometer is typically accurate
-to $\pm 3$-$5\,\%$); (2) the fuel quantity measurement at the pump
-differs between fills (the pump's auto-shutoff triggers at a
-slightly different fill level each time, with a per-fill variation
-of $\sim 0.5$-$1 \,\si{\liter}$, large compared to the $\sim 50
-\,\si{\liter}$ tank); (3) the dashboard algorithm computes
-consumption from injector pulse width and air-mass measurement,
-which is a model of fuel flow rather than a direct measurement;
-the model's accuracy is typically $\pm 5$-$10\,\%$. The first
-measurement to repeat: the pump-to-pump fuel quantity, by filling
-the same tank from the same pump on consecutive days with no driving
-between. If the two fills agree to $\pm 0.5 \,\si{\liter}$, the
-fuel-flow measurement is reproducible and the dashboard model is
-likely the discrepancy; if they disagree by more, the pump auto-
-shutoff is the dominant source and the fuel-quantity measurement
-is not reproducible in the first place.
+\paragraph{Solution.}
+We compute the magnitude of the discrepancy, list candidate sources
+with quantitative weights, and name the first measurement to repeat.
+
+\textit{Step 1, quantify the discrepancy.} The dashboard reports
+$5.0 \,\text{L}/100\,\text{km}$; the measured value is
+$5.6 \,\text{L}/100\,\text{km}$. The ratio is $5.6/5.0 = 1.12$, or
+$+12\,\%$ relative to the dashboard. This is a non-trivial gap; a
+$\pm 5\,\%$ tolerance for a dashboard consumption display would be
+optimistic, but a $\pm 12\,\%$ gap warrants investigation.
+
+\textit{Step 2, list candidate sources.} Three independent
+measurements determine the computed consumption: the distance, the
+fuel volume on the first fill, and the fuel volume on the second
+fill. Each is subject to its own error sources.
+
+\textit{Step 3, weight the odometer source.} The odometer infers
+distance from wheel rotation count and an assumed rolling radius. The
+rolling radius depends on tyre size, wear, pressure, and temperature;
+typical odometer accuracy is $\pm 3$-$5\,\%$, with worn or under-
+inflated tyres reading the distance high (because the actual radius
+is less than the assumed radius, so each wheel rotation covers less
+distance than the odometer counts). A $+5\,\%$ odometer bias would
+overstate distance, understate consumption-per-distance, and make the
+dashboard look better than the truth. The direction of the typical
+bias is consistent with the observation.
+
+\textit{Step 4, weight the pump source.} A fuel pump's auto-shutoff
+triggers when fuel rises into a vent passage near the nozzle tip; the
+trigger level depends on the angle of the nozzle, the splash
+behaviour at the tank's filler neck, and the dispensing rate at the
+moment of shutoff. Per-fill variation is typically $\pm 0.5$ to
+$\pm 1 \,\si{\liter}$ on a $\sim 50 \,\si{\liter}$ tank, which is
+$\pm 1$-$2\,\%$ per fill, or $\pm 2$-$4\,\%$ on the difference of
+two fills. The two-fill protocol amplifies pump noise.
+
+\textit{Step 5, weight the dashboard model.} The dashboard computes
+consumption from the engine's fuel-injector pulse-width and the
+air-mass-flow sensor, with the air-fuel ratio assumed from the
+engine-management calibration. This is a model of fuel flow, not a
+direct measurement of the fuel leaving the tank. Typical accuracy is
+$\pm 5$-$10\,\%$; deliberate engine-management bias toward optimistic
+consumption reports is not unknown. The dashboard model is therefore
+the largest single candidate.
+
+\textit{Step 6, name the first measurement to repeat.} The pump-to-
+pump fuel quantity. Fill the tank from the same pump at the same
+station on two consecutive days with no driving between the fills; if
+the dispensed quantity differs by less than $\pm 0.5 \,\si{\liter}$,
+the fuel-volume measurement is reproducible and the dashboard model
+is the likely source of the $+12\,\%$ gap. If the dispensed quantity
+differs by more, the pump auto-shutoff dominates the measurement noise
+and the comparison itself is not reproducible at the required level.
+The first measurement to repeat is therefore the one whose
+reproducibility we cannot assume, not the one whose accuracy we wish
+to verify.
 \end{exercise}
 
 \begin{exercise}
@@ -1309,25 +1873,76 @@ that has reported drift in its results over the last six months. State
 whether the pipette is the cause and what evidence would distinguish
 it from other candidates.
 
-\paragraph{Rubric.} The pipette is precise (small spread,
-$\pm 1\,\%$) but inaccurate (systematic $-2\,\%$ bias). A
-\emph{constant} $2\,\%$ bias would produce a constant offset in
-the assay result, not drift; drift implies a time-varying
-component. The pipette is unlikely to be the proximate cause of
-drift unless its bias has been growing over time, in which case
-repeating the calibration weekly over the next six weeks would
-show a trend. Other candidates: reagent degradation (assay
-reagents drift with storage time and temperature); calibration of
-the assay's reference standard (drift in the standard appears as
-drift in every measurement against it); operator change (different
-operators have different systematic pipetting habits); instrument
-drift in the reading device (a spectrophotometer's lamp degrades
-with use; recalibration tracks this). Distinguishing evidence:
-historical pipette-calibration records (if available) show whether
-the $2\,\%$ bias has been growing or constant; control-sample
-trending across the drift period shows whether the reference is
-drifting; cross-validation against a second pipette in the same
-assay tests the pipette hypothesis directly.
+\paragraph{Solution.}
+We characterise the pipette, distinguish offset from drift, list
+candidate sources, and design the distinguishing measurements.
+
+\textit{Step 1, characterise the pipette.} The pipette has a
+systematic offset of $-2\,\%$ (delivers $98 \,\si{\micro\liter}$ when
+set to $100 \,\si{\micro\liter}$) and a random spread of
+$\pm 1\,\%$. The instrument is precise (small spread) and inaccurate
+(non-zero bias). Both numbers are quoted relative to the set value.
+
+\textit{Step 2, distinguish offset from drift.} A constant bias
+produces a constant offset in every assay result, not a time-varying
+trend. The assay has reported \emph{drift}, which is a change over
+time. The pipette is the proximate cause of drift only if the bias
+itself has changed over the six-month period.
+
+\textit{Step 3, list candidate drift sources with engineering
+mechanism.} (i) Reagent degradation: assay reagents lose activity
+with storage time and temperature; a slow drift in reagent
+concentration produces a slow drift in measured result. (ii)
+Reference-standard drift: calibration of the assay's reference
+standard against a higher-tier reference may have drifted; drift in
+the reference appears as drift in every measurement made against it.
+(iii) Reading instrument: a spectrophotometer's lamp output decreases
+with hours of use, biasing the absorbance reading. (iv) Operator
+change: a new operator with different pipetting technique (angle,
+pre-wet, dispense speed) produces a step change masquerading as drift
+across the rota. (v) Pipette wear: the pipette's piston seal or tip
+fitting may have degraded, growing the bias from $-2\,\%$ at
+calibration to $-4\,\%$ or worse by month six.
+
+\textit{Step 4, design the distinguishing measurements.} Three
+measurements separate the candidates.
+
+First, pipette calibration history: the pipette's quarterly
+calibration record should show whether the $-2\,\%$ bias was constant
+across the six months. If the record shows a worsening trend, the
+pipette is a candidate. If the record shows constant bias, the
+pipette is exonerated.
+
+Second, control-sample trending: run a known control sample weekly
+across the next four weeks with the suspect pipette and an
+independently calibrated second pipette. If both pipettes track the
+same drift, the drift is in reagents, reference, or instrument
+downstream. If the two pipettes disagree and the disagreement matches
+the bias differential, the pipette is the source.
+
+Third, reading-instrument validation: run the same control sample
+through the spectrophotometer with a freshly recalibrated
+absorbance reference. If the result matches the reagent-and-reference
+prediction, the spectrophotometer is in tolerance; if it disagrees,
+the spectrophotometer is drifting.
+
+\textit{Step 5, weigh the candidates.} The pipette is unlikely to be
+the dominant cause, because its measured bias is constant and the
+assay drift is time-varying. Reagent degradation and reference-
+standard drift are the two most common sources of clinical-assay
+drift over a six-month window; the literature on clinical-laboratory
+quality control treats reagent stability as the most frequent
+suspect.
+
+\textit{Step 6, name the working practice.} The clinical laboratory
+runs a daily control sample with known expected value, plots the
+result against a control chart, and flags the assay for investigation
+when the chart shows a Western-Electric rule violation (e.g., two
+consecutive points outside $\pm 2\sigma$, or seven consecutive points
+on one side of the mean). The control chart, not the post-hoc
+investigation, is the engineering response to assay drift; the
+present diagnosis is the corrective action after the chart has
+flagged.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1339,21 +1954,71 @@ report states it, (b) at least one contributing factor the report
 identifies but does not call root, (c) one organisational cause
 implicit in the report's narrative.
 
-\paragraph{Rubric.} A credible reading identifies: (a) root cause as
-the report states it, the failure to use metric units in the coding
-of a ground software file (SM\_FORCES), used in trajectory models
-that required newton-seconds but received pound-seconds; (b)
-contributing factors the report enumerates, including the inadequate
-verification of the navigation model against in-flight data, the
-sparse small-forces telemetry, the under-staffing of the navigation
-team, and the absence of independent cross-checks at the operations
-interface; (c) implicit organisational cause, the fragmentation of
-responsibility across the contractor (Lockheed Martin) for the
-ground software and JPL for the navigation model, with no single
-party accountable for end-to-end unit consistency. The report names
-several recommendations on the verification, audit, and modelling
-fronts; the organisational fragmentation is acknowledged less
-directly.
+\paragraph{Solution.}
+We work through the report's three layers: stated root cause,
+enumerated contributing factors, and implicit organisational cause.
+
+\textit{Step 1, locate the root cause statement.} The Mishap
+Investigation Board report names the root cause as the failure to use
+metric units in the coding of a specific ground software file
+(SM\_FORCES) used in the trajectory models. The file produced impulse
+values in pound-force seconds; the navigation software consumed the
+values as newton-seconds. The conversion factor of
+$1 \,\text{lbf}\cdot\text{s} = 4.45 \,\si{\newton\second}$ was missing
+from the interface specification and from the data exchange.
+
+\textit{Step 2, quantify the consequence.} Over the eleven-month
+cruise to Mars, the small-forces accumulated to produce a trajectory-
+modelled position that was approximately $170 \,\si{\kilo\meter}$
+closer to the planet than the actual spacecraft was. The Mars
+Orbital Insertion was computed for the modelled trajectory; the
+actual spacecraft entered the Martian atmosphere at an altitude of
+approximately $57 \,\si{\kilo\meter}$, below the $80 \,\si{\kilo
+\meter}$ threshold at which the heat shield-less orbiter could
+survive. The orbiter was lost.
+
+\textit{Step 3, list contributing factors the report enumerates.} The
+report identifies several. Inadequate verification of the navigation
+model against in-flight data: the small-forces accumulation was
+visible in the telemetry and was queried by the navigation team, but
+the queries were not escalated to a system-level review. Sparse
+small-forces telemetry: the data exchange between contractor and
+operator was not configured to make the unit-system visible to either
+party. Under-staffing of the navigation team: the small-forces
+investigation was deferred under workload pressure. Absence of
+independent cross-checks at the operations interface: no party was
+charged with verifying the unit consistency of the exchanged data.
+
+\textit{Step 4, identify the implicit organisational cause.} The
+report does not name the organisational fragmentation as a root cause
+directly, but its narrative makes the cause visible. The ground
+software was developed by Lockheed Martin; the navigation model was
+operated by JPL; the data exchange was specified in a document that
+treated unit consistency as a downstream concern. No single party was
+accountable for end-to-end unit consistency, and the unit-system
+choice (imperial on the contractor side, SI on the operator side) was
+not the subject of a defined interface specification. The
+fragmentation made the failure invisible to each party at the time of
+the relevant decision.
+
+\textit{Step 5, distinguish the report's recommendations.} The report
+recommends interface-document standardisation, independent navigation
+verification, and increased small-forces telemetry resolution. These
+recommendations address the technical layers of failure. The
+organisational recommendation (single end-to-end accountability for
+mission-critical data exchanges) is implicit in the report's
+discussion of contractor-operator interfaces but is not stated as a
+recommendation at the same level.
+
+\textit{Step 6, connect to the chapter's discipline.} The
+chapter's seven-component measurement habit (dated entry, instrument
+and calibration, operator, conditions, provenance, signature, reading)
+would have made the unit-system choice visible at the
+contractor-operator interface; the missing component in the MCO data
+exchange was the explicit unit declaration on every data field. The
+discipline does not prevent the organisational fragmentation, but it
+does make the technical failure visible at the point where the
+fragmentation produces it.
 \end{exercise}
 
 \begin{exercise}
@@ -1365,19 +2030,80 @@ measurement discipline of the kind described in section 1.5 would
 have caught on its own and which would still require a procedural
 change.
 
-\paragraph{Rubric.} (1) The unit conversion error (using
-$1.77 \,\text{lb/L}$ where the calculation required $\sim 0.80
-\,\si{\kilogram\per\liter}$) understated the required fuel mass by
-a factor of $\sim 2.2$; (2) the unserviceable fuel quantity processor
-removed the automatic onboard cross-check that would normally have
-flagged the discrepancy at the gate; (3) the procedural shortcut
-that authorised dispatch without the failed processor working
-removed the institutional barrier against the manual-calculation
-error. The seven-component measurement discipline of section 1.5
-would have caught (1) by enforcing the unit on every entry in the
-calculation log and (2) by recording the instrument's calibration
-status; the procedural authorisation in (3) is institutional and
-requires a procedural change, not a measurement discipline alone.
+\paragraph{Solution.}
+We work each contribution, compute the resulting error, and assign
+the corrective action to its appropriate engineering layer.
+
+\textit{Step 1, name contribution one and compute the error.} The
+unit conversion error used $1.77 \,\text{lb/L}$ where the calculation
+required the metric specific gravity of approximately
+$0.80 \,\si{\kilogram\per\liter}$. The two numbers differ by the
+pound-to-kilogram factor of $2.205$. The required fuel mass was
+under-stated by this factor: instead of loading the mass needed for
+the planned flight, the fuelling crew loaded the mass that would
+satisfy the calculation if pounds were the unit. The aircraft
+departed with approximately $45\,\%$ of the fuel required for the
+planned distance.
+
+\textit{Step 2, name contribution two and compute the missing
+defence.} The fuel quantity processor (FQP) was the onboard system
+that read fuel quantity directly from tank sensors and displayed it
+in the cockpit. It was unserviceable on Flight 143. With the FQP
+working, the crew would have seen at start-up that the displayed
+fuel mass was approximately half the expected value, and would have
+queried the discrepancy at the gate before pushback. With the FQP
+inoperative, the cockpit display was blank and the manual
+calculation became the sole source of the fuel-mass figure.
+
+\textit{Step 3, name contribution three and the procedural shortcut.}
+The Minimum Equipment List (MEL) for the Boeing 767 at the time
+permitted dispatch with the FQP inoperative under specific
+conditions, including a manual dip-stick measurement of fuel quantity
+at each fuel uplift. The manual procedure was performed; the dip-
+stick reading in litres was converted to mass using the wrong
+conversion factor; the resulting mass figure was carried forward
+without an independent check. The procedural authorisation removed
+the institutional barrier (no dispatch without FQP) that would have
+caught the manual-conversion error.
+
+\textit{Step 4, decompose the engineering layers.} Three layers
+contributed: the measurement layer (manual conversion arithmetic),
+the instrumentation layer (FQP unserviceable), and the procedural
+layer (MEL authorising dispatch). The accident was the simultaneous
+failure of all three; any one of them held would have prevented the
+fuel exhaustion at altitude.
+
+\textit{Step 5, assign correctives by layer.} The seven-component
+measurement discipline of section 1.5 catches contribution one. Each
+component of the calculation log carries its unit explicitly; the
+conversion ratio carries its dimensional check; the calculation
+result carries its unit. A second crew member counter-signs the
+calculation against the source data. The discipline would have
+flagged the dimensional inconsistency at the gate, well before
+pushback.
+
+The measurement discipline also catches contribution two indirectly,
+by recording the instrument's calibration and serviceability status
+on every entry that uses its reading; in this case the entry would
+read ``FQP inoperative; mass derived from dip-stick measurement at
+gate.'' The recording makes the dependency on the manual path
+visible.
+
+The procedural authorisation in contribution three is institutional.
+The corrective is a change to the MEL or to the dispatch procedure;
+the measurement discipline alone does not address it. Post-accident
+Transport Canada revised the dispatch procedure to require a second
+independent fuel-mass calculation under the manual path.
+
+\textit{Step 6, name the chapter's broader lesson.} A measurement
+discipline catches measurement errors. It does not catch institutional
+errors. The seven-component habit makes the measurement layer
+auditable; the audit reveals where the institutional layer has
+abandoned its defences. The lesson of Gimli is that measurement
+discipline is necessary but not sufficient: the institutional layer
+must be designed to preserve defences when the measurement layer
+reveals an unusual dependency, and the discipline is the mechanism
+that makes the dependency visible.
 \end{exercise}
 
 \begin{exercise}
@@ -1388,27 +2114,86 @@ to 300 words, whether this is a measurement failure, a software
 failure, or a verification failure. State which framing produces the
 most useful corrective action.
 
-\paragraph{Rubric.} A credible argument identifies that each framing
-captures part of the failure. As measurement failure: the inertial
-reference system was measuring a quantity (the horizontal bias)
-that exceeded the range of its representation; the engineering
-discipline of stating the range of every measured quantity before
-the integration would have surfaced the mismatch. As software
-failure: the type conversion was unprotected, the exception was
-unhandled, and the backup SRI ran the same software and failed for
-the same reason; defensive software practices (range checks,
+\paragraph{Solution.}
+We argue each framing in turn, evaluate the corrective action it
+produces, and identify the framing whose corrective covers the
+broadest part of the failure chain.
+
+\textit{Step 1, frame as measurement failure.} The Inertial Reference
+System (SRI) was measuring horizontal velocity, an internal quantity
+used in the alignment routine that had been carried over unchanged
+from Ariane 4. On Ariane 5, the booster's higher trajectory caused
+horizontal velocity to exceed the maximum value representable as a
+16-bit signed integer at $T+37 \,\si{\second}$. The measured quantity
+left the range its representation could hold; the type-conversion
+generated an operand-error exception. Read as measurement, the
+failure is a range-mismatch between the measurand and its
+representation. The engineering discipline of stating the maximum and
+minimum range of every measured internal quantity, and verifying that
+the representation is wide enough to hold the range under the
+intended flight envelope, would have surfaced the mismatch.
+
+\textit{Step 2, frame as software failure.} The conversion from a
+64-bit floating-point value to a 16-bit signed integer was
+unprotected by a range check or exception handler. The handler that
+fired at the overflow followed the system's default behaviour of
+shutting down the SRI; the backup SRI was running the same software
+and shut down for the same reason at the same flight time; the
+launcher's guidance system received nonsense data and commanded full
+nozzle deflection; the aerodynamic loads exceeded structural limits
+and the launcher self-destructed. Read as software, the failure is
+an unguarded conversion in a critical path with dissimilar-software
+redundancy absent. Defensive software practices (range checks,
 exception handlers, type-conversion guards, dissimilar redundancy)
-would have prevented the cascading failure. As verification failure:
-the SRI software was qualified for the Ariane 4 flight envelope and
-reused on Ariane 5 without re-qualification against the new
-envelope; the discipline of validation-envelope tracking would have
-flagged the gap. The most useful corrective action is the third
-framing, because the proximate engineering decision was the reuse
-of qualified software outside its qualification envelope. Software
-practices and measurement discipline both contributed, but the
-single change that would have prevented the failure was the
-verification of the reused module against the new flight envelope
-before integration.
+would have prevented the cascade from the operand-error to the
+loss of vehicle.
+
+\textit{Step 3, frame as verification failure.} The SRI software was
+qualified for the Ariane 4 flight envelope, in which horizontal
+velocity remained within representable range. Ariane 5 had a
+different trajectory profile, with higher horizontal velocity
+earlier in the flight. The software was reused on Ariane 5 without
+re-qualification against the new envelope; the alignment routine
+was running redundantly post-liftoff for legacy reasons specific to
+Ariane 4's launch-pad alignment procedure, and was not needed on
+Ariane 5. Read as verification, the failure is the absence of a
+qualification-envelope match between the inherited software and the
+new vehicle.
+
+\textit{Step 4, evaluate the corrective for each framing.} The
+measurement framing produces the corrective ``add range checks to
+internal-quantity measurements.'' This is a narrow fix; it addresses
+the SRI's representation but leaves the broader question of when
+inherited subsystems should be re-qualified unaddressed. The software
+framing produces the corrective ``add defensive guards and dissimilar
+redundancy.'' This is broader; it addresses the cascade but does not
+catch the fact that the alignment routine should not have been
+running on Ariane 5 at all. The verification framing produces the
+corrective ``re-qualify every inherited subsystem against the new
+vehicle envelope before integration.'' This is the broadest; it
+catches the unnecessary routine, the range mismatch, and the
+software gap as a single point of audit.
+
+\textit{Step 5, identify the broadest-coverage framing.} The
+verification framing covers the most of the failure chain because the
+proximate engineering decision that produced the failure was the
+decision to reuse the qualified Ariane 4 SRI software on Ariane 5
+without re-qualification against the new flight envelope. Both subordinate
+correctives (range checks and defensive software) are sub-cases of
+the verification corrective; an envelope-driven re-qualification of
+the SRI module on Ariane 5 would have either added the range checks
+as part of the re-qualification, removed the alignment routine as
+unnecessary, or both.
+
+\textit{Step 6, state the broader pattern.} Inherited subsystems
+carry their qualification envelopes with them, and the qualification
+envelope is part of the subsystem's specification. When a subsystem
+is reused on a new vehicle, the envelope must be re-evaluated against
+the new vehicle's profile; the absence of an envelope-match check is
+the failure mode that this and several subsequent inherited-software
+accidents share. The corrective is procedural and verifiable; it
+makes the envelope visible at the integration interface, which is
+where the inheritance decision is actually made.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}

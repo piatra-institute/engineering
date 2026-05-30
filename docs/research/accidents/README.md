@@ -85,6 +85,7 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 | P | 2010-2020 | [F-35 ALIS programme](f35-alis-2010-2020.md) | `acc:gao-f35-alis-2020` |
 | V | 2015 | [Volkswagen diesel emissions defeat device](volkswagen-diesel-defeat-2015.md) | `acc:epa-vw-nov-2015` |
 | P | 1999/2019 | [GPS week-number rollover](gps-week-rollover-1999-2019.md) | `web:gpsgov-week-rollover-2019` |
+| P | 1982-1983 | [Vancouver Stock Exchange index rounding](vse-index-1983.md) | closest-equivalent: `paper:quinn-vse-1983` (no `acc:` key; cited directly) |
 
 ### Metrology
 
@@ -100,9 +101,9 @@ Sorted by domain, then by year. Status: V = verified, P = provisional, X = place
 - Power: 4
 - Environmental: 1
 - Medical: 2
-- Software: 5
+- Software: 6
 - Metrology: 1
-- **Total: 38**
+- **Total: 39**
 
 ## Pending entries
 

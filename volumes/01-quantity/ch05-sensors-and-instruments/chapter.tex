@@ -801,6 +801,67 @@ $12$ bits. The probe and its compensation are part of the
 measurement chain; a $\times 10$ probe presents $10 \,\si{\mega\ohm}$
 input impedance and divides the signal by ten.
 
+The instrument has five working specifications a reader should
+understand before reaching for it.
+
+\engterm{Bandwidth.} The bandwidth is the frequency at which the
+input amplitude is reduced by $-3\,\si{\decibel}$ (a factor of
+$0.707$). A $100\,\si{\mega\hertz}$ oscilloscope reads a
+$100\,\si{\mega\hertz}$ sinusoid at $70\%$ of its true amplitude;
+the same scope reads a $10\,\si{\mega\hertz}$ sinusoid faithfully.
+For digital signals, the rule of thumb is to choose an
+oscilloscope bandwidth at least five times the signal's highest
+frequency content. A $20\,\si{\mega\hertz}$ digital clock has fifth
+and seventh harmonics around $100\,\si{\mega\hertz}$ to
+$140\,\si{\mega\hertz}$; an oscilloscope with only $100\,\si{\mega
+\hertz}$ bandwidth measures the clock with rounded edges and
+attenuated harmonics, distorting any rise-time or jitter
+measurement.
+
+\engterm{Sample rate vs effective bandwidth.} A $1\,\si{\giga
+\hertz}$ bandwidth oscilloscope with a $5\,\text{GS/s}$
+sample rate provides only $5$ samples per nominal-bandwidth cycle.
+A faithful reproduction of a $1\,\si{\giga\hertz}$ pulse requires
+roughly $10$ samples per period to interpolate cleanly; choosing
+the wrong combination wastes either bandwidth or sample-memory
+capacity. The relevant figure of merit is the sample rate divided
+by the bandwidth, conventionally $\geq 4$ for sinusoidal accuracy
+and $\geq 10$ for transient capture.
+
+\engterm{Vertical resolution.} An $8$-bit ADC samples the input at
+$256$ discrete levels across the displayed voltage range; $12$-bit
+ADCs offer $4096$ levels. Vertical resolution in bits is decoupled
+from the front-panel display's resolution: a $14$-bit DSO with
+$50\,\si{\milli\volt}$ per division has $50/2^{14} \approx 3\,
+\si{\micro\volt}$ per level. The reader checks both the bit depth
+and the input range to understand the smallest voltage step the
+scope can resolve. High-resolution oscilloscopes (sometimes called
+HRO, $12$-$16$ bits) trade bandwidth for vertical resolution, and
+are the right choice for precision-analog measurements where
+$8$-bit quantisation noise would dominate the signal.
+
+\engterm{Triggering.} An oscilloscope captures a single waveform
+when a trigger condition is met (edge, pulse width, runt, glitch,
+serial-protocol pattern). Triggering is the most consequential
+operational specification: a measurement of a rare event is only
+useful if the trigger reliably catches the event. Mis-set
+triggers are the most common source of "the scope doesn't see
+anything" complaints. Modern DSOs offer dozens of trigger types;
+the user reads the manual or finds an example before the
+measurement, not after.
+
+\engterm{Aliasing.} Sampling an input at $f_{s}$ correctly represents
+frequencies below $f_{s}/2$ (the Nyquist frequency, chapter 6).
+Frequencies above $f_{s}/2$ alias back into the displayed
+spectrum, producing artefacts that look like real signals at
+lower frequencies. A DSO with $5\,\text{GS/s}$
+sample rate aliases a $3\,\si{\giga\hertz}$ input down to
+$2\,\si{\giga\hertz}$ on the display; the operator who is unaware
+of the actual signal frequency cannot diagnose the alias. An
+anti-alias filter (built into the scope's front end) limits the
+bandwidth before sampling. Operators should know whether the
+filter is engaged and at what cutoff frequency.
+
 Oscilloscopes acquired their working role in electronics
 laboratories in the mid-twentieth century and have evolved through
 analog (CRT-based) to mixed-signal (with digital channels) to
@@ -888,6 +949,62 @@ GPS and other satellite receivers, cellular and Wi-Fi radio
 receivers, and an array of capacitive touch sensors on the screen.
 The reader's smartphone is, by raw sensor count, one of the most
 densely instrumented objects in their daily environment.
+
+\subsection{The spectrum analyser}
+
+A \engterm{spectrum analyser} displays signal amplitude as a
+function of frequency rather than time. Where an oscilloscope
+answers "what does the signal look like at this moment", a
+spectrum analyser answers "what frequency content is present in
+the signal over an observation window". The two instruments are
+duals; the chapter 6 time-frequency duality discussion makes the
+relationship formal.
+
+Three specifications shape the spectrum analyser's working
+operation.
+
+\engterm{Resolution bandwidth (RBW).} The RBW is the width of the
+analyser's internal filter; two signal tones closer in frequency
+than the RBW appear merged on the display. A wider RBW gives
+faster sweeps and lower noise floor (the noise per filter
+bandwidth is smaller), but it can hide closely-spaced signal
+features. Narrower RBW shows finer detail but requires longer
+sweep time and shows a higher noise floor per pixel. Setting
+RBW is the analyser's primary operator decision: a search for a
+weak carrier near a strong one uses a narrow RBW; a survey of
+the spectrum over many decades uses a wide one.
+
+\engterm{Video bandwidth (VBW).} The VBW averages the analyser's
+displayed amplitude over time, smoothing the noise floor at the
+cost of obscuring fast transients. A VBW well below the RBW
+yields a smooth noise floor and clean displays of stable signals;
+a VBW equal to or above the RBW preserves transient detail but
+shows the moment-by-moment fluctuations. Setting VBW is the
+analyser's second operator decision: a search for a CW carrier
+uses VBW $\ll$ RBW; a search for a burst transmission uses
+VBW $\geq$ RBW.
+
+\engterm{Dynamic range and noise floor.} The analyser's noise
+floor is the smallest signal it can resolve above its own
+internal noise; the dynamic range is the ratio between the
+strongest signal it can handle without distortion and the
+weakest it can display. Dynamic range typically runs from
+$80\,\si{\decibel}$ to $120\,\si{\decibel}$ for general-purpose
+instruments; specialised instruments reach $150\,\si{\decibel}$ or
+more. A reader measuring a weak signal in the presence of a
+strong one needs to verify that the dynamic range is sufficient;
+the strong signal can otherwise generate spurious images through
+the analyser's mixer non-linearities that look like real weak
+signals.
+
+The spectrum analyser is the working instrument for radio-frequency
+and microwave measurements, electromagnetic-compatibility testing,
+vibration analysis (via the same instrument with appropriate
+front-end conditioning), and acoustic analysis. The chapter does
+not develop the FFT mathematics underlying modern instruments;
+chapter 8 covers the statistical content of spectral estimates,
+and Volume VII chapter 15 develops the working signal-processing
+theory.
 
 \section{Failure: when the sensor lies, and why it usually lies in
 the same direction}\pathtag{core}
@@ -1539,26 +1656,85 @@ for arbitrary operating points uses calculus and is taken up in
 Volume II.)
 \end{exercise}
 
-\paragraph{Solution sketch.} At $R_{\text{th}} = R_{\text{ref}}$
-the divider gives $V_{\text{out}} = V_{\text{in}}/2$. Perturb:
-$R_{\text{th}} = R_{\text{ref}}(1 + \varepsilon)$ gives
+\paragraph{Solution.}
+The voltage divider's small-signal sensitivity at the symmetric
+operating point is a standard result. The derivation by algebraic
+expansion (without calculus) walks through three steps and then
+takes the engineering interpretation.
+
+\emph{Step 1: evaluate at the symmetric point.} At $R_{\text{th}} =
+R_{\text{ref}}$, the divider expression gives $V_{\text{out}} =
+V_{\text{in}} \cdot R_{\text{ref}}/(R_{\text{ref}} + R_{\text{ref}})
+= V_{\text{in}}/2$.
+
+\emph{Step 2: evaluate at the perturbed point.} Set
+$R_{\text{th}} = R_{\text{ref}}(1 + \varepsilon)$. The perturbed
+output is
 \[
-V_{\text{out}}' = V_{\text{in}} \frac{R_{\text{ref}}(1 + \varepsilon)}
-                 {R_{\text{ref}}(2 + \varepsilon)}
-              = \frac{V_{\text{in}}}{2} \cdot
-                 \frac{1 + \varepsilon}{1 + \varepsilon/2}.
+V_{\text{out}}' = V_{\text{in}} \cdot
+\frac{R_{\text{ref}}(1 + \varepsilon)}
+     {R_{\text{ref}} + R_{\text{ref}}(1 + \varepsilon)} =
+V_{\text{in}} \cdot \frac{1 + \varepsilon}{2 + \varepsilon}.
 \]
-Expanding for small $\varepsilon$,
-$\tfrac{1 + \varepsilon}{1 + \varepsilon/2} \approx
-1 + \varepsilon - \varepsilon/2 = 1 + \varepsilon/2$, so
-$V_{\text{out}}' \approx (V_{\text{in}}/2)(1 + \varepsilon/2)$ and
-$\Delta V_{\text{out}}/V_{\text{out}} \approx \varepsilon/2$. The
-divider therefore halves the relative resistance perturbation when
-read at the symmetric point. The implication for the working
-uncertainty budget is that a $\pm 1\,\%$ reference resistor
-contributes about $\pm 0.5\,\%$ to the divider's relative output
-uncertainty, and the engineer should size the reference resistor
-tolerance with the project's per-degree budget in mind.
+Factor $1/2$ from the denominator to compare to $V_{\text{in}}/2$:
+\[
+V_{\text{out}}' = \frac{V_{\text{in}}}{2} \cdot
+\frac{1 + \varepsilon}{1 + \varepsilon/2}.
+\]
+
+\emph{Step 3: expand for small $\varepsilon$.} The ratio
+$(1 + \varepsilon)/(1 + \varepsilon/2)$ can be expanded
+algebraically (without calculus) by long division or by
+multiplying numerator and denominator by appropriate factors. The
+binomial-series approach: $(1 + \varepsilon/2)^{-1} \approx 1 -
+\varepsilon/2 + (\varepsilon/2)^{2} - \ldots$ for small
+$\varepsilon$, so the ratio becomes
+\[
+(1 + \varepsilon)(1 - \varepsilon/2 + O(\varepsilon^{2}))
+= 1 + \varepsilon - \varepsilon/2 + O(\varepsilon^{2})
+= 1 + \varepsilon/2 + O(\varepsilon^{2}).
+\]
+Therefore $V_{\text{out}}' \approx (V_{\text{in}}/2)(1 +
+\varepsilon/2)$, and the relative change is
+\[
+\frac{\Delta V_{\text{out}}}{V_{\text{out}}} =
+\frac{V_{\text{out}}' - V_{\text{out}}}{V_{\text{out}}} \approx
+\frac{\varepsilon}{2}.
+\]
+
+\emph{Step 4: the engineering interpretation.} The divider at the
+symmetric operating point halves the relative thermistor-resistance
+perturbation when transmitting it to the output. A $\pm 1\%$
+manufacturing tolerance on the thermistor at the nominal point
+contributes $\pm 0.5\%$ to the divider's output uncertainty. The
+same scaling applies to the reference resistor's tolerance: a
+$\pm 1\%$ reference resistor produces a $\mp 0.5\%$ output shift
+(the sign is inverted because increasing the reference resistor
+decreases the output for fixed thermistor). The thermistor and
+reference contributions are typically uncorrelated and combine in
+quadrature.
+
+\emph{Step 5: the operating-point sensitivity.} The halving
+sensitivity is specific to the symmetric point. At an asymmetric
+operating point $R_{\text{th}} = \alpha R_{\text{ref}}$ with
+$\alpha \neq 1$, the sensitivity is $1/(1 + \alpha)$, larger than
+$1/2$ for $\alpha < 1$ and smaller than $1/2$ for $\alpha > 1$.
+Volume II Chapter 4 develops the full derivative-based form; the
+exercise's algebraic special case is the working result for
+voltage-divider thermistor circuits operating near their
+symmetric point.
+
+\emph{Step 6: the uncertainty-budget consequence.} The reference
+resistor's tolerance is a Type B contribution to the divider's
+output uncertainty. The contribution is half the relative tolerance
+at the symmetric point and is independent of the temperature being
+measured. The engineer chooses the reference-resistor tolerance to
+match the per-degree budget required by the application; a
+typical thermistor temperature sensitivity of $\sim 3\%$ per kelvin
+near $T = 25\,\si{\degreeCelsius}$ gives a $\pm 0.5\%$
+output-uncertainty budget translating to $\pm 0.17\,\si{\kelvin}$
+of temperature uncertainty from the reference-resistor tolerance
+alone, before the thermistor's own contribution is added.
 
 \begin{exercise}
 For a strain gauge with gauge factor $G$, the fractional change in
@@ -1569,22 +1745,90 @@ $0.2\,\%$ of the unstrained resistance, and identify the
 discrimination required of the readout circuit.
 \end{exercise}
 
-\paragraph{Solution sketch.} Direct substitution:
-$\Delta R / R = G \varepsilon = 2 \times 10^{-3} = 2 \times 10^{-3}
-= 0.2\,\%$. For a $R = 350 \,\si{\ohm}$ foil gauge, this is
-$0.7 \,\si{\ohm}$. The readout circuit (typically a Wheatstone
-bridge) must discriminate at this level relative to the
-unstrained resistance baseline. A single-arm bridge excited at
-$V_{\text{ex}} = 5 \,\si{\volt}$ produces an output of
-$V_{\text{br}} \approx V_{\text{ex}} \Delta R/(4 R) =
-5 \times 0.002/4 = 2.5 \,\si{\milli\volt}$ at full strain; a
-$24$-bit ADC at this range gives nominal microvolt-per-LSB
-resolution but the practical limit is the bridge thermal
-common-mode and the instrumentation amplifier noise floor. The
-working production configuration uses a four-arm active bridge
-(two gauges in tension, two in compression) that quadruples the
-output, eliminates the bridge's thermal common-mode response, and
-is the standard load-cell and pressure-transducer architecture.
+\paragraph{Solution.}
+The exercise covers the working calculation behind every load
+cell, pressure transducer, and torque sensor. The solution walks
+the resistance-change calculation, the bridge-output computation,
+and the readout-circuit choice.
+
+\emph{Step 1: compute the fractional resistance change.} Direct
+substitution into $\Delta R / R = G \varepsilon$:
+\[
+\Delta R / R = 2 \times 10^{-3} = 0.2\%.
+\]
+The strain produces a $0.2\%$ change in the gauge's resistance.
+
+\emph{Step 2: convert to absolute resistance change.} For a
+nominal $R = 350\,\si{\ohm}$ foil gauge (the standard value for
+metal-foil strain gauges), the absolute change is
+\[
+\Delta R = 0.002 \times 350 = 0.7\,\si{\ohm}.
+\]
+The readout circuit must discriminate this $0.7\,\si{\ohm}$ change
+on a $350\,\si{\ohm}$ baseline, a $1$ part in $500$ sensitivity
+requirement.
+
+\emph{Step 3: identify the standard readout topology.} A
+Wheatstone bridge is the standard topology. The bridge has four
+resistors arranged in a diamond; an excitation voltage
+$V_{\text{ex}}$ drives one diagonal and the output voltage
+$V_{\text{br}}$ is read between the other two nodes. The bridge
+is null-balanced when all four resistors are equal. When one
+resistor changes by $\Delta R$, the bridge output is
+\[
+V_{\text{br}} \approx \frac{V_{\text{ex}} \cdot \Delta R}{4 R}
+\]
+for small $\Delta R \ll R$.
+
+\emph{Step 4: compute the bridge output.} With
+$V_{\text{ex}} = 5\,\si{\volt}$ and $\Delta R / R = 0.002$:
+\[
+V_{\text{br}} = \frac{5 \times 0.002}{4} = 2.5\,\si{\milli\volt}.
+\]
+Full-scale signal is $2.5\,\si{\milli\volt}$ on a $5\,\si{\volt}$
+excitation, corresponding to $5 \times 10^{-4}$ of the excitation.
+
+\emph{Step 5: choose the ADC.} A $24$-bit ADC over $\pm 10\,
+\si{\milli\volt}$ input range gives nominal resolution
+$20\,\si{\milli\volt}/2^{24} \approx 1.2\,\si{\nano\volt}$ per LSB.
+The bridge's $2.5\,\si{\milli\volt}$ full-scale signal is then
+represented at $\sim 2 \times 10^{6}$ counts, with theoretical
+$\mu\si{\strain}$-level resolution. The practical limit is the
+bridge's thermal common-mode response (the bridge's quiescent
+output drifts with temperature unless the gauges are matched and
+compensated) and the instrumentation-amplifier noise floor
+(typically $1$-$10\,\si{\nano\volt}/\sqrt{\si{\hertz}}$ for
+laboratory-grade parts). The ADC's nominal resolution is rarely the
+limiting factor.
+
+\emph{Step 6: identify the production bridge topology.} The
+\emph{four-arm active bridge} replaces all four resistors with
+strain gauges: two oriented to be in tension under the applied
+load, two in compression. The bridge output becomes
+\[
+V_{\text{br}} = V_{\text{ex}} \cdot \frac{\Delta R}{R},
+\]
+four times the single-arm result for the same gauge sensitivity.
+The active bridge has three further engineering advantages: (i)
+the four gauges share a common temperature, so the bridge's
+thermal common-mode response cancels at first order; (ii) the
+active topology rejects off-axis strain (a bending moment that
+strains the gauges symmetrically cancels in the bridge); (iii)
+the production bonding accuracy is averaged across four gauges,
+reducing single-gauge mounting errors. The four-arm active bridge
+is the standard architecture for load cells, pressure transducers,
+and torque sensors; the single-arm circuit shown in the worked
+example is the teaching simplification.
+
+\emph{Step 7: the engineering point.} A $\pm 1\,\si{\milli\strain}$
+full-scale strain produces a $V_{\text{br}}$ around $2.5\,\si{
+\milli\volt}$ on $5\,\si{\volt}$ excitation in the single-arm
+configuration and $10\,\si{\milli\volt}$ in the four-arm
+configuration. The four-arm topology's output is large enough that
+the readout's main constraints are calibration stability and
+thermal compensation, not the ADC's bit depth. The chapter's
+sensor-selection workflow chooses the four-arm topology because
+the bridge architecture matters as much as the gauge itself.
 
 \begin{exercise}
 A piezoelectric accelerometer has charge sensitivity $S_{q}$

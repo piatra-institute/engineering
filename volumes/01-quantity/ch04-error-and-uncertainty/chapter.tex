@@ -14,7 +14,9 @@ track: household + analysis (hybrid). Hazard class: low. Reader
 path default: standard, with sections explicitly tagged. Named
 cases: Hubble Space Telescope primary mirror (1990), revisited from
 chapters 2 and 3 as an auxiliary-test override case in the failure
-section.}
+section; Vancouver Stock Exchange index rounding (1982-1983) in the
+significant-figures section as the accumulation-of-truncation
+illustration.}
 
 \noindent
 A measurement returns a value and an uncertainty. The value says
@@ -23,6 +25,44 @@ defensible interval is. This chapter makes the second quantity
 operational: we compute it, propagate it through measurement models,
 and reject uncertainty figures selected for institutional convenience
 rather than derived from evidence.
+
+\begin{mastery}
+\textit{Historical sketch: how the GUM came to be.}
+Before the late 1970s, working metrology laboratories around the
+world used different formal conventions to report uncertainty. A
+calibration certificate issued in West Germany used DIN 1319's
+"Fehler" classification; a certificate from the National Bureau of
+Standards in the United States used a "random plus systematic"
+budget with different propagation rules; the United Kingdom's
+National Physical Laboratory used its own conventions. The
+disagreements meant that a downstream user comparing two
+calibrations had no shared vocabulary for the answer.
+
+The Bureau international des poids et mesures (BIPM) convened a
+working group in 1977 (CIPM Recommendation INC-1) to harmonise
+the conventions. The recommendation introduced the Type A
+(statistical) versus Type B (other-information) classification
+the chapter uses below, and asserted that all uncertainty
+components be combined by quadrature into a single combined
+standard uncertainty. The recommendation was non-binding but was
+adopted by the ISO Technical Advisory Group, which produced the
+first edition of the \textit{Guide to the Expression of
+Uncertainty in Measurement} (GUM) in 1993. The guide has been
+revised repeatedly (the current form is the 2008 corrected
+reissue, JCGM 100:2008) and is the international reference
+\cite{std:iso-iec-guide98}. A complementary document, the
+International Vocabulary of Metrology (VIM, JCGM 200), gives the
+standardised terminology \cite{std:jcgm-vim}.
+
+Two follow-on supplements matter for working practice. JCGM 101
+(2008) describes Monte Carlo propagation of distributions as the
+alternative when the GUM's linear approximation fails
+\cite{std:jcgm-101}; this chapter's section 4.3 uses it. JCGM 102
+(2011) extends both forms to multivariate output quantities. The
+chapter quotes the GUM's algebraic rules in working form; a
+serious calibration report cites the GUM by edition and uses its
+language verbatim.
+\end{mastery}
 
 \section{Random vs systematic error}\pathtag{core}
 
@@ -361,21 +401,52 @@ wants better $g$ measures $T$ more accurately, not $L$.
 
 \subsection{When linear propagation fails}
 
-Three conditions break the linear approximation:
+Four conditions break the linear approximation, and each one shows
+up in working engineering practice.
 
-\begin{itemize}[leftmargin=*]
-  \item Strong nonlinearity in $f$ over the range of input
-    uncertainties. Small input uncertainties may still produce
-    asymmetric output distributions if $f$ is steeply curved.
-  \item Large input uncertainties such that first-order Taylor terms
-    no longer dominate the neglected second-order terms. A practical
-    check is to compare the model evaluated at plausible high and
-    low input values with the tangent-line prediction; if the
-    residual is comparable to the propagated standard uncertainty,
-    linear propagation is no longer the right tool.
-  \item Heavy-tailed input distributions where the variance is not
-    representative of the distribution.
-\end{itemize}
+\engterm{Strong nonlinearity in $f$ over the range of input
+uncertainties.} Small input uncertainties may still produce
+asymmetric output distributions when $f$ is steeply curved. A
+photodiode's reverse-bias dark current is exponential in junction
+temperature; even a temperature uncertainty of $\pm 1\,\si{\kelvin}$
+around a setpoint produces a dark-current distribution whose upper
+tail runs much longer than the lower tail. The mean of the output is
+not the function evaluated at the mean of the input, and the
+standard uncertainty does not capture the asymmetry. A working test
+is to evaluate the model at the input mean and at the input mean
+plus the standard uncertainty: if the two outputs differ by much
+more than the linear-propagation prediction of $u_{c}(y)$, the
+linear approximation is the wrong tool.
+
+\engterm{Large input uncertainties such that first-order Taylor
+terms no longer dominate the neglected second-order terms.} A
+practical check is to compare the model evaluated at plausible high
+and low input values with the tangent-line prediction; if the
+residual is comparable to the propagated standard uncertainty,
+linear propagation is no longer the right tool. The same diagnostic
+applies even when $f$ is smooth: the issue is the size of the
+uncertainty relative to the scale on which $f$ curves.
+
+\engterm{Heavy-tailed input distributions where the variance is not
+representative of the distribution.} A Cauchy-distributed input has
+no finite variance; no number of samples will converge the
+linear-propagation rule. Cauchy distributions arise in optical
+spectroscopy (the natural line shape of a transition is Lorentzian,
+which is Cauchy) and in difference-of-ratios calculations on noisy
+data. Less drastic but still relevant: Student-$t$ inputs with low
+degrees of freedom carry tails heavy enough that quadrature
+underestimates the working risk.
+
+\engterm{Truncated or censored inputs.} A part dimension that passes
+incoming inspection cannot exceed the upper specification limit; a
+calibration interval cannot return a negative reading. The
+underlying Gaussian model may be a fine description of the
+mechanism, but the observed distribution has the tails sliced off.
+Linear propagation sees the variance of the truncated distribution
+and produces a symmetric output prediction even when the answer
+should be asymmetric. Truncated inputs are the most common case in
+manufacturing tolerance work and are the motivating example for the
+worked tolerance stack below.
 
 When linear propagation fails, the GUM's Supplement 1
 (JCGM 101:2008) describes the alternative: Monte Carlo propagation
@@ -416,6 +487,179 @@ pendulum $g$-measurement of section 4.3. With Gaussian inputs and
 sub-percent relative uncertainties, the empirical Monte Carlo
 distribution and the linear-propagation Gaussian agree. The
 reference implementation is \texttt{code/pendulum\_mc.py}.
+
+\subsection{Reading the reference implementation}
+
+The pendulum Monte Carlo file is short enough to walk through line
+by line. Reading it is part of the working engineer's training: a
+Monte Carlo run that is too short, drawn from the wrong
+distribution, or summarised with the wrong estimator is worse than a
+clean linear-propagation calculation, because it looks rigorous and
+hides the failure.
+
+The file's first block is a PEP 723 metadata header:
+
+\begin{verbatim}
+# /// script
+# requires-python = ">=3.11"
+# dependencies = ["numpy"]
+# ///
+\end{verbatim}
+
+The header lets a reader run the script with a single command
+(\texttt{uv run pendulum\_mc.py}) without managing a virtual
+environment. The dependency list is part of the script's
+documentation. A measurement report that cites a Monte Carlo result
+should record the exact dependency versions, not just the script.
+
+The next block instantiates a seeded generator and fixes the trial
+count:
+
+\begin{verbatim}
+RNG = np.random.default_rng(101)
+N_SAMPLES = 100_000
+\end{verbatim}
+
+The seed makes the result reproducible. A seeded Monte Carlo run is
+the engineering norm: the report can be re-run by a reviewer and
+either match bit-for-bit or expose a divergence in the dependency
+chain. The seed value $101$ is arbitrary; the discipline is that the
+chosen seed is recorded and unchanged across runs of the same
+analysis. Re-randomising the seed between runs is acceptable only as
+a deliberate convergence study, where the spread of estimates across
+seeds is itself the figure of merit.
+
+The sample size $10^{5}$ was selected to drive the standard error of
+the mean below the figure's display resolution. For an output with
+true standard deviation $\sigma$, the standard error of the
+empirical mean from $M$ trials is $\sigma/\sqrt{M}$; for $M=10^{5}$
+the factor is $\approx 3 \times 10^{-3}$ of $\sigma$. The standard
+error of the empirical standard deviation is roughly
+$\sigma/\sqrt{2M}$, equivalently small. A report that uses Monte
+Carlo to compare a propagated value against a tighter specification
+must keep the standard error of the Monte Carlo estimator a small
+fraction of the specification tolerance. Doubling $M$ halves the
+estimator standard error only at $\sqrt{M}$ rate: for a tenfold
+tighter estimator, the trial count multiplies by one hundred.
+
+The sampling and transform are one line each:
+
+\begin{verbatim}
+L = RNG.normal(L_NOM, L_SD, size=N_SAMPLES)
+T = RNG.normal(T_NOM, T_SD, size=N_SAMPLES)
+g = 4 * np.pi**2 * L / T**2
+\end{verbatim}
+
+Two independent Gaussian draws produce the input arrays; the model
+applies element-wise. Independence is the assumption that makes the
+two single-input draws equivalent to one joint draw from the product
+distribution. If $L$ and $T$ were correlated (the same operator
+holding the stopwatch and the ruler, perhaps, with a shared
+reaction-time bias), the joint distribution would be specified by a
+mean vector and a covariance matrix, and the draw would use
+\texttt{RNG.multivariate\_normal} or an explicit Cholesky factor of
+the covariance.
+
+The summary statistics use the unbiased estimator for the standard
+deviation:
+
+\begin{verbatim}
+g.std(ddof=1)
+\end{verbatim}
+
+The argument \texttt{ddof=1} divides by $M-1$ rather than $M$. The
+$M-1$ form is unbiased for the population variance under the usual
+finite-sample assumptions; the $M$ form (NumPy's default for
+\texttt{std}) is the maximum-likelihood estimate but is biased low
+by a factor of $(M-1)/M$. At $M=10^{5}$ the difference is
+negligible, but the discipline is to use the unbiased estimator
+unless one has chosen otherwise for a reason.
+
+The final block compares the empirical standard deviation against
+the linear-propagation prediction. The ratio printed at the end is
+the diagnostic: for this case it is within sampling error of unity,
+confirming that linear propagation is the right tool here. When the
+ratio departs materially from unity, either the linear-propagation
+calculation is wrong or the model has entered the regime where
+linear propagation breaks down. The next worked example is a case
+where the ratio diverges.
+
+\subsection{Worked example: tolerance stack on a three-part assembly}
+
+A common manufacturing problem: three machined parts stack along a
+shared axis to form an assembly of nominal length $L$. Each part
+$i$ has nominal length $\mu_{i}$ and is specified to a tolerance
+$\pm t_{i}$ (interpreted as $\pm 3\sigma_{i}$ on the manufacturing
+distribution, so $\sigma_{i} = t_{i}/3$). The assembly length is
+the sum:
+
+\[
+L = a + b + c.
+\]
+
+Linear propagation gives the assembly's standard uncertainty
+directly. With independent inputs, the variances add:
+
+\[
+u_{c}^{2}(L) = \sigma_{a}^{2} + \sigma_{b}^{2} + \sigma_{c}^{2}.
+\]
+
+For three parts with $\mu = 25\,\si{\milli\meter}$ each and
+$t = 0.05\,\si{\milli\meter}$ each, $\sigma_{i} = 0.0167\,
+\si{\milli\meter}$, so $u_{c}(L) = \sigma\sqrt{3} \approx 0.029
+\,\si{\milli\meter}$, or about $\pm 0.087\,\si{\milli\meter}$ at
+the $3\sigma$ level. The assembly tolerance scales with $\sqrt{N}$
+rather than $N$, the well-known root-sum-square (RSS) result for
+linear stacks.
+
+This is the answer the linear-propagation rule predicts when the
+inputs are taken as Gaussian. The manufacturing distribution may
+not be Gaussian, however. Two effects matter and the linear rule
+sees neither.
+
+\engterm{Truncation at the specification limit.} Parts that fall
+outside the $\pm t$ specification are rejected at incoming
+inspection. The distribution delivered to the assembly line is the
+manufacturer's distribution truncated at $\pm t$. The truncated
+distribution has reduced variance compared to the unbounded
+Gaussian; an RSS calculation that ignores truncation reports a
+slightly conservative answer.
+
+\engterm{Process-mean offset.} A real manufacturing process may
+deliver parts whose mean differs from the nominal by a fraction of
+the tolerance. Linear propagation handles this correctly if the
+offset is known, by computing the assembly's expected length from
+the means of the truncated input distributions. Linear propagation
+misses it if the offset is unmodelled.
+
+The Monte Carlo route handles both effects directly: each part is
+drawn from its specified manufacturing distribution (including
+known offset), and the draw is rejected and redrawn if the value
+falls outside the specification limits. The reference
+implementation is \texttt{code/tolerance\_stack.py}, which draws
+from a Gaussian truncated at the specification limits and reports
+the empirical mean and standard deviation of $L$.
+
+\input{volumes/01-quantity/ch04-error-and-uncertainty/figures/fig-tolerance-stack.tex}
+
+\Cref{fig:vol01:ch04:tolerance-stack} shows the empirical
+distribution of $L$ for two scenarios: (i) a centred process with
+$3\sigma$ tolerance equal to the specification, in which truncation
+barely bites and the RSS answer is correct to three digits; (ii) a
+shifted process whose mean lies at $+t/2$ inside the upper
+specification limit, in which truncation removes a substantial
+fraction of the upper tail and the empirical distribution is
+visibly asymmetric. In scenario (ii) the RSS standard deviation
+overstates the truncated standard deviation by roughly $7\%$, and
+the assembly's expected length lies $1.5\,t$ above the nominal sum.
+
+The engineering point is that the linear-propagation rule answers
+exactly one question (what is the standard uncertainty of $L$ if
+the inputs are unbounded Gaussians?), and a serious tolerance stack
+needs to answer two more (what is the actual assembly mean given
+the manufacturing process? what fraction of assemblies miss
+specification at the assembly level?). Monte Carlo answers all
+three from the same draw.
 
 \begin{mastery}
 The choice between linear propagation and Monte Carlo is an
@@ -497,6 +741,101 @@ factors with $n - 1$ degrees of freedom. The $t$-table is in any
 statistics text and in the NIST/SEMATECH e-Handbook
 \cite{web:nist-eshandbook}.
 
+\subsection{Worked example: $t$ correction at small $n$}
+
+A laboratory measures a part dimension five times and reports the
+sample mean $\bar{x} = 12.034\,\si{\milli\meter}$ and the sample
+standard deviation $s = 0.018\,\si{\milli\meter}$. The standard
+uncertainty of the mean is $s/\sqrt{n} = 0.008\,\si{\milli\meter}$.
+The reader wants a $95\%$ confidence interval for the population
+mean.
+
+The Gaussian rule would give a coverage factor of $1.96$ and a
+half-width of $1.96 \times 0.008 \approx 0.016\,\si{\milli\meter}$.
+The $t$-distribution rule, with $n - 1 = 4$ degrees of freedom,
+gives a $95\%$ coverage factor of $t_{4, 0.975} = 2.776$, and the
+half-width is $2.776 \times 0.008 \approx 0.022\,\si{\milli\meter}$.
+The $t$ correction widens the reported interval by $39\%$ over the
+naive Gaussian rule. A reader who quoted the Gaussian half-width
+would claim a tighter result than the data support.
+
+The same calculation at $n = 10$ uses $t_{9, 0.975} = 2.262$ and
+gives a $15\%$ widening over Gaussian. At $n = 30$, $t_{29, 0.975}
+= 2.045$ and the widening is $4\%$. At $n = 100$ it is $1\%$. The
+$30$-sample rule of thumb cuts in where the $t$ correction first
+falls below the typical precision of the standard uncertainty
+estimate. A serious calibration report carries the $t$ factor down
+to whatever $n$ the data have, not down to whichever $n$ a textbook
+rule of thumb crosses.
+
+\subsection{When the CLT fails: Cauchy and the heavy-tailed case}
+
+The reference simulation \texttt{code/cauchy\_mean.py} draws samples
+from a Cauchy distribution (the natural line shape of a quantum
+transition, and the distribution of the ratio of two independent
+zero-mean Gaussians) and computes the sample mean as a function of
+sample size. The sample mean does not converge: its distribution is
+the same Cauchy distribution as the parent, regardless of $n$.
+There is no central limit theorem for Cauchy variables, because
+the second moment is infinite.
+
+A working engineer encounters Cauchy and heavy-tailed sums in three
+contexts. The first is optical spectroscopy: the natural linewidth
+of an atomic transition is Lorentzian, which is Cauchy; integrating
+the line shape gives a result with no well-defined mean if the
+wings are not truncated. The second is electrical engineering: the
+phase noise of an oscillator close to the carrier has a $1/f^{2}$
+spectrum, whose autocorrelation lacks a finite second moment under
+the asymptotic CLT conditions. The third is financial-data analysis:
+returns on highly speculative assets show heavy-tailed empirical
+distributions, and any quoted standard deviation depends sensitively
+on the sample window because the underlying variance does not
+converge.
+
+When the parent distribution is heavy-tailed but the variance is
+finite (Pareto with shape $\alpha > 2$, Student-$t$ with degrees of
+freedom $\nu \geq 3$), the CLT still applies, but the convergence
+to Gaussian is slow. Sample sizes of $n = 30$ are not enough to
+make the sample mean Gaussian; the engineer should plot the
+empirical distribution of the sample mean rather than trusting the
+CLT prediction.
+
+\subsection{Bootstrap as the empirical alternative}
+
+When the parent distribution is unknown and the analytic conditions
+of the CLT are hard to verify, the bootstrap provides an empirical
+route to a confidence interval for the sample mean (or for any
+statistic). The procedure:
+
+\begin{enumerate}[leftmargin=*]
+  \item From the observed sample of size $n$, draw $n$ values with
+    replacement to form a \engterm{bootstrap resample}.
+  \item Compute the statistic of interest on the resample (the
+    sample mean, for example).
+  \item Repeat for $B$ resamples; choose $B$ from a stopping rule
+    on the standard error of the bootstrap estimator, typically
+    $B \geq 10^{3}$ for a confidence interval, $B \geq 10^{4}$ for
+    a tail quantile.
+  \item The empirical distribution of the resample statistic is
+    the bootstrap distribution of the statistic; its $2.5\%$ and
+    $97.5\%$ percentiles give a $95\%$ confidence interval (the
+    percentile bootstrap).
+\end{enumerate}
+
+The bootstrap works when the original sample is representative and
+the statistic is smooth in the data. It does not work when the
+statistic is at the boundary of its support (the maximum of a
+bounded random variable, for example) or when the parent
+distribution is heavy-tailed in a way that violates the bootstrap's
+own asymptotic conditions. The case for the bootstrap, when it
+works, is that it requires no Gaussian assumption and no
+analytically tractable variance formula. The case against, in
+working measurement, is that the bootstrap inherits whatever
+sampling bias the original draw carried; a small sample drawn from
+the wrong population gives a tight bootstrap interval around the
+wrong answer. The interval is a property of the data, not of the
+population.
+
 \section{Significant figures, rounding, reporting}\pathtag{standard}
 
 A reported measurement value is a string of digits with an
@@ -559,6 +898,120 @@ with uncertainty $\pm 0.05 \,\si{\volt}$ should be written as
 $5.32 \pm 0.05 \,\si{\volt}$, not $5.3247 \pm 0.05 \,\si{\volt}$.
 Reporting more digits in the value than the uncertainty supports is
 a form of false precision.
+
+\subsection{Guard digits and intermediate-result discipline}
+
+The rounding rule for a final report does not apply to intermediate
+results carried through a long calculation. Rounding an intermediate
+value to the precision of the inputs throws away the digits the
+next stage of the calculation needs. The discipline is to carry one
+or two extra digits, sometimes called \engterm{guard digits},
+through every intermediate step, and round only at the report.
+
+A simple demonstration: suppose three independent voltage
+measurements at $1.234\,\si{\volt}$, $2.567\,\si{\volt}$, and
+$3.890\,\si{\volt}$ are summed. Each is reported to three decimals,
+so the inputs are at the millivolt level. If the calculation is
+done at three decimals, the sum is $7.691\,\si{\volt}$. If the
+inputs are first rounded to two decimals ($1.23 + 2.57 + 3.89$),
+the sum is $7.69\,\si{\volt}$. The two answers happen to agree to
+two decimals here, but the rounding error in each input is now
+correlated across the chain: a downstream step that takes a
+difference of two such sums will see a difference biased by the
+rounding artefact, not by the underlying measurement noise.
+
+The same problem appears in matrix arithmetic, where catastrophic
+cancellation between large nearly equal numbers can eliminate all
+significant figures. The fix in numerical analysis is to use a
+larger floating-point type for intermediate work (Volume II Chapter
+16 develops the working rules), or to reformulate the calculation
+to avoid the cancellation. The working rule for measurement
+reporting is the same in spirit: carry enough digits through the
+chain that the rounding error in any intermediate result is small
+compared to the propagated standard uncertainty at that point.
+
+\subsection{Accumulating rounding error in a long calculation}
+
+A typical engineering calculation is a chain of operations, each of
+which introduces a rounding error of about half a unit in the last
+place (one half ULP, in floating-point parlance). If the
+intermediate results are stored in a finite-precision format and
+the chain has $N$ steps, the rounding errors accumulate. For
+independent errors the accumulation grows as $\sqrt{N}$ in the
+worst-case standard sense; for correlated errors (every step
+rounding in the same direction) the accumulation can grow linearly.
+
+A spreadsheet that runs an iterative solution over hundreds of
+cells will accumulate rounding errors that are invisible at any
+single step but visible in the final answer. The standard
+recommendation is to keep intermediate precision substantially
+above the report precision (full IEEE 754 double precision for most
+engineering work, extended precision for ill-conditioned problems),
+and to spot-check the final answer against a fresh calculation done
+with a different starting precision. When the two answers agree at
+the report precision, the rounding accumulation is below the report
+threshold; when they disagree, the calculation is rounding-limited
+and the report precision should be reduced or the calculation
+reformulated.
+
+The Vancouver Stock Exchange index, in service from 1982 to 1983,
+lost roughly half its nominal value over twenty-two months because
+of an unguarded truncation in the index update
+\cite{paper:quinn-vse-1983}. The underlying market was approximately
+flat, but the truncate-don't-round rule, applied thousands of times
+per day, drove the index downward by a measurable rate every day.
+The fix was to switch to round-half-to-even, and the index was
+retroactively recomputed. The case is now a textbook reference for
+how a tiny rounding rule applied a million times becomes a visible
+engineering failure.
+
+\subsection{Audience-specific reporting}
+
+A calibration report submitted to an accredited laboratory does
+not look like a measurement summary on an instrument datasheet,
+and neither looks like a result reported in a peer-reviewed paper.
+The differences are in the level of detail, not the underlying
+discipline.
+
+\engterm{Laboratory record.} Includes every digit the instrument
+delivered, the instrument identifier, the operator, the date and
+time, and the environmental conditions. The record is the
+authoritative source if the result is ever audited. Significant
+figures match instrument resolution, not the user's downstream
+needs.
+
+\engterm{Calibration certificate.} Reports values, uncertainties,
+the coverage factor, the standard against which the measurement
+traces, and the date of calibration. The certificate is the
+contract: a downstream user who relies on the calibration must be
+able to recompute their own uncertainty budget from what the
+certificate states. The number of digits matches the uncertainty,
+strictly; certificates that report more digits than the uncertainty
+supports are calibration-discipline failures.
+
+\engterm{Customer-facing datasheet.} Reports a typical value, a
+specification range, and the conditions under which the
+specification holds. The digits match the specification, not the
+underlying measurement. A datasheet that reports
+$5.000 \pm 0.005\,\si{\volt}$ for a voltage reference is making a
+specification claim with three decimals; the manufacturer commits
+to that specification across the production run, not for one
+sample.
+
+\engterm{Peer-reviewed publication.} Reports values, uncertainties,
+the coverage factor, the measurement model, and the propagation
+calculation. The paper is the public archive: a future reader must
+be able to reconstruct the result from the description. The journal
+style guide governs format; the underlying discipline does not
+change with journal.
+
+A working engineer reads four kinds of measurement records and
+writes at least three of them. The first habit to internalise is
+that the precision of the report is set by the audience and the
+purpose, not by what the calculation delivered to floating-point
+precision. The second is that the underlying laboratory record
+keeps every digit the instrument produced, regardless of how few
+end up in the final report.
 
 \section{Confidence intervals as engineering tools}\pathtag{standard}
 
@@ -624,6 +1077,358 @@ with stated $k$, or another distribution justified by the data sheet
 or calibration certificate. Treating a maximum-error specification
 as a standard uncertainty can understate the uncertainty by a large
 factor.
+
+\subsection{Confidence interval for a difference of means}
+
+Many working measurements compare two cases: a before-and-after
+calibration check, a same-part-different-day reproducibility test,
+or a treatment-and-control comparison in a designed experiment. The
+confidence interval for the difference is built from the
+uncertainties of the two means and the assumed correlation between
+them.
+
+For two independent samples with means $\bar{x}_{1}, \bar{x}_{2}$
+and standard uncertainties of the mean $u_{1}, u_{2}$, the
+difference $d = \bar{x}_{1} - \bar{x}_{2}$ has standard uncertainty
+
+\[
+u(d) = \sqrt{u_{1}^{2} + u_{2}^{2}},
+\]
+
+and the confidence interval uses the coverage factor for the
+appropriate effective degrees of freedom (Welch-Satterthwaite if the
+variances are unequal). For paired measurements (same part, two
+methods, two days), the difference $d_{i} = x_{1i} - x_{2i}$ is
+computed first and the confidence interval is built from the
+distribution of the $d_{i}$. The paired form is tighter when the
+two measurements share a systematic component the difference
+cancels.
+
+The engineering question that picks between the forms is whether
+the two measurements have shared systematic structure. A
+before-and-after recalibration share the part being measured but
+have independent calibration errors at the two times: the paired
+form is appropriate for the part-to-part variability question, the
+independent form for the calibration-difference question. A two-
+analyst comparison on the same parts shares the parts: paired,
+unless the question is specifically about analyst-to-analyst random
+variation across many parts.
+
+\subsection{Prediction intervals}
+
+A confidence interval bounds the location of the population mean.
+A \engterm{prediction interval} bounds the location of the next
+single measurement drawn from the population. For a sample of size
+$n$ with sample mean $\bar{x}$ and sample standard deviation $s$
+from a Gaussian population, the $95\%$ prediction interval for the
+next observation is
+
+\[
+\bar{x} \pm t_{n-1, 0.975} \cdot s \sqrt{1 + \tfrac{1}{n}},
+\]
+
+while the corresponding confidence interval for the population mean
+is
+
+\[
+\bar{x} \pm t_{n-1, 0.975} \cdot \frac{s}{\sqrt{n}}.
+\]
+
+The prediction interval is much wider than the confidence interval:
+the $\sqrt{1 + 1/n}$ factor is approximately $1$, not approximately
+$1/\sqrt{n}$. The prediction interval shrinks to roughly $\pm 2s$
+as $n$ grows, never to zero, because the population's spread is the
+floor.
+
+The two intervals answer different questions. A product
+specification covers the next-unit-shipped question: the prediction
+interval bounds where that unit will fall. A statement about the
+process's centre answers the production-mean question: the
+confidence interval bounds where the centre is. A specification
+sheet that reports the confidence interval as a tolerance
+implicitly claims that every individual unit will fall in a
+window much narrower than the unit-to-unit variation actually
+allows. The result is a discipline failure that surfaces during
+qualification testing of the manufactured population, when units
+that meet specification on the (correct) prediction interval are
+rejected against the (incorrect) confidence-interval tolerance.
+
+\subsection{Multiple comparisons and Bonferroni}
+
+A measurement campaign that tests many hypotheses simultaneously
+has more chances to produce a spuriously significant result than a
+single test. With $k$ independent $95\%$-coverage confidence
+intervals, the probability that at least one excludes the true
+value is approximately $1 - 0.95^{k}$, which reaches $40\%$ at
+$k = 10$ and $64\%$ at $k = 20$. The naive interpretation, that
+each interval has $5\%$ false-coverage probability, understates the
+campaign's collective error rate.
+
+The Bonferroni correction divides the per-test significance level
+by the number of tests: to maintain $5\%$ family-wise error across
+$k$ comparisons, each test uses a $5/k$ percent coverage level.
+The correction is conservative (it assumes the worst-case
+independent-test structure) but is computationally trivial and
+requires no knowledge of the dependence between tests. False
+discovery rate (FDR) control is the less conservative alternative
+used in screening contexts; Volume I Chapter 8 takes both up in
+detail.
+
+The discipline for a calibration campaign with many comparisons is
+to apply a multiple-comparisons correction before reporting which
+intervals "exclude zero" or "exceed specification." The same
+discipline applies to any test in which a measurement compares
+itself to many references: a single test that any of the
+references fails will trigger spuriously if the per-test rate is
+left uncorrected.
+
+\subsection{Connecting confidence intervals to design margin}
+
+A design margin is the gap between the worst-case operating
+condition and the failure condition. The worst case is set by the
+confidence interval on the operating condition, plus an explicit
+safety factor; the failure condition is set by the confidence
+interval on the material strength or component specification, minus
+its own safety factor. Both intervals come from measurements; the
+design margin is the difference of the two intervals' edges, not
+of their means.
+
+A practical illustration: a structural element loaded at
+$F_{\text{op}} = 100 \pm 5 \,\si{\kilo\newton}$ (95\% expanded,
+$k = 2$) is specified to fail at $F_{\text{fail}} = 150 \pm 10
+\,\si{\kilo\newton}$ (95\%). The mean margin is $50\,\si{\kilo
+\newton}$. The worst-case margin at $95\%$ coverage is
+$F_{\text{fail}, \text{low}} - F_{\text{op}, \text{high}} =
+140 - 105 = 35\,\si{\kilo\newton}$. The mean-to-mean margin
+overstates the design margin by a factor of $50/35 \approx 1.4$.
+The full design margin should be reported against the worst case,
+not the mean.
+
+The same logic applies to tolerance stacks: the design margin on
+an assembly is the gap between the worst-case assembly dimension
+(from the upper confidence-interval edges of the parts) and the
+specification limit. A design that meets specification at the means
+of the parts but fails at the upper edges is on the wrong side of
+its tolerance discipline.
+
+\subsection{Confidence interval misread as specification: a working case}
+
+A precision-instrument manufacturer calibrates a batch of pressure
+transducers and reports the calibration certificate as a
+manufacturing-confidence statement: "the population mean output
+lies within $\pm 0.05\%$ of nominal at $95\%$ confidence." A
+downstream customer interprets the $\pm 0.05\%$ as the
+per-instrument specification and integrates the transducer into a
+process control loop with $\pm 0.05\%$ tolerance budget.
+
+In service, individual instruments routinely read $\pm 0.15\%$ from
+nominal. The instruments are not defective: the population mean is
+indeed within $\pm 0.05\%$ of nominal, and the manufacturer's
+calibration claim is correct. The customer's misreading was to
+treat the confidence interval on the mean as a tolerance interval
+on individual units. The unit-to-unit prediction interval, which the
+manufacturer could have reported and the customer should have asked
+for, is roughly $\pm 0.18\%$ at $95\%$ ($\sqrt{n}$ wider than the
+population mean's interval, given the population standard deviation
+the calibration data implied).
+
+The fix is half manufacturer discipline (report both confidence and
+prediction intervals; identify which the specification claim
+refers to) and half customer discipline (ask which interval the
+specification claim refers to; if the answer is ambiguous, assume
+the wider one until clarified). The case repeats often enough that
+it is now treated as a default risk in quality-engineering
+reviews.
+
+\section{Uncertainty budgets in practice}\pathtag{core}
+
+The propagation rules and confidence-interval discipline of the
+previous sections are the building blocks. The working artefact
+that holds them together in a calibration certificate or a
+measurement report is the \engterm{uncertainty budget}: a table
+listing every source of uncertainty in the measurement, its
+standard contribution, its sensitivity coefficient (the partial
+derivative of the output with respect to the input, when the input
+is the relevant quantity), and its combined effect on the
+output's standard uncertainty.
+
+The budget is the report's audit trail. A reader who disputes the
+final standard uncertainty traces back through the budget to find
+which contribution they think is wrong. A reviewer who validates
+the calibration certificate checks each contribution against the
+data, the instrument specifications, and the calibration history.
+A regulatory auditor uses the budget as the evidence that the
+measurement is fit for the application's tolerance.
+
+\subsection{The budget's working format}
+
+The standard format follows the GUM \cite{std:iso-iec-guide98}. Each
+row records one uncertainty source. The columns are:
+
+\begin{itemize}[leftmargin=*]
+  \item Source name (the contributing quantity or effect).
+  \item Distribution type (Gaussian, uniform, triangular, etc.).
+  \item Value (the input value or specification half-width).
+  \item Divisor (the conversion from half-width to standard
+    uncertainty; $\sqrt{3}$ for uniform, $\sqrt{6}$ for triangular,
+    $k$ for an expanded uncertainty at coverage factor $k$).
+  \item Standard uncertainty $u(x_{i})$.
+  \item Sensitivity coefficient $c_{i} = \partial y / \partial x_{i}$,
+    evaluated at the working point.
+  \item Contribution $|c_{i}| \cdot u(x_{i})$ to the output's
+    combined standard uncertainty.
+  \item Type (A from statistical analysis of repeated measurements,
+    B from prior information).
+  \item Source of the value (calibration certificate, manufacturer
+    specification, standard reference, etc.).
+\end{itemize}
+
+The final row records the combined standard uncertainty,
+$u_{c}(y) = \sqrt{\sum (c_{i} u(x_{i}))^{2}}$, with the
+expanded uncertainty $U(y) = k \cdot u_{c}(y)$ at the stated
+coverage factor in a separate line below.
+
+\subsection{Worked uncertainty budget: pendulum $g$-measurement}
+
+Section 4.3 took a pendulum measurement of $g = 4\pi^{2} L/T^{2}$
+with $L = 1.000 \pm 0.001\,\si{\meter}$ and $T = 2.007 \pm 0.005\,
+\si{\second}$ as a worked example. The standard uncertainty was
+$u_{c}(g) \approx 0.05\,\si{\meter\per\second\squared}$. A working
+uncertainty budget for the same measurement, broken down by
+source, looks as follows.
+
+\begin{center}
+\small
+\begin{tabular}{lccccc}
+\toprule
+Source & Distr.\ & Value & Divisor & $u(x_{i})$ & Type \\
+\midrule
+Length $L$ & Gaussian & $1.000\,\si{\meter}$ & 1 & $0.001\,\si{\meter}$ & A \\
+Time $T$ & Gaussian & $2.007\,\si{\second}$ & 1 & $0.005\,\si{\second}$ & A \\
+Tape resolution & Uniform & $\pm 0.5\,\si{\milli\meter}$ & $\sqrt{3}$ & $0.29\,\si{\milli\meter}$ & B \\
+Stopwatch resolution & Uniform & $\pm 0.005\,\si{\second}$ & $\sqrt{3}$ & $2.9\,\si{\milli\second}$ & B \\
+Small-amplitude bias & Triangular & $-0.3\,\si{\milli\meter\per\second\squared}$ & $\sqrt{6}$ & $0.12\,\si{\milli\meter\per\second\squared}$ & B \\
+Air drag correction & Uniform & $+0.1\,\si{\milli\meter\per\second\squared}$ & $\sqrt{3}$ & $0.06\,\si{\milli\meter\per\second\squared}$ & B \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The sensitivity coefficients come from differentiating $g = 4\pi^{2}
+L T^{-2}$:
+
+\[
+c_{L} = \frac{\partial g}{\partial L} = 4\pi^{2} T^{-2} =
+\frac{g}{L} \approx 9.80\,\si{\per\second\squared},
+\]
+\[
+c_{T} = \frac{\partial g}{\partial T} = -8\pi^{2} L T^{-3} =
+\frac{-2g}{T} \approx -9.76\,\si{\meter\per\second\squared\per\second}.
+\]
+
+The contributions are then:
+
+\begin{center}
+\small
+\begin{tabular}{lcc}
+\toprule
+Source & $|c_{i} u(x_{i})|$ ($\si{\milli\meter\per\second\squared}$) & Fraction of $u_{c}^{2}$ \\
+\midrule
+Length $L$ & $9.8$ & $0.041$ \\
+Time $T$ & $48.8$ & $0.954$ \\
+Tape resolution & $2.8$ & $0.003$ \\
+Stopwatch resolution & $28.3$ & negligible after divisor \\
+Small-amplitude bias & $0.12$ & negligible \\
+Air drag correction & $0.06$ & negligible \\
+\midrule
+Combined $u_{c}(g)$ & $50.0\,\si{\milli\meter\per\second\squared}$ & \\
+Expanded $U(g)$, $k = 2$ & $0.10\,\si{\meter\per\second\squared}$ & \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Two observations follow directly from the budget. The first is that
+the time-measurement contribution dominates the combined
+uncertainty, at $\sim 95\%$ of the variance. The second is that
+the Type B corrections (tape and stopwatch resolution, small-
+amplitude bias, air drag) are all small enough that the working
+uncertainty would be unchanged if any of them were neglected.
+
+\subsection{The dominant-component decision}
+
+The budget identifies the dominant contributor: the time
+measurement. Three engineering responses are available.
+
+\engterm{Reduce the dominant component.} The reader who wants a
+tighter $g$ measurement should improve the time measurement
+first. Using a digital timer with $1\,\si{\milli\second}$
+resolution and averaging multiple swings reduces the time
+contribution from $48.8$ to perhaps $5\,\si{\milli\meter\per
+\second\squared}$. The combined uncertainty then drops to roughly
+$u_{c}(g) \approx \sqrt{9.8^{2} + 5^{2}} \approx 11\,\si{\milli
+\meter\per\second\squared}$, a fivefold improvement.
+
+\engterm{Accept the budget.} If the application requires only
+$\pm 0.1\,\si{\meter\per\second\squared}$ (about $1\%$), the
+current budget is fit for purpose. Further refinement wastes
+effort.
+
+\engterm{Replace the method.} For metrology-grade $g$ measurements,
+the laboratory uses a free-fall absolute gravimeter (interferometric
+distance over a falling corner-cube, timed to nanoseconds) or a
+superconducting gravimeter (relative measurements at the
+$10^{-9}$ fractional level). The pendulum method is bounded by
+the time measurement at the millisecond floor; metrology methods
+trade method for instrument.
+
+The dominant-component decision is the budget's central operational
+output. Without the budget, the reader cannot diagnose which
+contribution to reduce; with the budget, the path forward is
+explicit.
+
+\subsection{Type A and Type B in the budget}
+
+The budget classifies each row by the GUM's Type A (statistical
+evaluation from repeated measurements) versus Type B (evaluation
+from prior information). The classification matters because the
+two types carry different verification obligations.
+
+Type A contributions are verified by repeating the measurement: the
+sample standard deviation of $n$ readings is the data's own
+verification of the contribution. A reader who disputes a Type A
+contribution asks for the raw data or repeats the experiment.
+
+Type B contributions are verified by reference to the source: a
+calibration certificate states the uncertainty of a working
+standard; a manufacturer specification states the instrument's
+accuracy; a published correction states the magnitude of an
+environmental effect. A reader who disputes a Type B contribution
+checks the source.
+
+The two types combine identically (in quadrature, with sensitivity
+coefficients), but they are audited differently. A budget that
+classifies its contributions truthfully supports the audit; a
+budget that misclassifies (a Type A contribution disguised as a
+Type B claim, or vice versa) fails the audit even when the
+arithmetic is correct.
+
+\subsection{A working template}
+
+The reader who builds a working measurement should produce an
+uncertainty budget as part of the measurement plan, not as an
+afterthought to the result. The template at \texttt{data/example
+\_uncertainty\_budget.csv} is a starting point: copy, fill in
+the source-name and value columns from the measurement design,
+compute the standard uncertainty and contribution columns, sort
+by contribution to find the dominant components, and iterate the
+design until the dominant contributions match the application's
+tolerance.
+
+A serious calibration laboratory keeps a library of budget
+templates for each standard service it offers. The templates
+encode the laboratory's accumulated experience with each
+measurement's uncertainty sources; new analysts inherit the
+templates and verify (rather than re-derive) the contributions
+against the local conditions.
 
 \section{The cost of a smaller error bar}\pathtag{core}
 
@@ -739,6 +1544,65 @@ to that specification. The discipline that prevents under-precision
 is to verify the required uncertainty against the application's
 tolerance before deploying the measurement. Both disciplines
 require honest engagement with the cost-of-precision curve.
+
+\subsection{Worked case: a calibration service moves from $\pm 2\%$ to $\pm 0.5\%$}
+
+A small calibration laboratory currently delivers thermocouple
+calibrations at an expanded uncertainty of $\pm 2\%$ (relative,
+$k = 2$) using working-standard thermometers traceable to a
+national metrology institute through one accredited level. A
+customer requests a new service tier at $\pm 0.5\%$. The
+laboratory's price proposal must reflect the actual cost increase,
+not a linear factor-of-four guess.
+
+The breakdown of the existing $\pm 2\%$ budget might be: working-
+standard calibration uncertainty $1\%$ ($k = 1$); environmental
+gradient and operator effects $0.6\%$ each; ice-point or fixed-
+point reference $0.3\%$. Combined in quadrature, $\sqrt{1^{2} +
+0.6^{2} + 0.6^{2} + 0.3^{2}} \approx 1.3\%$ at $k = 1$, so $\pm
+2.6\%$ at $k = 2$. The reported $\pm 2\%$ is the rounded number on
+the laboratory's certificate.
+
+The $\pm 0.5\%$ target at $k = 2$ requires a $k = 1$ combined
+standard of about $0.25\%$. Each individual contribution must
+shrink commensurately:
+
+\begin{itemize}[leftmargin=*]
+  \item The working-standard contribution drops from $1\%$ to about
+    $0.15\%$. This means purchasing a higher-grade standard
+    (acquisition cost \$20{,}000 to \$50{,}000) and recalibrating
+    against a primary fixed-point realisation (per-calibration
+    cost \$2{,}000, twice per year). Amortised over 200 customer
+    calibrations per year: \$20 to \$70 per calibration.
+  \item The environmental and operator contributions drop from
+    $0.6\%$ to about $0.10\%$ each. The environmental contribution
+    needs a temperature-controlled enclosure (\$15{,}000
+    acquisition; \$1{,}500 per year operating) and tighter air-flow
+    control. The operator contribution needs procedural automation
+    (data-acquisition system, \$10{,}000 acquisition) and
+    additional training (\$5{,}000 per analyst). Amortised:
+    \$40 to \$100 per calibration.
+  \item The fixed-point reference contribution drops from $0.3\%$
+    to $0.05\%$. This requires the lab to maintain its own
+    high-grade fixed-point cell (\$25{,}000 acquisition, \$2{,}000
+    annual recharacterisation). Amortised: \$15 per calibration.
+\end{itemize}
+
+The per-calibration cost increase is approximately \$75 to \$185,
+on top of whatever the original $\pm 2\%$ service cost. The factor-
+of-four reduction in uncertainty produces a roughly factor-of-three
+to factor-of-six increase in per-calibration cost, depending on
+volume amortisation. The laboratory's price proposal reflects the
+actual capital and operating commitment, not a linear inverse-
+uncertainty scaling.
+
+A laboratory that bid the new service at factor-of-four-the-cost,
+assuming uncertainty scales linearly with cost, would lose money
+on every calibration once the capital cost was amortised. A
+laboratory that bid at factor-of-ten-the-cost, assuming worst-case
+metrology overhead, would not win the contract. The cost-of-
+precision discipline is to model the breakdown explicitly and
+quote from the model.
 
 \section{Failure: error bars that were politically chosen}\pathtag{core}
 
@@ -1129,18 +1993,74 @@ valid (linearity, independence, finite variance) and identify the
 case in which the formula understates the combined uncertainty.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Apply the sum rule pairwise. Define $w = a x_{1} + b x_{2}$; then
-$u^{2}(w) = a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2})$. Now
-$y = w + c x_{3}$ with $w$ and $x_{3}$ independent, so
-$u^{2}(y) = u^{2}(w) + c^{2} u^{2}(x_{3}) = a^{2} u^{2}(x_{1}) +
-b^{2} u^{2}(x_{2}) + c^{2} u^{2}(x_{3})$. Validity conditions: (i)
-linearity of $y$ in the inputs (the rule is exact here, since $y$
-is linear); (ii) pairwise independence of the three inputs (no
-covariance terms); (iii) finite variance of each input. The formula
-understates the combined uncertainty when any pair of inputs is
-positively correlated; then a $+2ab\,u(x_{1},x_{2})$ term must be
-added for each such pair.
+\paragraph{Solution.}
+The two-input sum rule, derived in the chapter, states that for
+$w = a x_{1} + b x_{2}$ with $x_{1}$ and $x_{2}$ uncorrelated,
+$u^{2}(w) = a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2})$. The three-input
+case extends by treating $y$ as the sum of $w$ and a third term.
+
+\emph{Step 1: pair the first two inputs.} Let $w = a x_{1} + b x_{2}$.
+By the two-input sum rule,
+\[
+u^{2}(w) = a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2}).
+\]
+
+\emph{Step 2: combine $w$ with the third input.} We need to show
+that $w$ and $x_{3}$ are uncorrelated. Since $w$ is a linear
+combination of $x_{1}$ and $x_{2}$ alone, $\Cov(w, x_{3}) =
+a\Cov(x_{1}, x_{3}) + b\Cov(x_{2}, x_{3})$. Under the assumption
+that all three inputs are pairwise uncorrelated, both covariances
+vanish, so $\Cov(w, x_{3}) = 0$. The pair-and-conquer construction
+is sound.
+
+\emph{Step 3: apply the two-input sum rule again.} Write
+$y = w + c x_{3}$ with $w$ and $x_{3}$ uncorrelated:
+\[
+u^{2}(y) = u^{2}(w) + c^{2} u^{2}(x_{3})
+= a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2}) + c^{2} u^{2}(x_{3}).
+\]
+This is the claimed result.
+
+\emph{Step 4: validity conditions.} Three conditions enter the
+derivation: (i) $y$ is linear in the inputs (the rule is exact here
+because $y$ is a linear combination, with no higher-order Taylor
+terms); (ii) the three inputs are pairwise independent (no
+covariance terms appear); (iii) each input has finite variance
+(otherwise $u^{2}(x_{i})$ is undefined and the formula fails to
+make sense, as the Cauchy case illustrates).
+
+\emph{Step 5: the correlated case.} If $x_{1}$ and $x_{2}$ have
+correlation coefficient $\rho_{12}$, the two-input sum rule picks
+up a covariance term:
+\[
+u^{2}(w) = a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2}) + 2ab\rho_{12}
+u(x_{1}) u(x_{2}).
+\]
+Tracking this through the three-input combination and allowing the
+remaining pairs $(x_{1}, x_{3})$ and $(x_{2}, x_{3})$ to carry
+their own correlation coefficients gives the general formula
+\[
+u^{2}(y) = a^{2} u^{2}(x_{1}) + b^{2} u^{2}(x_{2}) + c^{2}
+u^{2}(x_{3}) + 2ab\rho_{12}u(x_{1})u(x_{2}) + 2ac\rho_{13}u(x_{1})
+u(x_{3}) + 2bc\rho_{23}u(x_{2})u(x_{3}).
+\]
+The uncorrelated formula understates the combined uncertainty when
+any of the products $\rho_{ij}u(x_{i})u(x_{j})$ is positive with a
+matching coefficient sign. The understatement can be large: at
+$\rho = 1$ and equal $u$, the missing cross-term is the same size
+as each of the diagonal terms it accompanies.
+
+\emph{Step 6: the engineering point.} A measurement chain in which
+three terms share a common reference (the same calibration
+standard, the same environmental sensor, the same operator
+technique) has positive correlations among the corresponding
+uncertainty contributions. The uncorrelated formula is the GUM's
+working default; a serious uncertainty budget identifies the
+correlations explicitly and either adds the covariance terms or
+documents why the correlation can be neglected for the budget at
+hand. The default is conservative when the correlations are
+negative and optimistic when they are positive; only the budget
+that names the correlation discipline can be audited.
 
 \begin{exercise}
 Show that, in the small-error limit, the relative uncertainty of a
@@ -1154,20 +2074,67 @@ when $x$ and $y$ are uncorrelated. Identify a domain in which this
 formula systematically underestimates the uncertainty.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Write $x = x_{0}(1 + \epsilon_{x})$ and $y = y_{0}(1 + \epsilon_{y})$
-with $\epsilon_{x}, \epsilon_{y}$ small. Then
-$z = x_{0} y_{0}(1 + \epsilon_{x})(1 + \epsilon_{y}) = z_{0}(1 +
-\epsilon_{x} + \epsilon_{y} + \epsilon_{x}\epsilon_{y})$. Dropping
-the second-order term, $\epsilon_{z} \approx \epsilon_{x} +
-\epsilon_{y}$, so $u^{2}(\epsilon_{z}) = u^{2}(\epsilon_{x}) +
-u^{2}(\epsilon_{y})$ under independence, which is the claimed
-relative-uncertainty formula. Underestimates appear when (i) the
-relative uncertainties are not small (the dropped
-$\epsilon_{x}\epsilon_{y}$ term contributes), (ii) $x$ and $y$ are
-positively correlated (the missing covariance adds), or (iii) the
-distributions are heavy-tailed so that the variance does not
-represent typical fluctuations.
+\paragraph{Solution.}
+The relative-uncertainty formula for products is the multiplicative
+counterpart of the absolute-uncertainty sum rule. Working in
+relative variables makes the derivation transparent.
+
+\emph{Step 1: write each input in relative form.} Let $x =
+x_{0}(1 + \epsilon_{x})$ and $y = y_{0}(1 + \epsilon_{y})$ where
+$x_{0}, y_{0}$ are the nominal values and $\epsilon_{x},
+\epsilon_{y}$ are the relative deviations (small fractions). The
+nominal product is $z_{0} = x_{0} y_{0}$.
+
+\emph{Step 2: expand the product.} The product $z = xy$ is
+\[
+z = x_{0} y_{0}(1 + \epsilon_{x})(1 + \epsilon_{y}) = z_{0}(1 +
+\epsilon_{x} + \epsilon_{y} + \epsilon_{x}\epsilon_{y}).
+\]
+Define the relative deviation of $z$ as $\epsilon_{z} = (z - z_{0})/
+z_{0} = \epsilon_{x} + \epsilon_{y} + \epsilon_{x}\epsilon_{y}$.
+
+\emph{Step 3: drop the second-order term.} For small relative
+uncertainties, $|\epsilon_{x}|, |\epsilon_{y}| \ll 1$, the product
+$\epsilon_{x}\epsilon_{y}$ is much smaller than the linear terms
+and can be dropped. This gives $\epsilon_{z} \approx \epsilon_{x} +
+\epsilon_{y}$.
+
+\emph{Step 4: compute the variance of the relative deviation.} If
+$\epsilon_{x}$ and $\epsilon_{y}$ are uncorrelated random
+variables, then
+\[
+u^{2}(\epsilon_{z}) = u^{2}(\epsilon_{x}) + u^{2}(\epsilon_{y}),
+\]
+and since $\epsilon = u(\cdot)/(\cdot)_{0}$ for each variable,
+this is
+\[
+\left(\frac{u(z)}{z_{0}}\right)^{2} = \left(\frac{u(x)}{x_{0}}
+\right)^{2} + \left(\frac{u(y)}{y_{0}}\right)^{2},
+\]
+the relative-uncertainty product rule.
+
+\emph{Step 5: identify the underestimating domain.} The derivation
+underestimates $u(z)$ in three scenarios. \emph{Large relative
+uncertainties}: the dropped $\epsilon_{x}\epsilon_{y}$ term is of
+order $u(x)/x \cdot u(y)/y$, which for $u/x = u/y = 0.1$ is
+$0.01$, a $10\%$ contribution to the linear term; the rule
+underestimates by that amount. \emph{Positive correlation between
+$x$ and $y$}: the missing covariance $\Cov(\epsilon_{x},
+\epsilon_{y}) = \rho u(\epsilon_{x}) u(\epsilon_{y})$ adds to the
+sum, and the rule with $\rho > 0$ missing understates $u(z)$.
+\emph{Heavy-tailed input distributions}: when the variance is not
+a good summary of the spread (Cauchy, Pareto with shape
+$\alpha \leq 2$), the quadrature combination is itself
+misleading; the rule is not so much underestimating as inapplicable.
+
+\emph{Step 6: a check by the partial-derivative form.} The general
+GUM rule for $z = f(x, y)$ with uncorrelated inputs is $u^{2}(z) =
+(\partial f/\partial x)^{2} u^{2}(x) + (\partial f/\partial y)^{2}
+u^{2}(y)$. For $z = xy$, $\partial z/\partial x = y$ and
+$\partial z/\partial y = x$, giving $u^{2}(z) = y_{0}^{2} u^{2}(x)
++ x_{0}^{2} u^{2}(y)$. Dividing by $z_{0}^{2} = x_{0}^{2} y_{0}^{2}$
+recovers the relative-uncertainty form. The relative formula and
+the partial-derivative formula are the same statement.
 
 \begin{exercise}
 Derive the propagation rule for $z = x + y$ when $x$ and $y$ have
@@ -1196,21 +2163,69 @@ linear over the interval. Compare to the result for $x$ Gaussian
 with the same standard deviation.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-$f(x) = c_{0} + c_{1} x$. The variance scales as
-$\Var(y) = c_{1}^{2} \Var(x)$, regardless of the distribution of
-$x$. For $x$ uniform on $[a, b]$, $\Var(x) = (b - a)^{2}/12$, so
-$u(y) = |c_{1}|(b-a)/(2\sqrt{3})$. For $x$ Gaussian with the same
-standard deviation $\sigma_{x} = (b-a)/(2\sqrt{3})$, $u(y) =
-|c_{1}|\sigma_{x}$ is identical. The first-order propagation is
-distribution-blind. The distinction matters only for the
-distribution \emph{shape} of $y$: uniform input gives a uniform $y$
-distribution under linear $f$, while Gaussian input gives Gaussian
-$y$. The coverage interval that contains $95\%$ of $y$ is wider
-for the Gaussian (about $\pm 1.96 \sigma_{y}$) than for the uniform
-(about $\pm 1.65 \sigma_{y}$, the $95\%$ half-width of a uniform
-distribution); the standard uncertainty does not capture that
-difference.
+\paragraph{Solution.}
+The first-order propagation rule treats only the variance of the
+input, not its distribution. The solution makes that explicit and
+then identifies where the distribution does enter the working
+calculation.
+
+\emph{Step 1: write down the variance of $y$.} For
+$f(x) = c_{0} + c_{1} x$ the variance scales as $\Var(y) =
+c_{1}^{2} \Var(x)$ for any distribution of $x$, since variance is
+preserved under linear transformations up to the squared
+multiplier. The shift $c_{0}$ does not affect variance.
+
+\emph{Step 2: compute the standard deviation for the uniform input.}
+A uniform distribution on $[a, b]$ has mean $(a + b)/2$ and
+variance $(b - a)^{2}/12$ (the standard result from probability
+theory; the second-moment integral $\int_{a}^{b}(x - \mu)^{2}/(b-a)
+\,\dd x$ evaluates to this). Therefore
+\[
+u(y) = |c_{1}| \sqrt{(b - a)^{2}/12} = |c_{1}| (b-a)/(2\sqrt{3}).
+\]
+
+\emph{Step 3: compute the standard deviation for the Gaussian
+input.} A Gaussian $x$ with standard deviation $\sigma_{x} =
+(b-a)/(2\sqrt{3})$ produces $u(y) = |c_{1}| \sigma_{x} =
+|c_{1}|(b-a)/(2\sqrt{3})$, identical to the uniform result by
+construction. The first-order propagation rule gives the same
+standard uncertainty for the two inputs once they share the same
+variance.
+
+\emph{Step 4: identify what the shape determines.} The standard
+uncertainty is the same, but the distribution shape of $y$ differs.
+Uniform input under linear $f$ gives uniform $y$ output; Gaussian
+input gives Gaussian output. The coverage intervals at fixed
+probability differ:
+\begin{itemize}
+  \item Gaussian: the $95\%$ interval is $\pm 1.96\sigma_{y}$,
+    the standard normal critical value times the standard deviation.
+  \item Uniform: the $95\%$ interval is $\pm 0.95 \cdot \sqrt{3}
+    \sigma_{y} \approx \pm 1.65 \sigma_{y}$, the $95\%$ half-width
+    of a uniform distribution scaled to the same standard
+    deviation.
+\end{itemize}
+The two intervals differ by about $20\%$ at the $95\%$ coverage
+level.
+
+\emph{Step 5: the engineering point.} The standard uncertainty is
+distribution-blind under first-order propagation. The expanded
+uncertainty at a stated coverage probability is not: it depends on
+the output distribution, which depends on the input distribution
+and the propagation model. A measurement budget that reports the
+standard uncertainty and the coverage factor implicitly assumes a
+distribution; the report should state which one. The GUM's default
+of $k = 2$ corresponds to Gaussian outputs at $95\%$ coverage; for
+other distributions the same $k$ corresponds to a different
+coverage probability.
+
+\emph{Step 6: a generalisation.} The same logic applies to any
+non-Gaussian input: triangular ($\sigma^{2} = a^{2}/6$ for
+half-width $a$), trapezoidal, U-shaped (resonant systems). The
+standard-deviation calculation is geometry-specific; the
+propagation through a linear model is geometry-blind; the
+coverage interval at a stated probability is again
+geometry-specific. A serious budget separates the three.
 
 \begin{exercise}
 Show that the standard uncertainty of the mean of $n$ independent
@@ -1533,18 +2548,72 @@ A laboratory reports a measurement of $5.32 \pm 0.001 \,\si
 plausible, and identify the most likely error in the report.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-The manufacturer-rated accuracy is $0.0005 \times 5.32 \approx
-2.7 \,\si{\milli\volt}$, which alone gives a standard uncertainty
-of around $1.3 \,\si{\milli\volt}$ assuming $k = 2$. The reported
-$1 \,\si{\milli\volt}$ is below the manufacturer-rated component
-before adding repeatability, environmental, or sampling
-contributions. Likely errors: (i) the reporter used only the
-last-digit resolution as the uncertainty, ignoring the
-accuracy-spec contribution; (ii) the reporter used the standard
-deviation of the mean of many readings without including the
-systematic accuracy contribution; (iii) the reporter applied the
-wrong coverage factor. Request the uncertainty budget.
+\paragraph{Solution.}
+The exercise is a diagnostic question: given a reported value and
+uncertainty, identify whether the report's number is plausible
+against the instrument's documented characteristics, and locate
+the report's most likely error.
+
+\emph{Step 1: extract the manufacturer's accuracy specification.}
+A digital multimeter rated $\pm 0.05\%$ of reading at
+$5.32\,\si{\volt}$ has a specification-derived contribution of
+$0.0005 \times 5.32 \approx 2.7\,\si{\milli\volt}$. The
+specification is conventionally a $k = 2$ expanded uncertainty for
+laboratory bench DMMs (the manufacturer's interpretation should
+be confirmed against the data sheet's coverage convention).
+
+\emph{Step 2: convert to standard uncertainty.} At $k = 2$, the
+standard uncertainty from the specification alone is approximately
+$1.3\,\si{\milli\volt}$. This is a lower bound: the actual
+standard uncertainty for an instrument in service includes
+additional contributions (last-digit resolution, repeatability,
+environmental variation, sampling and bias) that compose with the
+specification term in quadrature.
+
+\emph{Step 3: compare to the reported value.} The reported
+$\pm 0.001\,\si{\volt} = 1\,\si{\milli\volt}$ is smaller than the
+specification-alone standard uncertainty of $1.3\,\si{\milli\volt}$.
+This is the diagnostic signal: the report claims tighter
+uncertainty than the instrument's documented accuracy allows. The
+report is implausible.
+
+\emph{Step 4: enumerate likely error mechanisms.}
+\begin{itemize}[leftmargin=*]
+  \item \emph{Resolution-only interpretation}: the reporter took
+    the last-digit resolution (typically $1\,\si{\milli\volt}$ for
+    a 5-digit DMM displaying $X.XXX\,\si{\volt}$) as the
+    uncertainty, ignoring the accuracy-spec contribution. This is
+    a common rookie error and matches the reported value exactly.
+  \item \emph{Standard-deviation-of-mean only}: the reporter
+    averaged many readings, took the standard deviation of the
+    mean as the uncertainty, and omitted the systematic accuracy
+    contribution. Averaging reduces the random component but
+    cannot reduce the calibration offset; the report should include
+    both.
+  \item \emph{Wrong coverage factor}: the reporter quoted
+    $u/(k=2)$ as the standard uncertainty without recognising
+    that the manufacturer's specification was already at $k = 2$,
+    effectively dividing by $k$ twice.
+  \item \emph{Uncertainty mis-quoted as resolution}: the reporter
+    confused the display's last-digit position with a statement of
+    uncertainty.
+\end{itemize}
+
+\emph{Step 5: the working engineering response.} Request the
+uncertainty budget: the report's standard uncertainty should be
+traceable to its Type A and Type B contributions, with the
+manufacturer-spec component visible. The budget will expose which
+of the four mechanisms above is at play. The diagnostic question is
+not "is the reported number wrong" but "where is the missing
+contribution".
+
+\emph{Step 6: a follow-up check.} Even if the reporter corrects
+the error, the working reader should verify the reported standard
+uncertainty against the application's tolerance and against the
+instrument's stated repeatability. A reported uncertainty that is
+plausible against the data sheet may still be insufficient for the
+downstream application; the audit is not just "is the report
+correct" but "is the report fit for purpose".
 
 \begin{exercise}
 A pressure measurement gives $P = 100 \,\si{\kilo\pascal}$ with
@@ -1556,19 +2625,92 @@ uncertainty. If not, propose three plausible mechanisms for the
 disagreement.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Difference $\Delta = 2 \,\si{\kilo\pascal}$. Combined standard
-uncertainty $u(\Delta) = \sqrt{0.5^{2} + 0.4^{2}} \approx
-0.64 \,\si{\kilo\pascal}$. The normalised difference is
-$|\Delta|/u(\Delta) \approx 3.1$, well outside the $2\sigma$
-band. The measurements are inconsistent at the $k = 2$ level.
-Plausible mechanisms: (i) one method has a calibration offset
-not captured in its stated $u$; (ii) the two methods measured
-different physical quantities (one absolute, one gauge; one with
-and one without a temperature correction); (iii) the
-manufacturer-stated $u$ understated the systematic component for
-one or both instruments. Investigation: cross-check both
-instruments against a reference standard at known pressure.
+\paragraph{Solution.}
+The consistency test for two independent measurements of the same
+quantity is the normalised-difference criterion. The solution
+applies it and then enumerates the typical failure modes when the
+test rejects.
+
+\emph{Step 1: compute the difference and its uncertainty.} The
+two readings differ by $\Delta = P_{2} - P_{1} = 102 - 100 =
+2\,\si{\kilo\pascal}$. The uncertainty of the difference,
+assuming the two measurements are independent and at $k = 1$, is
+\[
+u(\Delta) = \sqrt{u(P_{1})^{2} + u(P_{2})^{2}} =
+\sqrt{0.5^{2} + 0.4^{2}} \approx 0.64\,\si{\kilo\pascal}.
+\]
+
+\emph{Step 2: compute the normalised difference.} The ratio of
+$|\Delta|$ to $u(\Delta)$ is the standardised statistic for
+testing the null hypothesis that the two measurements come from
+the same population value:
+\[
+z = \frac{|\Delta|}{u(\Delta)} = \frac{2}{0.64} \approx 3.1.
+\]
+At $k = 2$ (the typical engineering significance level
+corresponding to $\approx 95\%$ coverage for Gaussian errors), the
+threshold is $|z| \leq 2$. At $z = 3.1$, the two readings are
+inconsistent at the $k = 2$ level; the disagreement is unlikely
+to be chance variation alone.
+
+\emph{Step 3: state the conclusion.} The two measurements
+\emph{are not consistent} within their combined uncertainty. The
+disagreement is large enough to require investigation; treating
+the average of the two values as "the answer" would inherit the
+unidentified error mechanism.
+
+\emph{Step 4: enumerate plausible disagreement mechanisms.}
+\begin{itemize}[leftmargin=*]
+  \item \emph{Calibration offset in one method}: one of the two
+    instruments has a systematic bias not captured in its stated
+    uncertainty. The bias may have appeared since the last
+    calibration (drift, mechanical shock, environmental
+    excursion) or may have been present at calibration but not
+    documented.
+  \item \emph{Different quantities measured}: the two methods
+    measure subtly different physical quantities that the reporter
+    treated as identical. Common cases: absolute vs gauge pressure
+    (the difference is one atmosphere if one method references
+    vacuum and the other references local atmospheric); fluid
+    pressure at the gauge vs at a reference depth (a hydrostatic
+    column adds pressure); temperature-corrected vs uncorrected
+    reading (pressure transducers are temperature-dependent).
+  \item \emph{Method-specific bias}: each method has its own
+    operating envelope and may be measuring outside it for one of
+    the two readings. A diaphragm pressure transducer near its
+    burst rating shows nonlinear response; a deadweight tester
+    requires a level reference plane.
+  \item \emph{Stated uncertainties incomplete}: one or both
+    reports omit a Type B contribution (operator effect,
+    environmental variation, calibration interval not respected).
+    The actual combined standard uncertainty exceeds the reported
+    $u(P_{1})^{2} + u(P_{2})^{2}$.
+  \item \emph{Sample heterogeneity}: in some applications the
+    "same pressure" assumption is itself faulty. Two transducers
+    measuring "the same" pressure at different tap locations or
+    different times may see real differences from spatial or
+    temporal variation in the system.
+\end{itemize}
+
+\emph{Step 5: the working engineering response.} The chapter's
+discipline applies directly: widen the reported uncertainty band
+to encompass both readings until the disagreement mechanism is
+identified. A combined report might state $P = 101 \pm 2\,\si{
+\kilo\pascal}$ with the note "two independent methods disagree;
+investigation pending". Refusing to issue any number is sometimes
+the right choice; an unjustified average is rarely.
+
+\emph{Step 6: the lesson.} The exercise reproduces in miniature the
+chapter's failure section: two independent measurements that
+disagree by more than their combined uncertainty are evidence the
+uncertainty budget is incomplete. The Hubble case is the
+high-stakes version of the same diagnostic. The working
+investigator's first move is the variance-of-the-difference test,
+followed by the enumeration of mechanisms above. The corrective
+action depends on which mechanism applies: a cross-check of both
+instruments against a reference standard at known pressure
+isolates the calibration-offset case from the different-quantity
+case.
 
 \begin{exercise}
 A spreadsheet computes $y = (x_{1} + x_{2}) / x_{3}$ from inputs
@@ -1578,17 +2720,67 @@ divided by $x_{3}$. Identify the error and write the correct
 propagation formula.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Two errors: (i) the spreadsheet linearly sums uncertainties
-instead of combining them in quadrature, which always overstates;
-(ii) the spreadsheet treats $u_{3}/x_{3}$ additively instead of
-through the product-of-powers rule for division. Correct formula:
-let $s = x_{1} + x_{2}$; then $u^{2}(s) = u_{1}^{2} + u_{2}^{2}$.
-Now $y = s/x_{3}$, so $(u(y)/y)^{2} = (u(s)/s)^{2} +
-(u_{3}/x_{3})^{2}$, giving $u(y) = |y|\sqrt{(u(s)/s)^{2} +
-(u_{3}/x_{3})^{2}}$. The spreadsheet's formula overstates the
-uncertainty by up to a factor of $\sqrt{3}$ in the worst case
-and miscalculates the $x_{3}$ contribution structurally.
+\paragraph{Solution.}
+The spreadsheet's formula contains two structurally different
+errors. The diagnosis identifies each and gives the correct form.
+
+\emph{Step 1: identify the linear-sum error.} The spreadsheet
+writes $u_{1} + u_{2} + u_{3}$, a linear sum of the three input
+uncertainties. The correct combination for independent inputs is
+the root-sum-square: $\sqrt{u_{1}^{2} + u_{2}^{2} + u_{3}^{2}}$
+for additive terms; the linear sum always overstates the combined
+uncertainty by up to a factor of $\sqrt{n}$ for $n$ equal
+contributions ($\sqrt{3}$ at $n = 3$ for three equal terms).
+
+\emph{Step 2: identify the division-rule error.} The spreadsheet
+divides by $x_{3}$ at the end, treating $u_{3}$ as an additive
+contribution that is then scaled. The correct propagation through
+division uses the product-of-powers rule: for $y = s/x_{3}$, the
+\emph{relative} uncertainty satisfies $(u(y)/y)^{2} =
+(u(s)/s)^{2} + (u_{3}/x_{3})^{2}$. The division enters as a
+relative-uncertainty contribution, not as a scaling of the
+absolute uncertainty.
+
+\emph{Step 3: write the correct formula.} Let $s = x_{1} + x_{2}$
+with combined absolute uncertainty $u^{2}(s) = u_{1}^{2} + u_{2}^{2}$.
+Then $y = s/x_{3}$ has relative uncertainty
+\[
+\left(\frac{u(y)}{y}\right)^{2} =
+\left(\frac{u(s)}{s}\right)^{2} +
+\left(\frac{u_{3}}{x_{3}}\right)^{2},
+\]
+and absolute uncertainty
+\[
+u(y) = |y| \sqrt{(u(s)/s)^{2} + (u_{3}/x_{3})^{2}}.
+\]
+This is the GUM-compliant working result.
+
+\emph{Step 4: quantify the spreadsheet's error.} For three equal
+relative uncertainties of $1\%$ each, the spreadsheet's formula
+gives an absolute uncertainty of approximately $(0.03)(s + u_{3}
+x_{3}^{-1})/x_{3}$ or some variant, depending on the literal
+interpretation; the correct value is $|y|\sqrt{3 \times 0.01^{2}}
+\approx 1.73\% \cdot |y|$ relative. The spreadsheet's
+linear-sum part overstates by up to $\sqrt{3}$; its division
+treatment is structurally wrong and the magnitude of its error
+depends on $s$ and $x_{3}$.
+
+\emph{Step 5: identify the broader category of spreadsheet
+errors.} Linear sums in place of root-sum-square, division-by-mean
+in place of relative-uncertainty division, and ignored covariance
+between cells that share a common input are the three most common
+spreadsheet propagation errors. A spreadsheet that propagates
+uncertainty in production should be audited against the GUM rules
+either by inspection or by Monte Carlo simulation against the
+spreadsheet's actual cell-arithmetic.
+
+\emph{Step 6: the corrective workflow.} Replace the offending
+formula with the correct expression. Add a row to the uncertainty
+budget for each intermediate quantity ($s, y$) and verify each
+contribution against the GUM rules. For production use,
+documenting the cell formulas alongside the budget supports the
+audit, and a Monte Carlo cross-check at $10^{4}$ to $10^{5}$
+samples confirms the closed-form result.
 
 \begin{exercise}
 A torque-wrench specification claims $\pm 4\%$ at $k = 1$. The

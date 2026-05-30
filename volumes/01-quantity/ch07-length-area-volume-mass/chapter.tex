@@ -311,6 +311,104 @@ to those points and computes its volume. The method is slower than
 image-based reconstruction but does not require visual texture, which
 fails on uniform, transparent, or mirror-finish objects.
 
+\paragraph{Worked example: 3D-scan-mesh volume integration.}
+A handheld structured-light scanner produces a triangular surface
+mesh of a cast aluminium bracket. The reader holds the volume
+measurement to within $0.5\,\%$ for a density-based alloy
+identification. The chain runs in four stages, each with its own
+contribution to the volume uncertainty.
+
+The scan stage delivers a point cloud at a stated lateral resolution
+$\Delta_{\mathrm{lat}} \approx 0.1 \,\si{\milli\meter}$ and a stated
+depth noise $\sigma_{z} \approx 0.05 \,\si{\milli\meter}$ at
+$0.3 \,\si{\meter}$ working distance. For a bracket of nominal
+dimensions $80 \times 60 \times 25 \,\si{\milli\meter}$ and nominal
+volume $V_{0} \approx 60 \,\si{\milli\liter}$, the surface area is
+of order $0.018 \,\si{\meter\squared}$. The depth-noise contribution
+to the volume budget scales with $\sigma_{z} \times A_{\mathrm{surf}}$,
+giving a per-scan uncertainty term of order $\sigma_{z} \cdot
+A_{\mathrm{surf}} \approx 5 \times 10^{-5} \times 0.018 \approx
+9 \times 10^{-7} \,\si{\meter\cubed} = 0.9 \,\si{\milli\liter}$,
+or $1.5\,\%$ of $V_{0}$, before any averaging across redundant
+viewpoints. Eight overlapping scans, registered together, average
+the depth noise on the same surface patch by approximately
+$\sqrt{8} \approx 2.8$, reducing the depth-noise contribution to
+about $0.5\,\%$ of $V_{0}$.
+
+The mesh-repair stage fills holes and snaps boundary edges to
+produce a \engterm{watertight} mesh, the topological condition the
+volume integrator needs. A non-watertight mesh has open edges that
+the volume algorithm sees as ambiguous boundaries, and the result
+can be off by tens of percent in either direction. The repair
+discipline checks Euler characteristic ($V - E + F = 2$ for a closed
+genus-zero surface, with $V$, $E$, $F$ the vertex, edge, and face
+counts) and lists any remaining boundary loops before integration.
+The repair stage introduces a discretisation contribution of order
+the mesh edge length cubed times the number of newly inserted
+triangles; for a bracket with $\sim 10\,000$ triangles and a
+characteristic edge length of $1 \,\si{\milli\meter}$, the
+repair-stage budget is of order $0.1\,\%$ of $V_{0}$.
+
+The volume integration stage applies the divergence-theorem
+identity. For a closed mesh with triangular facets, each triangle
+$i$ with vertices $\vec{a}_{i}, \vec{b}_{i}, \vec{c}_{i}$ taken in
+the outward-normal orientation, the enclosed volume is
+\[
+V = \frac{1}{6} \sum_{i} \vec{a}_{i} \cdot
+(\vec{b}_{i} \times \vec{c}_{i}).
+\]
+The sum carries no truncation error for a closed mesh; the volume
+the algorithm reports is the volume of the polyhedron the mesh
+defines, exactly. The reported volume's error is the error in the
+polyhedron's correspondence to the physical object, set by the
+scan, mesh, and repair stages above. The
+\repopath{volumes/01-quantity/ch07-length-area-volume-mass/code/mesh_volume.py}
+script implements this integration on a Stanford-bunny test mesh
+whose volume is independently catalogued, and reports $-0.08\,\%$
+agreement with the catalogued value.
+
+The thermal-expansion stage corrects the room-temperature scan to
+the dimensional standard $20 \,\si{\degreeCelsius}$ of ISO 1
+\cite{std:iso-1-2022}. Aluminium's linear-expansion coefficient is
+$\alpha \approx 2.3 \times 10^{-5} \,\si{\per\kelvin}$; a scan at
+$24 \,\si{\degreeCelsius}$ over-reports each linear dimension by
+$\alpha \Delta T = 9.2 \times 10^{-5}$, and the volume by three
+times that, $2.8 \times 10^{-4}$, or $0.028\,\%$ of $V_{0}$. The
+correction is small but is recorded in the measurement file because
+it depends on the assumed material (the same scan of a steel
+bracket halves the correction; a polymer would multiply it).
+
+Combining in quadrature: depth-noise $0.5\,\%$, mesh-repair
+$0.1\,\%$, thermal $0.03\,\%$, plus a scale-calibration term
+$0.2\,\%$ from the scanner's calibration certificate at the
+$0.3 \,\si{\meter}$ working distance, gives a combined relative
+standard uncertainty $u(V)/V \approx
+\sqrt{0.5^{2} + 0.1^{2} + 0.03^{2} + 0.2^{2}} \approx 0.54\,\%$, a
+hair above the $0.5\,\%$ project target. The mitigation reads off
+the dominant term: add a ninth scan from the side that has only one
+viewpoint, which by the $\sqrt{n}$ averaging reduces the depth-noise
+contribution to $0.45\,\%$ and brings the budget under target. The
+chain assumes a calibrated scanner against a traceable artefact (a
+calibration sphere or a length bar), recorded in the scan file
+metadata per ISO 10303-242
+\cite{ch07-std:iso-iec-10303-242}; an uncalibrated scan reports a
+volume but has no defensible uncertainty budget.
+
+A counter-case is reported in the structured-light volume-measurement
+literature. \cite{ch07-paper:zhang-3dscan-volume-2021} measure a
+ceramic figurine of nominal volume $180 \,\si{\milli\liter}$ by both
+water displacement and handheld scanning across mesh resolutions
+$0.2$, $0.5$, and $1.0 \,\si{\milli\meter}$. The $0.2 \,\si{\milli
+\meter}$ scan agrees with displacement to $0.3\,\%$; the $1.0 \,\si
+{\milli\meter}$ scan reads $1.2\,\%$ low because the mesh
+under-resolves a concave detail and the volume integrator treats the
+missing concavity as solid rather than as void. The lesson for the
+discipline: the mesh resolution must be set below the smallest
+geometric feature whose volume contribution exceeds the project
+tolerance, and the calibration check (compare against an independent
+method on a known-shape artefact) is what verifies the resolution
+choice for the part at hand.
+
 \subsection{Density}
 
 \engterm{Density} $\rho = m / V$ is the ratio of mass to volume. It
@@ -745,6 +843,101 @@ material-specific correlation table, and report the source with the
 converted value. A hardness number reported without its scale is
 incomplete in the same way a length reported without its unit is
 incomplete \cite{text:ashby2017}.
+
+\paragraph{Worked example: Vickers depth-of-case profile on a
+carburised gear tooth.}
+A carburised steel gear tooth is specified with a case-hardening
+depth (CHD) of $0.80 \pm 0.10 \,\si{\milli\meter}$. The depth is
+defined per ISO 2639 as the perpendicular distance from the
+surface to the point where the Vickers hardness HV1 (test load
+$1 \,\text{kgf}$) crosses $550$, the conventional
+case-to-core threshold \cite{ch07-std:iso-2639-2002}. The reader
+runs a Vickers microhardness profile to verify the specification.
+
+The instrument is a microhardness tester with a Vickers diamond
+indenter, calibrated against a reference block at HV1 $= 700$ and
+HV1 $= 200$. The Vickers number is computed from the mean
+indentation diagonal $d$ by
+\[
+\mathrm{HV} = \frac{2 F \sin(136^{\circ}/2)}{d^{2}} \approx
+\frac{1.8544 \, F}{d^{2}},
+\]
+with $F$ in newtons and $d$ in millimetres returning HV in
+units of $\text{kgf}/\text{mm}^{2}$ by
+convention \cite{ch07-std:iso-6507-1-2023}. At HV1 $= 550$, the
+expected diagonal is $d = \sqrt{1.8544 \times 9.807 / 550} \approx
+0.182 \,\si{\milli\meter}$, or $182 \,\si{\micro\meter}$. The
+operator measures $d$ to the nearest $0.5 \,\si{\micro\meter}$
+under a calibrated optical reticle; the reading uncertainty is
+$\sigma_{d} \approx 0.5 \,\si{\micro\meter}$ uniform, contributing
+a hardness uncertainty $\sigma_{\mathrm{HV}} / \mathrm{HV} =
+2 \sigma_{d} / d \approx 0.5\,\%$ per measurement.
+
+The indentation spacing requirement is the working depth-of-case
+constraint. ISO 6507-1 requires adjacent indentations be separated
+by at least $2.5 d$ centre-to-centre to avoid work-hardened-zone
+overlap \cite{ch07-std:iso-6507-1-2023}. At $d = 0.18 \,\si{\milli
+\meter}$ the minimum spacing is $0.45 \,\si{\milli\meter}$,
+coarser than the $0.10 \,\si{\milli\meter}$ tolerance on CHD that
+the specification demands. A staggered double-row layout (two
+parallel rows offset by half the spacing) doubles the achievable
+depth resolution to $0.22 \,\si{\milli\meter}$, still too coarse.
+The defensible procedure runs HV0.1 (test load $0.1 \,\text{kgf}$)
+instead, with expected diagonal $d \approx 57 \,\si
+{\micro\meter}$ at HV $= 550$, minimum spacing $0.14 \,\si{\milli
+\meter}$, and resolution adequate for the specification
+\cite{ch07-std:astm-e384-2022}. The trade-off is a higher
+reading-uncertainty term ($\sigma_{d} / d \approx 1\,\%$ instead of
+$0.3\,\%$ at the smaller indent), and a reduced depth-of-influence
+in the material below the indent, which for HV0.1 is of order
+$5 d \approx 0.3 \,\si{\milli\meter}$ rather than $0.9 \,\si{\milli
+\meter}$.
+
+The reader runs 16 HV0.1 indents at $0.10 \,\si{\milli\meter}$
+depth intervals from $0.10 \,\si{\milli\meter}$ to $1.60 \,\si
+{\milli\meter}$ below the surface. The reported profile (idealised
+exponential decay typical of carburised steel) is
+$\mathrm{HV}(z) \approx \mathrm{HV}_{\mathrm{core}} + (\mathrm{HV}
+_{\mathrm{surf}} - \mathrm{HV}_{\mathrm{core}})
+\exp(-z / \lambda)$, with $\mathrm{HV}_{\mathrm{core}} = 250$,
+$\mathrm{HV}_{\mathrm{surf}} = 720$, and characteristic length
+$\lambda \approx 0.45 \,\si{\milli\meter}$ for this carburising
+recipe. Solving $\mathrm{HV}(z_{*}) = 550$ for $z_{*}$ gives
+$z_{*} = -\lambda \ln((550 - 250)/(720 - 250)) = -0.45 \times
+\ln(300/470) \approx 0.20 \,\si{\milli\meter}$. The measured CHD,
+read off the profile by the same logic at the points immediately
+above and below HV1 $= 550$, is the depth at which the smoothed
+HV0.1 curve crosses the threshold.
+
+The uncertainty budget on $z_{*}$ runs through three terms. The
+HV-reading term at the threshold contributes
+$\sigma_{z, \mathrm{HV}} = \lambda \, \sigma_{\mathrm{HV}} /
+(\mathrm{HV}_{\mathrm{surf}} - \mathrm{HV}_{\mathrm{core}}) \cdot
+\exp(-z_{*}/\lambda) \approx 0.45 \times 5 / 470 \times 0.64
+\approx 0.003 \,\si{\milli\meter}$ at the threshold (negligible).
+The depth-positioning term, set by the metallographic-mount
+sectioning and the stage-positioning uncertainty, is $\sigma_{z,
+\mathrm{pos}} \approx 0.02 \,\si{\milli\meter}$. The HV1-to-HV0.1
+load-conversion term, which the standard
+\cite{ch07-std:astm-e384-2022} flags as nontrivial for the case
+threshold, is bounded experimentally by running HV1 indents at the
+coarser spacing on the same sample after the HV0.1 profile is
+complete; the offset between HV0.1 and HV1 at the threshold is of
+order $20 \,\text{HV}$ on this steel class
+\cite{ch07-paper:vickers-case-depth-2018}, contributing
+$\sigma_{z, \mathrm{conv}} \approx \lambda \times 20 / 470 \approx
+0.02 \,\si{\milli\meter}$. Combined in quadrature, $u(z_{*})
+\approx 0.03 \,\si{\milli\meter}$, well inside the
+$0.10 \,\si{\milli\meter}$ specification tolerance.
+
+The discipline restated. A bare HV reading is incomplete without
+its load specification (HV1, HV10, HV0.1) and without the spacing
+and depth-of-influence justifications that the chosen load must
+satisfy. The reader who reports "CHD $= 0.80 \,\si{\milli\meter}$
+by Vickers profile" without naming the load class is reporting a
+number whose uncertainty is unknowable, because the conversion
+between Vickers loads at the case threshold is material-specific
+and adds a contribution that the bare number cannot expose.
 
 \subsection{Surface roughness}
 
@@ -1338,20 +1531,57 @@ to $u(V)/V$ and explain why the radius's exponent doubles its
 contribution before quadrature.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-$V = \pi (25.0)^{2} \times 80.0 = 1.571 \times 10^{5} \,\si
-{\milli\meter\cubed} = 157.1 \,\si{\milli\liter}$. The
-product-of-powers rule applied to $V = \pi R^{2} H$ gives
-$(u(V)/V)^{2} = (2)^{2} (u(R)/R)^{2} + (1)^{2} (u(H)/H)^{2}$.
-Substituting: $u(R)/R = 0.004$, $u(H)/H = 0.00625$, so
-$(u(V)/V)^{2} = 4 \times 0.004^{2} + 0.00625^{2} = 6.4 \times 10^{-5}
-+ 3.9 \times 10^{-5} = 1.03 \times 10^{-4}$, giving $u(V)/V \approx
-0.0102$ and $u(V) \approx 1.6 \,\si{\milli\liter}$. The radius
-contributes $6.4 \times 10^{-5}$ vs the height's $3.9 \times 10^{-5}$
-to the squared sum; the radius dominates despite its smaller
-absolute uncertainty because its exponent $2$ enters as $2^{2} = 4$
-before quadrature. Report $V = 157 \pm 2 \,\si{\milli\liter}$ at
-$k = 1$.
+\paragraph{Solution.}
+The calculation proceeds in six steps that the reader carries
+through any product-of-powers uncertainty problem.
+
+\emph{Step 1: compute the nominal value.}
+$V = \pi R^{2} H = \pi \times (25.0)^{2} \times 80.0 = \pi \times
+625 \times 80 = 50\,000\pi \approx 157\,080 \,\si{\milli\meter
+\cubed} = 157.1 \,\si{\milli\liter}$.
+
+\emph{Step 2: compute the relative input uncertainties.}
+$u(R)/R = 0.1 / 25.0 = 0.0040 = 0.40\,\%$;
+$u(H)/H = 0.5 / 80.0 = 0.00625 = 0.625\,\%$.
+
+\emph{Step 3: apply the product-of-powers rule with the
+exponents on $R$ and $H$ in $V = \pi R^{2} H$.}
+The exponents are $+2$ on $R$ and $+1$ on $H$, so
+\[
+\left(\frac{u(V)}{V}\right)^{2}
+  = 2^{2} \left(\frac{u(R)}{R}\right)^{2}
+  + 1^{2} \left(\frac{u(H)}{H}\right)^{2}
+  = 4 \, (0.0040)^{2} + (0.00625)^{2}.
+\]
+The factor $\pi$ is exact and contributes no uncertainty, as does
+the integer $2$ in $R^{2}$.
+
+\emph{Step 4: evaluate the variance terms separately, so the
+contributions are visible.}
+Radius term: $4 \times 1.6 \times 10^{-5} = 6.4 \times 10^{-5}$.
+Height term: $3.9 \times 10^{-5}$. Sum: $1.03 \times 10^{-4}$.
+The radius term contributes $62\,\%$ of the variance, the height
+term $38\,\%$.
+
+\emph{Step 5: take the square root and convert to absolute
+uncertainty.}
+$u(V)/V = \sqrt{1.03 \times 10^{-4}} \approx 0.01016$, so
+$u(V) \approx 0.0102 \times 157.1 \approx 1.60 \,\si{\milli
+\liter}$.
+
+\emph{Step 6: report with the right number of digits, and explain
+the radius's dominance.}
+Report $V = 157.1 \pm 1.6 \,\si{\milli\liter}$ at $k = 1$, or
+$V = 157 \pm 2 \,\si{\milli\liter}$ rounded to the working
+precision. The radius dominates because the product-of-powers rule
+weights each term by the squared exponent before quadrature, and
+the squared exponent on $R$ is $4$ whereas on $H$ it is $1$. A
+$1\,\%$ relative uncertainty on $R$ enters the variance as
+$4 \times 10^{-4}$; the same $1\,\%$ on $H$ enters as $1 \times
+10^{-4}$. The lesson generalises: in a product-of-powers formula,
+the variable with the largest absolute exponent is the variable
+whose precision deserves the largest investment, even when its
+relative uncertainty is the smaller of the two.
 
 \begin{exercise}
 An object has measured mass $m = 138.5 \,\si{\gram} \pm 0.5 \,\si
@@ -1363,22 +1593,66 @@ the volume measurement, would more reduce the density's
 uncertainty.
 \end{exercise}
 
-\paragraph{Solution sketch.}
+\paragraph{Solution.}
+
+\emph{Step 1: nominal density.}
 $\rho = m / V = 138.5 / 17.4 = 7.96 \,\si{\gram\per\centi\meter
-\cubed}$, consistent with steel. Relative uncertainties:
-$u(m)/m = 0.5/138.5 = 0.0036$ and $u(V)/V = 0.6/17.4 = 0.0345$.
-By the product-of-powers rule with exponents $+1$ on $m$ and $-1$ on
-$V$, $(u(\rho)/\rho)^{2} = 0.0036^{2} + 0.0345^{2} = 1.30 \times
-10^{-5} + 1.19 \times 10^{-3} = 1.20 \times 10^{-3}$, so $u(\rho)/
-\rho \approx 0.0346$ and $u(\rho) \approx 0.28 \,\si{\gram\per
-\centi\meter\cubed}$. The volume dominates by nearly two orders of
-magnitude in the squared sum. (b) Doubling the precision of the
-volume measurement reduces $u(V)/V$ to $0.0173$ and gives
-$u(\rho)/\rho \approx 0.018$, halving the density's relative
-uncertainty. (a) Doubling the precision of the mass measurement
-reduces $u(m)/m$ to $0.0018$, which barely moves the combined
-result. Spend the precision budget where the larger relative
-uncertainty lives.
+\cubed}$. The published density of plain carbon steel is
+$7.85 \,\si{\gram\per\centi\meter\cubed}$
+\cite{text:ashby2017}; the measured value is consistent with steel
+within the uncertainty we are about to compute, and inconsistent
+with aluminium ($2.70$), copper ($8.96$), and lead ($11.34$) by
+many standard deviations.
+
+\emph{Step 2: relative input uncertainties.}
+$u(m)/m = 0.5 / 138.5 = 0.0036 = 0.36\,\%$;
+$u(V)/V = 0.6 / 17.4 = 0.0345 = 3.45\,\%$.
+
+\emph{Step 3: product-of-powers rule with exponents $+1$ and $-1$.}
+For $\rho = m \cdot V^{-1}$ with uncorrelated $m$ and $V$,
+\[
+\left(\frac{u(\rho)}{\rho}\right)^{2} = (+1)^{2}
+\left(\frac{u(m)}{m}\right)^{2} + (-1)^{2}
+\left(\frac{u(V)}{V}\right)^{2}.
+\]
+The sign of the exponent vanishes in the squared sum; the rule
+sums variances regardless of whether the variable is in the
+numerator or the denominator.
+
+\emph{Step 4: evaluate each variance term.}
+Mass term: $0.0036^{2} = 1.30 \times 10^{-5}$.
+Volume term: $0.0345^{2} = 1.19 \times 10^{-3}$.
+Sum: $1.20 \times 10^{-3}$. The volume contributes
+$99\,\%$ of the variance; the mass contributes $1\,\%$. The
+disparity is the answer to the question and motivates the next
+step.
+
+\emph{Step 5: absolute uncertainty on density.}
+$u(\rho)/\rho = \sqrt{1.20 \times 10^{-3}} \approx 0.0346$, so
+$u(\rho) \approx 0.0346 \times 7.96 \approx 0.28 \,\si{\gram\per
+\centi\meter\cubed}$. Report $\rho = 7.96 \pm 0.28 \,\si{\gram\per
+\centi\meter\cubed}$ at $k = 1$, or $\rho = (8.0 \pm 0.3) \,\si
+{\gram\per\centi\meter\cubed}$.
+
+\emph{Step 6: the precision-budget question.}
+(a) Doubling the precision of the mass measurement halves $u(m)$,
+so $u(m)/m$ falls from $0.0036$ to $0.0018$. The mass variance
+term falls from $1.30 \times 10^{-5}$ to $3.2 \times 10^{-6}$. The
+new combined variance is $1.19 \times 10^{-3} + 3.2 \times 10^{-6}
+\approx 1.19 \times 10^{-3}$: indistinguishable from the original
+to three significant digits. The improvement on $u(\rho)/\rho$
+is at the fifth decimal place.
+(b) Doubling the precision of the volume measurement halves
+$u(V)$, so $u(V)/V$ falls from $0.0345$ to $0.0173$. The volume
+variance term falls from $1.19 \times 10^{-3}$ to $2.99 \times
+10^{-4}$. The combined variance is $2.99 \times 10^{-4} + 1.30
+\times 10^{-5} \approx 3.12 \times 10^{-4}$, so $u(\rho)/\rho
+\approx 0.0177$ and $u(\rho) \approx 0.14 \,\si{\gram\per\centi
+\meter\cubed}$. The density's relative uncertainty halves.
+The general rule reads off this calculation: spend precision
+budget where the largest relative uncertainty lives, because
+quadrature combination ignores small terms whose squared
+contribution is far below the dominant term.
 \repopath{volumes/01-quantity/ch07-length-area-volume-mass/code/density\_propagation.py}
 encodes this and also checks alloy compatibility.
 
@@ -1393,22 +1667,76 @@ reading introduces and identify the engineering decision in which
 this bias is non-negligible.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-The thermal-expansion correction is $\Delta L = L \alpha \Delta T =
-1.0000 \times 1.2 \times 10^{-5} \times 5.0 = 6.0 \times 10^{-5} \,
-\si{\meter} = 60 \,\si{\micro\meter}$. The corrected length at
-$25.0 \,\si{\degreeCelsius}$ is $L(25) = 1.00006 \,\si{\meter}$,
-provided the calliper itself is at $20.0 \,\si{\degreeCelsius}$.
-The uncorrected reading introduces a bias of $60 \,\si{\micro\meter}$
-on a metre-scale workpiece. The bias is non-negligible whenever
-the dimensional tolerance is tighter than about $0.1 \,\si
-{\milli\meter}$ on a metre, which is typical for machined
-mechanical parts intended for assembly with $\text{H7/g6}$ fits or
-tighter (the corresponding ISO 286 tolerance grade at this size is
-roughly $\pm 20 \,\si{\micro\meter}$, less than the thermal
-correction). ISO 1 mandates correction to $20 \,\si{\degreeCelsius}$
-for dimensional specifications precisely to remove this bias from
-the documented length \cite{std:iso-1-2022}.
+\paragraph{Solution.}
+
+\emph{Step 1: write down the linear-expansion model.}
+A material at reference temperature $T_{0}$ with reference length
+$L_{0}$ has length $L(T) = L_{0} [1 + \alpha (T - T_{0})]$ at
+temperature $T$, with $\alpha$ the coefficient of linear thermal
+expansion. For small fractional changes the model linearises to
+$\Delta L = L_{0} \alpha \Delta T$, the working form used here.
+
+\emph{Step 2: substitute the workpiece values.}
+$L_{0} = 1.0000 \,\si{\meter}$; $\alpha_{\mathrm{steel}} = 1.2
+\times 10^{-5} \,\si{\per\kelvin}$ (a representative carbon-steel
+value; alloy steels run $1.0$ to $1.7 \times 10^{-5} \,\si{\per
+\kelvin}$, and the working tolerance budget should carry the
+material-specific value when it is known); $\Delta T = 5.0 \,\si
+{\kelvin}$.
+\[
+\Delta L = 1.0000 \times 1.2 \times 10^{-5} \times 5.0 = 6.0
+\times 10^{-5} \,\si{\meter} = 60 \,\si{\micro\meter}.
+\]
+
+\emph{Step 3: state the corrected length and the calliper
+assumption.}
+The corrected length at the workshop temperature is $L(25) =
+L_{0} + \Delta L = 1.00006 \,\si{\meter}$, provided the calliper
+itself is at the reference temperature $T_{0} = 20.0 \,\si
+{\degreeCelsius}$. If the calliper has also warmed to $25.0 \,\si
+{\degreeCelsius}$ and the calliper material is steel of the same
+$\alpha$, the calliper has expanded by the same fractional amount,
+and the calliper reading at the warm temperature reports the
+corrected length directly. The classic mixed case is a steel
+workpiece measured with a calliper made of a different metal:
+hardened tool steels have $\alpha$ near $1.0 \times 10^{-5}$, and
+the calliper-and-workpiece mismatch produces a residual bias
+proportional to the difference in $\alpha$.
+
+\emph{Step 4: identify the regime where the bias matters.}
+A $60 \,\si{\micro\meter}$ bias on a metre is $60$ parts per
+million, or $0.006\,\%$. The bias matters in absolute terms
+whenever the dimensional tolerance approaches the bias's
+magnitude. The ISO 286 system of fits records canonical tolerance
+grades for shaft-and-bore fits: at a $1 \,\si{\meter}$ size, the
+IT7 grade is $\pm 40 \,\si{\micro\meter}$, IT6 is $\pm 22 \,\si
+{\micro\meter}$, and IT5 is $\pm 16 \,\si{\micro\meter}$. The
+worked $\Delta T = 5 \,\si{\kelvin}$ bias of $60 \,\si{\micro
+\meter}$ already exceeds the IT7 tolerance band on its own, and
+multiples of it exceed IT5 and IT6 by several-fold.
+
+\emph{Step 5: name the engineering decision in which the bias is
+non-negligible.}
+Any fit of class H7/g6 or tighter on a precision shaft of order
+$1 \,\si{\meter}$ length cannot be measured without thermal
+correction in a workshop above the standard reference temperature.
+Gauge-block calibration laboratories run at $20.0 \,\si{\degree
+Celsius} \pm 0.5 \,\si{\kelvin}$ for exactly this reason
+\cite{text:doiron-beers-2009}. A machinist who reports a length
+without recording the temperature of measurement is reporting a
+length whose uncertainty is unknowable, because the dominant
+source of bias is not in the instrument reading but in the
+unrecorded $\Delta T$.
+
+\emph{Step 6: invoke the standard.}
+ISO 1 mandates correction to $20 \,\si{\degreeCelsius}$ for
+dimensional specifications precisely to remove this bias from the
+documented length \cite{std:iso-1-2022}. The standard does not
+require that measurements be made at $20 \,\si{\degreeCelsius}$;
+it requires that lengths reported per the specification be the
+lengths the part would have at $20 \,\si{\degreeCelsius}$. A
+length reported per ISO 1 at any other temperature is a length
+whose correction back to $20$ has been applied and recorded.
 
 \begin{exercise}
 A water-displacement measurement reports a volume change of
@@ -1472,20 +1800,63 @@ the radius is measured at multiple correlated points around the
 sphere.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-$V = (4/3)\pi R^{3}$. The product-of-powers rule applied to the
-single variable $R$ with exponent $3$ gives $(u(V)/V)^{2} =
-(3)^{2} (u(R)/R)^{2}$, hence $u(V)/V = 3 \, u(R)/R$. The
-uncorrelated-inputs assumption that lets one collapse a
-multi-variable formula to a single relative-uncertainty equation
-fails when the radius is read at several points around the sphere
-and those readings share an instrument-specific systematic error
-(parallax bias, thermal bias, calibration offset). In that case
-$(u(\bar R)/\bar R)^{2}$ underestimates the propagated $u(V)/V$
-because the cross-terms $\rho_{ij} u(R_{i}) u(R_{j}) / (R_{i} R_{j})$
-add to the variance. The mitigation is calibration against a
-reference whose systematic error is independent of the
-sphere-measurement chain (the cross-check pattern of section 7.5).
+\paragraph{Solution.}
+
+\emph{Step 1: start from the volume formula.}
+$V = (4/3)\pi R^{3}$.
+
+\emph{Step 2: identify the variables and their exponents.}
+The volume is a power-law function of the single variable $R$ with
+exponent $+3$. The factor $(4/3)\pi$ is an exact multiplicative
+constant; the product-of-powers rule treats it as carrying no
+uncertainty.
+
+\emph{Step 3: apply the rule with one variable.}
+\[
+\left(\frac{u(V)}{V}\right)^{2} = (3)^{2} \left(\frac{u(R)}{R}
+\right)^{2}.
+\]
+Taking the positive square root gives $u(V)/V = 3 \, u(R)/R$, the
+required result.
+
+\emph{Step 4: interpret the factor of three.}
+A $1\,\%$ relative uncertainty on the radius produces a $3\,\%$
+relative uncertainty on the volume. The amplification is the
+worked example of the exponent dominating: high-power variables
+demand precision investment, because the volume's uncertainty
+scales with the radius's relative uncertainty multiplied by the
+exponent.
+
+\emph{Step 5: identify the assumption that fails for multipoint
+readings.}
+The single-variable derivation assumes the volume is a function of
+a single number $R$. When the radius is read at $n$ points around
+the sphere as $R_{1}, \ldots, R_{n}$ and combined into a mean
+$\bar R$, the calculation that propagates only $u(\bar R)$
+underestimates the volume's uncertainty whenever the $R_{i}$
+share a common systematic error, for example a calibration
+offset, a thermal bias, or a parallax convention. The
+multi-variable propagation formula carries cross-terms,
+\[
+\Var(\bar R) = \frac{1}{n^{2}} \sum_{i} \Var(R_{i}) +
+\frac{1}{n^{2}} \sum_{i \ne j} \rho_{ij} \, u(R_{i}) \, u(R_{j}),
+\]
+in which the off-diagonal terms (correlation coefficients
+$\rho_{ij}$ across paired readings) survive averaging. For
+fully-correlated systematic errors ($\rho_{ij} = 1$ across all
+pairs), the variance of $\bar R$ equals the variance of a single
+$R_{i}$, and the averaging delivers no precision benefit at all.
+
+\emph{Step 6: the mitigation.}
+Calibrate against a reference whose systematic error is
+independent of the sphere-measurement chain, by the cross-check
+pattern of section 7.5. The cross-check breaks the
+common-systematic correlation between readings that the
+single-instrument averaging cannot. A useful diagnostic in
+practice: if the sample standard deviation of the $R_{i}$ is
+suspiciously small ($\ll$ the instrument's stated resolution),
+the $R_{i}$ are almost certainly sharing a systematic; the
+averaging is reporting precision the chain does not have.
 
 \begin{exercise}
 For a triaxial ellipsoid of semi-axes $a, b, c$, the volume is
@@ -1816,23 +2187,68 @@ varies by $\pm 5\,\%$ between repeated readings. State three plausible
 mechanisms and propose the next measurement that distinguishes them.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Three plausible mechanisms: (i) trapped air bubbles released
-differently between readings (each release shifts the displaced
-volume downward in a discrete step); (ii) parallax in reading the
-meniscus, a Type A spread that should average toward zero;
-(iii) the stone is slightly absorbent (a porous sandstone or a stone
-with a crack network), so each immersion soaks up a small mass of
-water that biases the subsequent reading. Distinguishing
-measurement: pre-soak the stone for an hour, then repeat the five
-readings under tap-gentle conditions to prevent new bubble capture.
-If the spread collapses, bubbles or absorption were dominant; if
-the spread persists at $\pm 5\,\%$, parallax is dominant and the
-fix is a finer-graduated cylinder or a digital-camera reading of the
-meniscus. The pre-soak distinguishes (i) and (iii) from each other
-by mass: weigh the stone before and after the pre-soak; an
-absorbent stone gains measurable mass, a non-absorbent one does
-not.
+\paragraph{Solution.}
+
+\emph{Step 1: state the observed signature.}
+The water-displacement reading varies by $\pm 5\,\%$ across
+repeats on a single stone, an unusually wide spread for a method
+whose graduated-cylinder resolution-derived uncertainty is
+typically a fraction of a percent on a $\sim 100 \,\si{\milli
+\liter}$ object. The width is a signal that one or more
+unmodelled error sources are active.
+
+\emph{Step 2: enumerate plausible mechanisms.}
+(i) Trapped air bubbles released differently between readings.
+Each released bubble shifts the displaced volume downward in a
+discrete step, producing a non-Gaussian distribution of readings
+clustered around two or three levels rather than a smooth spread.
+(ii) Parallax in reading the meniscus: a Type A spread that should
+average toward zero over many readings, with a characteristic
+magnitude set by the graduated cylinder's resolution and the
+operator's eye position.
+(iii) Absorption by the stone: a porous sandstone or a stone with a
+crack network soaks up a small mass of water on each immersion,
+biasing the subsequent reading downward by the absorbed volume.
+The bias accumulates if the stone is not re-dried between
+readings.
+
+\emph{Step 3: design a test that distinguishes the mechanisms.}
+Pre-soak the stone in water for an hour, then dry the surface (a
+quick blot, not a thorough dry that would re-expose dry pores),
+then repeat the five readings under tap-gentle conditions to
+prevent new bubble capture. The pre-soak saturates any absorbent
+pore network; subsequent readings should be free of the
+absorption-induced shift.
+
+\emph{Step 4: read off the diagnosis from the new spread.}
+If the spread collapses to a fraction of a percent, bubbles or
+absorption were dominant. If the spread persists at $\pm 5\,\%$,
+parallax (or another reading-spread source) is dominant. The
+distinction between bubbles and absorption requires one more
+measurement: weigh the stone before and after the pre-soak. An
+absorbent stone gains measurable mass on the order of $0.1$ to
+$1 \,\si{\gram}$, depending on porosity; a non-absorbent stone
+gains nothing within the kitchen scale's resolution.
+
+\emph{Step 5: prescribe the fix for the dominant mechanism.}
+For bubbles: degas the water by light boiling and slow cooling,
+or by ultrasonic agitation; immerse the stone slowly and tap the
+cylinder wall to dislodge surface bubbles. For absorption: report
+two volumes (saturated and dry), and use the saturated volume for
+the displacement-derived density calculation. For parallax: replace
+the graduated cylinder with a finer-graduated cylinder, or take a
+digital photograph of the meniscus from a fixed perpendicular
+viewpoint, with the cylinder backlit through a millimetre grid.
+
+\emph{Step 6: capture the discipline.}
+A wide-spread water-displacement reading is the chapter 4
+fingerprint of an unmodelled error source. The diagnosis runs in
+sequence: characterise the distribution of the readings; propose
+mechanisms that fit the distribution's shape; design a test that
+distinguishes them; localise; fix. The pattern is independent of
+the measurand; the volume-of-a-stone case is a tutorial example
+of the chapter 7 cross-checking discipline applied within a
+single measurement chain.
 
 \begin{exercise}
 A density measurement of a metal sample gives
@@ -1870,25 +2286,84 @@ state whether the issue is a calibration error, a mechanical
 failure, or an inherent limitation of the instrument's principle.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Mechanism: a force-measuring bathroom scale reports
-mass-equivalent from a strain-gauge load-cell reading of weight
-$W = mg$, with $g$ assumed equal to the calibration site's value.
-Northern Europe (say latitude $52^{\circ}$, sea level) has $g
-\approx 9.812 \,\si{\meter\per\second\squared}$; Quito sits on the
-equator at $2850 \,\si{\meter}$ altitude, where $g \approx 9.769 \,
-\si{\meter\per\second\squared}$. The ratio is $9.769 / 9.812 \approx
-0.9956$, a $0.44\,\%$ reduction. The scale reads $0.44\,\%$ low in
-Quito, matching the observed $\approx 0.5\,\%$. The issue is an
-inherent limitation of the force-measuring principle (the
-instrument measures weight, not mass), exposed by the change of
-site. The fix is a local recalibration against a known mass at the
-new site. It is not a calibration error in the manufacturing sense
-(the scale was calibrated correctly for its calibration site) and
-it is not a mechanical failure (the load cell is operating as
-designed). A balance comparing mass against mass (the equal-arm
-pattern, \cref{fig:vol01:ch07:equal-arm-balance}) would not have
-shown the shift, because $g$ cancels.
+\paragraph{Solution.}
+
+\emph{Step 1: name the measurement principle of the instrument.}
+A force-measuring bathroom scale uses a strain-gauge load cell. A
+mass $m$ on the pan produces a weight $W = m g$ on the cell; the
+cell's strain gauges report a voltage proportional to $W$; the
+electronics divide by an assumed value of $g$ (the calibration
+site's value) and display a mass. The instrument is not weighing
+mass directly; it is reading weight and converting to a
+mass-equivalent through an assumption about gravity.
+
+\emph{Step 2: compute $g$ at each location.}
+The standard model for $g$ on Earth's surface combines latitude
+and altitude. At sea level the gravitational acceleration varies
+from $\approx 9.780 \,\si{\meter\per\second\squared}$ at the
+equator to $\approx 9.832 \,\si{\meter\per\second\squared}$ at the
+poles. The international gravity formula (the 1980 GRS80 form)
+gives $g_{0}(\phi) \approx 9.780327 [1 + 0.0053024 \sin^{2}\phi -
+0.0000058 \sin^{2}(2\phi)] \,\si{\meter\per\second\squared}$, with
+$\phi$ the geographic latitude. At $52^{\circ}$ N (northern
+Europe, e.g.\ Berlin, the Netherlands), $g_{0} \approx 9.812 \,\si
+{\meter\per\second\squared}$ at sea level. The free-air correction
+for altitude is $-3.086 \times 10^{-6} \,\si{\meter\per\second
+\squared\per\meter}$.
+
+\emph{Step 3: apply the model to Quito.}
+Quito sits at approximately $0.2^{\circ}$ S latitude (call it
+$0^{\circ}$ for this computation) and $2850 \,\si{\meter}$ above
+sea level. The latitude part: $g_{0}(0) = 9.780 \,\si{\meter\per
+\second\squared}$. The altitude part: $-3.086 \times 10^{-6}
+\times 2850 = -8.8 \times 10^{-3} \,\si{\meter\per\second\squared}$.
+Net: $g \approx 9.780 - 0.009 = 9.771 \,\si{\meter\per\second
+\squared}$, a value consistent with published Quito gravity
+surveys at $9.769$ to $9.771 \,\si{\meter\per\second\squared}$
+depending on the local geological context.
+
+\emph{Step 4: compute the indicated-mass shift.}
+The ratio of indicated mass at Quito to indicated mass at the
+calibration site, for the same physical mass on the pan, equals
+the ratio of $g$ values:
+\[
+\frac{m_{\mathrm{Quito}}^{\mathrm{indicated}}}
+{m_{\mathrm{NorthEU}}^{\mathrm{indicated}}}
+  = \frac{g_{\mathrm{Quito}}}{g_{\mathrm{NorthEU}}}
+  = \frac{9.769}{9.812} \approx 0.9956.
+\]
+The scale reads $0.44\,\%$ low in Quito, matching the observed
+$\approx 0.5\,\%$ figure within the measurement precision of a
+domestic scale.
+
+\emph{Step 5: classify the issue.}
+The phenomenon is an inherent limitation of the force-measuring
+principle. The instrument was calibrated correctly for the
+calibration site, and is operating to its specifications at the
+new site. It is not a calibration error in the manufacturing
+sense; it is not a mechanical failure of the load cell. The
+phenomenon is the expected behaviour of a force-measuring
+instrument moved to a location with different $g$. The
+manufacturer's datasheet, if comprehensive, will state the
+calibration site and the expected geographic correction; in
+practice most domestic-scale datasheets do not, and the customer
+attributes the shift to a defect.
+
+\emph{Step 6: the fix and the principle to remember.}
+The fix is a local recalibration against a known mass at the new
+site: place a calibration mass of known value $m_{\mathrm{ref}}$
+on the pan, and adjust the scale's internal gain factor (or apply
+a multiplicative correction in the user's records) so the
+indication reads $m_{\mathrm{ref}}$. A balance comparing mass
+against mass (the equal-arm pattern of
+\cref{fig:vol01:ch07:equal-arm-balance}, or a force-restoration
+balance calibrated against an internal mass standard) would not
+have shown the shift, because $g$ cancels in the comparison. The
+deeper lesson is geometric: the structural cancellation in the
+equal-arm pattern is the reason mass-against-mass comparison was
+the metrological standard for centuries before electronic load
+cells, and it remains the standard wherever the measurement must
+travel.
 
 \begin{exercise}
 A geometric approximation of a stone's volume by an ellipsoid model
@@ -1929,30 +2404,74 @@ absence allowed the auxiliary tests' indications to be set aside.
 Cite the OSBI report \cite{acc:nasa-hubble-optical-systems-1990}.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-A defensible 200--300-word reply makes three points. (1) The RNC was
-internally consistent: its assembly chain (metering rod to lens
-spacing to reference figure) reported agreement at every link,
-because each link was checked against the link above it but no
-link was checked against a different chain. (2) The auxiliary tests
-(refractive null corrector, inverse null test) were the different
-chain. They used different physical principles, different
-instruments, and different sources of systematic error from the
-RNC. The disagreement they reported with the RNC at fabrication
-time was not noise; it was the cross-check signal of section 7.5
-arriving in real time, with a compatibility ratio that any
-working metrologist would have flagged. (3) The procedural barrier
-whose absence allowed the disagreement to be set aside was a
-formal anomaly-resolution requirement that the auxiliary-test
-indication be treated as a finding requiring resolution before
-proceeding, rather than as advisory information that could be
-overruled by the more authoritative RNC under cost and schedule
-pressure. The Allen Commission's recommendation
-(\cite{acc:nasa-hubble-optical-systems-1990}, Ch.~9) is precisely
-that recommendation, framed in optical-fabrication terms: anomaly
+\paragraph{Solution.}
+
+\emph{Step 1: state the chain's internal consistency.}
+The reflective null corrector was internally consistent. Its
+assembly chain ran: a metering rod whose features defined the
+axial spacings, against which a field lens was located; the
+located lens produced the RNC's reference figure; the polished
+mirror was figured against that reference. Every link reported
+agreement with the link above it. The chain was internally
+auditable.
+
+\emph{Step 2: identify what internal consistency could not catch.}
+What no internal check could detect was that the metering-rod
+reading was misinterpreted at the top of the chain. The rod had
+two features near its end (an end cap and a target feature,
+recessed by $\sim 1.3 \,\si{\milli\meter}$) that the assembler
+could mistake for one another. The lens was set against the end
+cap rather than the target feature, the RNC was thereafter
+internally consistent with the wrong axial spacing, and the mirror
+was polished to match
+\cite{acc:nasa-hubble-optical-systems-1990}. An internally
+consistent chain is one whose links agree with each other; it is
+not one whose top is set against the right reference.
+
+\emph{Step 3: name the auxiliary tests as a different chain.}
+The auxiliary tests, a refractive null corrector and an inverse
+null test, were a different measurement chain. They used different
+physical principles (refractive optics rather than reflective),
+different instruments (a separate refractive corrector, an
+inverse-null configuration that did not rely on the RNC's
+geometric definition), and different sources of systematic error.
+Their independence from the RNC chain was precisely what made them
+useful as cross-checks.
+
+\emph{Step 4: quantify the disagreement they reported.}
+The auxiliary tests' indications at fabrication time disagreed
+with the RNC's reading by an amount inconsistent with their
+combined uncertainty budgets. The disagreement was not noise; it
+was the compatibility-ratio signal of section 7.5 arriving in
+real time. A working metrologist running the chapter 4
+compatibility ratio on the two reports would have flagged the
+inconsistency, and would have classified it as requiring
+resolution before the mirror entered service.
+
+\emph{Step 5: name the procedural barrier whose absence
+mattered.}
+The barrier was a formal anomaly-resolution requirement that the
+auxiliary-test indication be treated as a finding requiring
+resolution before proceeding, rather than as advisory information
+that could be overruled by the more authoritative instrument under
+cost and schedule pressure. The Allen Commission's Chapter 9
+recommendations \cite{acc:nasa-hubble-optical-systems-1990} are
+that requirement, framed in optical-fabrication terms: anomaly
 resolution must be procedural, must include the customer (NASA)
 in the decision chain, and must not allow informal seniority of
 one instrument over another to determine which test is believed.
+
+\emph{Step 6: state the lesson for length measurement at every
+scale.}
+The Hubble case is the wrong-ruler pattern at the largest optical
+scale the engineering record contains. A reference instrument is
+itself a measurement chain; the cross-check on the reference is an
+independent measurement of the reference, not a repeat of the same
+measurement on the same chain. The discipline scales down without
+modification to the workshop: a calliper whose calibration is
+verified against a gauge block from the same calibration lot,
+returned from the same laboratory, is internally consistent and
+externally unverified.
 
 \begin{exercise}
 A length measurement chain is documented in three written links: a
@@ -1964,25 +2483,73 @@ the cross-check that would detect the drift before the next external
 recalibration.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Failure mode: the entire chain reports lengths drifting in step
-with the master reference's drift, with no internal indication of
-the drift, because every link of the chain is calibrated against
-the link above it. The downstream calliper produces measurements
-that are internally self-consistent and externally biased. The
-cross-check that detects the drift before the next external
-recalibration is an independent reference of comparable accuracy
-held outside the same calibration laboratory: a second master
-reference from a different supplier or a different lot, calibrated
-through a different traceability chain. Periodic comparison of the
-two masters (a within-laboratory cross-comparison) flags
-disagreement; the compatibility-ratio test of section 7.5 quantifies
-when the disagreement exceeds the combined uncertainty of the two
-references. If the two masters were calibrated through different
-chains, the disagreement localises the drifting one. The discipline
-generalises the IPK lesson of section 7.3.5: a single artefact
-cannot detect its own drift; a cohort of supposedly identical
-artefacts can.
+\paragraph{Solution.}
+
+\emph{Step 1: walk the chain forward to find the failure mode.}
+The calliper is calibrated against the gauge block; the gauge
+block is calibrated against the master reference; the master
+reference is calibrated against an SI realisation, but only at
+the formal recalibration interval. Between recalibrations the
+master drifts (handling wear, contamination, environmental
+exposure). Each downstream calibration step calibrates against
+the master at its present, drifted state, so the entire chain
+reports lengths shifted by the master's drift. The reports are
+internally self-consistent, because every link agrees with the
+link above it; they are externally biased, because the top of the
+chain has moved.
+
+\emph{Step 2: identify why no internal check catches it.}
+The chain's internal-consistency check is each link's agreement
+with the link above. The check is structurally blind to a drift
+at the top, because it has no second top to compare against. The
+calliper's calibration certificate, the gauge block's calibration
+certificate, and the master's calibration certificate all match
+their stated reference values, because the references are the
+same drifting object measured from the same chain.
+
+\emph{Step 3: name the cross-check that detects the drift.}
+An independent reference of comparable accuracy, held outside the
+same calibration laboratory: a second master reference from a
+different supplier or a different lot, calibrated through a
+different traceability chain. The two masters are then periodically
+compared within the laboratory (a within-laboratory
+cross-comparison) by mounting both on the same comparator and
+running a calibration-grade differential measurement.
+
+\emph{Step 4: specify the test.}
+Run the compatibility-ratio test of section 7.5 on the two
+masters: $\Delta = L_{1} - L_{2}$, $u(\Delta) = \sqrt{u(L_{1})^{2}
++ u(L_{2})^{2}}$, $r = |\Delta| / u(\Delta)$. As long as $r < 2$,
+the two masters agree within their combined uncertainty; the
+chain reports nothing actionable. When $r$ crosses $2$, the
+working assumption that the chain's reference is stable has
+broken; the appropriate response is to schedule an external
+recalibration of both masters before further work issues from
+the chain.
+
+\emph{Step 5: localise which master is drifting.}
+The compatibility-ratio test tells the reader the two masters
+disagree; it does not tell the reader which has drifted. The
+localisation step is a third independent reference, or a return
+of both to the external calibration laboratory, or a fixed
+external comparison against an SI realisation (a different
+length-measurement primary chain, an interferometer tied to a
+stabilised frequency). The general pattern: $n = 2$ references
+catch a drift; $n = 3$ references localise it; $n \geq 4$
+references begin to characterise the drift's statistical
+properties.
+
+\emph{Step 6: generalise to the IPK lesson.}
+The discipline restates the IPK lesson of section 7.3.5 at the
+working laboratory scale. A single artefact cannot detect its own
+drift; a cohort of nominally identical artefacts can, by
+within-cohort comparison. The IPK case operated this principle in
+the negative: the cohort showed scatter, but the chain's
+definitional structure prevented declaring any one artefact
+drifted relative to the others. The working laboratory recovers
+the affirmative version by holding multiple masters through
+distinct calibration chains, and by treating the cross-check as
+the routine check that the chain's top is intact.
 
 \begin{exercise}
 A workshop reports that a part dimensioned in millimetres on its
