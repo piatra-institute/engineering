@@ -911,23 +911,52 @@ whose uncertainty has not been characterised.
 
 \subsection{The GPS clocks}
 
-Each GPS satellite carries multiple atomic frequency standards,
-typically a combination of rubidium and caesium clocks; the active
-clock is selected by ground command and is monitored by the master
-control station. The on-board clock is steered, through a slow
-correction process, against the GPS system time, which is itself a
-weighted ensemble timescale defined and maintained by the operating
-control segment of the system. The GPS satellites broadcast their
-clock corrections (offset and rate) as part of the navigation
-message; the receiver applies these corrections before using the
-satellite signal for ranging.
+Each GPS satellite carries four atomic frequency standards:
+two rubidium and two caesium-beam clocks in the legacy Block IIR
+satellites, and four rubidium clocks in the modernised Block
+IIF and Block III spacecraft. The Block IIR rubidium clocks
+(manufactured by EG\&G Frequency Products, now Spectratime) achieve
+Allan deviation $\sigma_{y}(\tau = 1\,\si{\day}) \approx 1 \times
+10^{-14}$ when steered; the caesium-beam clocks (manufactured by
+Frequency Electronics) reach $\sigma_{y}(\tau = 1\,\si{\day})
+\approx 8 \times 10^{-15}$ but with shorter operational lifetime.
+The active clock is selected by ground command from the GPS
+Operations Center at Schriever Space Force Base in Colorado
+Springs and is monitored continuously by the 17 monitor stations
+of the worldwide control segment (NGA monitor stations plus the
+6 Air Force monitor stations).
+
+The on-board clock is steered against the GPS system time, a
+weighted ensemble timescale defined by the master control station
+from the monitor-station measurements. The steering correction
+takes the form of broadcast clock-correction polynomial
+coefficients $(a_{f0}, a_{f1}, a_{f2})$ in the navigation message
+subframe 1, applied by the receiver as
+$\Delta t_{\text{sv}} = a_{f0} + a_{f1}(t - t_{oc}) + a_{f2}(t - t_{oc})^{2}$
+where $t_{oc}$ is the reference time of the clock data; the
+quadratic term accommodates a frequency-drift rate, and the
+linear term accommodates a frequency offset. The control segment
+uploads new clock-correction coefficients to each satellite about
+once per day; the broadcast values represent the master control
+station's best prediction of the on-board clock's behaviour
+forward to the next upload. The post-fit residual of this
+prediction (the actual versus predicted clock state at the time
+of upload) is the Signal-in-Space User Range Error contribution
+from the clock, typically $\sim 0.6\,\si{\meter}$ at the
+$1\sigma$ level for the modernised constellation.
 
 The GPS system time differs from UTC by an integer number of
-seconds (the leap-second offset, $18 \,\si{\second}$ as of 2026)
-plus a small offset typically held within a few tens of nanoseconds.
-GPS does not insert leap seconds; it broadcasts the current
-UTC-GPS offset in the navigation message so that receivers can
-present civil time correctly when asked.
+seconds (the leap-second offset, $18\,\si{\second}$ as of 2026)
+plus a small offset typically held within $\pm 50\,\si{\nano
+\second}$ ($1\sigma$). GPS does not insert leap seconds; it
+broadcasts the current UTC-GPS offset, the time and date of any
+scheduled future leap second, and a 6-bit signed week count of
+the current leap-second-delta change in subframe 4 page 18 of
+the navigation message. Receivers can use these fields to present
+civil time correctly when asked. The Galileo, GLONASS, and BeiDou
+systems each define their own system times that differ from GPS
+by tens to hundreds of nanoseconds; multi-constellation receivers
+estimate the inter-system biases as additional unknowns.
 
 \subsection{The ranging measurement}
 
@@ -958,31 +987,81 @@ own physics and its own engineering response.
 
 \begin{itemize}[leftmargin=*]
   \item \engterm{Ionospheric delay}. The signal traverses the
-    ionosphere, a region of free electrons whose density depends on
-    solar activity, latitude, time of day, and season. For
-    single-frequency L1 receivers, the uncorrected first-order
-    ionospheric delay is commonly several metres to tens of metres,
-    with larger excursions during ionospheric storms. Broadcast
-    models reduce but do not remove the delay; dual-frequency
-    receivers cancel the first-order term by comparing delays at
-    two carrier frequencies.
+    ionosphere, a region of free electrons whose density peaks
+    near $300\,\si{\kilo\meter}$ altitude and depends on solar
+    activity (the $11$-year solar cycle drives a factor-of-three
+    variation in total electron content), latitude (equatorial and
+    polar anomalies), local time (peak around $14$h local time,
+    minimum near sunrise), and season. The first-order delay
+    scales as $40.3 \cdot \text{TEC}/f^{2}\,\si{\meter}$ where
+    $\text{TEC}$ is the total electron content along the slant
+    path in TEC units ($10^{16}\,\text{electrons}/\si{\meter
+    \squared}$) and $f$ is the carrier frequency. At L1
+    ($1575.42\,\si{\mega\hertz}$), a typical mid-latitude daytime
+    TEC of $30\,\text{TECU}$ produces a $\sim 5\,\si{\meter}$
+    range error; during ionospheric storms it can exceed
+    $50\,\si{\meter}$. The Klobuchar broadcast model corrects
+    $\sim 50\%$ of the daily-averaged error for single-frequency
+    L1 receivers; the Galileo NeQuick model reaches $\sim 70\%$.
+    Dual-frequency receivers cancel the first-order term to
+    millimetre precision by forming the ionosphere-free combination
+    of L1 ($1575.42\,\si{\mega\hertz}$) and L2 ($1227.60\,\si{
+    \mega\hertz}$) or L1 and L5 ($1176.45\,\si{\mega\hertz}$);
+    the residual second-order term is $\sim 1\%$ of the first
+    order.
   \item \engterm{Tropospheric delay}. The neutral atmosphere
-    contributes a zenith path delay of about $2.3$ to $2.6 \,\si
-    {\meter}$, roughly $8$ to $9 \,\si{\nano\second}$, and a larger
-    slant delay at low elevation angles through a mapping function.
-    Receivers apply standard models that reduce the residual to a
-    smaller fraction of the zenith delay.
-  \item \engterm{Multipath}. Reflected signals corrupt the code
-    and carrier measurements and can produce metre-scale errors in
-    dense environments such as urban canyons or under foliage.
-  \item \engterm{Satellite clock and ephemeris error}. Broadcast
-    products leave residual range errors at the metre scale; the
-    IGS (International GNSS Service) publishes precise products
-    that reduce orbit and clock errors for post-processed work.
-  \item \engterm{Receiver noise and observable choice}. Code-phase
-    noise is much larger than carrier-phase noise; carrier-phase
-    positioning also has ambiguity-resolution requirements that
-    code-only solutions do not.
+    contributes a zenith path delay around $2.3$-$2.6\,\si{\meter}$
+    (about $8$-$9\,\si{\nano\second}$), of which $90\%$ is the
+    nearly-stable hydrostatic component (predicted to $\sim 1\,\si{
+    \milli\meter}$ from surface pressure via the Saastamoinen
+    model) and $10\%$ is the highly variable wet component (from
+    water vapour, poorly predicted by surface meteorology). The
+    slant delay at elevation $\epsilon$ uses a mapping function
+    such as the Global Mapping Function: $\text{md}(\epsilon) =
+    1/(\sin\epsilon + a/(b + c\sin\epsilon))$ where $a, b, c$ are
+    site-specific coefficients near $0.001$, $0.01$, $0.05$. At
+    $5\,\si{\degree}$ elevation, the slant delay is $\sim 25\,\si{
+    \meter}$; below $10\,\si{\degree}$, the wet-component
+    uncertainty rises rapidly and most receivers apply an
+    elevation mask.
+  \item \engterm{Multipath}. Reflected signals interfere
+    constructively or destructively with the direct signal at the
+    receiver antenna. The maximum multipath error for code (C/A)
+    measurements is $\sim 0.5 \cdot \tau \cdot c$ where $\tau$ is
+    the chip period ($1\,\si{\micro\second}/1023 \approx
+    977\,\si{\nano\second}$ for C/A, hence $\sim 150\,\si{\meter}$
+    maximum theoretical error), but practical receivers use
+    narrow-correlator or strobe-correlator architectures (NovAtel
+    PAC, Trimble Maxwell) that limit the error to $\sim 1$-$3\,\si{
+    \meter}$ in typical environments and $5$-$50\,\si{\meter}$ in
+    deep urban canyons. Carrier-phase multipath is bounded by
+    $\lambda/4$ ($\sim 5\,\si{\centi\meter}$ for L1), much smaller
+    but still significant for RTK applications.
+  \item \engterm{Satellite clock and ephemeris error}. The
+    broadcast ephemeris is valid for $\pm 2\,\si{\hour}$ around the
+    reference time and is updated every $2\,\si{\hour}$. The
+    broadcast User Range Error (URE) is $\sim 0.6\,\si{\meter}$
+    for the modernised constellation. The IGS (International GNSS
+    Service) publishes Ultra-Rapid (predicted, available real-
+    time, $\sim 5\,\si{\centi\meter}$ orbit, $3\,\si{\nano\second}$
+    clock), Rapid ($\sim 17$-$41\,\si{\hour}$ latency,
+    $2.5\,\si{\centi\meter}$ orbit, $75\,\si{\pico\second}$ clock),
+    and Final products ($12$-$18\,\si{\day}$ latency,
+    $\sim 2.5\,\si{\centi\meter}$ orbit, $75\,\si{\pico\second}$
+    clock) that improve on the broadcast for post-processing
+    \cite{web:gpsgov-accuracy}.
+  \item \engterm{Receiver noise and observable choice}. C/A code
+    measurement noise at $1\sigma$ is $\sim 1\,\si{\meter}$ for
+    consumer receivers and $\sim 0.1\,\si{\meter}$ for survey-
+    grade receivers; P(Y) code noise is $\sim 0.3\,\si{\meter}$
+    and $0.03\,\si{\meter}$ respectively. Carrier-phase
+    measurements have $\sim 1\,\si{\milli\meter}$ noise at L1
+    ($\lambda = 19.0\,\si{\centi\meter}$) but the integer cycle
+    ambiguity must be resolved through dual-frequency observation
+    or extended observation time. Survey-grade receivers
+    (Trimble R12i, Leica GS18, Sokkia GRX3) reach $\sim 8\,\si{
+    \milli\meter} + 1\,\si{ppm}$ horizontal in RTK mode at
+    baselines under $30\,\si{\kilo\meter}$.
 \end{itemize}
 
 User accuracy depends on satellite geometry, signal-in-space
@@ -995,6 +1074,97 @@ measurements and carrier-phase processing to move from metre-scale
 positioning toward sub-metre or centimetre-scale positioning when
 the environment, baseline, and ambiguity resolution support it
 \cite{web:gpsgov-accuracy,std:gps-sps-2020}.
+
+\subsection{The working RTK and PPP pipelines}
+
+Carrier-phase positioning requires correction streams from
+reference stations. Two delivery architectures dominate the
+working RTK and PPP markets.
+
+\engterm{Single-baseline RTK} uses one reference receiver at a
+surveyed location streaming corrections in real time to the rover.
+The reference and rover form a baseline; the rover differences its
+own observations against the reference's to cancel the
+satellite-clock, ephemeris, ionospheric, and tropospheric errors
+common to both endpoints. The accuracy floor scales linearly with
+baseline length: at the working Trimble R12i / Leica GS18 receivers,
+RTK accuracy is $8\,\si{\milli\meter} + 1\,\si{ppm}$ horizontal,
+or $10\,\si{\milli\meter}$ at a $2\,\si{\kilo\meter}$ baseline and
+$38\,\si{\milli\meter}$ at $30\,\si{\kilo\meter}$. The
+maximum reliable single-baseline RTK distance is about $30$-$40
+\,\si{\kilo\meter}$, beyond which decorrelation of the atmospheric
+error overwhelms the differencing benefit.
+
+\engterm{Network RTK (NRTK)} replaces the single reference with a
+network of $5$-$30$ continuously operating reference stations
+(CORS) covering a region; the rover receives a virtual reference
+station (VRS) correction stream computed from the network's
+observations interpolated to the rover's location. The interpolation
+uses ionospheric and tropospheric models tuned from the network's
+own data. Working NRTK services: in the US, the National Geodetic
+Survey's CORS network ($\sim 2000$ stations) plus commercial
+providers Trimble VRS Now, Leica SmartNet, NovAtel TerraStar; in
+Europe, the SAPOS network in Germany (one station per $\sim
+50\,\si{\kilo\meter}$) and the EUREF Permanent Network for
+geodetic-quality data; in Asia, GEONET Japan ($\sim 1300$
+stations); in Australia, AUSCORS. NRTK reduces the baseline-length
+dependence: working accuracy is $8\,\si{\milli\meter} + 0.5\,
+\si{ppm}$ at distances up to $\sim 50\,\si{\kilo\meter}$ from the
+nearest network station.
+
+\engterm{NTRIP (Networked Transport of RTCM via Internet
+Protocol)} is the de facto correction-stream transport standard,
+RTCM Special Committee 104 maintained, current version 2.0 (2011).
+The protocol runs over HTTP; a caster (server) accepts correction
+streams from sources (reference stations) and delivers them to
+clients (rovers) authenticated by username/password. A rover's
+NTRIP client sends a $\mathrm{GGA}$ NMEA sentence (its
+approximate position) to request a VRS stream from the caster; the
+caster returns the interpolated correction stream as RTCM 3.3 or
+RTCM 3.4 messages over the persistent HTTP connection. Working
+NTRIP casters: NTRIP Caster (BKG, German), MountPoint (Trimble),
+ICESec (Leica), and open-source SNIP and BNC (BKG). Rover client
+software: BNC, SNIP, the rtklib open-source toolkit by Tomoji
+Takasu (BSD licence, the working reference implementation),
+commercial NRTK clients in survey controllers (Trimble Access,
+Leica Captivate).
+
+\engterm{Precise Point Positioning (PPP)} is the alternative to
+RTK: instead of differencing against a nearby reference, the
+rover uses precise satellite orbit and clock products from a
+global computation centre (the IGS combined Final Products at
+$2.5\,\si{\centi\meter}$ orbit and $75\,\si{\pico\second}$ clock;
+the IGS Ultra-Rapid products real-time at $5\,\si{\centi\meter}$
+and $3\,\si{\nano\second}$). PPP eliminates the need for a nearby
+reference at the cost of $15$-$30\,\si{\minute}$ initial
+convergence time and slightly larger steady-state uncertainty.
+Working PPP services: NRCan CSRS-PPP (free, post-processing),
+JPL APPS (free, post-processing), Trimble RTX (commercial,
+real-time, $\sim 4\,\si{\centi\meter}$ horizontal after
+$5\,\si{\minute}$ convergence), Veripos APEX (commercial,
+real-time, offshore-oil-and-gas industry), Sapcorda SAPA
+(commercial, real-time, automotive).
+
+\engterm{PPP-RTK} (also called State-Space Representation, SSR)
+combines PPP's global reach with RTK's fast convergence by
+broadcasting State-Space corrections (decomposed into per-
+satellite orbit, clock, code-bias, and atmospheric terms) rather
+than raw observation corrections. The Galileo HAS (High Accuracy
+Service, operational since 2023) and the Japanese MADOCA service
+broadcast SSR corrections over the L6 signal of QZSS and
+Galileo's E6-B signal. Working PPP-RTK convergence: $1$-$5\,\si{
+\minute}$ versus $15$-$30\,\si{\minute}$ for classical PPP.
+
+The working choice across these architectures is set by the
+application's accuracy requirement, geographic extent, real-time
+versus post-processing constraint, and budget. A surveyor uses
+NRTK in a region with good network coverage; a geodetic
+researcher uses post-processed PPP with IGS Final products; an
+oil-and-gas dynamic-positioning vessel uses real-time PPP with
+Veripos; an autonomous vehicle uses PPP-RTK over Galileo HAS.
+The architectures share the carrier-phase ambiguity-resolution
+problem and differ in how they generate the corrections that
+constrain the integer ambiguity to a known value.
 
 \subsection{Relativistic effects}
 

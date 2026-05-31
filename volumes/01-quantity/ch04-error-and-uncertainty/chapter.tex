@@ -455,27 +455,108 @@ of distributions \cite{std:jcgm-101}.
 \subsection{Monte Carlo propagation}
 
 The Monte Carlo method propagates the entire input distribution
-rather than just its variance. The procedure:
+rather than just its variance. The procedure formalised by
+JCGM 101:2008 \cite{std:jcgm-101} is the working reference in
+calibration laboratories that submit accredited results:
 
 \begin{enumerate}[leftmargin=*]
   \item Specify a probability distribution for each input quantity
-    based on Type A and Type B evaluations.
-  \item Draw a random sample from each input distribution. The
-    samples should be drawn jointly when inputs are correlated,
-    using the joint distribution.
-  \item Compute the output quantity from the sampled inputs.
+    based on Type A and Type B evaluations. The distribution
+    family matters: Type A contributions from $n$ repeated readings
+    of a Gaussian process use a scaled $t$-distribution with $n-1$
+    degrees of freedom, not Gaussian; Type B contributions from
+    rectangular specifications use uniform distributions on the
+    stated half-width; Type B contributions from manufacturer
+    expanded-uncertainty statements use Gaussians with the stated
+    coverage factor.
+  \item Draw a random sample from each input distribution.
+    Independent inputs are drawn from their marginal distributions;
+    correlated inputs require the joint distribution and a sampling
+    method that preserves the correlation structure. Cholesky
+    factorisation of the covariance matrix is the working method
+    for multivariate Gaussians ($\mathbf{x} = \boldsymbol{\mu} +
+    \mathbf{L} \mathbf{z}$ where $\mathbf{L}\mathbf{L}^{\top}$ is
+    the covariance and $\mathbf{z}$ are independent standard
+    normals); copula-based methods handle the general dependent-
+    distribution case.
+  \item Compute the output quantity from the sampled inputs. For
+    vector-valued outputs the same draws produce the joint output
+    distribution; the resulting covariance structure between
+    output components carries the correlations that GUM's linear
+    formula would miss.
   \item Repeat steps 2--3 for $M$ trials. Choose $M$ from a
-    convergence or numerical-tolerance criterion; for simple models,
-    $10^{5}$ to $10^{6}$ trials are common starting values, but the
-    report should state the criterion actually used.
-  \item Estimate the output's mean, standard deviation, and any
+    convergence or numerical-tolerance criterion. For a
+    one-dimensional output and the standard-uncertainty estimator,
+    the standard error of the empirical standard deviation is
+    approximately $\sigma/\sqrt{2M}$, so $M = 10^{5}$ delivers a
+    standard-deviation estimate at $\sim 0.2\%$ of the true value
+    (a working laboratory target). For tail-probability or
+    percentile estimates, the required $M$ rises sharply: a $0.1\%$
+    tail probability needs $M \gtrsim 10^{6}$ for a relative
+    accuracy of $\sim 3\%$. JCGM 101 \S 7.9.2 specifies an
+    \engterm{adaptive} stopping rule: run blocks of $M_{0}$ trials
+    until the change in the reported percentile-range half-width
+    falls below a target numerical-tolerance threshold, typically a
+    small fraction of the smallest reportable digit of the
+    expanded uncertainty.
+  \item Estimate the output's mean, standard deviation, and the
     desired percentile range from the resulting empirical
-    distribution.
+    distribution. The mean is the empirical mean; the standard
+    uncertainty is the empirical standard deviation; the expanded
+    uncertainty at $p\%$ coverage is the half-width of the
+    symmetric $p\%$-coverage interval around the median, found by
+    sorting the output sample and taking the appropriate
+    percentile pair.
 \end{enumerate}
 
+Three implementation choices that distinguish working laboratory
+Monte Carlo from textbook examples:
+
+\engterm{Random number generator.} Reproducibility requires a
+deterministic pseudo-random generator with a recorded seed. The
+Mersenne Twister (period $2^{19937}-1$, internal state $624$
+words) is the default in MATLAB, R, and NumPy through version
+$1.16$. NumPy's modern default since version $1.17$ is PCG-64
+(period $2^{128}$, smaller state, better statistical properties
+in low-dimensional projections than Mersenne Twister); the GUM
+Supplement 1 does not mandate a specific generator but requires
+the choice to be documented. A calibration laboratory's procedure
+should state the generator, the seed, and the seeding policy
+(re-seed per analysis or fixed-seed across analyses).
+
+\engterm{Quasi-random sequences.} For integration-style problems
+(estimating expectations rather than tail probabilities), Sobol
+and Halton sequences give faster convergence than pseudo-random
+draws: the error decreases as $1/M$ rather than $1/\sqrt{M}$, a
+substantial speedup at $M = 10^{5}$ to $10^{6}$. JCGM 101 does
+not endorse quasi-Monte Carlo for uncertainty propagation because
+the empirical-percentile estimation step requires independent
+samples; quasi-MC delivers correlated samples that produce
+sharper mean estimates but biased percentile estimates. For
+high-dimensional integration in metrology software, the working
+trade is to use Sobol for the mean and pseudo-random for the
+percentile.
+
+\engterm{Variance reduction.} \engterm{Antithetic variates} (each
+random draw used twice, once as $z$ and once as $-z$ for
+symmetric distributions) halve the variance for symmetric output
+functions at no extra cost. \engterm{Control variates} (substract
+off an analytically tractable approximation) reduce variance by
+the squared correlation between the original and the
+approximation; for the linear-propagation approximation as the
+control variate, the variance reduction can exceed an order of
+magnitude when the model is close to linear. \engterm{Importance
+sampling} biases the draw toward the regions of interest and
+reweights, useful for tail-probability estimation where most
+random draws contribute negligibly. The working laboratory
+typically uses antithetic variates by default and reserves the
+others for problems where the unsmodified Monte Carlo's
+convergence is too slow.
+
 The Monte Carlo method does not assume linearity and does not
-require analytic partial derivatives. It does require computational
-effort and well-specified input distributions. JCGM 101 gives the
+require analytic partial derivatives. It does require
+computational effort, well-specified input distributions, and a
+documented numerical-tolerance criterion. JCGM 101 gives the
 canonical formulation \cite{std:jcgm-101}; we will use it
 operationally in chapter 8 when we cover statistics for engineers
 and again in chapter 9 when we cover estimation as a discipline.
@@ -768,6 +849,27 @@ estimate. A serious calibration report carries the $t$ factor down
 to whatever $n$ the data have, not down to whichever $n$ a textbook
 rule of thumb crosses.
 
+\paragraph{Working software paths.} In R, \texttt{t.test(x,
+conf.level = 0.95)} returns the $95\%$ confidence interval
+directly: for the five-point part-dimension data
+$(12.045, 12.013, 12.041, 12.029, 12.042)$,
+\texttt{t.test(}$\cdot$\texttt{)} returns
+\texttt{mean of x: 12.034}, \texttt{95\% CI: (12.011, 12.057)},
+half-width $0.023\,\si{\milli\meter}$ (matching the manual
+calculation to within rounding). In Python with
+\texttt{scipy.stats}, the same calculation is
+\texttt{scipy.stats.t.interval(0.95, df=4, loc=12.034,
+scale=0.008)} returning \texttt{(12.012, 12.056)}. In MATLAB, it
+is \texttt{[h,p,ci] = ttest(x)}. The user who relies on the
+software default coverage factor of $1.96$, who codes
+\texttt{xbar + 1.96 * s / sqrt(n)}, under-reports the interval
+by $39\%$ at $n = 5$. The $t$-table in JCGM 100:2008 Annex G
+Table G.2 carries the factors out to $n - 1 = 30$ d.f.; the
+Welch-Satterthwaite formula (JCGM 100:2008 \S G.4) extends the
+treatment to combined Type A and Type B contributions with
+different effective d.f., a frequently-needed correction in
+multi-source uncertainty budgets.
+
 \subsection{When the CLT fails: Cauchy and the heavy-tailed case}
 
 The reference simulation \texttt{code/cauchy\_mean.py} draws samples
@@ -861,17 +963,56 @@ report an explicit uncertainty alongside the value.
 
 \subsection{Rounding}
 
-One common reporting rule is round-half-to-even (banker's rounding):
-when the discarded digit is exactly $5$ with no further nonzero
-digits, round to the nearest even digit. Use this rule when the
-applicable standard, laboratory procedure, or software environment
-specifies it; otherwise state the rounding convention. A separate
-convention applies to uncertainties: report an uncertainty with one
-significant figure, or with two when the leading digit is $1$ or $2$
-or when the second digit changes the decision. Thus
-$0.05246 \,\si{\volt}$ would usually become $0.05 \,\si{\volt}$;
-$0.0146 \,\si{\volt}$ would usually become $0.015 \,\si{\volt}$
-\cite{std:nist-sp811}.
+IEEE 754:2019 defines five rounding modes that working software
+makes available; the working engineer should know which one is
+active in their environment.
+
+\engterm{Round to nearest, ties to even} (also called round-half-
+to-even or banker's rounding) is the default for IEEE 754 binary
+floating-point arithmetic, the default for Python's
+\texttt{round}, R's \texttt{round}, MATLAB's \texttt{round}, and
+most modern numerical libraries. When the discarded digit is
+exactly $5$ with no further nonzero digits, round to the nearest
+even digit; otherwise round to the nearest. The mode is unbiased
+over many roundings because half the ties round up and half round
+down on average. \engterm{Round to nearest, ties away from zero}
+is the convention school-taught arithmetic uses (round $0.5$ up,
+round $-0.5$ down); IEEE 754 mandates that floating-point
+implementations support both. \engterm{Round toward zero}
+(truncation), \engterm{round toward $+\infty$} (ceiling), and
+\engterm{round toward $-\infty$} (floor) are the directional
+modes used for interval-arithmetic upper and lower bounds.
+
+A separate convention applies to uncertainties: report an
+uncertainty with one significant figure, or with two when the
+leading digit is $1$ or $2$ or when the second digit changes the
+decision. Thus $0.05246\,\si{\volt}$ would usually become
+$0.05\,\si{\volt}$; $0.0146\,\si{\volt}$ would usually become
+$0.015\,\si{\volt}$ \cite{std:nist-sp811}. The GUM (JCGM 100:2008
+\S 7.2.6) recommends rounding the uncertainty up rather than to
+nearest: a calibration certificate reporting $u = 0.043\,\si{
+\milli\meter}$ would round to $u = 0.05\,\si{\milli\meter}$
+(rounded up) rather than $u = 0.04\,\si{\milli\meter}$ (rounded
+to nearest), because under-reporting the uncertainty is a more
+serious calibration-discipline failure than over-reporting. The
+recommendation is widely but not universally followed; the
+working laboratory should state its rounding-for-reporting rule.
+
+Floating-point rounding in extended arithmetic is more subtle.
+The IEEE 754 binary64 format ($53$-bit significand, decimal
+precision $\sim 15.95$ digits, range $\sim 10^{\pm 308}$) is the
+default for double-precision arithmetic and adequate for nearly
+all engineering work. The binary32 format ($24$-bit significand,
+$\sim 7.22$ decimal digits) suffices for sensor-data storage but
+not for accumulation: summing $10^{6}$ numbers in binary32 can
+lose $\sim 6$ significant figures from the sum. The binary128
+format ($113$-bit significand, $\sim 34.02$ decimal digits) is
+available in modern hardware (POWER, ARM SVE, some x86) and
+recommended for ill-conditioned calculations. The decimal64 and
+decimal128 formats (IEEE 754:2008 onward) are the working choice
+for financial calculations where decimal-exact arithmetic matters;
+Python's \texttt{decimal} module and Java's \texttt{BigDecimal}
+class implement decimal128.
 
 \subsection{Reporting conventions}
 
@@ -1614,37 +1755,63 @@ has entered the uncertainty budget.
 
 \subsection{The Hubble auxiliary-test override}
 
-The Hubble Space Telescope launched in April 1990 with a primary
-mirror figured to the wrong shape. Within weeks of first light,
-the focused image of a point source showed a halo of scattered
-light rather than the diffraction-limited Airy disk the optical
-design called for. The NASA Optical Systems Board of Investigation
-(OSBI), convened in June 1990 under Lew Allen, reported in
-November 1990 with a fault tree that traced the figure error
-through fabrication and quality assurance to a single
-mechanical-positioning error in the test fixture
-\cite{acc:nasa-hubble-optical-systems-1990}. This chapter revisits
-the case for one specific lesson: the treatment of disagreement
-between independent measurements.
+The Hubble Space Telescope (HST) launched on board STS-31
+(Space Shuttle Discovery) on 24 April 1990 at $12{:}33{:}51$ UTC
+from Kennedy Space Center LC-39B. The $2.4\,\si{\meter}$
+primary mirror, fabricated by Perkin-Elmer (now part of Goodrich)
+at the Danbury, Connecticut Optical Operations Division during
+1979-1981, had been figured to the wrong shape. Within three
+weeks of first light on 20 May 1990, the focused image of a
+point source showed a halo of scattered light rather than the
+diffraction-limited Airy disk the optical design specified; the
+Strehl ratio (the ratio of peak intensity in the actual image to
+the diffraction-limited peak) was approximately $0.1$ rather than
+the specified $0.8$. The NASA Optical Systems Failure
+Investigation Board, convened by Administrator Richard Truly on
+$2$ July $1990$ under chair Lew Allen Jr.\ (then JPL director),
+reported on $24$ November $1990$ with a fault tree tracing the
+figure error to a single mechanical-positioning error in the
+test fixture \cite{acc:nasa-hubble-optical-systems-1990}. This
+chapter revisits the case for one specific lesson: the treatment
+of disagreement between independent measurements.
 
 \paragraph{Technical mechanism.}
 The primary mirror was figured to the prescribed conic constant
-through an iterative grind-and-test cycle. The test instrument
-that drove the figure was a reflective null corrector (RNC), an
-optical assembly designed to convert the mirror's intended
-hyperboloidal figure into a null fringe pattern when illuminated
-by an interferometer; the deviation from null measured the figure
-error. The RNC contained a field lens whose axial position was
-set by spacing rods between two reference surfaces. During
-assembly, a metering rod was inverted and the end face used as
-the reference was at the wrong axial location: the field lens
-was positioned about $1.3 \,\si{\milli\meter}$ from its design
-location \cite{acc:nasa-hubble-optical-systems-1990}. The RNC
-therefore measured deviation from the wrong target shape. The
-mirror was polished to null against the RNC's faulty reference,
-producing a hyperboloid with a conic constant differing from
-specification by $1.0\,\%$ and an edge-to-centre figure error of
-about $2 \,\si{\micro\meter}$ peak-to-valley.
+$\kappa = -1.002\,98$ (a hyperboloid with eccentricity
+slightly larger than $1$, the Ritchey-Chr\'etien optical
+prescription that minimises coma and spherical aberration over
+the field of view) through an iterative grind-and-test cycle at
+the Perkin-Elmer plant. The test instrument that drove the
+figure was a Reflective Null Corrector (RNC), an optical assembly
+that introduces a compensating wavefront so that the perfect
+hyperboloidal mirror returns a null fringe pattern when
+illuminated by a $632.8\,\si{\nano\meter}$ helium-neon-laser
+Twyman-Green interferometer; the deviation from null measured the
+figure error to a fraction of a wavelength.
+
+The RNC contained a field lens whose axial position was set by
+two metering rods between two reference surfaces. The metering
+rod's reference end was identified by a small recess at the
+intended end face. During RNC assembly in late 1981, the rod was
+positioned with the wrong end against the reference surface: a
+non-reflective black paint coating on the cap of one end was
+incorrectly identified as the reference reflector, and the metal
+end opposite, which had been designed as the reference,
+contacted the lower reference surface. The error placed the field
+lens approximately $1.3\,\si{\milli\meter}$ farther from its
+design location than intended \cite{acc:nasa-hubble-optical-systems-1990}.
+The RNC therefore generated a wavefront corresponding to a
+mirror with a different conic constant; the as-fabricated mirror,
+polished to null against this RNC, had conic constant
+$\kappa = -1.012\,90$ rather than the specified $-1.002\,98$, a
+$1.0\%$ error. The resulting figure error at the mirror's edge was
+$2.2\,\si{\micro\meter}$ peak-to-valley (more than $3.5$
+wavelengths at the $632.8\,\si{\nano\meter}$ test wavelength) and
+the wavefront error was $0.43\,\text{wave}$ rms, a factor of $10$
+worse than the $0.043\,\text{wave}$ specification. The optical
+system showed strong spherical aberration: a central image of a
+star contained $\sim 16\%$ of the encircled energy within
+$0.1\,\text{arcsec}$ rather than the design $\sim 70\%$.
 
 A working RNC would have given a clean null at the correct figure.
 The faulty RNC gave a clean null at a wrong figure. The error was
@@ -2263,17 +2430,72 @@ the measurement you would perform to replace these assumed values
 with data.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Combine in quadrature: $u(\theta) = \sqrt{(10^{-3})^{2} +
-(10^{-4})^{2}} \approx 10^{-3} \,\si{\radian}$. The bias dominates
-by an order of magnitude; even averaging a hundred readings
-($\sigma/\sqrt{100}$) leaves the random component at $10^{-5}$,
-far below the systematic floor. To replace the assumed bias, place
-the phone against a precision surface plate or a calibrated wedge
-at known angles ($0^{\circ}, 30^{\circ}, 45^{\circ}, 60^{\circ},
-90^{\circ}$) and record the indication; the mean deviation across
-the angles is the bias estimate, the standard deviation across
-repeated readings at one angle is the random component.
+\paragraph{Solution.}
+The clinometer estimate combines a Type B bias contribution with a
+Type A random contribution. The solution computes the combined
+standard uncertainty, identifies the dominant component, and
+specifies the experiment that replaces assumed values with measured
+ones.
+
+\emph{Step 1: identify the two contributions.} The problem states
+a calibration bias of $u_{B} \approx 10^{-3}\,\si{\radian}$ and a
+short-term noise contribution of $u_{A} \approx 10^{-4}\,\si{
+\radian}$. Both are standard uncertainties at $k = 1$.
+
+\emph{Step 2: combine in quadrature.} For independent
+contributions the combined standard uncertainty is
+\[
+u(\theta) = \sqrt{u_{B}^{2} + u_{A}^{2}} = \sqrt{(10^{-3})^{2} +
+(10^{-4})^{2}} \approx 1.005 \times 10^{-3}\,\si{\radian} \approx
+10^{-3}\,\si{\radian}.
+\]
+The combined uncertainty is essentially equal to the larger
+contribution alone. In angular degrees, $10^{-3}\,\si{\radian}
+\approx 0.057^{\circ}$, or about $3.4$ arcminutes.
+
+\emph{Step 3: identify the dominant component.} The bias-to-random
+ratio is $u_{B}/u_{A} = 10$, so $u_{B}^{2}$ exceeds $u_{A}^{2}$ by
+a factor of $100$. The bias dominates the combined uncertainty by
+two orders of magnitude in the variance budget.
+
+\emph{Step 4: confirm averaging cannot reduce the dominant
+component.} Averaging $n$ independent readings reduces the random
+contribution by $\sqrt{n}$ but leaves the systematic component
+unchanged. At $n = 100$, the random standard uncertainty falls to
+$10^{-4}/\sqrt{100} = 10^{-5}\,\si{\radian}$, while the bias
+remains $10^{-3}\,\si{\radian}$. The combined uncertainty becomes
+$\sqrt{(10^{-3})^{2} + (10^{-5})^{2}} \approx 10^{-3}\,\si{\radian}$,
+no improvement. Averaging more readings hits the systematic floor
+quickly and yields nothing further.
+
+\emph{Step 5: design the experiment that replaces assumed values.}
+The bias estimate requires a comparison against a known reference.
+Place the phone against a precision surface plate or a calibrated
+wedge at known angles (the conventional set is
+$0^{\circ}, 30^{\circ}, 45^{\circ}, 60^{\circ}, 90^{\circ}$) and
+record the clinometer indication at each. Repeat the measurement
+at each angle multiple times. From the data,
+\begin{itemize}[leftmargin=*]
+  \item the mean deviation across the calibrated angles is the
+    bias estimate (replacing the assumed $10^{-3}$);
+  \item the standard deviation across repeated readings at one
+    angle is the random component estimate (replacing the assumed
+    $10^{-4}$);
+  \item the spread of bias estimates across the angle range
+    detects angle-dependent biases (a single calibration offset
+    is one possibility; a sinusoidal angle dependence from a
+    sensor misalignment is another, with very different mitigation).
+\end{itemize}
+
+\emph{Step 6: the engineering point.} A smartphone clinometer's
+typical bias is the dominant uncertainty source and cannot be
+averaged out. The right engineering action is calibration against
+a known reference, not better averaging. The chapter's discipline
+of separating Type A from Type B contributions surfaces this
+distinction: if the operator believes averaging will improve a
+measurement, they have implicitly assumed the bias is small, and
+the chapter's compatibility-ratio principle is the test of that
+assumption against an independent reference.
 
 \begin{exercise}
 Estimate how many independent voltage measurements would be required
@@ -2305,19 +2527,70 @@ the assumptions about between-individual variability versus
 within-individual measurement uncertainty.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-The total per-measurement variability has two parts: the
-measurement uncertainty ($0.5 \,\si{\centi\meter}$) and the
-between-individual standard deviation in adult height, which for
-a representative population is approximately
-$7 \,\si{\centi\meter}$. The combined per-measurement standard
-deviation is $\sqrt{0.5^{2} + 7^{2}} \approx 7.0 \,\si{\centi
-\meter}$ (the measurement contribution is negligible). The
-standard uncertainty of the mean of $30$ measurements is
-$7.0/\sqrt{30} \approx 1.3 \,\si{\centi\meter}$. Note: this is the
-uncertainty of the mean of the \emph{sampled} group, not the
-population mean; sampling bias (who shows up to be measured) sets
-a floor that more measurements cannot reduce.
+\paragraph{Solution.}
+The exercise distinguishes the measurement uncertainty on a single
+height reading from the population-level variability in adult
+height. Both contribute to the standard uncertainty of the
+sample-mean estimate, but the second dominates.
+
+\emph{Step 1: identify the two variability sources.} A single
+measurement of a single person's height has two independent
+random contributions: (i) the instrument's measurement uncertainty
+($0.5\,\si{\centi\meter}$, given) and (ii) the variation between
+individuals in the population, which for a representative adult
+sample has standard deviation around $7\,\si{\centi\meter}$ (typical
+working value for a single national or regional adult population).
+
+\emph{Step 2: combine the per-measurement contributions.} The two
+contributions are independent, so the per-measurement standard
+deviation is
+\[
+\sigma_{1} = \sqrt{u_{\text{meas}}^{2} + \sigma_{\text{pop}}^{2}} =
+\sqrt{0.5^{2} + 7^{2}} = \sqrt{49.25} \approx 7.0\,\si{\centi
+\meter}.
+\]
+The measurement contribution is negligible against the
+population's spread.
+
+\emph{Step 3: compute the standard uncertainty of the sample
+mean.} For $n = 30$ independent measurements,
+\[
+u(\bar{x}) = \sigma_{1}/\sqrt{n} = 7.0/\sqrt{30} \approx 1.28\,
+\si{\centi\meter}.
+\]
+The reported sample-mean uncertainty is about $1.3\,\si{\centi
+\meter}$ at $k = 1$.
+
+\emph{Step 4: distinguish sample mean from population mean.} The
+$\bar{x} \pm 1.3\,\si{\centi\meter}$ estimate is the uncertainty
+of the mean of the \emph{sampled} group. Whether $\bar{x}$
+estimates the \emph{population} mean depends on the sample's
+representativeness. If the $30$ people happen to be selected from
+a basketball team, the sample mean reflects that subpopulation,
+not the general adult population, regardless of the per-measurement
+precision.
+
+\emph{Step 5: identify the floor that more measurements cannot
+reduce.} The $1/\sqrt{n}$ scaling of $u(\bar{x})$ assumes the
+sample is a random draw from the population. Sampling bias (who
+shows up to be measured) sets a floor that more measurements
+cannot reduce. A street-corner survey in a particular
+neighbourhood may have $u(\bar{x}) < 1\,\si{\centi\meter}$ at
+$n = 200$ but estimate the wrong population mean by $5\,\si{\centi
+\meter}$. Increasing $n$ reduces the statistical uncertainty
+without addressing the bias.
+
+\emph{Step 6: the engineering point.} The chapter's discipline
+applies: the measurement uncertainty contributes negligibly
+compared to the natural population variability. The sample-mean
+uncertainty calculation is straightforward; the bias question
+(does the sample represent the population?) is the harder one.
+For a working population-mean estimate, the sample design (random
+selection across the population) matters more than the per-
+measurement precision. The $\bar{x} \pm 1.3\,\si{\centi\meter}$
+result is correct as a statement about the sample; extending it
+to the population requires the sampling-bias question be answered
+separately.
 
 \begin{exercise}
 Estimate the height of the tallest building you can see from the

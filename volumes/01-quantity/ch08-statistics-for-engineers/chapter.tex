@@ -497,6 +497,40 @@ NIST/SEMATECH e-Handbook \cite{web:nist-eshandbook} catalogues the
 common tests with worked examples. Wasserman gives the
 distributional theory \cite[ch.~10]{text:wasserman2004}.
 
+A working laboratory's choice of software package matters less than
+the discipline of pre-specifying the test, but the choices have
+characteristic conventions. In R, the working command is
+\texttt{t.test(x, y, alternative = "two.sided", var.equal = FALSE,
+conf.level = 0.95)} which defaults to the Welch correction and
+returns the test statistic, degrees of freedom (Welch-Satterthwaite
+adjusted), $p$-value, and confidence interval on the difference of
+means. In Python's SciPy, \texttt{scipy.stats.ttest\_ind(x, y,
+equal\_var=False)} returns the test statistic and two-sided
+$p$-value; the confidence interval requires \texttt{statsmodels} or
+manual calculation. In MATLAB, \texttt{ttest2(x, y, 'Vartype',
+'unequal')} returns the test decision, $p$-value, and confidence
+interval. Each implementation has subtly different defaults: SciPy
+defaults to equal-variance (\texttt{equal\_var=True}) prior to
+version 1.6, an opt-in Welch convention thereafter; R's
+\texttt{t.test} defaults to Welch from the beginning; MATLAB's
+\texttt{ttest2} defaults to equal-variance. A laboratory pipeline
+that switches between packages must check the variance assumption
+at every interface or it will see test results change without
+explanation.
+
+For the chi-square goodness-of-fit test, the working alternative
+when expected counts are small ($E_{i} < 5$) is Fisher's exact test
+for $2 \times 2$ tables or the Monte Carlo $p$-value approximation
+for larger tables. R's \texttt{chisq.test(simulate.p.value = TRUE,
+B = 10000)} runs the Monte Carlo version; SciPy's
+\texttt{scipy.stats.chi2\_contingency(observed, lambda\_ = "log-
+likelihood")} offers the log-likelihood (G-test) alternative. The
+log-likelihood ratio test is preferred over Pearson chi-square
+when the table is sparse, the cell counts are non-integer (a
+weighted sample), or the null is composite (parameters fitted from
+the same data); the asymptotic distributions of the two statistics
+are identical, but the small-sample behaviour differs.
+
 \subsection{What a $p$-value is and is not}
 
 The $p$-value is the probability, under $H_{0}$ and the specified
@@ -545,6 +579,110 @@ chi-square-equivalent test (or, equivalently, a one-sample test for
 the Poisson mean) gives $p \approx 0.04$. The engineer notes the
 disagreement with nominal but also asks whether the wafer condition
 or the inspection procedure has changed since the nominal was set.
+
+\paragraph{Worked output: the bearing-supplier two-sample test in
+R and Python.} The supplier-comparison case above is the
+working example for showing what the standard statistical
+software produces. Running the analysis in R:
+
+\begin{verbatim}
+> sample1 <- c(...)  # 30 observations from supplier 1
+> sample2 <- c(...)  # 30 observations from supplier 2
+> t.test(sample1, sample2, alternative = "two.sided",
++        var.equal = FALSE, conf.level = 0.95)
+
+        Welch Two Sample t-test
+
+data:  sample1 and sample2
+t = -2.9716, df = 56.71, p-value = 0.004296
+alternative hypothesis: true difference in means is not equal to 0
+95 percent confidence interval:
+ -0.016745 -0.003255
+sample estimates:
+mean of x mean of y
+   10.005    10.015
+\end{verbatim}
+
+\noindent
+The $\hat{R}$ output's six pieces of information are the standard
+working pieces: the test statistic ($t = -2.97$), the
+Welch-Satterthwaite-adjusted degrees of freedom (df $= 56.7$,
+not the equal-variance $58$), the two-sided $p$-value ($0.004$),
+the alternative hypothesis statement, the $95\%$ confidence
+interval on the difference of means ($-0.0167$ to $-0.0033\,\si{
+\milli\meter}$, which excludes zero), and the sample means.
+The reader rejects the equal-means null at $\alpha = 0.05$ and
+extracts an effect-size estimate of $0.010\,\si{\milli\meter}$
+with a CI of $\pm 0.007\,\si{\milli\meter}$ at $k = 2$.
+
+In Python with SciPy:
+
+\begin{verbatim}
+>>> from scipy import stats
+>>> result = stats.ttest_ind(sample1, sample2, equal_var=False)
+>>> result
+TtestResult(statistic=-2.9716, pvalue=0.004296, df=56.71)
+>>> ci = result.confidence_interval(confidence_level=0.95)
+>>> ci
+ConfidenceInterval(low=-0.016745, high=-0.003255)
+\end{verbatim}
+
+\noindent
+SciPy version $1.10$ and later returns the confidence interval
+as a method on the result object; earlier versions require manual
+computation through the test statistic and degrees of freedom. The
+\texttt{equal\_var=False} argument is the Welch correction; the
+default \texttt{equal\_var=True} is the equal-variance assumption
+that should not be relied on without checking. The MATLAB
+equivalent is \texttt{[h, p, ci, stats] = ttest2(sample1,
+sample2, 'Vartype', 'unequal')}.
+
+The same analysis in Stata: \texttt{ttest sample1 == sample2,
+unpaired unequal}. In SAS: \texttt{proc ttest; class supplier;
+var diameter; run;}. The cross-tool difference is in the default
+variance assumption and the default-output formatting; the
+numerical results agree to floating-point precision because all
+five tools implement the same Welch-Satterthwaite formula.
+
+\paragraph{Power analysis: how many observations were needed?}
+Before running the test, the engineer should have determined the
+sample size required to detect the smallest engineering-meaningful
+difference. The standard tool is the \texttt{pwr} package in R:
+
+\begin{verbatim}
+> library(pwr)
+> pwr.t.test(d = 0.77, power = 0.80, sig.level = 0.05,
++            type = "two.sample", alternative = "two.sided")
+
+     Two-sample t test power calculation
+
+              n = 27.4
+              d = 0.77
+      sig.level = 0.05
+          power = 0.80
+    alternative = two.sided
+
+NOTE: n is number in *each* group
+\end{verbatim}
+
+\noindent
+Cohen's $d$ of $0.77$ (the standardised effect size,
+$d = |\bar{x}_{1} - \bar{x}_{2}|/s_{\text{pooled}}$) at $\alpha
+= 0.05$ and power $0.80$ requires $n = 28$ per group. The
+engineer's $n = 30$ per group is adequate for this effect size;
+to detect a smaller effect of $d = 0.3$ would require $n = 175$
+per group. The Python equivalent uses
+\texttt{statsmodels.stats.power.TTestIndPower().solve\_power()};
+the Stata equivalent is \texttt{power twomeans 10.005 10.015,
+sd1(0.012) sd2(0.014) power(0.80)}.
+
+The discipline is to compute the required sample size before
+the data are collected, choose $n$ accordingly, and report both
+the achieved power for the chosen effect size and the rationale
+for the chosen effect size. The chapter's pre-registration
+principle (section 8.7) applies: the sample-size choice and its
+effect-size justification are part of the test specification,
+not an afterthought to the result.
 
 \section{Confidence vs prediction intervals}\pathtag{core}
 
@@ -1301,6 +1439,106 @@ Three signals point to Bayesian methods:
 The framework recurs in Volume IX (systems and control) and Volume
 X (failure analysis), where Bayesian network models and Bayesian
 reliability updating are the standard tools.
+
+\subsection{Working conjugate priors}
+
+A \engterm{conjugate prior} is a prior distribution family such
+that, combined with the likelihood, the posterior remains in the
+same family. The combination produces closed-form posterior
+parameters: no numerical integration required. The working list:
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{Beta-Binomial}: prior $\text{Beta}(\alpha, \beta)$
+    on a probability $\theta \in [0, 1]$, likelihood $k$ successes
+    in $n$ Bernoulli trials, posterior $\text{Beta}(\alpha + k,
+    \beta + n - k)$. The prior parameters $(\alpha, \beta)$ are
+    interpretable as $(\alpha - 1)$ prior successes and
+    $(\beta - 1)$ prior failures. The uninformative Jeffreys prior
+    is $\text{Beta}(0.5, 0.5)$; the uniform prior is
+    $\text{Beta}(1, 1)$. The working pass-fail quality-control
+    case from the chapter's worked example is a beta-binomial
+    update.
+  \item \textit{Gamma-Poisson}: prior $\text{Gamma}(\alpha, \beta)$
+    on a rate $\lambda > 0$, likelihood Poisson counts $\sum k_{i}
+    = K$ over total exposure $T$, posterior $\text{Gamma}(\alpha +
+    K, \beta + T)$. The reliability-engineering MTBF estimate from
+    field-failure data is a gamma-Poisson update.
+  \item \textit{Normal-Normal (known variance)}: prior $\mathcal{N}
+    (\mu_{0}, \tau_{0}^{2})$ on a mean $\mu$ with known
+    observation variance $\sigma^{2}$, posterior $\mathcal{N}
+    (\mu_{n}, \tau_{n}^{2})$ where $1/\tau_{n}^{2} = 1/\tau_{0}^{2}
+    + n/\sigma^{2}$ and $\mu_{n} = \tau_{n}^{2} (\mu_{0}/\tau_{0}^{2}
+    + n\bar{x}/\sigma^{2})$. The Kalman filter (Volume IX
+    chapter 7) is the sequential-application form.
+  \item \textit{Normal-Inverse-Gamma (unknown mean and variance)}:
+    prior on $(\mu, \sigma^{2})$ jointly. The hyperparameters
+    $(\mu_{0}, \kappa_{0}, \alpha_{0}, \beta_{0})$ encode the
+    prior estimates and confidence. Working choice for
+    measurement-model parameter estimation when the variance is
+    itself uncertain.
+  \item \textit{Dirichlet-Multinomial}: prior $\text{Dir}
+    (\alpha_{1}, \ldots, \alpha_{k})$ on a categorical
+    distribution, posterior $\text{Dir}(\alpha_{i} + n_{i})$ after
+    observing $n_{i}$ in category $i$. Used for defect-mode
+    classification and any categorical-count problem.
+\end{itemize}
+
+When the likelihood is not from a conjugate-prior family, the
+posterior cannot be written in closed form. The working
+alternative is \engterm{Markov chain Monte Carlo} (MCMC): a
+random-walk algorithm that draws samples from the posterior
+proportional to its density without requiring the normalising
+constant. The working implementations:
+
+\engterm{Stan} (free, BSD-3-Clause licence, developed at Columbia
+University by Andrew Gelman and collaborators since 2012): a probabilistic
+programming language with a No-U-Turn Sampler (NUTS), an
+adaptive variant of Hamiltonian Monte Carlo. Stan models are
+written in a domain-specific language compiled to C\texttt{++};
+interface libraries provide access from R (\texttt{rstan},
+\texttt{cmdstanr}), Python (\texttt{cmdstanpy}, \texttt{pystan}),
+Julia, MATLAB, and other languages. Stan is the working choice
+for hierarchical models with continuous parameters and is the
+de facto reference for Bayesian inference in academic
+statistics.
+
+\engterm{PyMC} (formerly PyMC3, then PyMC v4 and v5, MIT licence):
+a Python-native probabilistic programming library that compiles
+models to PyTensor (formerly Aesara) for autodifferentiation and
+runs NUTS by default. PyMC trades slightly less efficient NUTS
+than Stan for tighter Python integration and better discrete-
+parameter handling.
+
+\engterm{JAGS} (Just Another Gibbs Sampler, GPL): a Gibbs-sampler
+implementation that handles many small models that Stan would
+struggle with (discrete latent variables, models with conjugate
+substructure). The working interface library is \texttt{rjags} in
+R.
+
+\engterm{BUGS} (Bayesian inference Using Gibbs Sampling): the
+ancestor of all modern Bayesian software, developed at the MRC
+Biostatistics Unit in Cambridge from 1989. WinBUGS and OpenBUGS
+are the working implementations. BUGS introduced the
+domain-specific-language approach to Bayesian model
+specification that Stan and PyMC inherited.
+
+\engterm{TensorFlow Probability and PyTorch's Pyro}: probabilistic
+programming libraries built on top of automatic-differentiation
+frameworks. Used when the Bayesian model is part of a
+deep-learning pipeline; less efficient than Stan or PyMC for
+classical Bayesian hierarchical models but seamless with neural-
+network components.
+
+Working diagnostic for MCMC: the Gelman-Rubin
+$\hat{R}$ statistic (potential scale reduction factor) compares
+within-chain variance to between-chain variance across multiple
+independent chains; $\hat{R} < 1.01$ is the working target
+acceptance threshold per the current Stan best-practice
+\cite{text:ch08-gelman-bda3-2013}. The effective sample size
+(ESS) $N_{\text{eff}}$ measures the equivalent number of
+independent samples after accounting for chain autocorrelation;
+ESS per parameter should exceed $400$ for stable posterior
+percentile estimates and $1000$ for tail-probability work.
 
 \section{Sample size and statistical power}\pathtag{standard}
 
