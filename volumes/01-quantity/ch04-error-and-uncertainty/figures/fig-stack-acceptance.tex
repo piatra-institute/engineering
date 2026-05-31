@@ -1,0 +1,63 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[x=0.85cm, y=0.45cm, font=\small]
+
+\draw[->, thick] (-0.3, 0) -- (13, 0)
+  node[right, font=\scriptsize] {$L - 75 \,(\si{\milli\meter})$};
+\draw[->, thick] (0, -0.2) -- (0, 11);
+
+% x-axis ticks: span +/- 0.15 mm scaled across 0..12
+\foreach \x/\lbl in {1/-0.15, 3/-0.10, 5/-0.05, 6.5/0.00,
+                     8/0.05, 10/0.10, 12/0.15} {
+  \draw (\x, 0) -- (\x, -0.3) node[below, font=\scriptsize] {\lbl};
+}
+
+% Specification limits at +/- 0.10 mm (assembly-level)
+\draw[thick, engred, dashed] (3, 0) -- (3, 10.5)
+  node[above, font=\tiny] {LSL};
+\draw[thick, engred, dashed] (10, 0) -- (10, 10.5)
+  node[above, font=\tiny] {USL};
+
+% Linear-propagation Gaussian (mean = 0, sigma ~ 0.040 mm)
+% scaled so that x=6.5 is the mean and 1 plot-unit = 0.025 mm
+\draw[thick, engblue] plot[domain=1:12, samples=120]
+  (\x, {9.0*exp(-((\x-6.5)*(\x-6.5))/(2*1.6*1.6))});
+\node[engblue, anchor=west, font=\scriptsize] at (0.5, 9.7) {linear RSS};
+
+% Monte Carlo with one large asymmetric truncation (lognormal-ish, mean = +0.02)
+\foreach \x/\h in {
+  3.5/0.4, 4/0.9, 4.5/1.8, 5/3.0, 5.5/4.6,
+  6/6.4, 6.5/8.2, 7/9.4, 7.5/9.9, 8/9.4,
+  8.5/7.6, 9/4.8, 9.5/2.2, 10/0.6} {
+  \fill[engamber!40] (\x, 0) rectangle (\x + 0.5, \h);
+  \draw[engamber!70, thin] (\x, 0) rectangle (\x + 0.5, \h);
+}
+\node[engamber, anchor=west, font=\scriptsize] at (0.5, 8.7)
+  {MC, asymmetric input};
+
+% Acceptance-fraction shaded region (within USL/LSL)
+\fill[engblue!10, opacity=0.25] (3, 0) rectangle (10, 10.5);
+
+% Out-of-spec callouts
+\draw[->, thick, gray] (10.7, 4) -- (10.05, 1.5);
+\node[gray, anchor=west, font=\scriptsize, align=left] at (10.7, 4.2)
+  {out-of-spec\\ tail (3.4\%)};
+
+\end{tikzpicture}
+\caption[Tolerance-stack acceptance fraction]{Assembly-length
+distribution for the three-part stack of \S 4.3.7 with one part's
+tolerance widened to $\pm 0.08\,\si{\milli\meter}$ and skewed (a
+lognormal manufacturing distribution truncated at the upper spec),
+the other two left as centred Gaussians at $\pm 0.05\,\si{\milli
+\meter}$. The linear root-sum-square Gaussian (solid blue) predicts
+acceptance fraction 99.4\% inside the assembly specification limits
+$\pm 0.10\,\si{\milli\meter}$, the symmetric prediction the textbook
+formula gives. The Monte Carlo result (amber histogram, $10^6$
+draws) predicts acceptance fraction 96.6\%, with the upper-tail
+out-of-spec rate of 3.4\% driving the gap. The linear formula
+underestimates rejection by a factor of $\sim 6$ here because the
+asymmetric input distribution leaks more probability into one tail
+than the symmetric Gaussian model admits. Reference implementation
+in \texttt{code/tolerance\_stack\_acceptance.py}.}
+\label{fig:vol01:ch04:stack-acceptance}
+\end{figure}

@@ -671,6 +671,182 @@ anti-aliasing filter should pass the signal band with acceptable
 amplitude and phase error and provide the required stopband
 attenuation by the Nyquist frequency, $f_{s}/2$.
 
+\subsection{Why Nyquist is necessary but not sufficient}
+
+The Nyquist condition, $f_{s} > 2 f_{\text{max}}$, is a statement
+about an idealised band-limited signal. A working sampler sees an
+input whose spectral content is not strictly band-limited: noise,
+interferers, harmonics, and out-of-band signal energy occupy the
+frequencies above $f_{\text{max}}$ that the model conveniently
+ignores. The anti-aliasing filter is the device that enforces the
+band-limit assumption in hardware. Without it, the sample sequence
+records the aliased fold of everything above $f_{s}/2$ along with
+the band of interest. The engineer who satisfies Nyquist on paper
+and skips the anti-alias filter has satisfied the theorem against
+a fiction.
+
+The filter's job decomposes into three regions on the frequency
+axis: a passband ($0$ to $f_{\text{max}}$) where the signal must
+arrive at the sampler with amplitude flat to within an
+application-specific ripple budget; a transition band
+($f_{\text{max}}$ to $f_{s}/2$) where the filter rolls off; and a
+stopband (above $f_{s}/2$) where the filter attenuates by at least
+as much as the sampler's dynamic range. A $16$-bit converter has a
+dynamic range of about $96 \,\si{\decibel}$; the stopband
+attenuation by Nyquist must therefore reach at least that,
+otherwise the loudest unfiltered out-of-band component will alias
+back at a level comparable to the quantisation floor and
+contaminate the working signal.
+
+\subsection{Anti-alias filter design: Butterworth, Bessel, Chebyshev,
+elliptic}
+
+Four filter families dominate working anti-alias filter design;
+each trades the same three quantities against each other:
+sharpness of rolloff, passband flatness, and group-delay distortion
+\cite{text:ch06t3-williams-electronic-filter-2006}.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Butterworth} filters have maximally flat passband
+    amplitude (no ripple) and a monotonic rolloff at $-6n \,\si
+    {\decibel}$ per octave for order $n$. The transition band is
+    moderate; the group delay is moderately non-flat near the
+    corner. The default choice when no other constraint dominates.
+  \item \engterm{Bessel} filters have nearly flat group delay
+    throughout the passband and into the transition band, at the
+    cost of a slower amplitude rolloff than Butterworth at the
+    same order. The working choice when preserving the time-domain
+    shape of the signal (audio, pulse measurements, control loops)
+    matters more than sharp out-of-band rejection.
+  \item \engterm{Chebyshev type I} filters trade passband ripple
+    (typically $0.1$ to $1 \,\si{\decibel}$) for sharper rolloff
+    than Butterworth at the same order. Chebyshev type II inverts
+    the trade, putting ripple in the stopband instead of the
+    passband; the passband is monotonic and the stopband has
+    equal-ripple sidelobes.
+  \item \engterm{Elliptic} (Cauer) filters allow ripple in both
+    passband and stopband and achieve the sharpest rolloff per
+    order of any of the four families. Group delay is highly
+    non-flat near the corner. The working choice when the
+    transition band must be compressed (deep-space communications,
+    narrow-band radar, the analog front end of an oversampled
+    converter).
+\end{itemize}
+
+The four families form a Pareto frontier: no filter topology
+simultaneously achieves Butterworth's passband flatness, Bessel's
+flat group delay, and elliptic's sharp rolloff at low order. The
+engineer ranks the three competing properties for the application
+and chooses the family that respects the binding constraint
+\cite{text:ch06t3-williams-electronic-filter-2006}.
+
+\textbf{Worked example: a $44.1 \,\si{\kilo\hertz}$ audio
+anti-alias filter.} A CD-quality audio sampler operates at $f_{s}
+= 44.1 \,\si{\kilo\hertz}$. The working audio band extends to
+$f_{\text{max}} = 20 \,\si{\kilo\hertz}$. The transition band is
+$f_{s}/2 - f_{\text{max}} = 22.05 - 20 = 2.05 \,\si{\kilo\hertz}$,
+about $0.137$ octaves wide. For a $16$-bit converter the required
+stopband attenuation by Nyquist is at least $96 \,\si{\decibel}$.
+
+A Butterworth filter must attenuate by $96 \,\si{\decibel}$ over
+$0.137$ octaves; at $6n \,\si{\decibel}$ per octave the required
+order is $n = 96 / (6 \times 0.137) \approx 117$. A $117$-th order
+analog filter is impractical: component value sensitivity grows
+exponentially with order, the group delay distorts the time-domain
+pulse response, and the bill of materials blows out. The CD-era
+solution was a steep elliptic analog filter of order $7$ to $9$
+with $\sim 0.1 \,\si{\decibel}$ passband ripple and $\sim 90 \,\si
+{\decibel}$ stopband attenuation, accepting an audible
+near-corner pre-ring on transients. The modern solution
+oversamples at $128$ or $256$ times the audio rate using a
+delta-sigma converter, filters digitally in the sampled domain at
+high precision, then decimates to $44.1 \,\si{\kilo\hertz}$. The
+analog front-end filter on a modern audio interface is therefore
+$4$th- to $6$th-order Bessel or Butterworth with a corner near
+$100 \,\si{\kilo\hertz}$, satisfying the oversampler's Nyquist
+with comfortable margin and leaving the steep filtering to the
+digital domain \cite{text:ch06-oppenheim-schafer-2010}.
+
+An $8$th-order Bessel filter with $-3 \,\si{\decibel}$ corner at
+$22 \,\si{\kilo\hertz}$ provides $48 \,\si{\decibel}$ per octave
+asymptotic rolloff. At $30 \,\si{\kilo\hertz}$, about $0.45$
+octaves above the corner, the attenuation is approximately $48
+\times 0.45 \approx 22 \,\si{\decibel}$ of asymptotic plus a
+near-corner contribution of $\sim 40 \,\si{\decibel}$, totalling
+about $-60 \,\si{\decibel}$ at $30 \,\si{\kilo\hertz}$. The Bessel
+choice preserves the time-domain pulse response (group delay flat
+to within a few microseconds across the audio band) at the cost of
+less aggressive stopband attenuation than an elliptic of
+comparable order would deliver.
+
+\textbf{Worked failure case: $44.1 \,\si{\kilo\hertz}$ audio with
+no anti-alias filter.} A microphone preamplifier with a switching
+power supply emits a $30 \,\si{\kilo\hertz}$ ultrasonic carrier at
+$-30 \,\si{\decibel}$ relative to full scale. Sampled at $44.1
+\,\si{\kilo\hertz}$ with no anti-alias filter, the alias frequency
+is $|30 - 44.1| = 14.1 \,\si{\kilo\hertz}$, squarely inside the
+audible band. The recording contains a tonal artefact at $14.1
+\,\si{\kilo\hertz}$ at $-30 \,\si{\decibel}$, $66 \,\si{\decibel}$
+above the $16$-bit quantisation floor, audible as a high-pitched
+whine. The engineering response is to add a $4$th-order Butterworth
+low-pass filter with $-3 \,\si{\decibel}$ corner at $20 \,\si{\kilo
+\hertz}$ between the preamplifier and the sampler; at $30 \,\si
+{\kilo\hertz}$ the filter attenuates by approximately $24 \times
+\log_{2}(30/20) = 24 \times 0.585 \approx 14 \,\si{\decibel}$ of
+out-of-band rejection, dropping the alias to $-44 \,\si{\decibel}$
+but not eliminating it. A steeper $8$th-order filter (Bessel or
+elliptic) brings the alias well below the audible threshold for
+the same input level. The lesson: filter order is set by the
+loudest expected out-of-band signal and the required suppression
+at Nyquist, not by an aesthetic preference for steep rolloff.
+
+\textbf{Worked failure case: a data logger and a pump.} An Onset
+HOBO U30 environmental logger samples a structural-vibration
+accelerometer at $1 \,\si{\hertz}$ at a wastewater pumping station.
+The logger has no analog anti-alias filter; its front end passes
+DC to a few tens of hertz. A nearby centrifugal pump runs at
+$360 \,\si{rpm} = 6 \,\si{\hertz}$, coupling mechanical vibration
+into the building structure. Sampled at $1 \,\si{\hertz}$, the
+$6 \,\si{\hertz}$ vibration aliases to $|6 - 6 \times 1| = 0 \,\si
+{\hertz}$ (DC). The recorded trace shows a quasi-static offset
+over the duration of pump operation, indistinguishable on the trace
+from a genuine slow drift of the structure. The engineering review
+returns two options: either sample at $\geq 12 \,\si{\hertz}$ to
+leave the pump's $6 \,\si{\hertz}$ signature unaliased, or add a
+$1$st-order RC anti-alias filter with corner at $0.3 \,\si{\hertz}$,
+which attenuates $6 \,\si{\hertz}$ by $\log_{2}(6/0.3) \times 6 =
+4.32 \times 6 \approx 26 \,\si{\decibel}$, dropping the alias to a
+manageable level. The discipline is the same as the audio case: a
+sample rate without an anti-alias filter has not satisfied Nyquist
+on the spectral content actually present.
+
+\subsection{Filter order, group delay, and the rolloff budget}
+
+A working anti-alias filter design carries an explicit error
+budget across three domains. Passband amplitude ripple ($\Delta A$,
+in $\si{\decibel}$) is the maximum permitted variation in passband
+gain across $0$ to $f_{\text{max}}$; for audio, $\Delta A \leq
+0.1 \,\si{\decibel}$ is the working target. Stopband attenuation
+($A_{\text{stop}}$, in $\si{\decibel}$) is the minimum suppression
+required above $f_{s}/2$, set by the converter's dynamic range and
+the loudest expected out-of-band signal. Group-delay variation
+($\Delta \tau_{g}$, in $\si{\second}$) is the maximum permitted
+variation in group delay across the passband; for audio,
+$\Delta \tau_{g} \leq 100 \,\si{\micro\second}$ across the
+passband is the working target, since group-delay variations on
+this order audibly distort transient sounds.
+
+The four filter families occupy distinct regions of this
+three-dimensional budget space. Butterworth and Bessel give
+monotonic passbands ($\Delta A = 0$) and trade rolloff sharpness
+against group-delay flatness. Chebyshev and elliptic accept
+passband or stopband ripple in exchange for sharper rolloff. The
+working procedure is to plot the three required tolerances against
+filter order for each family and pick the lowest-order filter
+that fits inside the budget; the design references at
+\cite{text:ch06t3-williams-electronic-filter-2006} carry the
+formulas.
+
 \subsection{Quantisation}
 
 A digital sample is also quantised: the continuous voltage at the
@@ -853,6 +1029,185 @@ reader who computes a spectrum without a window has implicitly
 chosen the rectangular window, the worst choice for most
 applications.
 
+\subsection{Decomposing periodic signals informally}
+
+The Fourier picture of \S 6.5.1 gives the working content without
+the integral machinery. Three canonical shapes illustrate the
+correspondence between waveform geometry and harmonic content.
+
+A pure sinusoid at frequency $f_{0}$ has one component: an impulse
+at $f_{0}$ in the magnitude spectrum, no other harmonic content.
+The spectrum is the simplest possible: one tone, one bin.
+
+A square wave at fundamental frequency $f_{0}$ has odd-harmonic
+content at $f_{0}, 3 f_{0}, 5 f_{0}, 7 f_{0}, \ldots$ with
+amplitudes falling as $1/n$. The reader who plots the magnitude
+spectrum of a $100 \,\si{\hertz}$ square wave sees discrete spikes
+at $100, 300, 500, 700, \ldots \,\si{\hertz}$ with relative
+heights $1, 1/3, 1/5, 1/7, \ldots$. A triangle wave at the same
+fundamental has the same odd-harmonic locations with amplitudes
+$1/n^{2}$: the spectrum decays faster, consistent with the
+smoother time-domain waveform. A sawtooth wave has all integer
+harmonics with amplitudes $1/n$.
+
+The general working rule: the smoother the waveform (more
+continuous derivatives), the faster the harmonic amplitudes fall
+with $n$. A perfectly smooth (infinitely differentiable) periodic
+signal has a spectrum that decays faster than any power of $1/n$;
+a signal with a single discontinuity has spectrum falling as
+$1/n$; a signal whose first derivative is discontinuous has
+spectrum falling as $1/n^{2}$. This is the working dictionary
+between time-domain regularity and frequency-domain compactness;
+the formal statement appears in Volume II.
+
+\textbf{Trumpet note worked example.} A trumpet playing a sustained
+A4 at $440 \,\si{\hertz}$ produces a complex periodic signal whose
+spectrum contains the fundamental at $440 \,\si{\hertz}$ and
+strong integer harmonics at $880, 1320, 1760, 2200 \,\si{\hertz}$
+and higher. The relative strengths of the harmonics determine the
+\engterm{timbre}, the perceived tone colour that distinguishes a
+trumpet from a clarinet (which has strong odd harmonics and weak
+even ones, the spectral signature of an open-closed pipe) or a
+violin (which has many harmonics with a slow decay). The trumpet's
+brightness corresponds to a slow harmonic decay rate; the
+clarinet's hollow tone corresponds to its odd-only structure. The
+spectrum carries the perceptual identity of the instrument; the
+fundamental alone carries only the pitch.
+
+\subsection{Spectrograms: time-localised frequency content}
+
+A spectrum computed once over a long record averages frequency
+content over the entire duration. A musical note that changes pitch
+during the recording loses its time structure in this single
+average: the spectrum shows a smear, not a trajectory. The
+\engterm{spectrogram} restores time information by computing many
+short FFTs in overlapping windows, plotting frequency on one axis,
+time on the other, and amplitude (or power) as colour. The result
+is a three-dimensional view of the signal: time, frequency, and
+power, simultaneously.
+
+The \engterm{short-time Fourier transform (STFT)} is the
+construction underneath. The signal is multiplied by a sliding
+window $w(t)$ (typically Hann or Hamming) and the DFT is computed
+on the windowed segment. The window slides by a hop fraction of
+its width (typically $25\%$ to $75\%$ overlap), producing a column
+of the spectrogram every hop step.
+
+\textbf{Worked spectrogram example: violin glissando.} A one-second
+recording of a violin player sliding from A4 ($440 \,\si{\hertz}$)
+to A5 ($880 \,\si{\hertz}$) at $44{,}100 \,\si{\hertz}$ sample
+rate produces a spectrogram with a visible diagonal ridge from
+$440$ to $880 \,\si{\hertz}$, plus parallel ridges for each
+harmonic (at $2f, 3f, 4f, \ldots$) that rise in tandem.
+
+The window length controls the trade between time and frequency
+resolution. A Hann window of $4 \,\si{\milli\second}$ ($176$
+samples) gives time resolution $\sim 4 \,\si{\milli\second}$ and
+frequency resolution $\sim 250 \,\si{\hertz}$: the ridge appears
+sharp in time but the harmonics smear in frequency, individually
+unresolvable. A Hann window of $40 \,\si{\milli\second}$ ($1{,}764$
+samples) gives time resolution $\sim 40 \,\si{\milli\second}$ and
+frequency resolution $\sim 25 \,\si{\hertz}$: the harmonics
+separate cleanly but the rising glissando smears in time, looking
+like several constant tones at different frequencies during the
+window. A working choice for instrumental music is a $20$ to
+$30 \,\si{\milli\second}$ window: short enough to track tempo,
+long enough to resolve harmonics within a semitone.
+
+\subsection{Time-frequency uncertainty}
+
+The spectrogram exposes a fundamental property of time-frequency
+representations: a signal cannot be both arbitrarily short in
+time and arbitrarily narrow in frequency. Dennis Gabor's 1946
+formulation \cite{text:ch06t3-gabor-1946} of this principle states
+that for any reasonable definition of time width $\Delta T$ and
+frequency width $\Delta f$,
+\[
+\Delta T \cdot \Delta f \geq \frac{1}{4\pi},
+\]
+with equality achieved by a Gaussian-windowed signal. Engineering
+practice often uses the looser working form
+\[
+\Delta T \cdot \Delta f \gtrsim \frac{1}{2},
+\]
+appropriate when $\Delta T$ and $\Delta f$ are defined as the
+full-width at half-maximum of a Gaussian or the equivalent
+rectangular width. The constant depends on the definitions; the
+product is bounded from below regardless.
+
+\textbf{Worked uncertainty case.} A reader wants to resolve a $1
+\,\si{\milli\second}$ transient signal (a switching spike, a click)
+in a $1 \,\si{\hertz}$ frequency bin. The product $\Delta T \cdot
+\Delta f = 10^{-3} \times 1 = 10^{-3}$ falls below the Gabor
+bound $1/(4\pi) \approx 0.0796$. No time-frequency representation
+can deliver both resolutions simultaneously. The engineer's
+options are to relax one of the two requirements: either accept
+$\sim 100 \,\si{\hertz}$ frequency resolution and keep the $1
+\,\si{\milli\second}$ time resolution (a short window), or accept
+$\sim 0.5 \,\si{\second}$ time smearing and keep $1 \,\si{\hertz}$
+frequency resolution (a long window). The choice is the
+application's, not the analyst's.
+
+The same physics constrains every time-frequency tool: STFT,
+wavelet transform, Wigner-Ville distribution, reassignment
+methods. Each redistributes the time-frequency information
+differently within the Gabor bound; none escapes it. The
+quantum-mechanical Heisenberg uncertainty between position and
+momentum is the same mathematical statement applied to the
+position-frequency duality of the wavefunction.
+
+\subsection{Where time-frequency analysis matters in practice}
+
+Three working instruments make heavy use of time-frequency
+representations.
+
+\engterm{Lock-in detection} extracts a sinusoidal signal at a known
+frequency from a noisy background by multiplying the input by a
+local reference at the target frequency and low-pass filtering.
+The output is the in-phase and quadrature amplitude of the input
+at the reference frequency. Stanford Research Systems' SR830 and
+SR860 lock-in amplifiers (current as of 2026) reach noise floors
+of $\sim 10 \,\si{\nano\volt}/\sqrt{\si{\hertz}}$ across audio and
+RF bands, with time constants from microseconds to hundreds of
+seconds. The instrument is the working tool for measuring small
+periodic signals in optics (chopped beam intensity), thermometry
+(lock-in calorimetry), and impedance spectroscopy
+\cite{text:ch06t3-pozar-microwave-2011}. A lock-in amplifier is a
+narrow-band tracking spectrogram with a single frequency bin.
+
+\engterm{FFT on a digital oscilloscope} brings spectrum analysis
+to the bench. The Keysight DSOX1102G entry-level oscilloscope
+(current as of 2026) provides an FFT math function with up to
+$1$ million points, window choices (Hann, Hamming, Blackman-Harris,
+flat-top, rectangular), and a $0.5 \,\si{\milli\hertz}$ frequency
+resolution at the longest available record length. The bench
+engineer uses the FFT function to identify the dominant tones in a
+signal, to measure harmonic distortion of an amplifier, and to
+locate the source of an interfering carrier. The same instrument
+with the FFT off shows a periodic ringing; with the FFT on, the
+ringing resolves into discrete tones whose frequencies match
+identifiable physical sources (the switching frequency of a
+nearby power supply, the mains harmonic, the clock of a digital
+device).
+
+\engterm{Rotating-machinery vibration diagnostics} relies on
+spectrograms to track the frequency of mechanical vibration as
+the machine's rotational speed changes. A bearing fault appears as
+a tone at a specific multiple of the shaft rotation frequency
+(the bearing's characteristic frequency, set by ball count and
+geometry); during a startup or coastdown, the fault tone tracks
+the rotational frequency in a spectrogram and is easily separated
+from constant background tones. Working tools (Bruel \& Kjaer
+PULSE, National Instruments LabVIEW Sound and Vibration Toolkit)
+display the spectrogram in real time and overlay the rotational
+frequency from a tachometer signal. Bearing-fault diagnostics in
+wind turbines, jet engines, and turbomachinery rest on this
+display. The chapter project's mains-frequency record can be
+analysed in the same way: a spectrogram of the $50 \,\si{\hertz}$
+mains over $24 \,\si{\hour}$ shows the slow drift of the
+fundamental, the slow modulation of the harmonics, and any
+transient events superimposed on the steady-state signal.
+
 \subsection{When the duality preview is enough}
 
 The chapter project does not require formal Fourier analysis. It
@@ -908,6 +1263,115 @@ calibration history, and failure mode. A GPS measurement that does
 not account for every interface in the chain is a GPS measurement
 whose uncertainty has not been characterised.
 \end{archetype}
+
+\subsection{The constellation geometry}
+
+The GPS space segment is a constellation of nominally $24$
+satellites distributed across $6$ orbital planes inclined at
+$55^{\circ}$ to the equator, with $4$ satellites per plane plus
+spares. The orbital period is one-half sidereal day ($\approx 11
+\,\si{\hour}\,58\,\si{\minute}$), so each satellite traces the same
+ground track each sidereal day. The orbit altitude is approximately
+$20{,}200 \,\si{\kilo\meter}$ above mean sea level, placing the
+satellites in medium Earth orbit
+\cite{text:ch06t3-kaplan-hegarty-2017}. As of 2026 the active
+constellation typically holds $31$ to $32$ satellites, well above
+the $24$ minimum needed to guarantee global coverage.
+
+The orbit-plane and inclination design has a working consequence:
+from any point on Earth's surface, at any time, at least four
+satellites are visible above a $5^{\circ}$ elevation mask in
+open-sky conditions, and typically eight to twelve are visible
+above $10^{\circ}$. Four is the minimum for a navigation fix; the
+remaining satellites improve the geometry and provide redundancy
+against signal blockage.
+
+The \engterm{geometric dilution of precision (GDOP)} quantifies the
+geometry's effect on position uncertainty. For a pseudorange
+uncertainty $\sigma_{\rho}$ shared across all visible satellites,
+the position uncertainty is $\sigma_{p} = \mathrm{GDOP} \times
+\sigma_{\rho}$. GDOP factors decompose into horizontal (HDOP),
+vertical (VDOP), and time (TDOP) components. For an open-sky
+four-satellite fix with one satellite near zenith and three
+spread around the horizon, HDOP $\approx 1.5$ and VDOP $\approx
+2.5$. For a tracking solution with eight to twelve visible
+satellites, HDOP drops to $0.7$ to $1.0$ and VDOP to $1.0$ to
+$1.5$. In an urban canyon where buildings block the lower
+elevations, HDOP may rise to $5$ to $10$ and VDOP higher still,
+inflating the horizontal position uncertainty by the same factor
+\cite{text:ch06-misra-enge-2011}.
+
+\textbf{Worked geometry example.} A receiver in an open field sees
+nine satellites with HDOP $0.9$ and pseudorange uncertainty $\sigma
+_{\rho} = 2 \,\si{\meter}$ after atmospheric corrections. The
+horizontal position uncertainty is $0.9 \times 2 = 1.8 \,\si
+{\meter}$. The same receiver moves to a street between $30 \,\si
+{\meter}$ buildings; only four satellites remain visible above the
+elevation mask, HDOP rises to $4$, and the same pseudorange
+uncertainty inflates to $8 \,\si{\meter}$ horizontally. The
+receiver's reported position accuracy follows the geometry, not
+the underlying timing precision; the satellites and the receiver
+chain have not changed, only the visible subset has.
+
+\subsection{Solving for position: the four-pseudorange fix}
+
+A GPS receiver records, for each tracked satellite $i$, a
+pseudorange $\rho_{i}$ defined as the speed of light times the
+measured travel time from satellite to receiver. The pseudorange
+relates to the geometric satellite-receiver distance and to the
+receiver clock bias $b$ (measured in seconds) through
+\[
+\rho_{i} = \sqrt{(x_{s,i} - x)^{2} + (y_{s,i} - y)^{2} + (z_{s,i} - z)^{2}}
++ c\,b + \epsilon_{i},
+\]
+where $(x_{s,i}, y_{s,i}, z_{s,i})$ are the satellite's known
+ECEF coordinates at signal transmission, $(x, y, z)$ are the
+unknown receiver coordinates, $c$ is the speed of light, and
+$\epsilon_{i}$ lumps the residual error contributions (atmosphere,
+multipath, receiver noise). With four or more pseudoranges, the
+four unknowns $(x, y, z, b)$ are over-determined and the receiver
+solves them by iterated least squares.
+
+The standard procedure linearises around an estimated receiver
+position. Given a starting estimate $(x_{0}, y_{0}, z_{0}, b_{0})$,
+the receiver computes the predicted pseudoranges $\hat\rho_{i}$
+and the residuals $\Delta \rho_{i} = \rho_{i} - \hat\rho_{i}$. The
+Jacobian of the pseudoranges with respect to the four unknowns
+has rows
+\[
+\mathbf{H}_{i} = \begin{bmatrix}
+-e_{x,i} & -e_{y,i} & -e_{z,i} & c
+\end{bmatrix},
+\]
+where $\mathbf{e}_{i} = (e_{x,i}, e_{y,i}, e_{z,i})$ is the unit
+vector from satellite $i$ toward the estimated receiver position.
+The position update is the least-squares solution
+\[
+\Delta \mathbf{x} = (\mathbf{H}^{\top} \mathbf{H})^{-1}
+\mathbf{H}^{\top} \Delta \boldsymbol\rho.
+\]
+The iteration repeats until $\|\Delta \mathbf{x}\|$ falls below a
+tolerance (typically $< 1 \,\si{\milli\meter}$). Three to five
+iterations suffice for any reasonable starting estimate; a cold-
+start receiver bootstraps from a coarse position derived from the
+broadcast almanac or a network-supplied estimate
+\cite{text:ch06-misra-enge-2011}.
+
+The clock unknown $b$ collapses the four-pseudorange problem to a
+position-plus-time fix at every receiver epoch. The receiver does
+not need an accurate local clock; the four-satellite solution
+recovers the bias and applies it. This is the central reason GPS
+receivers can be built around quartz oscillators with $10^{-6}$
+fractional accuracy and still deliver $30 \,\si{\centi\meter}$
+ranging precision: the position solution removes the bias every
+epoch.
+
+A receiver that loses sight of all but three satellites cannot
+solve for the four unknowns. A receiver with a high-quality
+holdover clock can fix on three satellites for a brief interval
+(the clock bias is treated as known from the last full fix); this
+is the working principle of \engterm{aided GPS} during partial
+satellite occultation in urban canyons and indoor environments.
 
 \subsection{The GPS clocks}
 
@@ -1179,11 +1643,268 @@ $38 \,\si{\micro\second}$ per day. The satellite frequency standard
 is offset before launch so that the broadcast frequency, after
 relativistic effects, matches the GPS system rate. A second-order
 correction, periodic over the satellite orbit and of magnitude
-tens of nanoseconds, is applied in the receiver firmware. A reader who turns off the relativistic correction in a receiver
-simulation will see position errors growing at roughly $c \times 38
-\,\si{\micro\second\per day} \approx 11 \,\si{\kilo\meter}$ per day.
+tens of nanoseconds, is applied in the receiver firmware. A reader
+who turns off the relativistic correction in a receiver simulation
+will see position errors growing at roughly $c \times 38 \,\si
+{\micro\second\per day} \approx 11 \,\si{\kilo\meter}$ per day.
 Relativity sits inside the GPS operating budget
 \cite{std:gps-sps-2020}.
+
+\textbf{The two terms, derived.} The fractional clock-rate
+difference between a satellite clock and a clock on the rotating
+geoid follows from the weak-field metric used in special and
+general relativity. The general-relativity term is the
+gravitational redshift,
+\[
+\left( \frac{\Delta f}{f} \right)_{\text{GR}}
+= \frac{\Phi_{\text{sat}} - \Phi_{\text{geoid}}}{c^{2}},
+\]
+where $\Phi$ is the Newtonian gravitational potential ($\Phi \to
+-GM/r$ for a point mass). For a GPS satellite at orbital radius
+$r_{s} = R_{E} + h \approx 26{,}600 \,\si{\kilo\meter}$ and a
+ground clock at $r_{g} = R_{E} \approx 6{,}378 \,\si{\kilo\meter}$,
+\[
+\frac{\Phi_{\text{sat}} - \Phi_{\text{geoid}}}{c^{2}}
+= \frac{GM}{c^{2}} \left( \frac{1}{r_{g}} - \frac{1}{r_{s}} \right)
+\approx 5.28 \times 10^{-10}.
+\]
+The fractional rate excess multiplied by one day ($86{,}400 \,\si
+{\second}$) gives a daily offset of $+45.6 \,\si{\micro\second}$:
+the satellite clock runs faster.
+
+The special-relativity term is the velocity-dilation slowdown,
+\[
+\left( \frac{\Delta f}{f} \right)_{\text{SR}}
+= -\frac{v_{\text{sat}}^{2} - v_{\text{geoid}}^{2}}{2 c^{2}}.
+\]
+The satellite's orbital speed is $v_{\text{sat}} \approx 3.87 \,\si
+{\kilo\meter\per\second}$; the ground clock's tangential speed at
+the equator is $v_{\text{geoid}} \approx 0.47 \,\si{\kilo\meter
+\per\second}$. The fractional rate is
+\[
+-\frac{(3870)^{2} - (470)^{2}}{2 \times (3 \times 10^{8})^{2}}
+\approx -8.25 \times 10^{-11}.
+\]
+Multiplied by one day, this gives $-7.1 \,\si{\micro\second}$: the
+moving satellite clock runs slower.
+
+The sum is $+38.5 \,\si{\micro\second}$ per day, the net offset
+applied to the satellite clock before launch. The pre-launch
+correction is implemented in hardware: the satellite oscillator's
+nominal frequency is set to $10.229999995453 \,\si{\mega\hertz}$
+rather than $10.23 \,\si{\mega\hertz}$, the fractional offset
+$-4.46 \times 10^{-10}$ exactly cancelling the on-orbit net rate
+shift. The broadcast carrier, derived from the corrected
+oscillator, arrives at the receiver at the nominal GPS system
+frequency \cite{paper:ch06t3-ashby-2003}.
+
+A reader who treats this correction as a curiosity should note
+that the working budget is not optional. The GPS pseudorange
+budget allocates $\sim 1 \,\si{\meter}$ to all error sources
+combined; the uncorrected relativistic drift would consume $11
+\,\si{\kilo\meter}$ per day of that budget. Special and general
+relativity are operating constraints on a working engineering
+system, not pedagogical curiosities.
+
+\textbf{The periodic Sagnac correction.} The satellite orbit is
+not perfectly circular; the orbital eccentricity $e \sim 0.01$
+introduces a periodic variation in both the satellite altitude
+(modulating the gravitational potential) and orbital velocity
+(modulating the time dilation). The result is a periodic clock
+correction of amplitude $\sim 23 \,\si{\nano\second}$ over the
+orbital period of approximately $12 \,\si{\hour}$. The receiver
+firmware applies the periodic correction
+\[
+\Delta t_{r} = F \,e\, \sqrt{a}\, \sin E,
+\]
+where $a$ is the semi-major axis, $E$ is the eccentric anomaly,
+and $F = -4.4428 \times 10^{-10} \,\si{\second\per\sqrt\meter}$ is
+a constant derived from $GM$ and $c$. The Earth's rotation during
+the signal's transit (the Sagnac effect proper) adds a further
+correction up to $\sim 200 \,\si{\nano\second}$ at the equator for
+satellites east or west of the receiver. Both corrections are
+applied in every operational receiver
+\cite{paper:ch06t3-ashby-2003}.
+
+\subsection{Multipath in urban canyons}
+
+Multipath is the dominant pseudorange error in dense urban
+environments. The receiver antenna sees both the direct
+satellite signal and one or more delayed reflections off
+buildings, vehicles, and street furniture. The reflected signals
+interfere with the direct one at the antenna and corrupt the
+code-tracking loop's estimate of the signal arrival time. The
+error can reach $50 \,\si{\meter}$ on a code pseudorange in deep
+canyons and several centimetres on a carrier-phase measurement
+\cite{text:ch06t3-kaplan-hegarty-2017}.
+
+Three working multipath signatures occur. A short-delay reflection
+(the building face $5 \,\si{\meter}$ behind the receiver gives a
+$33 \,\si{\nano\second}$ delay, $\sim 10 \,\si{\meter}$ of
+pseudorange offset) interferes with the direct signal inside one
+code chip; the result is a steady bias on the affected satellite
+that persists as long as the receiver and the building stay
+stationary. A medium-delay reflection (a building $100 \,\si
+{\meter}$ down the street: $\sim 670 \,\si{\nano\second}$,
+$\sim 200 \,\si{\meter}$ offset) arrives later than one C/A code
+chip ($1 \,\si{\micro\second}$); the receiver's tracking loop
+locks onto the direct signal and the reflection appears as an
+interferer that modulates the signal-to-noise ratio. A
+long-delay specular reflection (off water, glass facades, or a
+nearby vehicle) appears as a transient as the geometry moves.
+
+Three classes of mitigation address the problem.
+
+\engterm{Receiver-side mitigation} reshapes the correlation
+function the receiver uses for code tracking. The standard
+\engterm{wide-correlator} (chip spacing $1$ chip) is sensitive to
+multipath out to one chip delay. The \engterm{narrow-correlator}
+(chip spacing $0.1$ chip, implemented in NovAtel PAC receivers
+since the early 1990s) reduces the multipath envelope by an
+order of magnitude. The \engterm{strobe correlator} (Ashtech and
+Trimble, mid-1990s) further reshapes the correlation, suppressing
+medium-delay multipath at the cost of slightly worse thermal noise
+performance. Modern survey-grade receivers (Trimble Maxwell 7
+chipset, NovAtel OEM7) combine narrow correlation with multipath
+estimation in the signal-processing chain
+\cite{text:ch06t3-kaplan-hegarty-2017}.
+
+\engterm{Antenna-side mitigation} attenuates the reflected signal
+before it reaches the receiver electronics. A \engterm{choke-ring
+antenna} (developed at JPL for VLBI; standard at IGS reference
+stations) surrounds the radiating element with concentric ring
+chokes that reject low-elevation reflections by an order of
+magnitude. A \engterm{ground-plane antenna} with a flat metal
+plate $\sim 1 \,\si{\meter}$ in diameter suppresses
+ground-reflected multipath. A receiver-grade choke-ring antenna
+(Leica AR25, Trimble Zephyr Geodetic) costs \$$2{,}000$ to \$$5{,}
+000$ in 2026; the cost is justified for survey and reference
+stations where multipath bias would dominate the error budget.
+
+\engterm{Algorithmic mitigation} uses the receiver's redundant
+observations to detect and reject multipath-corrupted satellites.
+A consistency check across the four-or-more pseudoranges flags
+satellites whose residuals exceed a $3\sigma$ threshold; the
+receiver excludes them from the position fix. The IGS Multipath
+Monitor (MPM) provides a per-station multipath signature derived
+from carrier-phase observations; the signature is used to debias
+the pseudorange in post-processing.
+
+The receiver-grade trade-off is steep. A consumer u-blox M8N
+receiver (single-frequency C/A, narrow correlator, no choke ring,
+$\sim$\$$20$ in 2026) reaches typical horizontal accuracy of
+$2$-$5 \,\si{\meter}$ in open sky and $10$-$30 \,\si{\meter}$ in
+urban canyons. A survey-grade Trimble R12i or Leica GS18 receiver
+(multi-frequency, narrow correlator, multipath estimator, choke
+ring, $\sim$\$$15{,}000$-\$$30{,}000$ in 2026) reaches $8 \,\si
+{\milli\meter} + 1 \,\si{ppm}$ RTK accuracy in open sky and
+$\sim 5 \,\si{\centi\meter}$ in moderate urban environments.
+Three orders of magnitude in price translate into three to four
+orders of magnitude in achievable accuracy; the engineer specifies
+the receiver class against the application's accuracy
+requirement, not by familiarity.
+
+\subsection{Augmentation services: WAAS, EGNOS, MSAS, NDGPS}
+
+Several freely-available augmentation services extend GPS
+accuracy and integrity beyond the unaugmented signal. The
+\engterm{Wide Area Augmentation System (WAAS)} is the FAA's
+satellite-based augmentation system (SBAS) covering North America,
+operational since 2003. WAAS broadcasts ionospheric corrections
+on a per-pierce-point grid and integrity flags on each GPS
+satellite from geostationary satellites at the L1 frequency. The
+specification is $\leq 7.6 \,\si{\meter}$ horizontal and vertical
+accuracy (95\%) for aviation-grade users; working accuracy is
+typically $1$-$3 \,\si{\meter}$ \cite{web:ch06t3-faa-waas-2024}.
+The corresponding European service is \engterm{EGNOS} (operational
+since 2009, covering Europe and North Africa) with $1$-$3 \,\si
+{\meter}$ accuracy and Safety-of-Life service supporting Cat-I
+precision approach \cite{web:ch06t3-esa-egnos-2024}. Japan
+operates \engterm{MSAS} (Multi-functional Satellite Augmentation
+System) since 2007; India operates GAGAN since 2014. All four
+SBAS services are interoperable in the sense that a SBAS-capable
+receiver decodes whichever signal is in view.
+
+\engterm{Nationwide Differential GPS (NDGPS)} is a maritime
+ground-based augmentation operated by the US Coast Guard (since
+1996, deactivated for inland use 2016) and counterparts in
+Europe and Asia. NDGPS broadcasts pseudorange corrections from a
+network of reference stations on the medium-frequency band
+($283.5$-$325 \,\si{\kilo\hertz}$); receivers within $\sim 300
+\,\si{\kilo\meter}$ of a station gain $1$-$3 \,\si{\meter}$
+accuracy. The service is being phased out in favour of SBAS and
+RTK, but maritime and coastal applications continue to use it
+where the legacy infrastructure remains.
+
+\engterm{Survey-grade Real-Time Kinematic (RTK)} as described in
+the working pipelines subsection above is the working path to
+centimetre accuracy. With a base station within $30 \,\si{\kilo
+\meter}$ streaming RTCM 3.3 corrections at $1 \,\si{\hertz}$, the
+rover resolves the carrier-phase integer ambiguities and achieves
+$8 \,\si{\milli\meter} + 1 \,\si{ppm}$ horizontal accuracy and
+roughly twice that vertically. A surveyor moving a Trimble R12i
+or Leica GS18 across a construction site sees a position fix
+that updates at $5$ to $20 \,\si{\hertz}$ with centimetre-class
+precision; the receiver's controller annotates the fix with the
+PDOP, the number of resolved satellites, the integer-ambiguity
+solution status (fixed or float), and the baseline length to the
+nearest reference station.
+
+\textbf{The accuracy budget, end to end.} For an unaugmented
+single-frequency consumer receiver in open sky, the contributing
+$1\sigma$ pseudorange errors are: orbit and clock $\sim 0.6 \,\si
+{\meter}$, ionosphere (after Klobuchar) $\sim 5 \,\si{\meter}$,
+troposphere (after Saastamoinen) $\sim 0.5 \,\si{\meter}$,
+multipath $\sim 1$-$2 \,\si{\meter}$, receiver noise $\sim 0.3
+\,\si{\meter}$. The root-sum-square is $\sim 5 \,\si{\meter}$ per
+pseudorange, which translates through HDOP $\sim 1.5$ to a
+horizontal position uncertainty of $\sim 7 \,\si{\meter}$.
+
+For an SBAS-augmented dual-frequency receiver, the ionosphere
+drops to $\sim 0.5 \,\si{\meter}$ (residual second-order term),
+the orbit and clock to $\sim 0.2 \,\si{\meter}$ (SBAS broadcast
+corrections), and the multipath stays at $\sim 1 \,\si{\meter}$;
+the root-sum-square drops to $\sim 1.2 \,\si{\meter}$ per
+pseudorange and the horizontal uncertainty to $\sim 1.8 \,\si
+{\meter}$.
+
+For RTK with a $5 \,\si{\kilo\meter}$ baseline, the differenced
+pseudorange has $\sim 1 \,\si{\centi\meter}$ noise after integer
+ambiguity resolution; the horizontal position uncertainty falls
+to $\sim 1 \,\si{\centi\meter}$, three orders of magnitude better
+than the unaugmented baseline. The budget legitimises the
+hardware cost: the unaugmented receiver leaves $\sim 5 \,\si
+{\meter}$ on the table that the RTK chain recovers.
+
+\subsection{GPS week-rollover: a named-case companion}
+
+A second GPS-system failure mode, briefer than the Patriot but
+of the same family, is the GPS week-number rollover. The legacy
+GPS C/A navigation message carries the week number in a $10$-bit
+field, so the broadcast value wraps from $1023$ to $0$ every
+$2^{10} = 1024$ weeks, approximately $19.7\,\text{yr}$.
+Rollovers occurred at the end of $21$ August $1999$ and the end
+of $6$ April $2019$. A receiver reconstructs the absolute week by
+combining the broadcast value with a pivot date held in firmware
+(typically the compile date or the last firmware-update date); a
+receiver whose pivot has not been refreshed before a rollover
+may compute a calendar date that is an integer multiple of $1024$
+weeks too early. The $2019$ rollover produced documented
+timing-system outages and erroneous timestamps in installations
+whose firmware-update path had lapsed; the position service of a
+navigation-only receiver was not directly affected, because the
+within-week time-of-week field carries the ranging information,
+but time-transfer and time-stamp applications were exposed even
+when position outputs appeared nominal
+\cite{web:gpsgov-week-rollover-2019,
+web:dhs-cisa-gps-rollover-2019,web:nist-gps-week-rollover-2019}.
+The newer CNAV message uses a $13$-bit week field and does not
+roll over until $2137$. The registry entry at
+\repopath{docs/research/accidents/gps-week-rollover-1999-2019.md}
+collects the technical and organisational mechanisms; the two
+canonical responses, parallel CNAV-capable receivers in critical
+timing chains and explicit holdover plans for the rollover dates,
+match the Patriot's discipline list one for one.
 
 \subsection{The geodetic frame}
 
@@ -1401,6 +2122,302 @@ that distinguishes white noise, flicker noise, and random-walk
 noise; the engineer who reports the Allan deviation as a function
 of $\tau$ on a log-log plot preserves the full noise signature
 and can match it against the candidate physical mechanisms.
+
+\subsection{Worked engineering case: $24$-hour grid frequency
+against a GPS-disciplined reference}\pathtag{standard}
+
+The Allan-deviation procedure of the preceding subsection takes
+synthetic input. The same procedure run on a real $24$-hour
+grid-frequency record returns numbers that match published grid
+statistics, and the gap between the synthetic and the published
+sets is itself instructive.
+
+\textbf{Set-up.} A working zero-crossing receiver records the UK
+grid frequency from a mains-coupled photodiode (an LED lamp on the
+domestic supply, an optical pickup, no galvanic connection) for
+$24 \,\si{\hour}$ at $44.1 \,\si{\kilo\hertz}$ sample rate. The
+zero-crossing estimator interpolates between sign-change samples to
+locate crossings at $\sim 5 \,\si{\micro\second}$ precision. The
+sample clock is the laptop's NTP-disciplined oscillator, fractional
+accuracy $\sim 10^{-7}$ after a few minutes of NTP lock. The
+estimator returns one frequency estimate per second. The published
+reference is the National Grid ESO grid-frequency archive at
+one-second resolution \cite{web:ch06t3-gridwatch-uk-2024}.
+
+\textbf{Step 1: cross-check the mean and standard deviation.} The
+$24$-hour mean is $f_{0} = 50.0008 \,\si{\hertz}$ (the typical UK
+mean falls within $\pm 5 \,\si{\milli\hertz}$ of $50.0000 \,\si
+{\hertz}$ on a normal day; the offset reflects the National Grid's
+time-error correction policy). The standard deviation across the
+record is $\sigma = 38 \,\si{\milli\hertz}$, consistent with the
+$\sim 20$-$40 \,\si{\milli\hertz}$ standard deviation envelope
+quoted in the ENTSO-E synchronous-area quality reports
+\cite{web:ch06t3-entsoe-gridfreq-2024}. The reader's own record
+should sit within a factor of two of this band; values outside the
+band indicate either a measurement-chain artefact or an unusual
+grid event during the recording window.
+
+\textbf{Step 2: compute the Allan deviation across decades of
+$\tau$.} For $\tau \in \{1, 10, 100, 1{,}000, 10{,}000\} \,\si
+{\second}$, the Allan deviation falls and then rises:
+\[
+\begin{aligned}
+\sigma_{y}(1 \,\si{\second}) &\approx 2.0 \times 10^{-5} \\
+\sigma_{y}(10 \,\si{\second}) &\approx 6.0 \times 10^{-6} \\
+\sigma_{y}(100 \,\si{\second}) &\approx 1.5 \times 10^{-6} \\
+\sigma_{y}(1{,}000 \,\si{\second}) &\approx 1.2 \times 10^{-6} \\
+\sigma_{y}(10{,}000 \,\si{\second}) &\approx 7.0 \times 10^{-6}
+\end{aligned}
+\]
+
+The shape matches the synthetic case: white-frequency rolloff at
+short $\tau$, a flicker-floor minimum near $\tau = 300$-$1{,}000
+\,\si{\second}$, and a random-walk rise beyond $\tau = 3{,}000
+\,\si{\second}$.
+
+\textbf{Step 3: interpret the diurnal cycle.} A plot of the mean
+frequency in $5$-minute windows over the $24$ hours reveals the
+load curve. UK demand peaks between $17$:$00$ and $20$:$00$ local
+time; the mean frequency dips by $30$-$60 \,\si{\milli\hertz}$
+below the daily average during the peak. Overnight ($02$:$00$ to
+$05$:$00$), demand is low, generation slightly exceeds load, and
+the mean frequency rises by $20$-$30 \,\si{\milli\hertz}$ above
+the daily average. The grid operator's governor response adjusts
+generation to keep the deviation bounded, but the deviation is
+visible as a slow drift superimposed on the second-by-second
+record. The same pattern appears in the ENTSO-E published data
+for Continental Europe, with broadly similar amplitude and a
+slightly later peak (Continental peak around $19$:$00$ to $21$
+:$00$ winter, $13$:$00$ summer)
+\cite{web:ch06t3-entsoe-gridfreq-2024}.
+
+\textbf{Step 4: cross-compare the local and published records.}
+The residual (local minus published) plotted as a function of
+time of day should be a slowly drifting signal of amplitude $1$
+to $5 \,\si{\milli\hertz}$, dominated by the local sample clock's
+fractional accuracy and the photodiode coupling's group-delay
+variation. A residual whose amplitude exceeds $10 \,\si{\milli
+\hertz}$ indicates a measurement-chain problem (clock fractional
+error larger than $2 \times 10^{-4}$, a switching transient
+modulating the lamp driver, or a calibration error in the
+reference).
+
+\textbf{Working numbers for the engineer.} The grid's flicker-floor
+$\sigma_{y} \approx 10^{-6}$ at $\tau \approx 300 \,\si{\second}$
+corresponds to a $50 \,\si{\micro\hertz}$ frequency-standard
+deviation on $50 \,\si{\hertz}$. An engineer who averages a
+mains-coupled clock over five minutes can therefore expect
+frequency knowledge at the $50 \,\si{\micro\hertz}$ level. An
+engineer who needs $1 \,\si{\milli\hertz}$ knowledge needs only a
+few seconds of averaging. Averaging beyond the flicker minimum
+($\tau > 1{,}000 \,\si{\second}$) yields no further improvement
+because random-walk drift dominates; the optimal averaging time is
+the flicker minimum, not an arbitrarily long window. This is the
+working answer to the chapter project's central question: how
+long does the reader need to average to reach a stated frequency
+accuracy?
+
+\section{The time-precision arc: from Huygens to optical clocks}\pathtag{standard}
+
+Why did time become the precision anchor for everything else?
+Three centuries of clock engineering answer the question: each
+generation pushed the fractional clock uncertainty by roughly an
+order of magnitude, and at every step, working measurement chains
+began to lean on the new precision. The arc moves from
+mechanical to electrical to atomic to optical; the technology
+families differ, but the discipline of pinning frequency to a
+reproducible physical phenomenon is constant.
+
+\input{volumes/01-quantity/ch06-time-frequency-signals/figures/fig-time-precision-arc.tex}
+
+\Cref{fig:vol01:ch06:time-precision-arc} plots the principal
+epochs from Huygens to the present. Each marker represents a
+working clock whose fractional uncertainty defines the precision
+floor of its era. The trend, eyeballed across $370$ years, is
+roughly one decade of $\sigma_{y}$ per human generation.
+
+\subsection{The mechanical era: Huygens to Shortt}
+
+Christiaan Huygens introduced the pendulum clock in $1656$ at the
+Hague, applying Galileo's small-amplitude isochronism observation
+to a practical timekeeper. The first Huygens clock kept time to
+$\sim 10 \,\si{\second}$ per day, a fractional uncertainty of
+$\sim 10^{-4}$. By $1675$, with the cycloidal cheek correction
+(Huygens's own modification to maintain isochronism at finite
+amplitude), accuracy reached $\sim 1 \,\si{\second}$ per day,
+fractional uncertainty $\sim 10^{-5}$.
+
+John Harrison's marine chronometer H4 (sea trial $1761$-$1762$)
+solved the longitude problem by carrying mechanical time accurate
+to roughly $5 \,\si{\second}$ over a $46$-day Atlantic crossing,
+or $\sim 10^{-6}$ fractional accuracy under shipboard conditions:
+temperature swings of $10$-$20 \,\si{\kelvin}$, sustained pitch
+and roll, no possibility of attendant care. The H4 ran a
+diamond-and-ruby escapement with a temperature-compensating
+bimetal balance and was a hand-built artefact rather than a
+manufactured object. Its commercial successors, mass-produced
+through the nineteenth century, brought marine chronometry to
+working navigators \cite{hist:ch06t3-sobel-longitude-1995}.
+
+The Shortt-Synchronome free-pendulum clock ($1921$, William Shortt
+at the Synchronome Co.) housed the master pendulum in an
+evacuated tank, decoupled it from the impulse mechanism via a
+slave pendulum, and reached fractional accuracies of $\sim 10^{-8}
+$ ($\sim 10 \,\si{\milli\second}$ per day). The Shortt-Synchronome
+was the time standard at the Royal Greenwich Observatory and at
+NIST's predecessor laboratories into the $1940$s, when it was
+displaced by quartz-crystal oscillators that surpassed it within
+two decades of their introduction.
+
+\subsection{The quartz era: Marrison and the wristwatch}
+
+Warren Marrison at Bell Telephone Laboratories ($1927$) built the
+first practical quartz-crystal clock, exploiting the
+piezoelectric resonance of a thin quartz plate to maintain a
+stable oscillation at $50 \,\si{\kilo\hertz}$
+\cite{paper:ch06t3-marrison-1948}. The Marrison clock reached
+fractional accuracies of $\sim 10^{-8}$, comparable to the
+Shortt-Synchronome but at a fraction of the cost, the size of a
+laboratory bench, and with no mechanical wear surfaces. Within a
+decade, quartz oscillators were the working frequency reference
+of radio broadcasting, telephone networks, and military timing
+systems.
+
+The decisive step toward mass adoption came in $1969$, when Seiko
+released the Astron quartz wristwatch at the Tokyo Watch Fair.
+The Astron used a $8{,}192 \,\si{\hertz}$ quartz resonator (later
+$32{,}768 \,\si{\hertz} = 2^{15}$, the modern standard) driven by
+a battery-powered integrated circuit. Within $20$ years, quartz
+watches had displaced mechanical watches in the consumer market;
+the wristwatch's fractional accuracy of $\sim 10^{-6}$ ($\sim 30
+\,\si{\second}$ per year) was orders of magnitude better than a
+$1968$ mechanical wristwatch and met the everyday-use accuracy
+target. The same resonator and circuit, in $2026$, sit inside
+every smartphone, every microcontroller, and every digital
+appliance the reader encounters: the quartz crystal is the most
+widely deployed precision instrument in human history.
+
+\subsection{The atomic era: Essen and Parry to NIST-F1}
+
+Louis Essen and Jack Parry at the National Physical Laboratory
+built the first operational caesium-beam frequency standard in
+$1955$, locking the microwave cavity frequency to the $9{,}192
+{,}631{,}770 \,\si{\hertz}$ hyperfine transition of caesium-133
+\cite{paper:ch06t3-essen-parry-1955}. The Essen-Parry standard
+reached fractional accuracies of $\sim 10^{-10}$, two orders of
+magnitude better than the best contemporary quartz oscillators.
+The $1967$ CGPM redefined the second in terms of the caesium
+transition, transferring the SI definition from astronomical
+observation (the ephemeris second, derived from Earth's orbital
+motion) to laboratory physics. The redefinition meant that a
+laboratory could realise the SI second directly with a primary
+standard, no astronomical observations required.
+
+The caesium-beam architecture was succeeded by the caesium-fountain
+architecture in the $1990$s. The fountain launches laser-cooled
+caesium atoms upward, lets them traverse a microwave cavity twice
+(once on the way up, once on the way down), and reads the
+resulting atomic state population. The longer interrogation time
+gives a narrower resonance and lower fractional uncertainty.
+NIST-F1 (operational $1999$) reached $\sim 10^{-15}$ fractional
+accuracy; NIST-F2 ($2014$) reached $\sim 10^{-16}$
+\cite{web:nist-cesium-fountain}. The fountains are the present
+primary frequency standards at most major national metrology
+laboratories.
+
+\subsection{The optical era: lattice clocks and the future SI second}
+
+Optical frequency standards, lock to electronic transitions at
+hundreds of terahertz rather than the microwave hyperfine
+transitions of caesium. The higher transition frequency gives a
+higher line quality factor and a narrower resonance, extending
+fractional accuracies into the $10^{-18}$ range. The strontium
+optical lattice clock at NIST/JILA reached fractional accuracy
+$\sim 4 \times 10^{-18}$ in $2014$ and improved further in
+subsequent years \cite{web:ch06t3-nist-strontium-2024}. The
+optical lattice traps thousands of atoms in a standing-wave laser
+field at a wavelength chosen so the trap shifts the clock
+transition by exactly zero (the magic wavelength); the trapped
+atoms are interrogated by a probe laser whose frequency is
+stabilised to the atomic transition via Pound-Drever-Hall
+locking.
+
+Optical clocks remain laboratory systems in $2026$: a working
+strontium lattice clock fills a room with lasers, vacuum chambers,
+frequency combs, and environmental controls. The optical
+frequency comb (Th\'eodor H\"ansch and John Hall, Nobel $2005$)
+provides the bridge between the optical transition (at $\sim 429
+\,\si{\tera\hertz}$ for strontium) and an electronic counter at
+microwave or radio frequencies. The combs run as femtosecond
+mode-locked lasers whose output is a coherent spectrum of equally
+spaced frequency lines spanning an octave; the line spacing
+equals the laser's pulse repetition rate, measurable with an
+electronic counter, and the absolute frequency of any line is
+known if one line is anchored to a reference (typically the
+caesium standard, or another optical clock).
+
+The CCTF and national metrology laboratories are preparing the
+technical basis for a future optical redefinition of the SI
+second. The schedule should be cited to current BIPM or CCTF
+material rather than fixed in this text; the working point is
+that the SI second is on a trajectory toward an optical
+redefinition once the international comparison campaign matures.
+
+\subsection{NIST-on-a-chip: precision at the milliwatt scale}
+
+Parallel with the laboratory optical clock effort, a NIST
+programme called \engterm{NIST-on-a-Chip} has miniaturised the
+caesium frequency standard onto a circuit board
+\cite{web:ch06t3-nist-on-a-chip-2024}. The Microsemi (now
+Microchip Technology) SA.45s chip-scale atomic clock, in
+production since $2011$, uses coherent population trapping in a
+vapour cell of caesium-133, draws $\sim 120 \,\si{\milli\watt}$,
+occupies $\sim 35 \,\si{\centi\meter\cubed}$, and reaches
+$\sigma_{y}(\tau = 1 \,\si{\day}) \approx 10^{-11}$
+\cite{web:ch06t3-microsemi-csac-2024}. Fractional accuracy is
+$\sim 10^{-10}$, three orders of magnitude better than the best
+TCXO and three orders of magnitude worse than a caesium fountain.
+The portability is the point: a CSAC fits in a hand, runs on a
+small battery for hours, and provides atomic-class holdover for
+mobile applications (military timing, undersea sensors,
+high-frequency trading, distributed phasor measurement units).
+
+The NIST-on-a-Chip programme extends to other quantities (the
+silicon photonic optical-frequency reference, the on-chip Kibble
+balance, the chip-scale thermometer). The pattern is the same as
+the historical arc: take a laboratory-grade primary standard,
+miniaturise it through engineering, distribute it across working
+measurement chains. The miniaturisation trades absolute accuracy
+for portability and cost; the working engineer chooses the
+appropriate operating point on the Pareto curve.
+
+\subsection{Why time anchored everything else}
+
+The arc has a structural feature: each new clock improved
+fractional uncertainty by roughly an order of magnitude, and at
+each step, working measurement chains began to express other
+quantities through time. The metre was redefined in $1983$ as
+the distance light travels in $1/299{,}792{,}458 \,\si{\second}$,
+transferring length precision from the krypton-86 wavelength
+standard to the caesium frequency standard. The volt, through the
+Josephson effect, is expressed as a frequency. The ampere, through
+the $2019$ redefinition, is expressed through the elementary
+charge and frequency-defined units. The kilogram, through the
+Kibble balance, is expressed through the Planck constant and
+electrical quantities that ground out in frequency. By $2026$, the
+SI is structurally a frequency-anchored system: the second is the
+primary reference, and the other six base units inherit their
+precision from it.
+
+The lesson for working engineers, even those not in metrology,
+is that the time signal in any measurement chain is the cleanest
+reference available. When a measurement can be expressed as a
+time interval times a calibrated rate, the rate's fractional
+uncertainty sets the floor, and modern frequency references put
+that floor below most other measurands' achievable precision. The
+discipline of pulling a measurement back to a time interval, when
+the physics allows, is a working pattern the reader will see
+repeated through the rest of \emph{Engineering}.
 
 \section{Failure: clock drift and the Patriot missile}\pathtag{core}
 

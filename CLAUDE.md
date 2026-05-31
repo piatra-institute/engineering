@@ -248,12 +248,12 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 - **Phase 0.7** (registry foundation and pilot prose) **Complete** 2026-04-29.
 - **Phase 1** (production prose at scale) **In progress**. Volumes I-V drafted in full at first-draft density; Volume VI 10 of 13 drafted; Volumes VII, VIII, IX, X, XI, and XII drafted in full (19 of 19, 14 of 14, 19 of 19, 16 of 16, 13 of 13, and 14 of 14). Volume I is at Stage 5 (reviewed and resolved); Volumes II-XII are at Stage 4 awaiting Codex review. Codex-review lane for Vols II-XII and forward-prose lane into Vol VI Ch 11-13 both open; Q57 (page density vs target) gates the production-density choice and now has twelve volumes of evidence behind it.
 
-Verified at last edit (2026-05-16):
+Verified at last edit (2026-05-31):
 
 - 12 volumes / 174 chapters / 174 dossiers.
-- 3503-page PDF (Vol I lifted to Tier 3 substantial first pass at 450/720 pp = 62.5% target density; Vol II at Tier 1+2 across 17 of 18 chapters, with Ch 2 still at first-draft pending re-run).
+- 3684-page PDF. Vol I at Tier 3 second pass (9-agent parallel git-worktree rollout 2026-05-31), 610/720 pp = 85% target density. Vol II at Tier 1+2 across 17 of 18 chapters, with Ch 2 still at first-draft pending re-run.
 - 171 chapters with first-draft prose. Per-volume status:
-  - **Vol I** 9/9 at Stage 5 and at **Tier 3 substantial first pass**, pp 1-450 (~450pp; target ~720; 62.5% of target). Tier 3 expansion rollout 2026-05-29 through 2026-05-30 across multiple turns: GUM and NIST/BIPM and 7 other historical sketches, 3 uncertainty-budget worked artifacts (calibration chain, pendulum-g, Bayesian update), 30+ exercise-solution promotions to full multi-step working, worked DoE and Buckingham-pi pump-affinity and Bayesian-vs-frequentist sensor-drift and QC-lab and pH-probe and time-frequency hum and Vickers depth-of-case and climate-stressed-design-load and Challenger pre-launch-risk and Ariane-501 forensic walk and Nusselt-Rayleigh worked cases. Per-chapter: Ch 1 +12pp, Ch 2 +14pp, Ch 3 +10pp, Ch 4 +22pp, Ch 5 +4pp, Ch 6 +4pp, Ch 7 +8pp, Ch 8 +8pp, Ch 9 +8pp. Tier 3 expansion plan recorded in `docs/vol01-tier3-plan.md`.
+  - **Vol I** 9/9 at Stage 5 and at **Tier 3 second pass**, pp 1-610 (610pp; target 720; 85% of target). Tier 3 second pass 2026-05-31 via nine parallel git-worktree agents (one per chapter, each closing the dossier gap with long-form case-study expansions, multi-page worked examples, historical sketches, dossier-promised subsection deepening, and ~10 exercise-solution promotions). Eight agents merged; the Ch 8 agent hit a session rate limit before chapter.tex edits landed (only 2 figures + 32 bib entries merged). Per-chapter spans: Ch 1 56pp (93%), Ch 2 58pp (83%), Ch 3 62pp (78%), Ch 4 72pp (72%), Ch 5 80pp (89%), Ch 6 74pp (93%), Ch 7 66pp (94%), Ch 8 62pp (69%), Ch 9 72pp (90%). Remaining gap concentrated in Ch 4 (+28pp) and Ch 8 (+28pp). Bibliography grew 498→689 entries; registry held at 39 entries (canonical 787-battery key resolved during merge). Tier 3 plan recorded in `docs/vol01-tier3-plan.md`.
   - **Vol II** 18/18 at Stage 4; 17 of 18 chapters expanded to Tier 1+2 density 2026-05-16 via four batches of parallel git-worktree agents. Ch 2 (Functions and graphs) is still at first-draft density — agent re-run stalled on a watchdog timeout; needs a follow-up pass. Ch 7 (ODEs) and Ch 11 (Multivariable calculus) have partial solution coverage (22/45 and 10/35 exercises respectively) plus full figures/code/data — needs solution top-up. Page span shifts upward with each volume's expansion; old span pp 221-710 no longer accurate.
   - **Vol III** 13/13 at Stage 4, pp 711-984 (~274pp; target ~1300).
   - **Vol IV** 14/14 at Stage 4, pp 985-1218 (~234pp; target ~1400).
@@ -265,14 +265,14 @@ Verified at last edit (2026-05-16):
   - **Vol X** 16/16 at Stage 4, pp 2417-2705 (~289pp; target ~1450). Highest first-draft density (Vol X-XII period) ($\approx$ 20\% of target).
   - **Vol XI** 13/13 at Stage 4, pp 2706-2863 (~158pp; target ~1080). Includes the design-studios chapter (Ch 12) and the capstone (Ch 13); Ch 13 carries the integrative project for the volume rather than exercises.
   - **Vol XII** 14/14 at Stage 4, pp 2864-2986 (~123pp; target ~1320). Drafted in the current session; includes the closing future-of-the-artificial chapter (Ch 14) that closes the entire book and carries the integrative personal-manifesto project rather than exercises.
-- 463 bibliography entries.
-- 38 named-case registry entries; 38 `acc:` keys cited in prose; `make accidents` PASS. (Vol I Tier 1+2 rollout added 2 entries: GPS week-number rollover 1999/2019, IPK mass drift 1889-2019.)
+- 689 bibliography entries.
+- 39 named-case registry entries; 38 `acc:` keys cited in prose; `make accidents` PASS.
 - 1 research seed on disk under `docs/research/seeds/`.
 - 3 chapters still carry `Project track: TBD` (Vol VI Ch 11-13). Q55 settled per-chapter for Vols I-V, Vol VI Ch 1-10, and Vols VII-XII during drafting.
 - Vol I review log complete: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`, each with a `Resolved:` banner. Vols II-XII reviews not yet started; the same three-role protocol carries forward.
 - Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
 - Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`); trace and diagonal (`\tr`, `\diag`); optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`). Added during Vol II drafting; carried forward unchanged through Vols III-XII. Vol VII drafting added the `\usepackage[inline]{enumitem}` option in `preamble.tex` to support `enumerate*` inline lists.
-- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 3503-page PDF.
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a clean 3684-page PDF.
 
 ## What not to do
 

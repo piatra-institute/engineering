@@ -665,6 +665,183 @@ calculation is wrong or the model has entered the regime where
 linear propagation breaks down. The next worked example is a case
 where the ratio diverges.
 
+\subsection{Correlated multivariate inputs: a Zernike-aberration budget}
+
+Many engineering measurements report not a single scalar but a
+vector quantity. An optical-system metrology campaign reports the
+Zernike-polynomial decomposition of a wavefront measurement: the
+defocus coefficient $Z_{4}$, the astigmatism coefficients
+$Z_{5}, Z_{6}$, the coma coefficients $Z_{7}, Z_{8}$, the spherical
+coefficient $Z_{11}$, and so on. The reported standard uncertainty
+on each coefficient is the diagonal of the covariance matrix; the
+off-diagonal terms carry the correlations the fitting procedure
+introduces. A naive Monte Carlo that draws each coefficient
+independently misses the off-diagonal information and produces an
+RMS-wavefront-error distribution that is wrong by 5\% to 25\%,
+depending on the correlation magnitude.
+
+The Cholesky-factorisation working method realises the multivariate
+draw without inverting the covariance. Let $\boldsymbol{\Sigma}$
+be the $4 \times 4$ Zernike covariance matrix with the dominant
+defocus-to-spherical correlation $\rho_{4,11} = +0.45$ (a typical
+value from the non-circular-aperture fitting case, where the
+Zernike-basis orthogonality breaks down at the aperture mask). The
+Cholesky factor $\mathbf{L}$ satisfies $\mathbf{L}\mathbf{L}^{\top}
+= \boldsymbol{\Sigma}$, and the correlated draw is $\boldsymbol{z}
+= \boldsymbol{\mu} + \mathbf{L} \boldsymbol{\xi}$ where $\boldsymbol{\xi}
+\sim \mathcal{N}(\mathbf{0}, \mathbf{I})$. The script
+\texttt{code/zernike\_mc.py} runs this propagation for representative
+coefficients (defocus $0.020 \pm 0.005$, astigmatism $0.015 \pm
+0.004$, coma $0.012 \pm 0.003$, spherical $0.008 \pm 0.004$
+waves, $\rho_{4,11} = +0.45$). The empirical RMS wavefront error
+is $0.0285 \pm 0.0061\,\text{wave}$; ignoring the
+defocus-spherical correlation gives $0.0285 \pm 0.0054\,\text{wave}$,
+understating the standard deviation by approximately 13\%.
+
+The mechanism: the RMS wavefront error is
+$\text{rms} = \sqrt{Z_{4}^{2} + Z_{5}^{2} + Z_{6}^{2} + Z_{7}^{2}
++ Z_{8}^{2} + Z_{11}^{2}}$. Two coefficients that fluctuate in
+phase together produce larger excursions in the RMS sum than two
+that fluctuate independently; the positive correlation between
+defocus and spherical amplifies the upper tail of the RMS
+distribution. A measurement that reports RMS wavefront error with
+the independence assumption underestimates the upper tail and so
+underestimates the failure-rate prediction for a system with a
+wavefront-error specification.
+
+JCGM 102:2011 \cite{std:jcgm-101} extends the GUM Supplement 1
+formalism to multivariate output quantities, with the same Monte
+Carlo prescription: draw correlated input samples via the
+Cholesky factor of the input covariance, evaluate the model
+element-wise, accumulate the empirical joint output distribution
+and its covariance. A working calibration laboratory's
+multivariate budget reports the full $N \times N$ output
+covariance, not just the diagonal.
+
+\subsection{Aleatoric versus epistemic uncertainty: the two-tier MC}
+
+A working engineering uncertainty budget often contains two
+qualitatively different uncertainty sources. \engterm{Aleatoric
+uncertainty} captures intrinsic randomness in the modelled
+process: the part-to-part variation in a manufacturing batch, the
+shot noise in a photon-counting detector, the wear-cycle scatter
+in a fatigue specimen. \engterm{Epistemic uncertainty} captures
+the analyst's ignorance about the model parameters themselves:
+the mean and standard deviation of the manufacturing distribution
+are not known exactly, only estimated from a finite calibration
+sample; the photon-detection-efficiency calibration carries its
+own uncertainty; the fatigue model's S-N curve has fitted
+coefficients with their own confidence intervals.
+
+A single-tier Monte Carlo conflates the two. A
+\engterm{two-tier} (sometimes \engterm{nested}) Monte Carlo
+separates them. The outer loop draws an epistemic sample of the
+model parameters (one realisation of the fitted manufacturing-mean
+and manufacturing-sigma, drawn from their joint posterior); the
+inner loop draws aleatoric samples (the part-to-part variation
+under that fixed parameter realisation) and computes the output
+statistic. The procedure produces two outputs: the
+\engterm{conditional} expected value of the output given each
+parameter realisation (the inner-loop average), and the
+\engterm{epistemic} variance of the conditional expectation across
+parameter realisations (the outer-loop spread). The total
+uncertainty is the sum of the within-realisation aleatoric variance
+and the across-realisation epistemic variance, by the law of total
+variance.
+
+A working two-tier budget for the three-part tolerance stack: the
+outer loop draws ten manufacturing-mean and manufacturing-sigma
+realisations from their posterior (each part calibrated against a
+fresh $n = 30$ sample of incoming-inspection data); the inner loop
+draws $10^{4}$ aleatoric assembly realisations per outer draw and
+computes the fraction inside the assembly specification limits.
+The outer-loop spread of acceptance fractions is the epistemic
+contribution; the inner-loop spread is the aleatoric contribution.
+A specification that quotes the inner-loop result alone (sometimes
+called the \engterm{best-estimate} acceptance fraction) understates
+the spread because it conditions on perfectly known parameter
+values. The two-tier estimate carries both contributions and
+matches the GUM's Type A and Type B classification at the
+multivariate level.
+
+\subsection{Importance sampling and stratified sampling}
+
+For tail-probability estimation, the ordinary Monte Carlo's
+$1/\sqrt{M}$ convergence is slow: estimating a probability $p$ with
+relative accuracy $\epsilon$ requires $M \gtrsim 1/(p \epsilon^{2})$,
+so a $10^{-4}$ tail with 10\% relative accuracy needs $M \gtrsim
+10^{6}$ samples and the calculation cost grows as the inverse of
+the tail probability. Two variance-reduction techniques accelerate
+the convergence.
+
+\engterm{Importance sampling}. Draw from a biased distribution $g$
+that concentrates probability where the integrand is large, then
+reweight each sample by the likelihood ratio $p/g$ at the sample
+point. For the tail-probability estimation of a Gaussian output's
+exceedance of a critical threshold $y_{c}$, choose $g$ as a shifted
+Gaussian centred at $y_{c}$; the importance-sampling variance
+reduction for a one-sided tail at the $4\sigma$ level is a factor
+of approximately $10^{3}$ over crude Monte Carlo. The cost: the
+importance distribution must be designed for the specific tail of
+interest; using the wrong importance distribution gives correct but
+extremely noisy estimates.
+
+\engterm{Stratified sampling}. Partition the input space into $K$
+non-overlapping strata of known prior probability $p_{k}$, draw
+$M_{k}$ samples from each stratum, and weight each stratum's
+empirical output average by its prior probability. The variance
+of the stratified-sampling estimator is
+$\sum_{k} p_{k}^{2} \sigma_{k}^{2}/M_{k}$, which is bounded above
+by the unstratified variance $\sigma^{2}/M$ when the stratum
+allocation $M_{k}$ matches the Neyman-optimal proportion
+$M_{k} \propto p_{k} \sigma_{k}$. For inputs with widely varying
+contribution density (the tail strata of a Gaussian contribute
+sharply to the tail probability), stratified sampling reduces
+estimator variance by factors of 2 to 10 against unstratified
+draws.
+
+A combined importance-and-stratified scheme drives the
+estimator-variance reduction further. Working measurement
+laboratories that report exceedance probabilities at $10^{-5}$
+levels (high-reliability electronics, structural-safety analyses,
+seismic risk) use the combination by default. The reporting
+requirement is to document the importance distribution and the
+stratum partition; a result that reports the variance-reduced
+estimator without documenting the scheme cannot be reproduced.
+
+\subsection{The adaptive Monte Carlo procedure of JCGM 101 \S 5.9}
+
+The fixed-$M$ Monte Carlo of section 4.3.5 specifies the trial
+count up front. The reader then has to know the desired
+numerical-tolerance level before running. JCGM 101 \S 5.9 specifies
+the \engterm{adaptive Monte Carlo procedure} that lets the
+calculation choose its own stopping point against a stated
+numerical tolerance \cite{std:ch04t3-jcgm-101-sec59}.
+
+The procedure: choose a numerical tolerance $\delta$ as half a unit
+in the last significant digit of the expanded uncertainty target.
+Run blocks of $h$ trials ($h \geq 10^{4}$ recommended; the standard
+specifies $h$ at least $\max(M_{\min}, 10^{4})$ with $M_{\min} =
+100/(1 - p)$ for coverage probability $p$, so $h \geq 10^{4}$ for
+$p \leq 0.99$). For each block, compute the running estimate of the
+mean $\hat{y}$, the standard deviation $\hat{u}(\hat{y})$, and the
+two endpoints of the symmetric coverage interval at the stated $p$.
+Stop when all four quantities (the estimate, twice the standard
+deviation of the mean, and the two endpoint estimates) change by
+less than $\delta$ across the most recent block of $h$ trials.
+
+A working laboratory implementation reports the total trial count
+at convergence as part of the audit trail; a downstream reviewer
+reproduces the result by re-running with the same seed and verifying
+the convergence-detection trip-trial count. The procedure stops
+sooner for well-behaved problems (smooth integrand, near-Gaussian
+output) and runs longer for tail-heavy or strongly nonlinear cases.
+For the pendulum-$g$ propagation of section 4.3.3, the adaptive
+procedure typically terminates at $M \approx 3 \times 10^{5}$
+trials; for the tolerance-stack acceptance-fraction calculation of
+the next subsection, it typically runs to $M \approx 5 \times 10^{6}$
+because the tail estimation requires more trials.
+
 \subsection{Worked example: tolerance stack on a three-part assembly}
 
 A common manufacturing problem: three machined parts stack along a
@@ -742,6 +919,83 @@ the manufacturing process? what fraction of assemblies miss
 specification at the assembly level?). Monte Carlo answers all
 three from the same draw.
 
+\subsection{Asymmetric input: where linear and Monte Carlo diverge}
+
+The two scenarios above kept all three part-tolerances equal. The
+case the linear rule mishandles most badly is the one in which a
+single part carries both a wider tolerance and an asymmetric
+manufacturing distribution. The figure
+\Cref{fig:vol01:ch04:stack-acceptance} runs the three-part stack
+with part 3's tolerance widened to $\pm 0.08\,\si{\milli\meter}$
+and its manufacturing distribution replaced by a lognormal whose
+upper tail is heavier than its lower tail. The other two parts are
+left as Gaussians at $\pm 0.05\,\si{\milli\meter}$. The assembly
+specification limits are $\pm 0.10\,\si{\milli\meter}$ around the
+nominal sum of $75\,\si{\milli\meter}$.
+
+\input{volumes/01-quantity/ch04-error-and-uncertainty/figures/fig-stack-acceptance.tex}
+
+The linear root-sum-square calculation gives
+$u_{c}(L) = \sqrt{(0.05/3)^{2} + (0.05/3)^{2} + (0.08/3)^{2}}
+= 0.0349\,\si{\milli\meter}$, treating each tolerance as a $3\sigma$
+half-width on a centred Gaussian. The acceptance fraction under the
+linear Gaussian model is
+$\Pr(-0.10 \leq L - L_{\text{nom}} \leq 0.10) =
+2\Phi(0.10/0.0349) - 1 = 2\Phi(2.87) - 1 = 0.994$,
+where $\Phi$ is the standard-normal CDF. The Monte Carlo run with
+the lognormal third part gives an acceptance fraction of $0.966$,
+$0.028$ lower than the linear prediction. The shortfall comes
+almost entirely from the upper tail: $3.4\%$ of assemblies exceed
+the upper specification limit, against the linear model's predicted
+$0.3\%$. The linear rule underestimates the rejection rate by a
+factor of $\sim 6$.
+
+The acceptance-fraction error matters because rejection costs and
+warranty exposures scale with it directly. A high-volume assembly
+line shipping $10^{5}$ units per month at the linear model's $0.3\%$
+predicted rejection rate would expect 300 rejects per month at
+incoming inspection; the actual rate under the asymmetric
+distribution is 3400 per month, an order-of-magnitude shortfall in
+the cost-of-quality reserve. The discipline is to run the Monte
+Carlo whenever any input distribution is non-Gaussian or any
+tolerance is wide enough that the truncation matters.
+
+\paragraph{Linear vs Monte Carlo agreement test.} A working
+laboratory's diagnostic for whether linear propagation suffices is
+the ratio test: run a single Monte Carlo with $M = 10^{5}$ draws
+from the input distributions, compute the empirical standard
+deviation $\hat{\sigma}_{L}$ and the linear-propagation prediction
+$u_{c}(L)$, and compare. Three regimes:
+
+\begin{itemize}[leftmargin=*]
+  \item $|\hat{\sigma}_{L}/u_{c}(L) - 1| < 0.05$: linear propagation
+    is adequate for the standard uncertainty; use the linear rule
+    and a Gaussian coverage interval.
+  \item $0.05 \leq |\hat{\sigma}_{L}/u_{c}(L) - 1| < 0.20$: linear
+    propagation captures the standard uncertainty to within a
+    workable approximation, but the coverage interval may be
+    asymmetric; report the Monte Carlo percentile interval.
+  \item $|\hat{\sigma}_{L}/u_{c}(L) - 1| \geq 0.20$: linear
+    propagation is the wrong tool; report the Monte Carlo
+    distribution and avoid the linear shortcut entirely.
+\end{itemize}
+
+For the asymmetric tolerance-stack case above,
+$\hat{\sigma}_{L}/u_{c}(L) \approx 1.04$, so the standard
+uncertainty is captured but the coverage interval is asymmetric.
+The acceptance-fraction prediction belongs to the second regime:
+the standard deviation is fine, but the probability outside the
+symmetric coverage band depends on the asymmetry that the linear
+rule cannot see.
+
+The reference implementation is
+\texttt{code/tolerance\_stack\_acceptance.py}, which runs both
+scenarios with seed $311$ and $10^{6}$ draws per scenario. The
+script reports the empirical acceptance fraction, the upper-tail
+rejection fraction, the lower-tail rejection fraction, the
+empirical skewness of the assembly distribution, and the
+linear-vs-empirical standard-deviation ratio.
+
 \begin{mastery}
 The choice between linear propagation and Monte Carlo is an
 engineering judgment. Linear propagation is fast, exposes the
@@ -753,6 +1007,89 @@ state the trial count or convergence criterion. For safety-critical
 work, the method is chosen from the uncertainty model and the
 decision consequence, not from fashion.
 \end{mastery}
+
+\subsection{Multivariate Monte Carlo with correlated inputs:
+the optical-aberration budget}
+
+The Monte Carlo procedure of §4.3 sampled independent inputs.
+A great many engineering problems instead carry inputs whose
+errors are correlated, sometimes strongly. JCGM 102:2011
+\cite{std:iso-iec-guide98-3} extends the JCGM 101 framework to
+vector measurands and correlated inputs via the input covariance
+matrix $\mathbf{C}_{\mathbf{x}}$. Sampling from
+$\mathcal{N}(\boldsymbol{\mu}, \mathbf{C}_{\mathbf{x}})$ uses a
+Cholesky decomposition $\mathbf{C}_{\mathbf{x}} = \mathbf{L}
+\mathbf{L}^{\top}$; each sample is
+$\mathbf{x}_{i} = \boldsymbol{\mu} + \mathbf{L}\mathbf{z}_{i}$
+with $\mathbf{z}_{i} \sim \mathcal{N}(\mathbf{0}, \mathbf{I})$.
+
+\paragraph{Worked example: optical-system Strehl ratio from
+Zernike-coefficient errors.} A precision-optics shop measures a
+$0.5\,\si{\meter}$-diameter telescope mirror with an
+interferometer and decomposes the residual wavefront into the
+first $n = 15$ Zernike modes
+$Z_{2}, Z_{3}, \ldots, Z_{16}$ (piston, tip, tilt, defocus,
+astigmatism, coma, spherical, and higher orders). The Strehl
+ratio of the system,
+$S = \exp(-\sigma_{\Phi}^{2}) \approx 1 - \sigma_{\Phi}^{2}$
+in the Marechal regime, depends on the RMS wavefront error
+$\sigma_{\Phi}^{2} = \sum_{j=2}^{16} a_{j}^{2}$ where $a_{j}$
+is the coefficient on Zernike mode $j$ (units of wavelengths,
+$\lambda = 633\,\si{\nano\meter}$).
+
+The interferometric measurement returns each $a_{j}$ with an
+uncertainty, but the coefficients are not independent: the
+fitting procedure (Gram-Schmidt orthogonalisation of the
+Zernike basis over the measured pupil) couples the residual
+errors across modes. The measurement-system covariance matrix
+$\mathbf{C}_{\mathbf{a}}$, returned by the interferometer's
+analysis software (Zygo Mx, 4D PhaseCam) or computed by
+\texttt{zernike\_polynomials.py} in the chapter's \texttt{code/}
+directory, has typical off-diagonal elements of $0.1$ to
+$0.4$ in normalised units, with strong coupling between
+defocus and spherical (modes 4 and 11) and between primary and
+secondary astigmatism (modes 5/6 and 12/13).
+
+The Monte Carlo procedure samples $N = 10^{5}$ correlated
+draws from $\mathcal{N}(\mathbf{0}, \mathbf{C}_{\mathbf{a}})$
+using the Cholesky decomposition, computes
+$\sigma_{\Phi}^{2}$ for each draw, and produces the
+distribution of $S$. The reference script
+\repopath{volumes/01-quantity/ch04-error-and-uncertainty/code/zernike_mc.py}
+runs the procedure in under $2\,\si{\second}$ on a 2024
+laptop. For a mirror with diagonal RMS uncertainties of $0.04
+\lambda$ on defocus, $0.05\lambda$ on astigmatism, and $0.06
+\lambda$ on coma, and the typical correlation matrix above,
+the resulting Strehl-ratio distribution has $\bar{S} = 0.82$
+with a $95\%$ credibility interval $[0.74, 0.88]$.
+
+\paragraph{Why correlations matter.} If the same calculation
+is run treating the inputs as independent (zeroing the
+off-diagonal elements of $\mathbf{C}_{\mathbf{a}}$), the
+predicted interval narrows to $[0.78, 0.86]$, understating the
+worst-case wavefront error by a factor of $1.5$ on the
+worst-Strehl tail. A shop that designs to the independent-
+inputs interval will routinely deliver mirrors whose on-sky
+performance falls short of specification, because the
+correlation between defocus and spherical (the most coupled
+pair) produces wavefront-error tails the independent model
+hides. The Strehl tail is the engineering question; treating
+the inputs as independent answers a different question
+altogether.
+
+\paragraph{When to invest in the full covariance.} Capturing
+$\mathbf{C}_{\mathbf{a}}$ at the measurement-system level
+requires careful uncertainty-propagation accounting at the
+interferometer software stage; not every shop does this. A
+working triage: independent-inputs MC is acceptable when the
+typical off-diagonal correlation is below $0.1$; below $0.3$,
+the bias on the $95\%$ interval is below $10\%$; above $0.3$,
+the full covariance approach is needed or the design must
+carry the extra margin. The same triage applies to mechanical
+tolerance stacks (where part-machining errors are often
+strongly correlated within a single fixture) and to chemical
+assays (where multiple analytes from the same sample share
+matrix-effect correlations).
 
 \section{The central limit theorem in practice}\pathtag{core}
 
@@ -1323,6 +1660,232 @@ itself to many references: a single test that any of the
 references fails will trigger spuriously if the per-test rate is
 left uncorrected.
 
+\subsection{Tolerance intervals: bounding the population, not the mean}
+
+A confidence interval bounds the location of the population mean. A
+prediction interval bounds the location of a single next observation.
+A \engterm{tolerance interval} bounds the location of a stated
+fraction of the population, with a stated confidence. The three
+interval types answer three different working questions, and the
+specification engineer who confuses them produces production-line
+disagreements that cost money to track down
+\cite{text:ch04t3-meeker-prediction-2017}.
+
+The formal statement: a two-sided $\gamma$-confidence,
+$P$-coverage tolerance interval for a Gaussian population is
+\[
+\bar{x} \pm k \cdot s,
+\]
+where $k = k(n, P, \gamma)$ is a tabulated factor (ISO 16269-6:2014
+\cite{std:ch04t3-iso16269-6} carries the table). For
+$n = 10$, $P = 0.95$, $\gamma = 0.95$ (read: "with 95\% confidence,
+the interval contains 95\% of the population"), $k = 3.379$. For
+$n = 30$, the same $P, \gamma$, $k = 2.549$. For $n \to \infty$,
+$k \to z_{(1+P)/2} = 1.960$. The $k$ factor exceeds the $z$
+factor at finite $n$ because the interval must also account for the
+sampling uncertainty in the $\bar{x}$ and $s$ estimates.
+
+\paragraph{Worked tolerance-interval example.} A laboratory measures
+the bore diameter of $n = 30$ hydraulic-fitting bushings randomly
+sampled from a production run. The sample mean is $\bar{x} =
+12.045\,\si{\milli\meter}$ with sample standard deviation
+$s = 0.018\,\si{\milli\meter}$. The customer's specification requires
+that 99\% of the population lie within stated bounds, and the
+laboratory wants to express the bound with 95\% confidence.
+
+From the $k$-factor table (ISO 16269-6:2014 Table 5, $P = 0.99$,
+$\gamma = 0.95$, $n = 30$): $k = 3.355$. The tolerance interval is
+$\bar{x} \pm k s = 12.045 \pm 0.0604\,\si{\milli\meter}$, that is,
+$[11.985, 12.105]\,\si{\milli\meter}$. The laboratory states: "with
+95\% confidence, 99\% of the production-run bushing diameters fall
+within the interval $[11.985, 12.105]\,\si{\milli\meter}$."
+
+Three errors the laboratory must not make. The first is to substitute
+the 99\% confidence interval on the mean
+($t_{29, 0.995} \cdot s/\sqrt{30} = 2.756 \cdot 0.0033 = 0.0091
+\,\si{\milli\meter}$, so $12.045 \pm 0.009$) for the tolerance
+interval, which would understate the population spread by nearly
+sevenfold. The second is to substitute the prediction interval for
+the next observation ($\bar{x} \pm t_{29, 0.975} \cdot s\sqrt{1 +
+1/30} \approx 12.045 \pm 0.0376$), which bounds one further sample
+rather than the bulk of the population. The third is to substitute
+the two-sided coverage half-width $\pm k \sigma$ with the
+\emph{known}-population standard deviation $\sigma$ and $k = 2.576$
+($P = 0.99$ Gaussian critical value), which would assume $s$ equals
+$\sigma$ exactly and ignore the sampling uncertainty in the standard-
+deviation estimate.
+
+\paragraph{One-sided vs two-sided.} For a one-sided tolerance bound
+(an upper bound on what 95\% of the population does not exceed, with
+95\% confidence), the $k$ factor at $n = 30$ shrinks to $k = 2.220$
+\cite{std:ch04t3-iso16269-6}. The one-sided form is appropriate for
+asymmetric specifications: a bushing's bore diameter has a critical
+upper bound (the press-fit shaft must enter) but a flexible lower
+bound. The two-sided form is appropriate for symmetric specifications:
+a piston-clearance tolerance with bounds on both sides. The choice
+between one- and two-sided forms is set by the engineering
+specification, not by the analyst's preference.
+
+\paragraph{Non-parametric tolerance intervals.} When the underlying
+distribution is not Gaussian or cannot be assumed Gaussian, the
+non-parametric (distribution-free) tolerance interval uses the
+sample minimum and maximum (or a pair of order statistics) as the
+bounds. For a two-sided distribution-free interval to contain at
+least $P$ of the population with confidence $\gamma$, the required
+sample size satisfies $P^{n} - n P^{n-1}(1 - P) \leq 1 - \gamma$
+\cite{std:ch04t3-iso16269-6}. For $P = 0.95, \gamma = 0.95$,
+$n \geq 93$; for $P = 0.99, \gamma = 0.95$, $n \geq 473$. The
+distribution-free form trades parametric efficiency for assumption
+robustness; the required sample size is the price.
+
+\subsection{Prediction interval, worked: tensile strength of the next batch}
+
+A material-property laboratory tests $n = 10$ steel rods from a
+fresh production lot and records the tensile strength of each:
+$471.4, 449.3, 463.0, 438.7, 452.1, 479.5, 460.8, 447.2, 461.9,
+453.6\,\si{\mega\pascal}$. The data live in
+\texttt{data/tensile-batch.csv}. The customer asks two questions
+that the same data set answers differently.
+
+\emph{Question 1: where will the lot mean lie?} This is a
+confidence-interval question. The sample mean is
+$\bar{x} = 457.75\,\si{\mega\pascal}$, the sample standard deviation
+is $s = 12.42\,\si{\mega\pascal}$, and the standard uncertainty of
+the mean is $s/\sqrt{n} = 3.93\,\si{\mega\pascal}$. The 95\%
+confidence interval for the lot mean uses $t_{9, 0.975} = 2.262$:
+\[
+\bar{x} \pm t_{9, 0.975} \cdot \frac{s}{\sqrt{n}} = 457.75 \pm 8.89,
+\]
+that is, $[448.9, 466.6]\,\si{\mega\pascal}$. The lot mean is
+bounded; the half-width $8.9\,\si{\mega\pascal}$ shrinks as
+$1/\sqrt{n}$ if the customer asks for tighter bounds and the
+laboratory tests more samples.
+
+\emph{Question 2: where will the next single rod's tensile strength
+lie?} This is a prediction-interval question. The 95\% prediction
+interval is
+\[
+\bar{x} \pm t_{9, 0.975} \cdot s \sqrt{1 + \tfrac{1}{n}} = 457.75 \pm
+2.262 \cdot 12.42 \cdot \sqrt{1.10} = 457.75 \pm 29.49,
+\]
+that is, $[428.3, 487.2]\,\si{\mega\pascal}$. The next rod's
+strength is bounded; the half-width is dominated by the
+population's intrinsic spread $s$, not by sampling uncertainty.
+Testing another ten rods would shrink the term $1/n$ inside the
+square root but cannot shrink the $s$ factor outside it. The
+prediction interval shrinks at $1/\sqrt{n}$ only in the
+sampling-uncertainty correction, not in the population-spread term.
+
+\emph{The numerical comparison} drives the point home. The
+confidence-interval half-width (8.9\,\si{\mega\pascal}) is roughly
+$3.3\times$ smaller than the prediction-interval half-width
+(29.5\,\si{\mega\pascal}); at $n = 30$ the ratio would widen to
+roughly $5.6\times$; at $n = 100$, $10.1\times$. A specification
+that quotes the confidence half-width as the lot-acceptance criterion
+will reject a substantial fraction of rods whose individual strengths
+exceed the bound, even when the lot mean meets specification.
+
+\emph{Python and R working code.} In R: \texttt{predict(lm(y \textasciitilde\ 1),
+interval = "prediction", level = 0.95)} fits a constant model to
+the data and returns the prediction interval directly; for the ten
+strengths above the output matches $[428.3, 487.2]$ to one decimal.
+In Python with \texttt{scipy.stats}: the prediction interval is
+\texttt{xbar + t.ppf([0.025, 0.975], df = n - 1) * s * sqrt(1 + 1/n)},
+returning the same bounds. A working laboratory documents both the
+confidence interval and the prediction interval in its report and
+the specification cites which one the customer's acceptance test
+applies to.
+
+\subsection{Simultaneous comparisons beyond Bonferroni}
+
+The Bonferroni correction inflates the per-test threshold to control
+the family-wise error rate across multiple comparisons. The
+correction is conservative (it ignores the correlation structure
+among the tests) and computationally trivial. Three less conservative
+alternatives apply when the comparison structure is known.
+
+\engterm{Tukey HSD} (Honestly Significant Difference) applies when
+the comparisons are all pairwise differences among $k$ group means.
+The test statistic uses the \engterm{studentised range distribution}
+$q_{k, \nu}$, which gives the distribution of the range
+$(\max - \min)$ of $k$ sample means standardised by their common
+standard error. The HSD critical value is $q_{k, \nu, \alpha}$
+where $\nu$ is the within-group degrees of freedom and $\alpha$ is
+the family-wise error rate \cite{text:ch04t3-montgomery-cir-2020}.
+The HSD threshold is tighter than the Bonferroni threshold by a
+factor that depends on $k$ (a few percent at $k = 3$, around 30\%
+at $k = 10$).
+
+\engterm{Scheff\'e's method} applies when the comparisons include
+arbitrary linear contrasts among $k$ group means, not just pairwise
+differences. The Scheff\'e critical value is
+$\sqrt{(k-1) F_{k-1, \nu, \alpha}}$ where $F$ is the $F$-distribution
+critical value. The method is the most conservative of the three
+specialised forms because it covers an infinite family of contrasts;
+for the special case of pairwise differences only, Scheff\'e is
+weaker than Tukey HSD.
+
+\engterm{Dunnett's test} applies when the comparisons are all
+between a single control group and $k - 1$ treatment groups, a
+common structure in quality-control supplier evaluations. The
+Dunnett critical value uses a custom multivariate-$t$ distribution
+that accounts for the correlation among the $k - 1$ tests, which
+all share the control group's mean. The Dunnett threshold is
+tighter than Bonferroni by roughly 15 to 25\% across typical $k$
+\cite{text:ch04t3-montgomery-cir-2020}.
+
+\paragraph{Worked supplier-batch comparison.} A quality-control
+laboratory evaluates bearing inner-diameter consistency across four
+candidate suppliers (A, B, C, D). The laboratory measures $n = 8$
+randomly selected bearings from each supplier; the data are in
+\texttt{data/supplier-batches.csv}. Sample statistics:
+\[
+\bar{x}_{A} = 7.824\,\si{\micro\meter}, \;\;
+\bar{x}_{B} = 7.848\,\si{\micro\meter}, \;\;
+\bar{x}_{C} = 7.806\,\si{\micro\meter}, \;\;
+\bar{x}_{D} = 7.834\,\si{\micro\meter},
+\]
+pooled within-supplier standard deviation $s_{\text{pooled}} = 0.014
+\,\si{\micro\meter}$, total within-supplier degrees of freedom
+$\nu = 4 \times (8 - 1) = 28$.
+
+The 95\% family-wise pairwise comparison uses the studentised
+range critical value $q_{4, 28, 0.05} = 3.861$
+\cite{text:ch04t3-montgomery-cir-2020}. The HSD threshold for a
+pairwise difference is
+\[
+\text{HSD} = q_{4, 28, 0.05} \cdot \frac{s_{\text{pooled}}}{\sqrt{n}}
+= 3.861 \cdot \frac{0.014}{\sqrt{8}} = 0.0191\,\si{\micro\meter}.
+\]
+The six pairwise differences are $|\bar{x}_{A} - \bar{x}_{B}| =
+0.024$, $|\bar{x}_{A} - \bar{x}_{C}| = 0.018$, $|\bar{x}_{A} -
+\bar{x}_{D}| = 0.010$, $|\bar{x}_{B} - \bar{x}_{C}| = 0.042$,
+$|\bar{x}_{B} - \bar{x}_{D}| = 0.014$, $|\bar{x}_{C} - \bar{x}_{D}|
+= 0.028$ (all in $\si{\micro\meter}$). The pairs $(A, B)$,
+$(B, C)$, and $(C, D)$ exceed the HSD threshold; $(A, C)$,
+$(A, D)$, and $(B, D)$ do not. Suppliers $B$ and $C$ produce
+bearings whose mean inner diameter differs at the 95\% family-wise
+confidence level; supplier $B$ is high and supplier $C$ is low
+against the cluster mean.
+
+The naive Bonferroni rule for six comparisons would use
+$\alpha/6 = 0.00833$ per test, with critical $t_{28, 0.9958} =
+2.860$ and threshold
+$2.860 \cdot s_{\text{pooled}} \sqrt{2/n} = 2.860 \cdot 0.014 \cdot
+0.500 = 0.0200\,\si{\micro\meter}$, about 5\% wider than the HSD
+threshold. The two tests agree on the qualitative outcome here; in
+larger comparison families they diverge.
+
+For the Dunnett alternative (compare A, B, D against control $C$),
+the three-comparison Dunnett critical at $\alpha = 0.05$, $\nu = 28$,
+$k - 1 = 3$ is $d = 2.483$ (Dunnett's two-sided table). The
+threshold is $d \cdot s_{\text{pooled}} \sqrt{2/n} = 2.483 \cdot
+0.014 \cdot 0.500 = 0.0174\,\si{\micro\meter}$. The Dunnett rule
+identifies suppliers $A$, $B$, and $D$ as differing from $C$
+($0.018, 0.042, 0.028$ all exceed $0.0174$); the engineering
+decision is that supplier $C$ is the systematic outlier, not the
+target supplier.
+
 \subsection{Connecting confidence intervals to design margin}
 
 A design margin is the gap between the worst-case operating
@@ -1345,12 +1908,53 @@ overstates the design margin by a factor of $50/35 \approx 1.4$.
 The full design margin should be reported against the worst case,
 not the mean.
 
-The same logic applies to tolerance stacks: the design margin on
-an assembly is the gap between the worst-case assembly dimension
-(from the upper confidence-interval edges of the parts) and the
-specification limit. A design that meets specification at the means
-of the parts but fails at the upper edges is on the wrong side of
-its tolerance discipline.
+\paragraph{The safety-factor calculation, worked.} The same load
+and strength data give a $k = 2$ safety factor of $F_{\text{fail},
+\text{mean}}/F_{\text{op}, \text{mean}} = 150/100 = 1.50$ on means,
+and $F_{\text{fail}, \text{low}}/F_{\text{op}, \text{high}} =
+140/105 = 1.33$ on $k = 2$ confidence-interval edges. At $k = 3$
+(99.7\% Gaussian coverage), the edges are $F_{\text{fail}, \text{low}}
+= 150 - 15 = 135$ and $F_{\text{op}, \text{high}} = 100 + 7.5 =
+107.5$, giving safety factor $135/107.5 \approx 1.26$. Each step
+up the coverage ladder shrinks the safety factor; the design
+engineer who quotes the mean-to-mean factor of 1.50 to a regulator
+who expects the 99.7\% edge-to-edge factor of 1.26 has overstated
+the margin by 19\%.
+
+\paragraph{Tolerance-interval-to-margin connection.} The same logic
+applies to tolerance stacks: the design margin on an assembly is
+the gap between the worst-case assembly dimension (from the upper
+confidence-interval edges of the parts) and the specification limit.
+A design that meets specification at the means of the parts but
+fails at the upper edges is on the wrong side of its tolerance
+discipline. A specification that quotes the tolerance interval at
+99\% population coverage, 95\% confidence, against a mating part
+whose specification quotes 95\% coverage at 95\% confidence,
+delivers a measurable mismatch in their failure-rate predictions
+even when their nominal dimensions agree. The discipline is to
+quote one interval type and one $(P, \gamma)$ pair across the entire
+specification document.
+
+\paragraph{Worked: design margin from a confidence interval on
+measured load.} A pump's discharge pressure has been measured at
+$45$ field installations: $\bar{P} = 8.42\,\si{\bar}$, $s = 0.48
+\,\si{\bar}$. The pump-housing burst rating is
+$P_{\text{burst}} = 12.0\,\si{\bar}$ (manufacturer's specification,
+$k = 2$ expanded uncertainty $\pm 0.4\,\si{\bar}$ on the burst
+rating). The 95\% one-sided upper confidence bound on the
+operating pressure is
+$\bar{P} + t_{44, 0.95} \cdot s\sqrt{1/n + (\text{population
+factor})}$; with population factor $1$ (worst-case prediction
+interval for a single next installation), the upper bound is
+$8.42 + 1.680 \cdot 0.48 \cdot \sqrt{1 + 1/45} = 9.24\,\si{\bar}$.
+The 95\% one-sided lower confidence bound on the burst rating is
+$P_{\text{burst}} - 1.96 \cdot (0.4/2) = 11.61\,\si{\bar}$. The
+worst-case design margin is $11.61 - 9.24 = 2.37\,\si{\bar}$ or
+roughly 26\% of $P_{\text{burst}}$. A pump-housing specification
+that quoted the mean operating pressure $\bar{P} = 8.42$ against
+the rated burst $P_{\text{burst}} = 12.0$ would have reported the
+margin as $3.58\,\si{\bar}$ or 30\%, overstating the worst-case
+margin by 15\%.
 
 \subsection{Confidence interval misread as specification: a working case}
 

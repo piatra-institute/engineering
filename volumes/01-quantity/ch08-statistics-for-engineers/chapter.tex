@@ -1683,6 +1683,78 @@ absolute number; it is the default in high-throughput engineering
 and biological screening.
 \end{estimation}
 
+\subsection{Post-hoc multiple-comparisons procedures}
+
+When the engineer runs an ANOVA on $k$ supplier batches and
+rejects the omnibus $F$-test, the next question is which pairs
+of batches differ. The naive $\binom{k}{2}$ pairwise
+$t$-tests inflate the family-wise error rate as in the
+estimation block above. The working procedures differ in what
+they protect.
+
+\paragraph{Tukey's honest-significant-difference (HSD).} For
+balanced designs with $k$ groups and a common variance, Tukey
+HSD uses the studentised range distribution: the critical
+value is $q_{\alpha, k, \nu}/\sqrt{2}$ where $\nu$ is the
+within-group degrees of freedom. The interval for
+$\bar{x}_{i} - \bar{x}_{j}$ is
+$\bar{x}_{i} - \bar{x}_{j} \pm q_{\alpha, k, \nu} \cdot
+s_{\text{pooled}}/\sqrt{n}$. Worked example: comparing four
+supplier batches with $n = 20$ each, $s_{\text{pooled}} = 0.014
+\,\si{\milli\meter}$, $\nu = 76$, at $\alpha = 0.05$,
+$q_{0.05, 4, 76} = 3.74$. The HSD margin is
+$3.74 \times 0.014 /\sqrt{20} = 0.0117\,\si{\milli\meter}$;
+any pair differing by more than this is flagged. In R:
+\texttt{TukeyHSD(aov(diameter $\sim$ supplier))}; in Python
+with \texttt{statsmodels}:
+\texttt{pairwise\_tukeyhsd(data, groups, alpha=0.05)}; in SAS:
+\texttt{proc glm; class supplier; model diameter = supplier;
+means supplier / tukey;}. Tukey HSD is exact for balanced
+designs and approximate for unbalanced; it is the default
+post-hoc procedure in industrial quality control.
+
+\paragraph{Scheffé's method.} When the engineer wants
+intervals for arbitrary contrasts (not just pairwise) or has
+not pre-specified which contrasts to test, Scheffé's
+adjustment is the conservative choice. The interval width
+scales with $\sqrt{(k - 1)F_{\alpha, k-1, \nu}}$ rather than
+$q_{\alpha, k, \nu}/\sqrt{2}$. For $k = 4$ at
+$\alpha = 0.05$, $\nu = 76$: $\sqrt{3 \times 2.72} = 2.86$, so
+the Scheffé margin is $2.86 \times 0.014 \times \sqrt{2/20}
+= 0.0127\,\si{\milli\meter}$, slightly wider than Tukey HSD.
+For pairwise-only comparisons in a balanced design, Tukey is
+tighter; Scheffé wins when the contrast set is large or
+unknown in advance.
+
+\paragraph{Dunnett's test.} For comparing $k - 1$ treatment
+batches against a single control (rather than all pairs),
+Dunnett's procedure uses a multivariate-$t$ critical value
+that accounts for the correlation among the $k - 1$ comparisons
+sharing the control mean. For $k = 4$ (control plus 3
+treatments) at $\alpha = 0.05$, $\nu = 76$: $t_{D, 0.025, 3,
+76} \approx 2.41$, compared to Bonferroni's
+$t_{0.025/3, 76} \approx 2.45$ and Tukey's $q/\sqrt{2}
+\approx 2.65$. Dunnett wins when the question is one-against-
+control. In R:
+\texttt{glht(model, linfct = mcp(supplier = "Dunnett"))} from
+the \texttt{multcomp} package; in SAS:
+\texttt{means supplier / dunnett('control');}.
+
+\paragraph{Choice matrix.} For $k$ groups, balanced design,
+within-group variance assumption: Tukey HSD for all pairwise,
+Dunnett for many-vs-one, Scheffé for arbitrary contrasts,
+Bonferroni when independence cannot be assumed or when the
+number of comparisons is small. For unbalanced designs or
+heteroscedastic data, Games-Howell (Tukey-Kramer extension
+with Welch correction) is the working choice; in R:
+\texttt{userfriendlyscience::posthocTGH()} or
+\texttt{rstatix::games\_howell\_test()}. The ASA
+\cite{method:ch08-wasserstein-asa-2016} recommends reporting both the
+adjusted $p$-values and the unadjusted effect sizes with
+confidence intervals: the engineer needs the effect size to
+judge practical significance, and the adjusted $p$-value to
+guard against multiple-test inflation.
+
 \subsection{Why power matters}
 
 A study run with insufficient power has two characteristic
@@ -1978,6 +2050,98 @@ not a result. The discipline that distinguishes the two is the
 discipline that prevents an engineering decision from being
 silently built on a literature that overstates its effects.
 \end{principle}
+
+\section{Historical sketch: from Fisher to the ASA statement on
+\texorpdfstring{$p$-values}{p-values}}\pathtag{mastery}
+
+The statistical machinery the chapter develops is itself a
+recent intellectual product, and the engineer who reads
+classic papers or older textbooks should know which framework
+each writer is working in.
+
+\paragraph{Fisher (1925).} Ronald A. Fisher's \emph{Statistical
+Methods for Research Workers} \cite{hist:fisher1925}
+introduced significance testing as a research-discovery aid:
+compute a test statistic, compare its value to the null
+distribution, and report a $p$-value as evidence against the
+null. Fisher's $p$ was a continuous measure of evidence
+strength; the $\alpha = 0.05$ threshold appeared as a practical
+convenience for routine agricultural and biological work at
+Rothamsted Experimental Station, not as a binary
+accept/reject decision rule. Fisher's framework was inductive:
+the test was a step in the cycle of hypothesis formation.
+
+\paragraph{Neyman and Pearson (1933).} Jerzy Neyman and Egon
+Pearson's joint paper \cite{hist:neyman-pearson-1933}
+reframed the test as a decision procedure. Two competing
+hypotheses ($H_{0}$ and $H_{1}$) are specified in advance;
+the procedure controls the long-run frequencies of Type I
+($\alpha$) and Type II ($\beta$) errors. The framework is
+deductive and operational: the engineer commits to a decision
+rule before the data arrive and accepts the long-run error
+rates as the price of consistency. Power, sample-size
+calculations, and pre-registration all descend from this
+framework, not from Fisher's.
+
+\paragraph{The Fisher-Neyman-Pearson hybrid (1940s-2010s).}
+Most working statistics, in engineering and elsewhere, is a
+hybrid that pulls $p$-values from Fisher and accept/reject
+language from Neyman-Pearson. The hybrid is internally
+inconsistent: a $p$-value is not a long-run error rate, and
+treating $p < 0.05$ as a binary decision rule misuses Fisher's
+continuous measure of evidence. The inconsistency was visible
+throughout the twentieth century but rarely confronted; the
+textbook standard treated the hybrid as one method and the
+working engineer never had to choose between the frameworks.
+
+\paragraph{Tukey (1956-1980).} John W. Tukey's program of
+exploratory data analysis
+\cite{text:ch08t3p-tukey-eda-1977} reset the balance toward
+descriptive techniques (boxplot, stem-and-leaf, robust
+estimators) and against the rigid Fisher-Neyman-Pearson
+machinery. Tukey's discipline-of-the-eye approach influenced
+the engineering culture's preference for visual diagnostics
+and effect-size estimates over $p$-values; the boxplot in
+§8.1 and the residual plots in §8.4 are Tukey's
+contributions.
+
+\paragraph{Ioannidis (2005).} John P. A. Ioannidis's
+\emph{Why most published research findings are false}
+\cite{method:ch08-ioannidis-2005} argued, on prior-probability
+grounds, that a substantial fraction of significance-tested
+findings in low-prior-probability fields (drug discovery, gene
+association, small-sample preclinical work) are false
+positives. The argument generalised the power-and-base-rate
+trap to a structural critique of the literature. The paper is
+the most-cited article in the PLOS Medicine archive
+($> 6{,}000$ citations as of 2024).
+
+\paragraph{The ASA statement on $p$-values (2016).} The
+American Statistical Association's first official statement
+on $p$-values \cite{method:ch08-wasserstein-asa-2016} crystallised
+the working consensus: a $p$-value does not measure the
+probability that the studied hypothesis is true, does not
+measure the probability that the data were produced by random
+chance alone, and a $p$-value or statistical significance does
+not measure the size of an effect or the importance of a
+result. The statement was followed in 2019 by a special issue
+of \emph{The American Statistician}
+\cite{paper:ch08t3-wasserstein-2019} that asked
+working statisticians to move beyond the $p < 0.05$ threshold;
+the editorial argued that retiring the threshold would
+``promote a research culture that can embrace uncertainty,
+be thoughtful, open, and modest.''
+
+\paragraph{Engineering implication.} The chapter's working
+recommendation, that effect sizes with confidence intervals
+should travel with $p$-values and that pre-registration should
+accompany formal tests, is the post-2016 consensus position.
+The reader who encounters older engineering literature
+treating $p < 0.05$ as decisive is reading from the
+Fisher-Neyman-Pearson hybrid era; the reader who encounters
+modern preregistration and effect-size discipline is reading
+from the post-ASA-statement consensus. Both will appear in
+the working literature for decades.
 
 \section{Project}\pathtag{core}
 
