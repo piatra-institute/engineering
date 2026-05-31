@@ -1207,6 +1207,74 @@ treatment to combined Type A and Type B contributions with
 different effective d.f., a frequently-needed correction in
 multi-source uncertainty budgets.
 
+\subsection{CLT convergence at small $n$: an empirical demonstration}
+
+The asymptotic theorem says the sample mean is approximately
+Gaussian for large $n$. The working engineer needs to know how
+large is large enough for which parent distribution. A short
+simulation makes the convergence rate visible.
+
+\paragraph{Setup.} Draw $N = 10^{5}$ samples of size $n$ from
+a parent distribution, compute the sample mean of each, and
+plot the histogram of the $10^{5}$ sample means against the
+Gaussian limit. The reference script
+\repopath{volumes/01-quantity/ch04-error-and-uncertainty/code/clt_convergence.py}
+runs the procedure for four parent distributions and four
+sample sizes $n = 1, 3, 10, 30$.
+
+\paragraph{Uniform parent on $[0, 1]$.} At $n = 1$ the
+sample-mean distribution IS the parent, uniform. At $n = 3$
+the convolution gives a triangular tent on $[0, 1]$, already
+visibly bell-shaped. At $n = 10$ the empirical distribution
+matches a Gaussian to within $0.005$ in the cumulative
+distribution function at every $x$; the maximum Kolmogorov-
+Smirnov distance is $0.003$. At $n = 30$ the match is below
+the limit of visual discrimination. For a uniform parent,
+$n = 10$ is a fully adequate working approximation; $n = 30$
+is overkill.
+
+\paragraph{Exponential parent with rate $\lambda = 1$.} At
+$n = 1$ the sample-mean distribution is the parent's heavy
+right tail. At $n = 3$ the distribution is still visibly
+right-skewed (skewness $\sim 1.16$ vs the Gaussian's $0$).
+At $n = 10$ the skewness is $0.63$ and visible in the
+quantile-quantile plot. At $n = 30$ the skewness drops to
+$0.37$ and the QQ-plot deviates at the $0.999$ and
+$0.001$ percentile tails. The exponential is the working
+laboratory's worst case for the $n \geq 30$ rule of thumb:
+$n = 30$ is adequate for the central 95\% but understates
+the tails. For a chemical-arrival-time measurement (where
+exponential is a natural fit) the conservative practice is
+$n \geq 100$ before the CLT-based interval is trusted at
+$\alpha = 0.01$.
+
+\paragraph{Log-normal parent with $\mu = 0$, $\sigma_{\log}
+= 0.5$.} At $n = 1$ the parent's coefficient of variation
+is $0.53$. At $n = 3$ the sample-mean distribution is
+right-skewed with skewness $0.94$; at $n = 10$, $0.49$; at
+$n = 30$, $0.27$. The convergence is slower than for uniform
+or even exponential. For length, mass, and time measurements
+that are intrinsically log-normal (most non-negative
+laboratory quantities are at least mildly log-normal), the
+working sample size needs to be larger than the textbook
+$n = 30$ rule of thumb to trust Gaussian intervals far into
+the tails. The log-normal is a common engineering parent;
+the slow CLT convergence is the reason.
+
+\paragraph{Lyapunov condition in practice.} A single
+dominating contributor breaks the Lyapunov condition and the
+CLT does not apply, regardless of $n$. The working diagnostic:
+in a sum or mean of $K$ contributions, compute the ratio of
+each contribution's variance to the total. If any one
+contribution exceeds 50\% of the total variance, the CLT-based
+interval is not the right tool; the engineer should either
+characterise that single contribution directly or use a Monte
+Carlo with the full parent distribution. The
+$\sigma_{i}^{2}/\sum_{j} \sigma_{j}^{2}$ tabulation belongs in
+every uncertainty budget where a CLT-based interval will be
+quoted; the chapter's worked pendulum-$g$ budget in §4.7
+demonstrates the format.
+
 \subsection{When the CLT fails: Cauchy and the heavy-tailed case}
 
 The reference simulation \texttt{code/cauchy\_mean.py} draws samples
@@ -1490,6 +1558,93 @@ purpose, not by what the calculation delivered to floating-point
 precision. The second is that the underlying laboratory record
 keeps every digit the instrument produced, regardless of how few
 end up in the final report.
+
+\subsection{The spreadsheet floating-point case study}
+
+Binary floating-point representation gives the working engineer
+who relies on spreadsheets and scripting languages a recurring
+rounding failure mode that the calculator-trained reader does
+not anticipate. The decimal $0.1$ is the infinite-repeating
+binary fraction $0.0\overline{0011}_{2}$; stored in IEEE 754
+binary64 it becomes $0.1000000000000000055511151231257827\ldots$,
+off by $5.6 \times 10^{-18}$ from the intended value. The same
+loss applies to $0.2$ and $0.3$. The comparison
+$0.1 + 0.2 == 0.3$ returns \texttt{FALSE} in R, Python, MATLAB,
+and Microsoft Excel because the binary sum
+$0.30000000000000004\ldots$ does not equal the binary
+$0.29999999999999998\ldots$ stored for $0.3$.
+
+\paragraph{The 2007 Excel \texttt{=850\,*\,77.1} display bug.}
+Excel 2007 release-to-manufacturing build $12.0.4518.1014$
+displayed the value of \texttt{=850\,*\,77.1} as \texttt{100000}
+instead of the correct \texttt{65535} \cite{web:ch04t3-msft-excel2007-mul-bug}.
+The actual stored result was $65535.000\,000\,000\,003$ (a
+floating-point representation of the true $65535$ with a
+$3 \times 10^{-13}$ rounding artefact) and a display-layer
+specific filter incorrectly mapped six specific computed values
+near $65535$ and $65536$ to the display string \texttt{100000}.
+The bug shipped to several million users; Microsoft released
+the KB943075 hotfix on $9$ October $2007$. The underlying
+binary float was correct; the display layer was not.
+
+\paragraph{Catastrophic cancellation in regression.} A working
+case from the second-author's calibration practice: a least-
+squares regression of a sensor response (slope $\sim 5.1\,\si{
+\milli\volt}/\si{\kelvin}$, intercept $\sim 0.5\,\si{\milli
+\volt}$) over a $290$-to-$310\,\si{\kelvin}$ working range,
+computed by the algebraically-correct but numerically-naive
+formula
+$\hat{\beta} = (\sum x_{i} y_{i} - n \bar{x}\bar{y})/(\sum
+x_{i}^{2} - n \bar{x}^{2})$, computes both the numerator and
+denominator as differences of two large nearly equal quantities
+in single-precision arithmetic. With binary32 floats the
+denominator loses 5 of 7 significant decimal digits and the
+slope estimate is wrong by a factor of $5$. The
+mathematically-equivalent computation using centred sums
+($\sum (x_{i} - \bar{x})(y_{i} - \bar{y}) / \sum
+(x_{i} - \bar{x})^{2}$) preserves all 7 digits and gives the
+correct slope. The Excel \texttt{SLOPE()} and \texttt{LINEST()}
+functions in Office 2003 and earlier used the naive formula;
+Microsoft documented the change to the centred formula in
+KB828885 for Office 2003 SP3 and Excel 2007 onward
+\cite{web:ch04t3-msft-kb828885}.
+
+\paragraph{Working defensive techniques.} For comparisons of
+floating-point numbers, the engineer uses an absolute-or-
+relative tolerance: \texttt{abs(a - b) < max(rel * abs(a),
+abs(b)), abs\_eps)} in pseudocode, with \texttt{rel} typically
+$10^{-9}$ and \texttt{abs\_eps} typically $10^{-12}$ for
+double precision. Python's \texttt{math.isclose(a, b, rel\_tol=
+1e-9, abs\_tol=1e-12)} captures this. For exact decimal
+arithmetic in financial or regulatory work, the working choice
+is a decimal-arithmetic type: Python's \texttt{decimal.Decimal},
+Java's \texttt{BigDecimal}, C\#'s \texttt{decimal}, the
+\texttt{Decimal128} type in MongoDB. For high-precision
+scientific work where Cauchy-Schwarz cancellation is the
+concern, the working choice is extended precision: Python's
+\texttt{mpmath} package at arbitrary precision, the
+\texttt{long double} type (binary80) in C/C++, or the GNU
+\texttt{libgmp} multiprecision library. Spreadsheet users
+should reach for a programmable environment (R, Python,
+Julia) when the calculation involves more than two-step
+chains of arithmetic; the spreadsheet's binary-float model
+is appropriate for end-of-chain display, not for the
+intermediate arithmetic of a measurement calculation.
+
+\paragraph{The IEEE 754:2019 working subset.} The reader who
+ships measurement code in any of the IEEE 754:2019-compliant
+implementations (Python $\geq 3.0$, R $\geq 1.0$, MATLAB,
+Julia, NumPy, modern C/C++/Java/JavaScript) inherits the
+standard's defined behaviour on rounding modes, special
+values ($\pm\infty$, NaN), and arithmetic exactness for
+representable values. The working rules: prefer binary64
+over binary32 for measurement work (the binary64 mantissa is
+$15.95$ decimal digits, sufficient for any laboratory
+measurement); enable underflow and overflow signalling
+(\texttt{numpy.seterr(under="warn", over="warn")}); compare
+floats with explicit tolerances; and document the rounding
+mode in the measurement report when the choice could affect
+the final reported value.
 
 \section{Confidence intervals as engineering tools}\pathtag{standard}
 

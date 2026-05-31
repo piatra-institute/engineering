@@ -774,9 +774,88 @@ specified proportion of the population with a specified confidence.
 Tolerance intervals are the right tool for setting acceptance bounds
 that should contain, say, $99 \,\%$ of all production units with
 $95 \,\%$ confidence. The Devore text \cite[ch.~7]{text:devore2015}
-gives the engineering tables; we mention tolerance intervals here so
-the reader recognises the third option without computing it in this
-chapter.
+gives the engineering tables.
+
+\subsection{Tolerance intervals: the working procedure}
+
+The frequentist tolerance interval for a normal population
+$\mathcal{N}(\mu, \sigma^{2})$ takes the form $\bar{x} \pm k \cdot
+s$ where $k$ is the \engterm{tolerance factor} that depends on
+the sample size $n$, the population coverage $p$ (the fraction
+of the population the interval is meant to contain), and the
+confidence level $1 - \gamma$ (the long-run probability that
+the constructed interval actually contains that fraction).
+The exact two-sided tolerance factor is computed from the
+noncentral chi-square distribution; the Howe approximation
+\cite{paper:ch08t3p-howe-1969} gives the working closed form
+
+\[
+k \approx z_{p^{*}} \sqrt{\frac{(n - 1)(1 + 1/n)}{\chi^{2}_{\gamma, n-1}}},
+\]
+
+where $z_{p^{*}}$ is the normal quantile at $p^{*} = (1 + p)/2$
+for a two-sided interval, and $\chi^{2}_{\gamma, n-1}$ is the
+lower $\gamma$-quantile of the chi-square distribution with
+$n - 1$ degrees of freedom. The NIST/SEMATECH e-Handbook
+\cite{web:ch08t3p-nist-eshandbook-7263} tabulates Howe-formula
+factors out to $n = 1000$; for the working ranges $n = 10$ to
+$n = 100$ at $p = 0.95$ or $p = 0.99$ at $\gamma = 0.05$, the
+formula is accurate to within $0.1\%$ of the exact value.
+
+\paragraph{Worked example: acceptance bounds on shaft diameter.}
+A precision-shaft supplier measures a production run of
+$n = 30$ shafts and reports $\bar{x} = 15.012\,\si{\milli\meter}$
+with $s = 0.008\,\si{\milli\meter}$. The customer requires that
+the supplier's shipped lots contain $99\%$ of units within an
+acceptance window with $95\%$ confidence: $p = 0.99$, $\gamma
+= 0.05$, $n = 30$. The Howe factor: $z_{0.995} = 2.576$,
+$\chi^{2}_{0.05, 29} = 17.708$, giving
+$k = 2.576\sqrt{29 \times (1 + 1/30)/17.708} = 2.576 \times
+\sqrt{29 \times 1.033/17.708} = 2.576 \times 1.301 = 3.351$.
+The acceptance window is $\bar{x} \pm 3.351 s = 15.012 \pm
+0.027 = (14.985, 15.039)\,\si{\milli\meter}$. Compare to the
+$95\%$ confidence interval for the mean ($\bar{x} \pm 0.003$),
+the $95\%$ prediction interval for the next unit ($\bar{x} \pm
+0.016$), and the unadjusted $\pm 3s$ heuristic ($\bar{x} \pm
+0.024$). The tolerance interval is wider than the prediction
+interval by the factor that accounts for the bound on the
+population proportion under sampling uncertainty.
+
+\paragraph{The same calculation in software.} In R, the
+\texttt{tolerance} package \cite{web:ch08t3p-r-tolerance} returns
+the exact factor: \texttt{normtol.int(x, alpha = 0.05, P = 0.99,
+side = 2)} returns a tibble with \texttt{2-sided.lower = 14.985,
+2-sided.upper = 15.039}. In Python with the
+\texttt{statsmodels} package: \texttt{statsmodels.stats.tolerance.
+tolerance\_interval(x, alpha=0.05, P=0.99, sides=2)}. In SAS:
+\texttt{proc capability; var diameter; intervals normal tol;}.
+In Minitab: \texttt{Stat $\to$ Quality Tools $\to$ Tolerance
+Intervals}. The exact noncentral chi-square calculation differs
+from the Howe approximation at $n < 10$ by up to $3\%$; the
+working choice for $n \geq 30$ is the Howe formula; for $n < 10$,
+software with the exact procedure.
+
+\paragraph{One-sided tolerance intervals.} For an upper-bound
+specification (e.g., maximum allowable surface roughness, maximum
+contaminant concentration), the one-sided tolerance bound is
+$\bar{x} + k_{1} s$ where the one-sided factor $k_{1}$ uses the
+$p$-quantile (not $p^{*}$) and a different denominator. ISO
+16269-6:2014 \cite{std:ch08t3p-iso-16269-6} gives the
+one-sided factors with engineering examples.
+
+\paragraph{Nonparametric tolerance intervals.} When the
+Gaussian assumption fails, the distribution-free tolerance
+interval uses order statistics. For a sample of size $n$ the
+interval $[x_{(r)}, x_{(n-s+1)}]$ contains at least proportion
+$p$ of the population with confidence $1 - \gamma$ where
+$r + s$ satisfies a binomial sum involving $n$, $p$, and
+$\gamma$. The advantage: no distributional assumption. The
+disadvantage: very large $n$ is required for tight intervals
+($n \geq 459$ for $p = 0.99$, $\gamma = 0.05$, $r = s = 1$, two
+sided). For working data sets where distributional shape is
+suspect, fit a tolerance interval on the log or other
+transformed scale; for genuinely heavy-tailed populations, the
+nonparametric procedure is the safe default.
 
 \subsection{The bootstrap, when the parametric form is suspect}
 
@@ -1978,6 +2057,94 @@ $p$-values are biased toward significance, and the failure-to-
 replicate rate is high. An engineer who reads such a literature and
 takes the published numbers at face value designs to numbers that
 overstate the strength of the effects.
+
+\subsection{A working measurement-physics case: OPERA's 2011 result}
+
+A measurement-physics replication failure that the working
+engineer should know is the OPERA collaboration's 2011 report
+of superluminal muon neutrinos. The OPERA detector at Gran
+Sasso, Italy, measured the time-of-flight of muon neutrinos
+produced by the CERN SPS at $730\,\si{\kilo\meter}$ baseline and
+reported an arrival $60.7 \pm 6.9 \,\si{\nano\second}$ earlier
+than the light-speed prediction, corresponding to a fractional
+velocity excess
+$(v - c)/c = (2.48 \pm 0.28) \times 10^{-5}$
+\cite{paper:ch08t3p-opera-2011}. The paper passed internal
+collaboration review with a stated $6\sigma$ significance and
+was posted to arXiv on $22$ September $2011$; the result
+attracted intense scrutiny because it contradicted special
+relativity.
+
+\paragraph{The two errors found.} An independent OPERA
+investigation, completed in February 2012, identified two
+opposite-sign instrumental errors. A loose optical-fibre
+connector between the GPS receiver and the master clock added
+$73.2 \pm 1.5\,\si{\nano\second}$ to the apparent arrival time;
+a clock signal-distribution oscillator running fast subtracted
+$15\,\si{\nano\second}$ \cite{paper:ch08t3p-opera-2012}. The
+net systematic effect explained the entire anomaly; the
+corrected measurement was consistent with $v = c$ within the
+revised uncertainty budget. OPERA retracted the result and
+published the correction in the same journal in July 2012.
+
+\paragraph{What the working engineer takes from the case.} The
+$6\sigma$ statistical significance was honest, in the sense that
+the data analysis was sound. The failure was in the
+\emph{uncertainty budget}: the team had not characterised the
+fibre-optic delay variation across temperature and time, and
+had not characterised the clock signal-distribution drift. The
+GPS-based time link had two systematic sources of error that
+were not in the uncertainty model. The lesson generalises:
+when a measurement produces a result that contradicts a
+well-established prediction, the most likely explanation is
+a systematic source not in the uncertainty budget. The OPERA
+collaboration's discipline in seeking and finding the errors,
+once the result was challenged, is the discipline the
+engineering reader should emulate; the failure to seek them
+before publication is the failure mode this section names.
+
+\subsection{An engineering case: the carbon-nanotube tensile-strength claim}
+
+A nearer-to-engineering replication failure is the
+carbon-nanotube tensile-strength claim trajectory of
+$2000$--$2015$. Early single-tube measurements at Rice
+University in $1996$ reported individual multi-walled
+nanotube tensile strengths of $63 \pm 16 \,\si{\giga\pascal}$
+\cite{paper:ch08t3p-yu-rice-2000}, and individual single-
+walled-nanotube measurements at IBM and elsewhere reported
+values from $20$ to $150 \,\si{\giga\pascal}$. The literature
+quickly stabilised on \enquote{nanotube tensile strength
+$\sim 100 \,\si{\giga\pascal}$, $100\times$ steel,} a number
+that motivated billions of dollars of nanotube research,
+patents, and industrial applications across two decades.
+
+When systematic replication using purified, length-classified
+nanotube samples and standardised mounting procedures came in
+through 2010--2015, the strength values declined. The 2014
+Brock et al.\ campaign \cite{paper:ch08t3p-brock-cnt-2014}
+measured a population of length-classified single-walled
+nanotubes at $30 \pm 12 \,\si{\giga\pascal}$, a third to a
+half of the early figure. The Yakobson group's 2018 modelling
+study \cite{paper:ch08t3p-yakobson-cnt-2018} identified the
+likely culprit: early measurements suffered from sample
+selection bias (the survived-mounting samples were the
+strongest of a strength-distributed population), gauge-length
+artefacts (shorter samples test stronger due to defect-density
+scaling), and grip-induced damage that systematically
+under-reported failure stresses near grip ends. Engineering
+applications that designed to the headline $100 \,\si{\giga
+\pascal}$ figure had no field instrument that could deliver
+it. Engineering applications that designed to the meta-
+analytically-corrected $30 \,\si{\giga\pascal}$ figure had a
+realistic target that field-tested samples could meet.
+
+The case is a quieter cousin of the OPERA story. Both are
+about the difference between an effect that the literature
+reports and the effect that an independent measurement will
+confirm. The engineering response is the same: when a number
+will enter load-bearing design, the design uncertainty allows
+for the possibility that the original measurement was
+optimistic.
 
 \subsection{Engineering exposure}
 
