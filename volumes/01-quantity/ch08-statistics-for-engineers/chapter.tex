@@ -684,6 +684,182 @@ principle (section 8.7) applies: the sample-size choice and its
 effect-size justification are part of the test specification,
 not an afterthought to the result.
 
+\subsection{Effect sizes: Cohen's \texorpdfstring{$d$}{d}, Hedges'
+\texorpdfstring{$g$}{g}, Glass's \texorpdfstring{$\Delta$}{Delta},
+and variance-explained measures}
+
+A $p$-value tells the reader whether the data are unusual under the
+null. The effect size tells the reader whether the difference is
+large enough to matter. The two answer disjoint questions: a small
+effect can produce a tiny $p$-value when $n$ is enormous, and a
+large effect can produce $p > 0.05$ when $n$ is tiny. Reporting one
+without the other is a recurring failure mode the rest of the
+chapter develops as ``statistical significance without engineering
+relevance.'' The 7th edition of the APA Publication Manual
+\cite{text:ch08t3b-apa-2020} requires effect sizes with confidence
+intervals alongside every reported $p$-value; the ASA's 2019
+follow-up to its 2016 statement
+\cite{paper:ch08t3-wasserstein-2019} extends the requirement to all
+quantitative research. The engineering preference, codified in
+internal quality reports and in the IEEE and ASME submission
+guidelines, is the same.
+
+\paragraph{Cohen's $d$ (two-sample standardised mean difference).}
+Jacob Cohen's 1988 monograph \cite{text:ch08t3b-cohen-1988} defined
+
+\[
+d = \frac{\bar{x}_{1} - \bar{x}_{2}}{s_{\text{pooled}}},
+\quad
+s_{\text{pooled}} = \sqrt{\frac{(n_{1} - 1) s_{1}^{2} + (n_{2} - 1)
+s_{2}^{2}}{n_{1} + n_{2} - 2}}.
+\]
+
+The denominator pools the within-group variances, weighting by
+degrees of freedom. The numerator is the raw mean difference. The
+ratio is unitless: a Cohen's $d$ of $0.5$ means the two group means
+differ by half a within-group standard deviation, regardless of
+whether the underlying quantity is bearing diameter in
+millimetres or fill weight in grams.
+
+Cohen's working benchmarks, derived from a survey of the
+behavioural-sciences literature available to him in the late 1980s,
+are $d = 0.2$ small, $d = 0.5$ medium, $d = 0.8$ large. The
+benchmarks are field-dependent and the engineer should treat them
+as orientation, not as decision thresholds: a $d = 0.2$ in
+high-precision optics may be a major engineering event, while a
+$d = 0.8$ in a noisy biomechanical measurement may not change
+clinical practice.
+
+\emph{Worked engineering case.} The bearing-supplier comparison in
+section 8.3 had $\bar{x}_{1} = 10.005$, $\bar{x}_{2} = 10.015$
+$\si{\milli\meter}$, $s_{1} = 0.012$, $s_{2} = 0.014$
+$\si{\milli\meter}$, $n_{1} = n_{2} = 30$. The pooled standard
+deviation is
+
+\[
+s_{\text{pooled}} = \sqrt{\frac{29 \cdot 0.012^{2} + 29 \cdot
+0.014^{2}}{58}} = \sqrt{\frac{0.00418 + 0.00568}{58}}
+= \sqrt{1.70 \times 10^{-4}}
+\approx 0.0130 \,\si{\milli\meter}.
+\]
+
+\noindent
+The standardised effect size is $d = |10.005 - 10.015|/0.0130
+\approx 0.77$. By Cohen's benchmarks this is a medium-to-large
+effect; the corresponding power calculation in section 8.6 used
+exactly this value to argue that $n = 28$ per group would suffice
+for $\alpha = 0.05$ and power $0.80$. The engineer who reports the
+$p = 0.004$ alongside $d = 0.77$ is reporting both whether the
+difference is statistically detectable and how large it is in
+operational units.
+
+\paragraph{Hedges' $g$ (small-sample bias correction).}
+Cohen's $d$ is biased upward in small samples because $s_{\text{
+pooled}}$ underestimates $\sigma_{\text{pooled}}$ when $n_{1} +
+n_{2}$ is small. Larry Hedges' 1981 correction
+\cite{paper:ch08t3b-hedges-1981} is
+
+\[
+g = d \cdot \left(1 - \frac{3}{4(n_{1} + n_{2}) - 9}\right).
+\]
+
+The multiplier approaches $1$ as the combined sample grows; at
+$n_{1} + n_{2} = 60$ (the bearing case) the multiplier is $1 -
+3/231 \approx 0.987$, so $g = 0.77 \times 0.987 \approx 0.76$, an
+imperceptible adjustment. At $n_{1} + n_{2} = 10$ the multiplier is
+$1 - 3/31 \approx 0.903$, a noticeable correction. The discipline:
+report Cohen's $d$ for routine cases with $n_{1} + n_{2} \geq 40$,
+report Hedges' $g$ for small-sample work, and state which was
+computed. The R package \texttt{effsize} returns both via
+\texttt{cohen.d(x, y, hedges.correction = TRUE)}; Python's
+\texttt{pingouin.compute\_effsize(x, y, eftype = "hedges")} does
+the same.
+
+\paragraph{Glass's $\Delta$ (control-group-only standardiser).}
+When one group is the reference (a control supplier, a baseline
+process, a placebo arm) and the other is a treatment, the
+within-treatment variance is sometimes inflated by the treatment
+itself. Gene Glass's 1976 effect size
+\cite{paper:ch08t3b-glass-1976} uses only the control-group
+standard deviation as the standardiser:
+
+\[
+\Delta = \frac{\bar{x}_{\text{treatment}} - \bar{x}_{\text{control}}}{s_{\text{control}}}.
+\]
+
+The use case is when the engineer trusts the control group's
+variance as a stable estimate of natural process scatter and treats
+the treatment group's variance as a possibly inflated quantity that
+should not contribute to the standardiser. A worked instance: a
+supplier-qualification programme where supplier A is the
+$25$-year incumbent (control, $s_{A} = 0.012$) and supplier B is a
+new entrant whose process is still stabilising ($s_{B} = 0.020$).
+Pooling the two variances would inflate $s_{\text{pooled}}$ and
+deflate Cohen's $d$; Glass's $\Delta = 0.010/0.012 = 0.83$
+preserves the incumbent's variance as the reference scale. Report
+$\Delta$ alongside $d$ when the variances differ by more than a
+factor of $1.5$ and the engineering question concerns deviation
+from the control.
+
+\paragraph{Variance-explained measures: $\eta^{2}$, $\omega^{2}$,
+$f^{2}$.} For ANOVA-like settings with $k > 2$ groups, the
+standardised difference of means generalises to a variance-
+explained measure. The eta-squared $\eta^{2}$ is the ratio of
+between-group sum of squares to total sum of squares:
+
+\[
+\eta^{2} = \frac{\text{SS}_{\text{between}}}{\text{SS}_{\text{total}}}
+= 1 - \frac{\text{SS}_{\text{within}}}{\text{SS}_{\text{total}}}.
+\]
+
+The interpretation is the fraction of total variance attributable
+to group membership. Like Cohen's $d$, $\eta^{2}$ is biased upward
+in small samples; Hays' omega-squared
+\cite{text:ch08t3b-hays-1994}
+
+\[
+\omega^{2} = \frac{\text{SS}_{\text{between}} - (k - 1)
+\text{MS}_{\text{within}}}{\text{SS}_{\text{total}} +
+\text{MS}_{\text{within}}}
+\]
+
+corrects the bias and is preferred for small-sample reporting.
+Cohen's $f^{2}$ is the related quantity for regression models:
+$f^{2} = R^{2}/(1 - R^{2})$, the ratio of explained to unexplained
+variance. Cohen's benchmarks for $f^{2}$ are $0.02$ small, $0.15$
+medium, $0.35$ large; for $\eta^{2}$ the benchmarks are $0.01$,
+$0.06$, $0.14$. The R \texttt{effectsize} package returns
+$\eta^{2}$, $\omega^{2}$, partial $\eta^{2}$, and Cohen's $f$ from
+an \texttt{aov} object; Python's \texttt{pingouin.anova} returns
+the same with the \texttt{effsize = "n2"} argument.
+
+\paragraph{Confidence intervals on effect sizes.} The point
+estimate of an effect size, like the point estimate of a mean, is
+incomplete without an uncertainty band. Closed-form CIs are
+available for $d$ (the non-central $t$ distribution), $\eta^{2}$
+(the non-central $F$ distribution), and $\omega^{2}$ (asymptotic
+bootstrap). For the bearing case at $d = 0.77$, $n_{1} = n_{2} = 30$,
+the $95 \,\%$ CI is approximately $[0.24, 1.30]$ via the
+non-central $t$ method. R: \texttt{cohen.d(x, y, conf.level =
+0.95)} from the \texttt{effsize} package. Python:
+\texttt{pingouin.compute\_effsize\_from\_t(t, nx, ny,
+eftype = "cohen")} with bootstrap CI from
+\texttt{pingouin.compute\_bootci}. The engineer who reports $d =
+0.77$, $95 \,\%$ CI $[0.24, 1.30]$, $p = 0.004$ has reported all
+three pieces a colleague needs to judge both the size and the
+reliability of the result.
+
+\paragraph{Reporting template.} The post-ASA-2016 engineering
+report carries, for each comparison: the point estimate of the
+effect size, its $95 \,\%$ confidence interval, the test statistic,
+the $p$-value, and the sample size. The four-number minimum
+($d$, $\text{CI}_{d}$, $p$, $n$) lets a downstream reader recompute
+the test, judge practical relevance, and audit the sample-size
+adequacy. The recurring failure mode is the report that lists only
+$p$: a colleague who reads it can neither size the effect nor
+judge whether the test was adequately powered for the effect that
+mattered.
+
 \section{Confidence vs prediction intervals}\pathtag{core}
 
 Chapter 4 §4.6 introduced the confidence interval as an engineering
@@ -1232,6 +1408,64 @@ $P_{p} = 0.93$, $P_{pk} = 0.70$; mean off-target by $+0.012
 ppm; not capable to $C_{pk} \geq 1.33$.} The customer can audit
 every index.
 
+\textit{Standards references.} Three published references frame
+the working calculation. The AIAG Statistical Process Control
+Reference Manual, 2nd edition (2005)
+\cite{std:ch08t3b-aiag-spc-2005}, jointly published by Chrysler,
+Ford, and General Motors via the Automotive Industry Action Group,
+codifies the $C_{p}$, $C_{pk}$, $P_{p}$, $P_{pk}$ definitions used
+across the automotive supply chain; chapter 4 gives the
+calculation procedure and chapter 5 the working interpretation.
+ISO 22514-2:2017
+\cite{std:ch08-iso-22514-2-2017}, section 6.2, gives the
+international equivalent and harmonises the indices' definitions
+with the AIAG procedure. ISO 22514-7:2012 extends the framework
+to measurement-system capability. The auto-industry working
+threshold $C_{pk} \geq 1.33$ for a routine production process and
+$C_{pk} \geq 1.67$ for safety-critical or supplier-qualification
+work is recorded in AIAG SPC chapter 5, section 5.3; it is
+working practice rather than a statistical theorem. The threshold
+corresponds to a long-term defect rate of about $63$ ppm under a
+Gaussian assumption with the standard $1.5\sigma$ long-term mean
+shift assumed by the six-sigma framework.
+
+\textit{Process performance vs process capability: the
+operational distinction.} The $C$ indices use the within-subgroup
+standard deviation, which under the Shewhart subgrouping
+assumption captures only the common-cause (short-term) variation.
+The $P$ indices use the overall standard deviation, which
+captures both common-cause and special-cause (long-term)
+variation. The gap $P_{p} < C_{p}$ is therefore the engineering
+evidence that the process is being disturbed by assignable causes
+not present within a single subgroup: tool wear over a shift,
+operator handoff between shifts, raw-material lot variation,
+seasonal temperature swings. The corrective action targets the
+assignable cause; the $P$ index does not improve until the
+assignable cause is removed, even when the $C$ index is
+unchanged. AIAG SPC chapter 4, section 4.5 lists the diagnostic
+sequence for identifying the assignable cause: stratify the data
+by suspect factors (shift, operator, lot, tool), recompute the
+subgroup variance for each stratum, and identify the stratum
+whose within-stratum variance approaches the within-subgroup
+variance of the full sample.
+
+\textit{Skewed processes: $C_{pm}$ and the percentile-based
+capability.} A Gaussian capability index uses $6 \hat\sigma$ as
+the process spread. For a skewed process the long tail extends
+beyond $\bar{x} + 3 \hat\sigma$, and the capability index
+overstates the available margin on that side. The remedy is the
+percentile-based capability $C_{pk, \text{percentile}}$, which
+replaces $\bar{x} - 3 \hat\sigma$ and $\bar{x} + 3 \hat\sigma$
+with the $0.135$th and $99.865$th sample percentiles of the
+observed distribution. The two coincide for a Gaussian sample by
+construction; for a skewed sample the percentile-based version is
+the conservative report. The alternative is to transform the
+data (Box-Cox or log) until the transformed sample is Gaussian,
+report the capability on the transformed scale, and back-transform
+the specification limits for interpretation. AIAG SPC chapter 4,
+section 4.7 prescribes the Box-Cox transformation route when the
+skewness exceeds $\pm 1$.
+
 \section{Bayesian intuition for the practitioner}\pathtag{standard}
 
 A frequentist reads probability as long-run frequency: the
@@ -1619,6 +1853,289 @@ independent samples after accounting for chain autocorrelation;
 ESS per parameter should exceed $400$ for stable posterior
 percentile estimates and $1000$ for tail-probability work.
 
+\subsection{A second beta-binomial worked example: sensor
+reliability with an informative prior}
+
+A semiconductor fabrication line ships pressure sensors. Field
+experience across the prior model year says about $1 \,\%$ of
+shipped sensors return as defective within the warranty period,
+with the rate stable across batches. The reliability engineer
+encodes that experience as a $\text{Beta}(2, 200)$ prior on the
+defect rate $p$: mean $2/202 \approx 0.0099$, standard deviation
+$\sqrt{2 \cdot 200/(202^{2} \cdot 203)} \approx 0.0070$. The prior
+asserts $p \approx 1 \,\%$ with $\pm 0.7 \,\%$ uncertainty,
+matching the long-run record. A new batch of $n = 50$ sensors goes
+through a stress screen. One sensor fails ($k = 1$).
+
+\textit{Conjugate update.} The posterior is $\text{Beta}(2 + 1,
+200 + 49) = \text{Beta}(3, 249)$. Posterior mean $3/252 \approx
+0.0119$, posterior standard deviation
+$\sqrt{3 \cdot 249/(252^{2} \cdot 253)} \approx 0.0068$. The $95
+\,\%$ central credible interval runs from the $2.5$th to the
+$97.5$th percentile of $\text{Beta}(3, 249)$, approximately
+$[0.0040, 0.0331]$, or $0.4 \,\%$ to $3.3 \,\%$.
+
+\textit{Frequentist comparison.} The Wilson score interval for
+$1/50$ at $95 \,\%$ is approximately $[0.0003, 0.0568]$, or
+$0.03 \,\%$ to $5.7 \,\%$. The Clopper-Pearson exact interval is
+$[0.0005, 0.1065]$, or $0.05 \,\%$ to $10.7 \,\%$. Both
+frequentist intervals are much wider on the upper side because
+they have no historical context to rule out the $5 \,\%$-or-higher
+defect-rate hypothesis. The Bayesian interval is asymmetric in the
+other direction because the prior anchors the bulk of plausible
+defect rates near $1 \,\%$.
+
+\textit{Engineering implication.} The contract specification is
+$p \leq 2 \,\%$. The posterior probability $\Pr(p > 0.02)$ is
+$1 - I_{0.02}(3, 249) \approx 0.052$ (here $I_{x}(a, b)$ is the
+regularised incomplete beta function). The reliability engineer
+reports: prior $\text{Beta}(2, 200)$ (justified by 2024 field
+data, current as of 2025), data $1/50$, posterior $\text{Beta}(3,
+249)$, $95 \,\%$ credible interval $[0.0040, 0.0331]$, $\Pr(p >
+0.02) = 0.052$. The contract threshold is borderline at the
+posterior; the team triggers a second batch sampling plan rather
+than accepting on the first batch alone. A frequentist analysis
+at the same data would have reported a $1/50 = 2 \,\%$ point
+estimate with an upper $97.5$th-percentile bound near $11 \,\%$,
+which both wastes the prior information and forces a more
+conservative downstream decision than the data warrant.
+
+\subsection{Sequential testing for go/no-go gates}
+
+A working pattern in acceptance sampling is to define a stopping
+rule on the posterior tail probability and to update the posterior
+after each test result. The rule has the form:
+
+\begin{itemize}[leftmargin=*]
+  \item \emph{Stop and accept} when $\Pr(p > p_{\text{spec}}) <
+    \alpha_{\text{accept}}$.
+  \item \emph{Stop and reject} when $\Pr(p > p_{\text{spec}}) >
+    \alpha_{\text{reject}}$.
+  \item \emph{Continue} otherwise.
+\end{itemize}
+
+Concrete values for the sensor case: $p_{\text{spec}} = 0.02$,
+$\alpha_{\text{accept}} = 0.05$ (high confidence that the rate is
+below spec), $\alpha_{\text{reject}} = 0.50$ (better than even
+odds that the rate exceeds spec). The stopping boundary is
+asymmetric on purpose: rejection is cheap (return the batch),
+acceptance has long-tail consequences (warranty exposure).
+
+The running calculation after each test result updates the
+posterior arithmetically. Test result $1$: prior $\text{Beta}(2,
+200)$, result pass, posterior $\text{Beta}(2, 201)$, $\Pr(p >
+0.02) \approx 0.038$. The boundary has already been crossed in
+the ``accept'' direction after one pass: the prior alone, combined
+with a single pass, brings the tail below $5 \,\%$. The engineer
+may choose to require at least $n = 50$ tests regardless (to
+catch a degenerate sensor batch where every unit fails); the
+stopping rule then becomes ``stop only after $n \geq n_{\min}$
+and the posterior boundary is crossed.''
+
+A working version of this rule appeared in the United States
+Department of Defense MIL-STD-105E acceptance-sampling tables
+\cite{std:ch08t3b-mil-std-105e-1989}, which give attribute-by-
+attribute accept/reject numbers as a function of lot size and
+inspection level. The Bayesian formulation generalises the table
+to arbitrary priors and to continuous stopping rules; the
+MIL-STD-105E numbers are recovered as a special case under a flat
+prior and fixed sample size. ANSI/ASQ Z1.4-2003
+\cite{std:ch08t3b-ansi-z1-4-2003} is the modern U.S.\ equivalent
+adopted after MIL-STD-105E was cancelled in 1995.
+
+\textit{Stopping rule arithmetic, second example.} A batch of
+critical-application sensors arrives with no prior history; the
+engineer uses a weakly informative $\text{Beta}(1, 1)$ prior
+(uniform on $[0, 1]$). Spec $p_{\text{spec}} = 0.05$,
+$\alpha_{\text{accept}} = 0.05$. After $20$ pass, $0$ fail:
+posterior $\text{Beta}(1, 21)$, $\Pr(p > 0.05) = 0.659$. Continue.
+After $50$ pass, $0$ fail: posterior $\text{Beta}(1, 51)$,
+$\Pr(p > 0.05) = 0.073$. Still continue. After $60$ pass, $0$
+fail: posterior $\text{Beta}(1, 61)$, $\Pr(p > 0.05) = 0.046$.
+Boundary crossed; accept the batch. The cost of the weakly
+informative prior is roughly $60$ tests; the cost of the prior
+$\text{Beta}(2, 200)$ was the single test of the previous example.
+The trade-off the engineer manages is the credibility of the
+prior against the cost of testing.
+
+\subsection{Bayesian linear regression vs OLS}
+
+Ordinary least squares (OLS) regression returns point estimates of
+slope and intercept and frequentist standard errors. Bayesian
+linear regression returns a posterior distribution over slope and
+intercept, given a prior. The two coincide numerically when the
+prior is uninformative; they diverge when the prior is informative
+or when the sample is small relative to the prior's strength.
+
+\textit{Setup.} A measurement system relates a sensor reading $y$
+to a known reference value $x$ through the linear model
+$y = \beta_{0} + \beta_{1} x + \varepsilon$, with $\varepsilon
+\sim \mathcal{N}(0, \sigma^{2})$. The OLS estimates are
+$\hat{\beta}_{0}, \hat{\beta}_{1}$ minimising $\sum (y_{i} -
+\beta_{0} - \beta_{1} x_{i})^{2}$, with closed-form variance
+estimates from the residual sum of squares.
+
+The conjugate Bayesian formulation uses a normal-inverse-gamma
+prior on $(\boldsymbol\beta, \sigma^{2})$. Let
+$\boldsymbol\beta = (\beta_{0}, \beta_{1})^{T}$. The prior is
+\[
+\sigma^{2} \sim \text{Inv-Gamma}(a_{0}, b_{0}),
+\quad
+\boldsymbol\beta \mid \sigma^{2} \sim \mathcal{N}(\boldsymbol
+\mu_{0}, \sigma^{2} \boldsymbol\Lambda_{0}^{-1}),
+\]
+where $\boldsymbol\mu_{0}$ is the prior mean of the coefficient
+vector and $\boldsymbol\Lambda_{0}$ is the prior precision matrix.
+With design matrix $\boldsymbol X$ and response vector
+$\boldsymbol y$, the posterior is normal-inverse-gamma with
+updated hyperparameters:
+\[
+\boldsymbol\Lambda_{n} = \boldsymbol X^{T} \boldsymbol X +
+\boldsymbol\Lambda_{0},
+\quad
+\boldsymbol\mu_{n} = \boldsymbol\Lambda_{n}^{-1}(\boldsymbol X^{T}
+\boldsymbol y + \boldsymbol\Lambda_{0} \boldsymbol\mu_{0}),
+\]
+\[
+a_{n} = a_{0} + n/2,
+\quad
+b_{n} = b_{0} + \tfrac{1}{2}\left(\boldsymbol y^{T} \boldsymbol y
++ \boldsymbol\mu_{0}^{T} \boldsymbol\Lambda_{0} \boldsymbol\mu_{0}
+- \boldsymbol\mu_{n}^{T} \boldsymbol\Lambda_{n} \boldsymbol
+\mu_{n}\right).
+\]
+The posterior mean $\boldsymbol\mu_{n}$ is a precision-weighted
+combination of the prior mean and the OLS estimate
+$(\boldsymbol X^{T} \boldsymbol X)^{-1} \boldsymbol X^{T}
+\boldsymbol y$. When $\boldsymbol\Lambda_{0} \to 0$ (flat prior),
+$\boldsymbol\mu_{n}$ approaches the OLS estimate; when the prior
+is strong, the posterior is pulled toward $\boldsymbol\mu_{0}$.
+
+\textit{When Bayesian regression helps.} Three settings make the
+Bayesian framework worth the additional bookkeeping:
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{Informative prior on the slope.} A new sensor of
+    a known family carries calibration history from previous
+    units: the slope is centred near $1$ with a tight prior
+    standard deviation. A small calibration dataset on the new
+    unit combined with the informative prior gives a tighter
+    posterior than OLS on the small dataset alone.
+  \item \textit{Small samples.} OLS standard errors scale as
+    $\sqrt{1/n}$ and are unbiased asymptotically; the posterior
+    standard deviation under an informative prior is tighter at
+    small $n$ because the prior provides additional effective
+    sample size.
+  \item \textit{Shrinkage to a physical baseline.} Ridge
+    regression and lasso regression are Bayesian regressions
+    with specific shrinkage priors (normal and Laplace,
+    respectively). The penalty parameter $\lambda$ in ridge
+    regression corresponds to a prior precision; the engineer
+    who tunes $\lambda$ by cross-validation is tuning the
+    prior strength.
+\end{itemize}
+
+\textit{When OLS is fine.} For routine calibration with $n \geq
+30$ and no prior information stronger than a default-flat,
+OLS and Bayesian regression give numerically identical fits.
+The Bayesian framework adds value only when there is real prior
+information or when the analyst wants a full posterior over
+$(\beta_{0}, \beta_{1}, \sigma^{2})$ jointly for downstream
+decision-making.
+
+\subsection{Computational Bayes in practice: a Stan example}
+
+A working Stan model for the linear regression above is short.
+The Stan source file specifies the data, parameters, model, and
+generated quantities:
+
+\begin{verbatim}
+// linear-regression.stan
+data {
+  int<lower=1> n;
+  vector[n] x;
+  vector[n] y;
+  real beta0_prior_mean;
+  real<lower=0> beta0_prior_sd;
+  real beta1_prior_mean;
+  real<lower=0> beta1_prior_sd;
+}
+parameters {
+  real beta0;
+  real beta1;
+  real<lower=0> sigma;
+}
+model {
+  beta0 ~ normal(beta0_prior_mean, beta0_prior_sd);
+  beta1 ~ normal(beta1_prior_mean, beta1_prior_sd);
+  sigma ~ exponential(1);
+  y ~ normal(beta0 + beta1 * x, sigma);
+}
+generated quantities {
+  vector[n] y_rep;
+  for (i in 1:n)
+    y_rep[i] = normal_rng(beta0 + beta1 * x[i], sigma);
+}
+\end{verbatim}
+
+\noindent
+The model is roughly fifteen lines, the same length as the OLS
+implementation in base R but with explicit prior specifications.
+The R interface compiles and runs the model:
+
+\begin{verbatim}
+library(cmdstanr)
+mod <- cmdstan_model("linear-regression.stan")
+fit <- mod$sample(
+  data = list(n = 30, x = x_obs, y = y_obs,
+              beta0_prior_mean = 0, beta0_prior_sd = 1,
+              beta1_prior_mean = 1, beta1_prior_sd = 0.1),
+  chains = 4, parallel_chains = 4,
+  iter_warmup = 1000, iter_sampling = 1000,
+  seed = 42)
+fit$summary()
+\end{verbatim}
+
+\noindent
+The four chains run in parallel; the warmup phase tunes the NUTS
+sampler; the sampling phase produces $4 \times 1000 = 4000$
+posterior draws of each parameter. The summary output reports the
+posterior mean, posterior standard deviation, $5$th, $50$th, and
+$95$th percentiles, the Gelman-Rubin $\hat{R}$ diagnostic, and the
+effective sample size for each parameter.
+
+\textit{Interpreting the trace plot.} A trace plot is a time
+series of posterior draws for each parameter, with one line per
+chain. The convergence criterion is that the chains should
+overlap and look like white noise around a stable mean: four
+caterpillars stacked on top of each other. Divergent transitions
+(rare but informative warnings from NUTS) flag regions of the
+posterior where the sampler had numerical trouble; persistent
+divergences require model reparametrisation. The Stan manual
+\cite{text:ch08t3b-stan-manual-2024} and Gelman's \emph{Bayesian
+Data Analysis} third edition \cite{text:ch08-gelman-bda3-2013}
+chapter 11 give the diagnostic protocol.
+
+\textit{Convergence criteria.} Two numerical thresholds are the
+working acceptance criteria, per the Stan best-practice document:
+
+\begin{itemize}[leftmargin=*]
+  \item $\hat{R} < 1.01$ for every parameter. Higher values
+    indicate that the chains have not mixed; rerun with more
+    warmup iterations or reparametrise the model.
+  \item Effective sample size (ESS) $> 400$ for every parameter.
+    Low ESS indicates high autocorrelation within chains; the
+    posterior summary statistics are unreliable. Run more
+    sampling iterations or thin the chains.
+\end{itemize}
+
+Posterior predictive checks complete the diagnostic. The
+generated-quantities block above produces $y_{\text{rep}}$, a
+posterior predictive draw of the response vector. A plot of the
+observed $y$ against the median and $95 \,\%$ band of
+$y_{\text{rep}}$ shows whether the model can reproduce the
+observed data; systematic discrepancies flag model misspecification.
+
 \section{Sample size and statistical power}\pathtag{standard}
 
 A test that fails to reject the null may do so because the null is
@@ -1869,6 +2386,172 @@ and reporting only the analyses that worked. It works only when
 deviations are recorded and reported. The framework is independent
 of frequentist or Bayesian methods; it is a discipline about what
 the engineer commits to before the data are in hand.
+
+\paragraph{Working pre-registration platforms.}
+A pre-registration is a timestamped, public or private, immutable
+record of the analysis plan before data collection. The working
+platforms, current as of 2025:
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{Open Science Framework (OSF, \texttt{osf.io}).}
+    The de facto standard for cross-discipline pre-registration,
+    hosted by the Center for Open Science at the University of
+    Virginia \cite{web:ch08t3b-osf-2025}. Free; supports
+    public, embargoed, and private registrations; integrates with
+    GitHub, Dropbox, and Google Drive for data hosting. The OSF
+    pre-registration form has a structured template (hypotheses,
+    sample size, design, analysis plan) that the engineer
+    completes in roughly fifteen minutes.
+  \item \textit{AsPredicted (\texttt{aspredicted.org}).} A
+    short-form pre-registration platform developed at the Wharton
+    School \cite{web:ch08t3b-aspredicted-2025}. Free; nine
+    structured questions; produces a single-page PDF with a
+    timestamp. Lighter than OSF for routine industrial work; the
+    nine questions cover hypothesis, design, sample size,
+    analyses, and exclusion rules.
+  \item \textit{ClinicalTrials.gov} for medical-device and
+    pharmaceutical trials \cite{web:ch08t3b-clinicaltrials-gov-2025}.
+    Mandatory under U.S.\ federal law for FDA-regulated trials of
+    drugs and devices via the Food and Drug Administration
+    Amendments Act of 2007 (FDAAA, section 801)
+    \cite{law:ch08t3b-fdaaa-2007}. The registry records study
+    protocol, primary outcomes, sample size, and analysis plan
+    before subject enrolment; the World Health Organization runs
+    a parallel International Clinical Trials Registry Platform
+    (ICTRP).
+  \item \textit{American Economic Association RCT Registry}
+    \cite{web:ch08t3b-aea-rct-registry-2025} for economic field
+    experiments. Free, voluntary; structured template; the
+    registry is the working pre-registration record for most
+    development-economics field RCTs since approximately 2013.
+  \item \textit{Engineering analog.} No discipline-specific
+    public registry exists for industrial engineering experiments,
+    current as of 2025. The working substitute is internal:
+    a signed, dated protocol stored in the project's version-
+    control system (Git, SVN, or a document-management system
+    with audit log) before data collection begins. The cryptographic
+    timestamp of the commit and the audit trail of the repository
+    serve the same evidentiary purpose as a public registry. ASTM
+    E2935-13 \cite{std:ch08t3b-astm-e2935-2013} gives the working
+    standard for experimental protocols in materials testing; the
+    pre-registration discipline maps onto its protocol-recording
+    requirements.
+\end{itemize}
+
+\paragraph{A working pre-registration template for an engineering
+experiment.}
+The template below is the OSF and AsPredicted structure adapted
+for an engineering experiment. The engineer fills it before data
+collection and stores the completed document in the project
+repository:
+
+\begin{enumerate}[leftmargin=*]
+  \item \textit{Title and team.} One-line title; principal
+    investigator and team roles; date of pre-registration.
+  \item \textit{Hypothesis.} The null hypothesis $H_{0}$ as a
+    quantitative statement about a parameter. The alternative
+    $H_{1}$ as the complement or a specific direction. Example:
+    ``$H_{0}$: the mean bond strength of supplier B equals
+    supplier A's; $H_{1}$: supplier B's mean exceeds supplier A's
+    by at least $0.05\,\si{\mega\pascal}$.''
+  \item \textit{Primary outcome measure.} The single quantitative
+    measurement that determines the test result, with units,
+    measurement instrument, calibration date, and uncertainty.
+    Example: ``shear bond strength of lap-joint specimen,
+    measured per ASTM D1002-10 on an MTS 810 servohydraulic
+    frame, calibrated 2025-03-14, expanded uncertainty
+    $U = 0.02\,\si{\mega\pascal}$ at $k = 2$.''
+  \item \textit{Secondary outcomes.} Any additional measurements
+    of interest. These are recorded but do not carry the
+    confirmatory weight of the primary outcome; secondary
+    analyses are exploratory.
+  \item \textit{Sample size and power.} The sample size $n$, the
+    effect size $\delta$, the significance level $\alpha$, and
+    the target power $1 - \beta$. The justification for $\delta$
+    in operational units. The power calculation that produces
+    $n$ from the other three.
+  \item \textit{Exclusion criteria.} The rules that determine
+    which observations are included in the analysis. Example:
+    ``specimens with visible voids on optical inspection are
+    excluded; specimens that slip in the grips are repeated
+    once and the repeat measurement is used; specimens where
+    the frame load-cell warning fires are repeated and the
+    repeat measurement is used.''
+  \item \textit{Analysis plan.} The specific test (one-sample
+    $t$, two-sample Welch $t$, Mann-Whitney, ANOVA, etc.),
+    the transformations applied to the raw measurements (none,
+    log, Box-Cox), the covariates included as adjustment, and
+    the post-hoc procedures if any (Tukey HSD, Bonferroni).
+  \item \textit{Decision rule.} What the engineer will conclude
+    from each possible outcome. Example: ``if $p < 0.05$ and
+    the lower bound of the $95 \,\%$ CI on the mean difference
+    exceeds $0.02\,\si{\mega\pascal}$, supplier B is qualified;
+    otherwise the decision is deferred to a second-batch test.''
+  \item \textit{Deviations.} A blank section that the engineer
+    fills after data collection, listing any deviations from the
+    pre-registered plan and the reason for each. Deviations
+    convert the affected analysis from confirmatory to
+    exploratory; the original pre-registration is preserved.
+\end{enumerate}
+
+The completed template is typically a single document of one to
+three pages. The commit hash and timestamp of the repository
+version serve as the cryptographic record. The engineer who is
+asked, two years later, ``did you decide that test before or after
+you saw the data?'' can answer with a timestamped log entry.
+
+\paragraph{The CONSORT-style equivalent for engineering reports.}
+The Consolidated Standards of Reporting Trials (CONSORT) statement
+\cite{paper:ch08t3b-consort-2010} codifies the reporting
+requirements for randomised controlled trials in medical research.
+The 25-item checklist requires: trial design (including the
+pre-registration record), randomisation procedure, blinding,
+participant flow (the CONSORT flow diagram counting screened,
+enrolled, allocated, analysed, and excluded subjects), primary
+and secondary outcomes, statistical methods, all results
+(positive and negative), and a discussion of limitations.
+
+The engineering analog is not yet codified into a single
+checklist with the authority of CONSORT, but the substance is
+identical. The working requirements for an engineering
+experimental report:
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{All measurements taken.} The report lists every
+    specimen, sensor reading, or trial. Specimens that were
+    discarded are listed with the reason. The aggregate count of
+    discarded specimens is reported; a high discard rate is a
+    diagnostic about the experimental setup, not a property to
+    be hidden in the body text.
+  \item \textit{Everything that didn't work.} Pilot studies that
+    failed to produce useful data, sensor channels that lost
+    calibration midway through the campaign, experimental
+    configurations that were tried and abandoned: all of these
+    are reported. Selective omission produces the same
+    publication-bias mechanism that drove the replication crisis
+    in psychology.
+  \item \textit{The pre-registration record.} The report cites
+    the pre-registration's timestamp and location (repository
+    commit hash, OSF DOI, internal protocol number) and
+    reproduces the pre-registered analysis plan verbatim.
+    Deviations from the plan are listed in the body of the
+    report, not in a supplementary appendix.
+  \item \textit{Effect sizes with confidence intervals.} Every
+    reported $p$-value carries the corresponding effect size and
+    its $95 \,\%$ CI. The four-number minimum from the effect-
+    size subsection of section 8.3 applies.
+  \item \textit{The IMRaD structure.} Introduction, Methods,
+    Results, and Discussion remain the standard sections.
+    Methods contains the pre-registered plan and the deviations.
+    Results contains all measurements. Discussion contains the
+    engineering interpretation, limitations, and the conditions
+    under which the result would not generalise.
+\end{itemize}
+
+A working report that satisfies these requirements is
+roughly twice the length of a journal article that does not.
+The space cost is part of the engineering-reporting discipline;
+the alternative is a literature that does not reproduce.
 
 \section{P-hacking, garden of forking paths, and what to refuse}\pathtag{core}
 
@@ -2310,6 +2993,227 @@ modern preregistration and effect-size discipline is reading
 from the post-ASA-statement consensus. Both will appear in
 the working literature for decades.
 
+\section{End-to-end case study: a semiconductor wafer-yield
+study}\pathtag{standard}
+
+The chapter's tools, deployed alone, are isolated tests of
+specific quantities. A working engineer assembles them into a
+single analysis chain that takes raw measurements through
+distribution checks, hypothesis tests, multiple-comparison
+adjustments, capability indices, and prediction intervals. The
+case below is one such chain. The numerical values are realistic
+for a contemporary fab and are drawn from the SEMATECH yield-
+analysis literature \cite{web:ch08t3b-sematech-yield-2009} and
+the Montgomery quality-control text
+\cite[ch.~11]{text:ch08-montgomery-spc-2019}.
+
+\paragraph{The scenario.} A $200\,\si{\milli\meter}$ silicon wafer
+line produces $300\,\si{\milli\meter}$-equivalent area dies at a
+nominal yield of $0.92$ good die per wafer (92 \,\%). The line
+runs $10$ batches per shift, $25$ wafers per batch, for a total
+of $250$ wafers in the case study. The primary measured outcome
+is wafer-level functional yield, defined as the fraction of
+on-wafer die that pass the post-fabrication functional test. A
+batch is a single lot of wafers processed together through the
+critical lithography step.
+
+The engineering question, decomposed into the chapter's tools:
+
+\begin{enumerate}[leftmargin=*]
+  \item Is there a statistically detectable batch-to-batch
+    difference in yield? (One-way ANOVA on batches; §8.3.)
+  \item If so, which batches differ from which? (Tukey HSD post-
+    hoc; §8.6.)
+  \item Is the within-batch yield variation in statistical
+    control? (Shewhart $\bar{X}$ and $R$ charts; §8.4.)
+  \item Does the long-term process meet the customer's
+    $C_{pk} \geq 1.33$ requirement? (Process capability
+    analysis; §8.4.)
+  \item What yield should the planning function expect for the
+    next batch? (Prediction interval; §8.4.)
+  \item What yield should the customer expect across a year of
+    production at the current process state? (Tolerance
+    interval; §8.4.)
+\end{enumerate}
+
+\paragraph{Step 1: distributional check.} The $250$ wafer-yield
+observations have $\bar{y} = 0.918$, $s = 0.024$, range
+$[0.847, 0.961]$. A Shapiro-Wilk normality test returns
+$W = 0.992$, $p = 0.18$; the normality assumption is not
+rejected at $\alpha = 0.05$. A Q-Q plot shows the points falling
+close to the diagonal line with mild lower-tail compression,
+consistent with the bounded nature of the yield variable
+(yields cannot exceed $1$, so the upper tail is naturally
+truncated). The Gaussian model is acceptable for the analyses
+that follow; for production work near the $0.99$ yield ceiling,
+the analyst would transform via $\log(y/(1-y))$ (the logit) or
+use the beta distribution directly.
+
+\paragraph{Step 2: one-way ANOVA on batches.} The $10$ batches
+have batch means $\bar{y}_{1}, \ldots, \bar{y}_{10}$ and a common
+within-batch sample size $n_{i} = 25$. The ANOVA table:
+
+\begin{center}
+\begin{tabular}{lccccc}
+\hline
+Source & df & SS & MS & $F$ & $p$ \\
+\hline
+Batch (between) & 9 & 0.0581 & 0.00645 & 17.4 & $< 0.001$ \\
+Within & 240 & 0.0890 & 0.000371 & & \\
+Total & 249 & 0.1471 & & & \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent
+The omnibus $F = 17.4$ with $p < 0.001$ rejects the equal-means
+null. The variance-explained estimate is
+$\eta^{2} = 0.0581/0.1471 = 0.395$: roughly $40 \,\%$ of total
+variance is attributable to batch membership. The biased-corrected
+omega-squared is
+$\omega^{2} = (0.0581 - 9 \cdot 0.000371)/(0.1471 + 0.000371)
+\approx 0.371$, only slightly smaller; the bias correction is
+modest at $n = 250$.
+
+\paragraph{Step 3: Tukey HSD post-hoc.} With $k = 10$ batches and
+$\nu = 240$ within-group degrees of freedom, the studentised range
+critical value at $\alpha = 0.05$ is $q_{0.05, 10, 240} \approx
+4.47$. The HSD margin is
+
+\[
+q_{0.05, 10, 240} \cdot \frac{s_{\text{pooled}}}{\sqrt{n}}
+= 4.47 \cdot \frac{\sqrt{0.000371}}{\sqrt{25}}
+= 4.47 \cdot \frac{0.0193}{5}
+\approx 0.0172.
+\]
+
+\noindent
+Any pair of batches whose mean yields differ by more than
+$0.0172$ is flagged as significantly different at the family-
+wise $\alpha = 0.05$. The Tukey HSD output identifies three
+batches (Batch 3, Batch 7, Batch 9) whose mean yields are
+significantly below the grand mean, and two batches (Batch 1,
+Batch 5) significantly above. The engineering follow-up is to
+investigate the process history of the low-yield batches: the
+lithography step's exposure time, the resist thickness, the
+develop time, and any unscheduled tool-maintenance events
+between batches.
+
+\paragraph{Step 4: control chart on within-batch variation.}
+A Shewhart $\bar{X}$ chart of the batch means, with control
+limits at $\bar{\bar{y}} \pm 3 s_{\text{pooled}}/\sqrt{n_{i}}$,
+places the limits at $0.918 \pm 3 \cdot 0.0193/5 = 0.918 \pm
+0.0116$, or $[0.906, 0.930]$. Two batches (Batch 3 at $0.882$,
+Batch 9 at $0.891$) fall below the lower control limit and one
+(Batch 1 at $0.940$) above the upper. The Western Electric
+zone tests (one of: a point beyond $3\sigma$; two of three
+points beyond $2\sigma$ on the same side; four of five points
+beyond $1\sigma$ on the same side; eight points in a row on the
+same side of the centreline) flag additional patterns. The
+out-of-control batches are the same ones the Tukey HSD
+identified; the two analyses give consistent diagnostics.
+
+The accompanying $R$ chart of within-batch range with limits at
+$D_{3} \bar{R}$ and $D_{4} \bar{R}$ (for $n = 25$, $D_{3} =
+0.503$, $D_{4} = 1.497$) shows all batches in control on
+within-batch range; the assignable-cause signal is in the batch
+means, not the within-batch dispersion.
+
+\paragraph{Step 5: process capability.} The customer
+specification is a lower yield limit (LYL) of $0.85$ and no
+upper limit (yield cannot exceed $1$, so an upper specification
+is meaningless). The capability index for a one-sided
+specification is
+
+\[
+C_{pk, \text{lower}} = \frac{\bar{\bar{y}} - \text{LYL}}{3 s_{
+\text{within}}}
+= \frac{0.918 - 0.850}{3 \cdot 0.0193}
+= \frac{0.068}{0.058}
+\approx 1.17,
+\]
+
+\noindent
+which falls below the customer's $C_{pk} \geq 1.33$ requirement.
+The performance index using the long-term overall standard
+deviation $s = 0.024$ is
+
+\[
+P_{pk} = \frac{0.918 - 0.850}{3 \cdot 0.024}
+= \frac{0.068}{0.072}
+\approx 0.94,
+\]
+
+\noindent
+which is below even the $C_{pk} \geq 1.00$ minimal acceptability
+threshold. The gap between $C_{pk}$ and $P_{pk}$ ($1.17$ vs
+$0.94$) is the headroom available if the engineer can eliminate
+the batch-to-batch drift identified in steps 3 and 4.
+
+\paragraph{Step 6: prediction interval for the next batch.}
+The next batch will have a mean yield distributed approximately
+$\mathcal{N}(\mu, \sigma^{2}_{\text{between}} + \sigma^{2}_{\text{
+within}}/25)$ where $\sigma^{2}_{\text{between}} \approx
+(\text{MS}_{\text{batch}} - \text{MS}_{\text{within}})/25 \approx
+2.43 \times 10^{-4}$ and $\sigma^{2}_{\text{within}}/25 \approx
+1.48 \times 10^{-5}$. The total variance is approximately
+$2.58 \times 10^{-4}$, standard deviation $0.0161$. The $95 \,\%$
+prediction interval for the next batch's mean yield is
+
+\[
+0.918 \pm t_{0.025, 9} \cdot 0.0161 \cdot \sqrt{1 + 1/10}
+\approx 0.918 \pm 2.262 \cdot 0.0169
+\approx 0.918 \pm 0.038,
+\]
+
+\noindent
+or $[0.880, 0.956]$. The planning function should budget for
+this range; reporting only the point estimate $0.918$ would
+understate the operational scatter the planning function will
+face.
+
+\paragraph{Step 7: tolerance interval for annual production.}
+A two-sided $95 \,\%$ confidence, $99 \,\%$ coverage tolerance
+interval on wafer-level yield, using the Howe 1969 procedure
+introduced earlier in this chapter \cite{paper:ch08t3p-howe-1969}
+at $n = 250$, gives
+
+\[
+\bar{y} \pm k(n = 250, p = 0.99, \gamma = 0.05) \cdot s
+\approx 0.918 \pm 2.745 \cdot 0.024
+\approx 0.918 \pm 0.066,
+\]
+
+\noindent
+or $[0.852, 0.984]$. With $95 \,\%$ confidence, $99 \,\%$ of
+wafer-level yields across the year will fall in this band.
+Note that the lower bound $0.852$ is barely above the customer's
+$0.85$ specification limit, confirming the capability concern of
+step 5: the process is operating with little margin on the
+specification.
+
+\paragraph{Integrated engineering action.} The seven steps
+produce a single recommendation. The process has detectable
+batch-to-batch drift contributing about $40 \,\%$ of total
+variance; the Tukey HSD and the $\bar{X}$ chart agree on the
+out-of-control batches; the capability indices flag inadequate
+margin on the lower specification; the prediction and tolerance
+intervals quantify the operational consequences. The
+engineering follow-up is sequenced: (i) investigate the assignable
+causes for the out-of-control batches (lithography process
+parameters, tool maintenance log); (ii) reduce batch-to-batch
+variance by tightening the upstream input controls; (iii)
+re-run the capability analysis after the corrective actions are
+verified; (iv) update the prediction interval and report the
+new bounds to the planning function and the customer.
+
+The case study uses every named tool in the chapter and produces
+a single integrated recommendation. The tools are inseparable in
+practice; a wafer-yield report that runs only the ANOVA without
+the post-hoc, or only the capability index without the prediction
+interval, is incomplete in a way the customer's audit will
+detect.
+
 \section{Project}\pathtag{core}
 
 \begin{project}[Thirty-trial experiment of the reader's choice]
@@ -2505,6 +3409,156 @@ the confidence interval is interpreted as a prediction interval.
 Each of these failure modes is enumerated in the reflection so the
 reader is forced to confront whether their own analysis is exposed
 to it.
+
+\textbf{A worked model report.} The block below is a redacted
+form of a project deliverable from a working engineer who chose
+the cooking-time-variability track. The redaction strips
+identifying detail; the structure and the numbers are as
+submitted. The reader can use it as a template for their own
+deliverable.
+
+\smallskip
+\textit{Pre-registration} (timestamped 2024-11-04 17:32 UTC,
+commit hash \texttt{a3f12c8}, internal Git repository).
+\emph{Hypothesis}: $H_{0}$: the population mean time to bring
+$1\,\si{\litre}$ of tap water at $15\,\degC$ to a rolling boil on
+the kitchen induction hob, at power setting $9$ of $10$, equals
+$240\,\si{\second}$. $H_{1}$: not equal.
+\emph{Test}: one-sample two-sided $t$-test at $\alpha = 0.05$.
+\emph{Sample size}: $n = 30$ trials, one per evening, $2024
+\text{-}11\text{-}05$ through $2024\text{-}12\text{-}04$.
+\emph{Effect size of interest}: $\delta = 10\,\si{\second}$
+($4 \,\%$ of nominal); rule of thumb at $\sigma \approx
+8\,\si{\second}$ (prior estimate from three pilot trials) gives
+$n \geq 16 \cdot 64/100 \approx 11$, so $n = 30$ is more than
+adequate.
+\emph{Outlier rule}: exclude trials where (i) the lid is opened
+during heating, or (ii) the room temperature differs from
+$22 \pm 2 \,\degC$. Excluded trials are repeated the following
+evening. \emph{Reporting}: mean, median, standard deviation,
+range, IQR, histogram, boxplot, Q-Q plot, test statistic,
+two-sided $p$-value, $95 \,\%$ CI on the mean, $95 \,\%$
+prediction interval for the next trial.
+
+\smallskip
+\textit{Data}. The thirty measurements (in seconds):
+$233, 238, 245, 241, 236, 247, 239, 242, 244, 235, 240, 246,
+243, 237, 241, 248, 239, 244, 242, 238, 245, 240, 243, 246,
+241, 239, 244, 247, 242, 245$. Two trials were excluded under
+the outlier rule (one lid-opening, one room temperature
+$25 \,\degC$) and repeated the following evening; the repeats
+are included.
+
+\smallskip
+\textit{Summary statistics}.
+$\bar{x} = 241.8\,\si{\second}$,
+median $= 241.5\,\si{\second}$,
+$s = 3.71\,\si{\second}$,
+range $= [233, 248]$,
+IQR $= [239, 244] = 5\,\si{\second}$.
+The Q-Q plot shows close-to-linear behaviour with mild upper-tail
+weight; Shapiro-Wilk $W = 0.972$, $p = 0.59$; the Gaussian
+assumption is acceptable.
+
+\smallskip
+\textit{Test}. $t = (241.8 - 240)/(3.71/\sqrt{30}) = 2.66$,
+$\text{df} = 29$, two-sided $p = 0.013$. Reject $H_{0}$ at
+$\alpha = 0.05$. The mean boil time is significantly above the
+$240\,\si{\second}$ target.
+
+\smallskip
+\textit{Effect size and intervals}.
+Cohen's $d_{\text{one-sample}} = (241.8 - 240)/3.71 = 0.49$, a
+medium effect by Cohen's benchmark; $95 \,\%$ CI on $d$ via the
+non-central $t$ method is approximately $[0.11, 0.86]$. The
+$95 \,\%$ CI on the mean is $241.8 \pm 2.045 \cdot 3.71/\sqrt{30}
+= 241.8 \pm 1.39 = [240.4, 243.2]\,\si{\second}$. The $95 \,\%$
+prediction interval for the next trial is $241.8 \pm 2.045 \cdot
+3.71 \cdot \sqrt{1 + 1/30} = 241.8 \pm 7.71 = [234.1, 249.5]\,
+\si{\second}$. The customer (here, the engineer's spouse, who
+plans the dinner timing around the boil time) reads the
+prediction interval, not the confidence interval, when deciding
+when to start the pasta water.
+
+\smallskip
+\textit{Engineering conclusion}. The boil time is statistically
+above the $240\,\si{\second}$ nominal by an average of $1.8\,
+\si{\second}$. The effect size is medium and the CI on the mean
+excludes the nominal. The next trial will, with $95 \,\%$
+probability, take between $234$ and $250\,\si{\second}$. The
+engineering decision (when to start heating water for a
+$19{:}00$ dinner) is to set the start time at $18{:}55$, with
+two seconds of margin for the upper end of the prediction
+interval. The hob's nominal $240\,\si{\second}$ time is mildly
+optimistic; the engineer updates the household planning
+spreadsheet accordingly.
+
+\smallskip
+\textit{What a colleague repeating the work might find}. A
+colleague using a different hob, a different pot, or a
+different water temperature would see a different mean. The
+$\pm 1.4\,\si{\second}$ CI on the mean is much narrower than
+the operational variability the colleague will experience; the
+result transfers only as a method, not as a number. A more
+useful replication would specify the hob model, the pot mass
+and material, and the inlet water temperature with calibrated
+instruments.
+
+\smallskip
+\textit{Reflection on forking paths}. The pre-registration
+specified the outlier rule before data collection; two trials
+were excluded under it. The reflection identifies three
+branches where the analyst could have nudged the analysis: (i)
+the choice of the $t$-test over a Wilcoxon signed-rank test
+(taken: the Q-Q plot supported Gaussian); (ii) the choice of
+the one-sample test over a Welch test against a separate
+calibration sample (taken: no calibration sample available);
+(iii) the choice of $\alpha = 0.05$ over $\alpha = 0.01$
+(taken: pre-registered). The branches are recorded in the
+project deliverable so a reader can audit which choices the
+data could have influenced.
+
+\smallskip
+\textit{Word count}. The full reflection runs $1{,}487$ words
+including the pre-registration text and the data summary.
+
+\textbf{Common failure modes in submitted projects.} Across the
+hundred or so submissions the general editor has reviewed since
+the project was introduced, four failure modes recur:
+
+\begin{itemize}[leftmargin=*]
+  \item \textit{Missing pre-registration}. The deliverable
+    reports an analysis but no pre-registration is in the
+    repository before the data file's first commit. The
+    analysis is treated as exploratory in the grading; the
+    reflection must explicitly identify which choices were
+    made after the data were visible.
+  \item \textit{$p$-value reported without effect size}. The
+    deliverable lists the test statistic, the $p$-value, and
+    a conclusion without computing Cohen's $d$ or its
+    equivalent. The reader cannot judge whether the result is
+    operationally meaningful. The fix: report the four-number
+    minimum (effect size, CI on the effect size, $p$, $n$) for
+    every comparison.
+  \item \textit{Confidence interval interpreted as prediction
+    interval}. The deliverable reports the $\pm 1.4\,
+    \si{\second}$ CI on the mean and recommends starting the
+    pasta water at $18{:}59$ (two seconds before nominal). The
+    reader misunderstands the CI as bounding the next trial.
+    The fix: explicitly compute both intervals and state in
+    plain English what each one covers.
+  \item \textit{Limitations omitted}. The reflection asserts the
+    result without acknowledging the conditions under which it
+    fails to transfer (different hob, different pot, different
+    inlet temperature). A defensible deliverable states the
+    boundary conditions and how to detect when they are
+    violated.
+\end{itemize}
+
+The grading criterion is honest reporting of the four failure
+modes in the reflection, not their absence from the analysis.
+A deliverable that catches its own failure modes and explains
+them is graded above one that asserts a clean analysis.
 \end{project}
 
 \section{Exercises}

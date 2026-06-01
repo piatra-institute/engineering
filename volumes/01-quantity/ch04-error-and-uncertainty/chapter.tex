@@ -1646,6 +1646,224 @@ floats with explicit tolerances; and document the rounding
 mode in the measurement report when the choice could affect
 the final reported value.
 
+\subsection{Guard digits in matrix arithmetic: a worked Gaussian
+elimination loss}
+
+The principle of carrying extra digits through intermediate
+computation takes its most damaging form in linear algebra,
+where naive partial pivoting on a near-singular matrix can
+discard most of the available accuracy before the last
+back-substitution step delivers a number to the working
+engineer. The mechanism is catastrophic cancellation: each
+elimination subtracts a large pivot multiple from a row entry
+of comparable magnitude, and the result inherits the rounding
+error of the difference rather than the rounding errors of the
+operands. Higham's \emph{Accuracy and Stability of Numerical
+Algorithms} \cite{text:ch04t3b-higham-asna-2002} carries the
+full backward-error analysis; the working illustration is the
+$4 \times 4$ Hilbert-like system below.
+
+\paragraph{The system.} Consider the system $A x = b$ with
+\[
+A = \begin{pmatrix}
+1.000\,000 & 0.500\,000 & 0.333\,333 & 0.250\,000 \\
+0.500\,000 & 0.333\,333 & 0.250\,000 & 0.200\,000 \\
+0.333\,333 & 0.250\,000 & 0.200\,000 & 0.166\,667 \\
+0.250\,000 & 0.200\,000 & 0.166\,667 & 0.142\,857
+\end{pmatrix},
+\]
+$b = (1, 1, 1, 1)^{\mathsf{T}}$, and the working
+floating-point format binary32 (single precision, $7.2$ decimal
+digits of mantissa). The condition number is
+$\kappa_{2}(A) \approx 1.5 \times 10^{4}$. The true solution,
+computed in extended precision and rounded only at the report,
+is $x = (-4.00, 60.00, -180.00, 140.00)^{\mathsf{T}}$.
+
+\paragraph{Naive elimination, single precision.} A textbook
+Gaussian-elimination implementation with partial pivoting,
+executed in binary32, returns
+$\hat{x}_{\text{naive}} = (-3.42, 51.7, -156, 121)^{\mathsf{T}}$.
+The first component is off by $14\%$; the largest component is
+off by $14\%$. The relative residual
+$\| A \hat{x} - b\|_{2}/\|b\|_{2} \approx 3 \times 10^{-3}$
+already indicates that the working solution is unusable.
+The mechanism is the third elimination step, where the pivot is
+$\sim 10^{-3}$ relative to the original matrix entries; the
+binary32 subtraction loses $5$ of $7$ significant digits in
+that row.
+
+\paragraph{Iterative refinement preserves accuracy.} The fix is
+iterative refinement: solve $A \hat{x}_{0} = b$ in single
+precision, compute the residual $r_{0} = b - A \hat{x}_{0}$ in
+double precision, solve $A \delta = r_{0}$ in single
+precision, and update $\hat{x}_{1} = \hat{x}_{0} + \delta$.
+Three iterations of refinement recover
+$\hat{x}_{\text{refined}} = (-3.999, 60.00, -180.0, 140.0)$, an
+error of $\lesssim 0.1\%$. The single-precision elimination
+plus three single-precision refinement passes uses one ninth
+the floating-point operations of a direct double-precision
+solve, and delivers comparable accuracy. The discipline is to
+compute residuals at the next-higher precision; the rest of
+the calculation can remain at the working precision.
+
+\paragraph{The lesson.} Six of the seven available decimal
+digits in the binary32 solve were dissipated by the second and
+third elimination steps. The reporting precision was
+catastrophically below the input precision; the engineer who
+quoted a binary32 result would have reported a number whose
+two leading digits were wrong. Iterative refinement restores
+the digits at modest cost. The same pattern applies to least-
+squares regression, Kalman filter updates, and any linear
+solve whose condition number is non-trivial: carry residuals
+at higher precision, refine, and report only the digits the
+refinement supports.
+
+\subsection{The twelve-step calibration chain: rounding bias
+accumulation}
+
+A calibration chain transfers a measurement from a primary
+reference (a national-metrology-institute fixed-point cell,
+say) through a sequence of working standards down to the
+end-of-line instrument. Each link in the chain reports its
+result to a stated number of significant figures. The
+discipline of selecting that number controls how much of the
+chain's accumulated bias is visible at the bottom.
+
+\paragraph{Setup.} A twelve-step chain transfers a $100\,\si{
+\ohm}$ resistance reference from a national metrology
+institute through eleven intermediate working standards to a
+production-line digital multimeter. The true input values at
+each step are drawn from a normal distribution about the
+target with standard uncertainty $\sigma_{\text{input}} =
+50\,\text{ppm}$, recorded in \texttt{data/calibration-chain-
+rounding.csv}. The rounding rule at each step is to convert the
+measured value to either $4$ significant figures or $6$
+significant figures of the resistance value in ohms, depending
+on the working convention.
+
+\paragraph{Rounding to $4$ significant figures.} The half-ULP
+rounding error in each link is $\pm 0.05\%$ relative when the
+value is reported to four significant figures. Summed in
+quadrature across $12$ independent links, the propagated
+standard uncertainty contribution from rounding alone is
+$0.05\% \times \sqrt{12} \approx 0.17\%$, comparable to the
+$50\,\text{ppm}$ input uncertainty. The rounding budget is
+non-negligible at the bottom of the chain.
+
+\paragraph{Rounding to $6$ significant figures.} The half-ULP
+rounding error per link is $\pm 5 \times 10^{-4}\,\%$ relative,
+and the propagated rounding standard uncertainty is
+$5 \times 10^{-4}\,\% \times \sqrt{12} \approx 2\,\text{ppm}$,
+which is small compared with the $50\,\text{ppm}$ input
+uncertainty and negligible at the bottom of the chain.
+
+\paragraph{When the rounding rule is systematic, not Gaussian.}
+The above assumes each link rounds half-to-even (banker's
+rounding), which is unbiased over a uniform distribution of
+fractional parts. A chain that consistently rounds down
+(truncation) or up (always-round-half-up) introduces a fixed
+bias per link, summed linearly across the chain rather than in
+quadrature. At four significant figures and an always-truncate
+rule, the linear bias is $-0.025\% \times 12 = -0.30\%$, a
+$2$-order-of-magnitude amplification over the quadrature
+estimate. The Vancouver Stock Exchange index recorded the
+extreme version of this failure mode (\S 4.5 above); the
+calibration chain expresses it in a quieter form.
+
+\paragraph{The working choice.} A calibration laboratory whose
+end-of-line uncertainty target is $50\,\text{ppm}$ must report
+each intermediate link to at least $6$ significant figures of
+the value, with explicit half-to-even rounding, so that
+rounding contributes at most $2\,\text{ppm}$ to the propagated
+budget. Reporting to $4$ significant figures is sufficient only
+when the end-of-line target is $500\,\text{ppm}$ or coarser.
+A working chain whose intermediate links report fewer digits
+than the target supports has a rounding budget the certificate
+does not disclose. The CSV at \texttt{data/calibration-chain-
+rounding.csv} records the link-by-link values and the
+quadrature-vs-linear comparison.
+
+\subsection{Reporting conventions cross-walk: one instrument,
+four documents}
+
+A working measurement of the same physical quantity appears in
+four different documents at four different precisions, each
+with a documented rationale. The reader who learns to write all
+four learns to read all four.
+
+\paragraph{The working example.} A Keysight 34470A 7.5-digit
+benchtop DMM \cite{web:ch04t3b-keysight-34470a} reads a
+$10.000\,000\,0\,\si{\volt}$ Fluke 732C voltage reference at
+a stable laboratory ambient of $(23.0 \pm 0.5)\,\degC$. The
+front-panel display shows $10.000\,007\,1\,\si{\volt}$. The
+operator captures one hundred readings over a thirty-minute
+period: $\bar{V} = 10.000\,007\,1\,\si{\volt}$, sample standard
+deviation $s = 0.000\,000\,3\,\si{\volt}$. The 24-hour
+specification of the 34470A on the $10\,\si{\volt}$ range is
+$\pm (14\,\text{ppm reading} + 2\,\text{ppm range}) = \pm
+1.6 \times 10^{-4}\,\si{\volt}$.
+
+\paragraph{Lab notebook entry.} The instrument-resolution
+record carries every digit. "$2026$-$05$-$30$ $14{:}33{:}05$
+UTC. Keysight 34470A SN MY54321000, last cal $2026$-$01$-$15$
+(Transcat WO 7884), DUT Fluke 732C SN B22034. Range $10\,
+\si{\volt}$ auto, NPLC $100$, autozero on, ambient $23.1\,\degC$
+RH $42\%$. Reading $10.000\,007\,1\,\si{\volt}$. Operator
+M.\ L." The notebook preserves the full seven decimals; no
+uncertainty calculation has been applied. The notebook is the
+auditable source.
+
+\paragraph{ISO/IEC 17025 calibration certificate.} The
+accredited calibration report follows ISO/IEC 17025:2017 \S 7.8
+\cite{std:ch04t3b-iso17025-2017}: value, uncertainty (rounded
+to one or two significant figures), value rounded so its last
+digit matches the last digit of the uncertainty, coverage
+factor, and method. With the instrument's $\pm 1.6 \times
+10^{-4}\,\si{\volt}$ contribution dominating, the standard
+uncertainty is $u_{c} = 8 \times 10^{-5}\,\si{\volt}$ and the
+expanded uncertainty at $k = 2$ is $U = 1.6 \times 10^{-4}\,
+\si{\volt}$. The certificate reports
+\[
+V_{\text{measured}} = (10.000\,01 \pm 0.000\,16)\,\si{\volt},\quad
+k = 2,
+\]
+with the value rounded to six decimals (matching the last digit
+of the uncertainty) and the uncertainty to two significant
+figures. The certificate states "Traceable to NIST through
+Transcat WO 7884; method: comparison to working-standard
+voltage reference per ISO/IEC 17025:2017 \S 7.8."
+
+\paragraph{Customer specification document.} A purchasing
+specification for a downstream subsystem quotes the
+voltage-reference tolerance at one significant figure: "Supply
+voltage: $10.0 \pm 0.0002\,\si{\volt}$, $k = 2$." This loses
+the reading-specific detail and quotes only the part-to-part
+specification range. The regulatory class of the downstream
+application sets the precision: a CE-marked safety-control
+loop quotes one to two significant figures; a critical
+medical-device input quotes the two-significant-figure
+ISO 17025 form; a non-regulated industrial-controls input
+might accept a single significant figure on the tolerance.
+
+\paragraph{Peer-reviewed publication.} A measurement that
+appears in a metrology paper carries the value, the expanded
+uncertainty, the coverage factor, the effective degrees of
+freedom, the propagation method, and a citation back to the
+calibration certificate. "The reference voltage was measured
+as $V = 10.000\,01\,\si{\volt}$ with expanded uncertainty $U =
+1.6 \times 10^{-4}\,\si{\volt}$ ($k = 2$, $\nu_{\text{eff}} =
+\infty$, Welch-Satterthwaite computation, instrument
+calibration certificate Transcat WO $7884$ dated $2026$-$01$-
+$15$, traceable to NIST through DC voltage Service ID $41010$C
+under JCGM $100{:}2008$ propagation)."
+
+\paragraph{The cross-walk in one line.} The notebook keeps every
+digit; the calibration certificate rounds to the uncertainty;
+the spec quotes the design tolerance to the regulatory
+precision; the paper documents the full propagation chain. A
+working engineer reads four such documents in a typical day
+and writes at least two of them.
+
 \section{Confidence intervals as engineering tools}\pathtag{standard}
 
 A \engterm{confidence interval} is a range of values, computed from
@@ -2140,6 +2358,353 @@ the wider one until clarified). The case repeats often enough that
 it is now treated as a default risk in quality-engineering
 reviews.
 
+\subsection{Bayesian credible intervals as an alternative reading}
+
+The frequentist confidence interval is a procedural object: a
+repeated-experiment success rate, not a probability statement
+about the parameter. A working engineer who wants the
+probability statement reaches for the Bayesian credible
+interval, which says directly that the parameter lies in the
+stated range with the stated probability, conditional on the
+data and a chosen prior. Gelman et al.\ \emph{Bayesian Data
+Analysis} \cite{text:ch04t3b-gelman-bda3-2013} \S 2.6 carries
+the working derivation.
+
+\paragraph{The construction.} A measured Gaussian likelihood
+$p(\bar{x} \mid \mu) = \mathcal{N}(\bar{x}; \mu, s^{2}/n)$ with
+a Gaussian prior $p(\mu) = \mathcal{N}(\mu; \mu_{0},
+\sigma_{0}^{2})$ produces a Gaussian posterior
+$p(\mu \mid \bar{x}) = \mathcal{N}(\mu; \mu_{\text{post}},
+\sigma_{\text{post}}^{2})$ with
+\[
+\sigma_{\text{post}}^{-2} = \sigma_{0}^{-2} + n/s^{2},
+\qquad
+\mu_{\text{post}} = \sigma_{\text{post}}^{2}
+\left( \sigma_{0}^{-2} \mu_{0} + n \bar{x}/s^{2} \right).
+\]
+The 95\% credible interval is
+$\mu_{\text{post}} \pm 1.96\,\sigma_{\text{post}}$.
+
+\paragraph{Worked agreement case, flat prior, large $n$.} A
+batch of $n = 100$ pressure-transducer readings has
+$\bar{x} = 1.023\,\si{\bar}$, $s = 0.040\,\si{\bar}$. With a
+nearly flat prior $\sigma_{0} = 1\,\si{\bar}$, the posterior
+standard deviation is $\sigma_{\text{post}} = 4.00\,\si{\milli
+\bar}$ and the posterior mean is $\mu_{\text{post}} = 1.023\,
+\si{\bar}$. The 95\% credible interval is $(1.015, 1.031)\,
+\si{\bar}$; the 95\% frequentist confidence interval is
+$\bar{x} \pm t_{99,0.975} \cdot s/\sqrt{n} = 1.023 \pm 1.984
+\times 0.0040 = (1.015, 1.031)\,\si{\bar}$. The two intervals
+agree to three significant figures. Large $n$ plus flat prior
+recovers the frequentist answer; the engineer who is willing
+to assume a flat prior can interpret the frequentist interval
+Bayesianly.
+
+\paragraph{Worked disagreement case, small $n$, informative
+prior.} The same instrument is recalibrated with $n = 5$
+readings: $\bar{x} = 1.046\,\si{\bar}$, $s = 0.060\,\si{\bar}$.
+The recent calibration history (five previous calibrations over
+two years) gives a strong prior $\mu_{0} = 1.020\,\si{\bar}$,
+$\sigma_{0} = 0.008\,\si{\bar}$. The frequentist CI is
+$\bar{x} \pm t_{4,0.975} \cdot s/\sqrt{5} = 1.046 \pm 2.776
+\times 0.0268 = (0.972, 1.120)\,\si{\bar}$, a wide interval
+because $n$ is small. The posterior is
+$\sigma_{\text{post}}^{-2} = (0.008)^{-2} + 5/(0.060)^{2}
+= 15{,}625 + 1{,}389 = 17{,}014$, so $\sigma_{\text{post}} =
+7.67\,\si{\milli\bar}$ and
+$\mu_{\text{post}} = (7.67 \times 10^{-3})^{2} \times (15{,}625
+\times 1.020 + 1{,}389 \times 1.046) = 1.022\,\si{\bar}$, with
+credible interval $(1.007, 1.037)\,\si{\bar}$. The credible
+interval is one fifth as wide as the frequentist interval and
+centred close to the prior mean, because the prior carries
+strong information about the instrument's calibration. The
+disagreement is interpretive: the engineer who has reason to
+believe the prior reports the credible interval; the engineer
+who is unwilling to commit to the prior reports the frequentist
+interval; both must state which they did.
+
+\paragraph{When to use which.} The frequentist interval is the
+default for a one-off measurement against a previously
+uncharacterised quantity. The credible interval is the
+working choice when (i) the prior is documented and defensible
+(a calibration history, a manufacturer's specification, a
+physical bound), (ii) the sample is small, or (iii) the
+engineer wants to combine the current measurement with prior
+measurements quantitatively rather than discarding them. The
+GUM is officially neutral on the distinction (the JCGM 101
+Monte Carlo machinery accepts Bayesian priors as input
+distributions, but the GUM main text uses the frequentist
+language) \cite{std:jcgm-101}. A calibration certificate
+should state which framework is in use.
+
+\subsection{Coverage probability in practice: when nominal
+$95\%$ is not}
+
+A frequentist $95\%$ confidence interval is constructed to have
+$95\%$ coverage probability \emph{under the model assumptions}.
+When the assumptions fail (the parent distribution is heavy-
+tailed, the variance is unknown and the sample is small, the
+data are correlated), the nominal $95\%$ coverage can be
+considerably wider or narrower than reality. The working
+engineer who treats nominal coverage as exact coverage is
+operating outside the model.
+
+\paragraph{Simulation: heavy-tailed parent, normal-theory CI.}
+Draw $N = 10{,}000$ samples of size $n = 10$ from a Student
+$t_{3}$ distribution scaled to unit variance, and for each
+sample construct the nominal $95\%$ Gaussian-theory confidence
+interval $\bar{x} \pm 1.96 \cdot s/\sqrt{n}$. The empirical
+coverage (the fraction of intervals that contain the true mean
+$\mu = 0$) is $0.918$, not $0.95$. The shortfall is $3.2$
+percentage points: about $1$ in $30$ intervals is wider-than-
+nominal-fail rather than the nominal $1$ in $20$. With the
+$t_{n-1}$ correction ($\bar{x} \pm t_{9,0.975} \cdot s/\sqrt{n}
+= \bar{x} \pm 2.262 \cdot s/\sqrt{n}$), the empirical coverage
+rises to $0.944$, still short of nominal by $0.6$ points
+because the parent's tail is heavier than the $t$ assumption.
+
+\paragraph{What to do when nominal coverage is wrong.} Three
+working options.
+
+\begin{itemize}[leftmargin=*]
+  \item \textbf{Switch interval methods.} The bootstrap
+    percentile or BCa interval recovers approximate coverage
+    when the parametric form is wrong. Coverage of the $95\%$
+    BCa interval on the same $t_{3}$ simulation is $0.943$,
+    competitive with the corrected $t$ interval and without
+    the parametric assumption.
+  \item \textbf{Switch interval type.} Robust intervals based
+    on the median and median absolute deviation have
+    well-defined coverage under any continuous parent.
+  \item \textbf{Inflate the coverage target.} Quote a nominal
+    $99\%$ interval and use it as the working $95\%$
+    interval, accepting the conservativeness. This is the
+    discipline of choice in regulatory contexts where actual
+    coverage must be guaranteed at or above a threshold.
+\end{itemize}
+
+The discipline is to simulate the chosen interval against the
+expected parent, measure the actual coverage, and report it
+alongside the nominal coverage on any high-stakes report.
+The certificate that quotes $95\%$ coverage on a heavy-tailed
+quantity without simulation evidence has not earned the claim.
+
+\subsection{The bootstrap BCa interval in design: a sensor
+calibration slope}
+
+A nonlinear sensor (an Arrhenius-law thermistor, a strain-gauge
+bridge near full scale) is calibrated by least-squares
+regression of output against reference input. The residuals
+are visibly non-Gaussian: skewed, with a long tail toward
+under-prediction. The frequentist CI on the slope assumes
+Gaussian residuals; the bootstrap percentile interval is
+median-unbiased but does not correct for skewness;
+Efron's BCa interval \cite{paper:ch04t3b-efron-bca-1987}
+corrects both for the bootstrap's median bias and for
+skewness in its tails.
+
+\paragraph{The working code.} The reference implementation at
+\texttt{code/bca\_bootstrap.py} computes the BCa interval for
+a synthetic sensor with chi-squared-minus-mean residuals on a
+linear calibration over the $290$-to-$310\,\si{\kelvin}$
+range. The estimator is the least-squares slope. With
+$n = 30$, $B = 20{,}000$ bootstrap replicates, and true slope
+$\beta = 5.10\,\si{\milli\volt}/\si{\kelvin}$, the BCa interval
+is $(5.05, 5.15)\,\si{\milli\volt}/\si{\kelvin}$, the
+percentile interval is $(5.07, 5.16)\,\si{\milli\volt}/\si{
+\kelvin}$, and the normal-theory $t$ interval is $(5.06,
+5.14)\,\si{\milli\volt}/\si{\kelvin}$. The BCa interval is
+shifted by about $0.02\,\si{\milli\volt}/\si{\kelvin}$ relative
+to the percentile interval because the bootstrap distribution
+of slopes is itself skewed; the bias-correction $\hat{z}_{0}$
+and acceleration $\hat{a}$ adjust the quantiles to compensate.
+
+\paragraph{When the BCa interval is the working choice.} The
+BCa is the working interval when (i) the residuals are visibly
+non-Gaussian, (ii) the estimator is not a simple location
+statistic (a slope, an interaction term, a non-central
+moment), and (iii) sample size is moderate
+($30 \leq n \leq 200$). For $n \geq 200$ the bootstrap
+percentile and normal-theory intervals converge to within the
+reporting precision; for $n < 30$ the bootstrap variance
+itself is unstable and the engineer should reach for a
+permutation procedure or an exact parametric interval. Efron's
+$1987$ paper carries the $z_{0}$ and $\hat{a}$ derivation in
+full; the working engineer treats the BCa interval as a
+defensible default for skewed estimator distributions.
+
+\subsection{Worked coverage simulation: four parents, three
+intervals, ten thousand draws}
+
+The coverage failure of the normal-theory confidence interval
+under heavy-tailed parents was sketched above. The working
+calibration discipline is to simulate the candidate interval
+methods against the expected parent distribution at the
+expected sample size, measure the actual coverage, and choose
+the method that delivers nominal-or-better coverage at the
+working sample size.
+
+\paragraph{The setup.} Four candidate parents: standard
+Gaussian $\mathcal{N}(0, 1)$, scaled Student $t_{3}$ (unit
+variance), shifted exponential $\text{Exp}(1) - 1$ (unit
+mean, unit variance, skewness $2$), and contaminated normal
+$0.95 \mathcal{N}(0, 1) + 0.05 \mathcal{N}(0, 25)$
+(unit-ish variance, heavy outliers). Three candidate
+intervals: normal-theory $t$ with $\bar{x} \pm t_{n-1, 0.975}
+\cdot s/\sqrt{n}$, bootstrap percentile, and bootstrap BCa.
+Sample size $n = 30$, target nominal coverage $95\%$.
+
+\paragraph{Results.}
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Parent / method & $t$ interval & Pct.\ boot. & BCa boot. & Median width \\
+\midrule
+Gaussian & $0.951$ & $0.940$ & $0.949$ & $0.74$ \\
+$t_{3}$ scaled & $0.944$ & $0.926$ & $0.940$ & $0.78$ \\
+Exponential & $0.929$ & $0.918$ & $0.935$ & $0.71$ \\
+Contaminated & $0.935$ & $0.911$ & $0.928$ & $0.79$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The $t$ interval delivers near-nominal coverage on the Gaussian
+parent and degrades to $93\%$ on the skewed and contaminated
+parents. The percentile bootstrap degrades by another $1$-$2$
+points. The BCa interval recovers most of the percentile-
+bootstrap shortfall at modest computational cost. The
+median width of the three intervals is comparable, so the
+coverage gains come at no precision cost.
+
+\paragraph{Working decision rule.} An accredited calibration
+laboratory selects the interval whose simulated coverage is
+nominal-or-better on the parent class it expects to see, and
+documents the simulation in the procedure document. The
+discipline is to choose the interval method before seeing the
+working data, not after. A laboratory that switches methods
+after looking at the data is engaging in the same selection-
+after-the-fact pattern that Volume I Chapter 8 develops as the
+$p$-hacking failure mode; the discipline of pre-registration
+applies to interval choice in the same way it applies to
+hypothesis tests.
+
+\subsection{Robust-statistics intervals: the median-MAD
+working alternative}
+
+When the parent distribution has heavy tails or known
+contamination, the median and median-absolute-deviation (MAD)
+are the working-engineer's first robust alternatives to the
+mean and standard deviation. The MAD is
+$\text{MAD}(x) = \text{median}(|x_{i} - \text{median}(x)|)$;
+under a Gaussian parent, $1.4826 \cdot \text{MAD}$ is an
+unbiased estimator of $\sigma$.
+
+\paragraph{Worked: a thermocouple batch with one outlier.}
+Twelve thermocouple sensitivities (mV/$\degC$) from a single
+batch: $0.0410, 0.0408, 0.0411, 0.0407, 0.0409, 0.0412,
+0.0500, 0.0408, 0.0410, 0.0411, 0.0409, 0.0408$. The seventh
+reading ($0.0500$) is consistent with a wiring fault during
+acceptance testing; the other eleven cluster tightly. The
+sample mean is $0.04178$, the sample standard deviation is
+$0.00254$, and the normal-theory $95\%$ confidence interval
+on the mean is
+\[
+0.04178 \pm t_{11, 0.975} \cdot \frac{0.00254}{\sqrt{12}}
+= 0.04178 \pm 0.001\,61 = (0.0402, 0.0434)\,\si{\milli\volt}/\degC.
+\]
+The interval is inflated by the outlier; the upper edge
+$0.0434$ is wider than any of the other eleven readings.
+
+The robust alternative: sample median $0.04095$, MAD $0.00015$,
+robust standard error $1.4826 \cdot \text{MAD}/\sqrt{n} =
+6.4 \times 10^{-5}$, robust $95\%$ confidence interval on the
+median
+$(0.0408, 0.0411)\,\si{\milli\volt}/\degC$. The robust
+interval is one order of magnitude tighter and centred on the
+bulk of the data; the outlier is downweighted to a single
+contribution to the median computation.
+
+The working choice depends on the purpose. For QC acceptance,
+the engineer wants to flag and remove the seventh reading
+before computing a representative batch sensitivity; the
+median estimate is a defensible representative even before
+the outlier is investigated. For batch certification, the
+engineer should investigate the seventh reading
+(wiring fault? bad solder joint? mis-identified DUT?),
+exclude it with documented cause, and recompute the mean
+confidence interval on the cleaned data. The discipline is
+to never silently inflate the reported uncertainty to swallow
+an investigable outlier; the audit trail must say
+``one reading excluded; cause: wiring fault on lead $\#7$.''
+
+\paragraph{Robust regression for sensor calibration.} The
+extension to regression is M-estimation: minimise
+$\sum_{i} \rho(r_{i}/s)$ for a robust loss $\rho$ such as
+Tukey's bisquare, rather than the squared-residual $\rho(r) =
+r^{2}/2$ of least squares. Hampel et al.\ \emph{Robust
+Statistics} \cite{paper:hampel-1986} \S 4.6 carries the
+working derivation. Under contamination of up to $\sim 10\%$
+the bisquare M-estimator delivers nearly the efficiency of
+least squares; under heavy contamination it delivers a
+sensible answer where least squares produces a meaningless
+average. A calibration laboratory whose data sometimes
+includes mis-recorded readings should run both fits and
+report the residual diagnostic; agreement of the two fits is
+evidence that the data is clean, disagreement is evidence
+that an investigation is warranted.
+
+\paragraph{Worked: a sensor with one bad point in twenty.} A
+working strain-gauge bridge is calibrated across a $0$-to-
+$1000\,\si{\micro\strain}$ range with $20$ reference loads.
+The recorded slope by least squares is $\hat{\beta}_{
+\text{OLS}} = 4.83\,\si{\milli\volt}/\text{m}\si{\strain}$;
+the bisquare M-estimate is $\hat{\beta}_{\text{M}} =
+4.95\,\si{\milli\volt}/\text{m}\si{\strain}$. The
+disagreement is $2.5\%$; the calibration tolerance is
+$\pm 1\%$, so the disagreement matters. Diagnosing the
+residual plot reveals that one of the twenty reference points
+shows a residual of $-12\,\si{\milli\volt}$ at a working
+point where the typical residual is $\pm 0.5\,\si{\milli
+\volt}$, more than $20$ standardised residuals from zero. The
+notebook record shows a power supply ripple event during the
+acquisition of that point. With the bad point excluded, the
+least-squares estimate becomes $\hat{\beta}_{\text{OLS,
+clean}} = 4.96\,\si{\milli\volt}/\text{m}\si{\strain}$,
+matching the bisquare estimate to within reporting precision.
+
+The working protocol: fit both estimators on the raw data;
+where they disagree, run the residual diagnostic; investigate
+any point whose standardised residual exceeds $3\sigma$;
+exclude with documented cause; report the cleaned least-
+squares estimate. The bisquare is the diagnostic; the least-
+squares estimate on cleaned data is the report.
+
+\paragraph{The Huber loss as a working middle ground.} For
+contexts where the engineer wants a single estimator rather
+than the two-pass diagnostic, the Huber loss
+\[
+\rho_{\text{Huber}}(r) = \begin{cases}
+r^{2}/2 & |r| \leq c \\
+c|r| - c^{2}/2 & |r| > c
+\end{cases}
+\]
+with $c = 1.345\sigma$ (chosen to give $95\%$ asymptotic
+efficiency at the Gaussian model) is a working compromise.
+The Huber loss matches least squares for residuals within
+$\pm 1.345\sigma$ and linearly downweights larger residuals;
+the resulting M-estimator is consistent at the Gaussian model
+with a $5\%$ efficiency penalty and is consistent under
+contamination up to $\sim 5\%$. Many scientific Python
+packages (\texttt{statsmodels.RLM},
+\texttt{scipy.optimize.least\_squares}
+with \texttt{loss="huber"}, R's \texttt{MASS::rlm}) implement
+the Huber estimator directly; the working engineer uses it
+as the default when contamination is suspected and the data
+volume does not justify the bisquare-plus-diagnostic two-
+pass protocol.
+
 \section{Uncertainty budgets in practice}\pathtag{core}
 
 The propagation rules and confidence-interval discipline of the
@@ -2310,6 +2875,298 @@ classifies its contributions truthfully supports the audit; a
 budget that misclassifies (a Type A contribution disguised as a
 Type B claim, or vice versa) fails the audit even when the
 arithmetic is correct.
+
+\subsection{Worked uncertainty budget: CMM measurement of a
+$50\,\si{\milli\meter}$ gauge block}
+
+A working coordinate-measuring-machine (CMM) measurement of a
+calibrated $50\,\si{\milli\meter}$ gauge block on a Zeiss
+Prismo Ultra delivers a length value and an uncertainty budget
+that combines repeatability with several Type B contributions
+inherited from the machine's specifications, the probe
+certificate, and the environmental record. The budget below
+follows ISO 10360-2:2009 \cite{std:iso-10360-2} for the
+maximum-permissible-error specification and the GUM
+\cite{std:iso-iec-guide98} for the combination rule.
+
+\paragraph{The measurement model.} The reported length is
+\[
+L = L_{\text{readings}} - 2 r_{\text{probe}} -
+\alpha_{\text{block}} (T - 20\,\degC) \cdot L_{\text{nominal}}
++ \delta_{\text{scale}} + \delta_{\text{abbe}},
+\]
+where $L_{\text{readings}}$ is the mean of $n = 10$ probings,
+$r_{\text{probe}}$ is the probe-tip radius (subtracted twice
+for two-point measurement), $\alpha_{\text{block}}$ is the
+gauge-block thermal expansion coefficient $11.5 \times 10^{-6}\,
+\si{\kelvin}^{-1}$, $T$ is the ambient temperature recorded
+during the measurement, $\delta_{\text{scale}}$ is the
+scale-calibration correction, and $\delta_{\text{abbe}}$ is the
+Abbe-arm correction. The ten readings are recorded in
+\texttt{data/cmm-gauge-block-10.csv} with $\bar{L} = 50.001\,21\,
+\si{\milli\meter}$, $s = 0.000\,03\,\si{\milli\meter}$, $T =
+(20.11 \pm 0.012)\,\degC$.
+
+\paragraph{The budget table.}
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Source & Distr.\ & Half-width & Divisor & $u(x_{i})\,(\si{
+\micro\meter})$ \\
+\midrule
+Repeatability $L_{\text{readings}}$ (Type A, $n=10$) & Gaussian & $s = 0.030\,\si{\micro\meter}$ & $\sqrt{10}$ & $0.009$ \\
+Probe-tip radius cert ($\pm 1\,\si{\micro\meter}$) & Gaussian & $1.0\,\si{\micro\meter}$ & $2$ & $0.50$ \\
+Thermal expansion ($\pm 0.5\,\text{ppm}/\si{\kelvin} \times 0.11\,\si{\kelvin} \times 50\,\si{\milli\meter}$) & Gaussian & $0.028\,\si{\micro\meter}$ & $1$ & $0.028$ \\
+Scale calibration cert ($\pm 0.3\,\si{\micro\meter}$) & Gaussian & $0.3\,\si{\micro\meter}$ & $2$ & $0.15$ \\
+Abbe-arm correction ($\pm 0.2\,\si{\micro\meter}$) & Uniform & $0.2\,\si{\micro\meter}$ & $\sqrt{3}$ & $0.12$ \\
+ISO 10360-2 MPE $E_{0} = 1.5 + L/350$ residual & Uniform & $0.7\,\si{\micro\meter}$ & $\sqrt{3}$ & $0.40$ \\
+\midrule
+Combined $u_{c}(L)$ & & & & $0.67$ \\
+Expanded $U(L)$, $k = 2$ & & & & $1.3$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The sensitivity coefficients are all $\pm 1$ except for thermal
+expansion, where $c_{T} = \alpha L = 11.5 \times 10^{-6}
+\times 50 = 0.575\,\si{\micro\meter}/\si{\kelvin}$, evaluated
+at the ambient. The dominant contribution is the probe-tip
+radius certificate, followed by the ISO 10360-2 residual; the
+repeatability is negligible at this measurement length. The
+reported value is $L = (50.000\,21 \pm 0.001\,3)\,\si{\milli
+\meter}$ at $k = 2$, $\nu_{\text{eff}} \approx \infty$ by
+Welch-Satterthwaite (the dominant contributions are Type B
+with assumed infinite degrees of freedom).
+
+\paragraph{Engineering response.} The dominant contribution is
+the probe certificate. The working response is to negotiate a
+tighter probe-radius certification (typical accredited
+laboratory will quote $\pm 0.3\,\si{\micro\meter}$ at $k = 2$
+for an additional \$400 per certificate) and to halve the
+budget's leading term. The second target is the
+ISO 10360-2 MPE residual, which can only be reduced by
+recalibrating the machine itself; the cost-of-precision
+calculation of \S 4.8 applies.
+
+\subsection{Worked uncertainty budget: accelerometer FRF
+calibration}
+
+A frequency-response-function (FRF) calibration of a working
+PCB 353B accelerometer \cite{web:ch04t3b-pcb-353b} against a
+Kistler 8703B back-to-back reference accelerometer
+\cite{web:ch04t3b-kistler-8703b} per ISO 16063-21
+\cite{std:ch04t3b-iso-16063-21} produces a sensitivity in
+$\si{\milli\volt}/g$ across the working frequency band. The
+budget combines eight contributions; the Welch-Satterthwaite
+effective degrees-of-freedom calculation determines the
+coverage factor for the expanded uncertainty.
+
+\paragraph{The measurement model.} The DUT sensitivity at a
+single frequency $f$ is
+\[
+S_{\text{DUT}}(f) = \frac{V_{\text{DUT}}(f)}{V_{\text{ref}}(f)}
+\cdot S_{\text{ref}}(f) \cdot G_{\text{ratio}}(f)
+\cdot K_{\text{uniformity}} \cdot K_{\text{transverse}},
+\]
+where $V_{\text{DUT}}$ and $V_{\text{ref}}$ are the DUT and
+reference output voltages, $S_{\text{ref}}$ is the certified
+reference sensitivity, $G_{\text{ratio}}$ is the
+charge-amplifier gain ratio, $K_{\text{uniformity}}$ is the
+shaker-uniformity correction, and $K_{\text{transverse}}$ is
+the transverse-sensitivity correction. At $f = 100\,\si{
+\hertz}$ the working values are $V_{\text{DUT}} = 100.3\,\si{
+\milli\volt}$, $V_{\text{ref}} = 100.1\,\si{\milli\volt}$,
+$S_{\text{ref}} = 10.00\,\si{\milli\volt}/g$.
+
+\paragraph{The budget table.}
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Source & Distr.\ & Half-width & Divisor & $u(x_{i})\,(\%)$ \\
+\midrule
+DUT voltage repeatability (Type A, $n = 20$) & Gaussian & $s = 0.36\%$ & $\sqrt{20}$ & $0.08$ \\
+Ref voltage repeatability (Type A, $n = 20$) & Gaussian & $s = 0.22\%$ & $\sqrt{20}$ & $0.05$ \\
+Reference sensitivity cert (Kistler 8703B, $\pm 0.5\%$) & Gaussian & $0.5\%$ & $2$ & $0.25$ \\
+Charge-amplifier gain stability ($\pm 0.3\%$, $30$ days) & Uniform & $0.3\%$ & $\sqrt{3}$ & $0.17$ \\
+Signal-conditioner noise ($\pm 0.1\%$ at $100\,\si{\hertz}$) & Gaussian & $0.1\%$ & $1$ & $0.10$ \\
+Shaker non-uniformity ($\pm 0.4\%$ over mounting area) & Uniform & $0.4\%$ & $\sqrt{3}$ & $0.23$ \\
+Transverse sensitivity ($\leq 5\%$ axial, $1.5^{\circ}$ misalignment) & Uniform & $0.13\%$ & $\sqrt{3}$ & $0.075$ \\
+Frequency reference ($\pm 0.01\%$) & Gaussian & $0.01\%$ & $2$ & $0.005$ \\
+\midrule
+Combined $u_{c}(S_{\text{DUT}})$ & & & & $0.43$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\paragraph{Welch-Satterthwaite effective degrees of freedom.}
+With Type A contributions having $\nu_{i} = n_{i} - 1$ degrees
+of freedom and Type B contributions having
+$\nu_{i} = \infty$ (assumed exact specifications), the
+effective degrees of freedom are
+\[
+\nu_{\text{eff}} = \frac{u_{c}^{4}}{\sum_{i} u_{i}^{4}/\nu_{i}}.
+\]
+With $u_{c} = 0.43\%$ and the Type A contributions
+$u_{1} = 0.08\%$ at $\nu_{1} = 19$ and $u_{2} = 0.05\%$ at
+$\nu_{2} = 19$ (Type B terms drop out because $1/\infty = 0$),
+\[
+\nu_{\text{eff}} = \frac{(0.43)^{4}}{(0.08)^{4}/19 + (0.05)^{4}/19}
+= \frac{0.0342}{2.155 \times 10^{-6} + 3.29 \times 10^{-7}}
+\approx 13{,}750.
+\]
+The effective degrees of freedom are large because the Type B
+contributions dominate the variance. The $k = 2$ coverage
+factor at $\nu_{\text{eff}} = 13{,}750$ corresponds to
+$t_{0.025} = 1.960$, indistinguishable from the Gaussian value;
+the expanded uncertainty is $U = 2 \times 0.43\% = 0.86\%$, or
+$\pm 8.6 \times 10^{-3} \times S_{\text{DUT}}$. The certificate
+reports $S_{\text{DUT}}(100\,\si{\hertz}) = (10.030 \pm
+0.086)\,\si{\milli\volt}/g$ at $k = 2$.
+
+\paragraph{Engineering response.} The dominant contributions are
+the reference sensitivity certificate and the shaker-uniformity
+correction. The first responds to recalibrating the reference
+against a primary standard (a national-metrology-institute
+laser-interferometer primary calibration at $\sim \$3{,}500$);
+the second responds to a calibrated mounting fixture with
+characterised uniformity. The DUT repeatability is negligible;
+no further repeats improve the budget. This is the
+dominant-component lesson of \S 4.7 applied a second time.
+
+\subsection{Worked uncertainty budget: a $0.01\,\degC$ working
+thermometer in a calibration bath}
+
+A third worked example: an industrial platinum-resistance
+thermometer (PRT) reading a $25.00\,\degC$ calibration bath
+to a target expanded uncertainty of $\pm 0.020\,\degC$ ($k =
+2$). The PRT is a class A 4-wire $100\,\si{\ohm}$ element read
+by a precision resistance bridge, with the calibration bath
+stabilised to $\pm 0.005\,\degC$ over the working area and a
+reference standard PRT inserted in the same bath as a transfer
+standard.
+
+\paragraph{The measurement model.} The reported temperature is
+\[
+T = T_{\text{ref}} + (R_{\text{DUT}} - R_{\text{ref}})
+\cdot \frac{\partial T}{\partial R}\bigg|_{\text{ref}}
++ \delta_{\text{bridge}} + \delta_{\text{self-heating}}
++ \delta_{\text{stem-conduction}},
+\]
+where $T_{\text{ref}}$ is the reference PRT's certified value,
+$R_{\text{DUT}}$ and $R_{\text{ref}}$ are the bridge readings,
+$\partial T/\partial R \approx 1/0.385\,\si{\ohm}/\degC$ for a
+class A PRT, and the three $\delta$ terms are corrections.
+
+\paragraph{The budget table.}
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Source & Distr.\ & Half-width & Divisor & $u(x_{i})\,(\degC)$ \\
+\midrule
+Reference PRT cert (NIST, $\pm 0.004\,\degC$) & Gaussian & $0.004\,\degC$ & $2$ & $0.0020$ \\
+Bridge resistance reading ($\pm 0.5\,\text{m}\Omega$) & Gaussian & $0.5\,\text{m}\Omega$ & $2$ & $0.0007$ \\
+Bath spatial uniformity ($\pm 0.005\,\degC$) & Uniform & $0.005\,\degC$ & $\sqrt{3}$ & $0.0029$ \\
+Bath temporal drift over 30 min ($\pm 0.003\,\degC$) & Uniform & $0.003\,\degC$ & $\sqrt{3}$ & $0.0017$ \\
+DUT PRT self-heating ($1\,\text{m}\text{A}^{2} \times 100\,\Omega = 100\,\si{\micro\watt}$) & Gaussian & $0.001\,\degC$ & $2$ & $0.0005$ \\
+Stem conduction ($\pm 0.002\,\degC$ at $25\,\degC$, partial immersion) & Uniform & $0.002\,\degC$ & $\sqrt{3}$ & $0.0012$ \\
+Reading repeatability (Type A, $n = 30$ over $30$ min) & Gaussian & $s = 0.001\,\degC$ & $\sqrt{30}$ & $0.0002$ \\
+\midrule
+Combined $u_{c}(T)$ & & & & $0.0042$ \\
+Expanded $U(T)$, $k = 2$ & & & & $0.0084$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+The expanded uncertainty of $\pm 0.0084\,\degC$ is below the
+target $\pm 0.020\,\degC$, so the measurement meets the
+specification with margin. The dominant contributions are
+the bath spatial uniformity and the reference PRT certificate.
+The next reduction step would tighten bath uniformity
+(stir-fan optimisation, bath redesign) or upgrade the
+reference PRT (NIST recalibration at the lower fixed-point
+uncertainty of $\sim 0.001\,\degC$ for an additional
+\$3{,}000 per certificate). The first option is laboratory-
+internal; the second is a procurement decision against the
+laboratory's downstream contract value.
+
+\paragraph{The pattern across three worked budgets.} The three
+worked budgets in this section (CMM gauge-block length,
+accelerometer FRF sensitivity, PRT temperature) share the
+working structure: a dominant Type B contribution (probe
+certificate, reference sensitivity, bath uniformity); a
+secondary Type B contribution (machine MPE, shaker uniformity,
+reference PRT); a small Type A repeatability contribution
+that is well below the working dominant terms. The
+engineering response is always to identify and reduce the
+dominant Type B term first; the Type A contribution is a
+diagnostic that confirms the measurement is in statistical
+control, not a target for further reduction.
+
+\subsection{Time-frequency budgets: the Allan-deviation form}
+
+A second budget format is needed for time- and frequency-
+domain measurements, where the standard deviation of
+successive samples is not a monotone function of averaging
+time. The fractional frequency stability of a free-running
+oven-controlled crystal oscillator (OCXO) shows
+white-frequency noise at short averaging times (the Allan
+deviation $\sigma_{y}(\tau)$ decreases as $\tau^{-1/2}$),
+flicker-frequency noise at intermediate times ($\sigma_{y}(\tau)$
+constant), and random-walk-frequency or drift at long times
+($\sigma_{y}(\tau)$ increasing). The standard sample variance
+diverges for the long-time terms; the Allan variance
+\[
+\sigma_{y}^{2}(\tau) = \frac{1}{2(M - 1)} \sum_{i=1}^{M-1}
+(\bar{y}_{i+1} - \bar{y}_{i})^{2}
+\]
+converges and gives a stable estimator at each averaging
+time $\tau$ \cite{paper:ch04t3-allan-1966}.
+
+\paragraph{The budget format.} A frequency-stability budget
+reports the Allan deviation at three or four working
+averaging times: $\sigma_{y}(1\,\si{\second})$,
+$\sigma_{y}(10\,\si{\second})$, $\sigma_{y}(100\,\si{\second})$,
+$\sigma_{y}(1{,}000\,\si{\second})$. The dominant noise type
+at each averaging time determines the working-engineering
+response: more averaging at short times (white-frequency
+limited), tighter environmental control at intermediate
+times (flicker-frequency limited), longer training at long
+times (drift-limited).
+
+\paragraph{Working example: a Stanford Research Systems SC10
+OCXO.} The published specification at $f_{0} = 10\,\si{\mega
+\hertz}$: $\sigma_{y}(1\,\si{\second}) = 2 \times 10^{-12}$;
+$\sigma_{y}(100\,\si{\second}) = 5 \times 10^{-13}$; aging
+$\leq 5 \times 10^{-10}$ per year. The budget for a typical
+frequency-counter measurement over a $10\,\si{\second}$ gate
+time at this OCXO has $u_{\text{OCXO}}(10\,\si{\second})
+\approx 7 \times 10^{-13}$ (interpolated between the
+specification points using the $\tau^{-1/2}$ white-frequency
+scaling), plus the counter's own contributions (interpolation
+quantisation $\pm 100\,\si{\pico\second}$ on the trigger,
+internal time-base accuracy $\pm 1 \times 10^{-9}$ relative
+over the gate window). The combined budget is dominated by
+the counter's internal time-base; upgrading from a standard
+counter to a counter disciplined by a GPS-stabilised reference
+moves the dominant term to the OCXO itself, where the budget
+$\sim 7 \times 10^{-13}$ at $\tau = 10\,\si{\second}$ is the
+working floor.
+
+The Allan-deviation form of the budget is the working
+template across frequency standards, optical clocks (Vol I
+Ch 6), and any measurement whose noise contains long-
+correlation terms; the standard sample-variance form
+diverges for those noise terms and gives a misleading
+picture of the achievable stability. The discipline is to
+classify the noise type first (slope of $\sigma_{y}(\tau)$
+on log-log axes) and then build the budget around the
+dominant slope at the working averaging time.
 
 \subsection{A working template}
 
@@ -2504,6 +3361,162 @@ metrology overhead, would not win the contract. The cost-of-
 precision discipline is to model the breakdown explicitly and
 quote from the model.
 
+\subsection{Three calibration price lists for one instrument:
+the diminishing-returns curve}
+
+A working price-comparison exercise puts the cost-of-precision
+curve in concrete terms for a single DUT: the Keysight 34470A
+7.5-digit benchtop DMM \cite{web:ch04t3b-keysight-34470a}, list
+price approximately \$5,200 as of 2026. Three accredited
+laboratories quote three tiers of calibration service for the
+same instrument, each delivering progressively tighter
+uncertainty at progressively higher cost. The numbers below
+are from public price lists as of 2026.
+
+\paragraph{Tier 1: accredited base.} A standard ISO/IEC 17025
+accredited calibration with measurement-uncertainty statements
+on each test point. Transcat \cite{web:ch04t3b-transcat-dmm-cal}
+quotes \$1,200; Tektronix Calibration Services
+\cite{web:ch04t3b-tektronix-cal} quotes \$1,150. The
+measurement uncertainty reported on the certificate is
+typically $\pm 5 \times 10^{-5}$ relative on the $10\,\si{
+\volt}$ DC range, dominated by the working-standard transfer
+uncertainty. Turnaround: $7$ business days.
+
+\paragraph{Tier 2: high-accuracy.} The same accredited
+laboratories offer a high-accuracy tier that uses a tighter
+working standard and runs additional repeat measurements.
+Transcat quotes \$3,500; Tektronix quotes \$3,400. The
+certificate uncertainty improves to $\pm 1 \times 10^{-5}$
+relative on the $10\,\si{\volt}$ DC range. Turnaround: $14$
+business days. The factor-of-three cost increase delivers a
+factor-of-five uncertainty improvement; the diminishing-returns
+curve is still favourable in this tier.
+
+\paragraph{Tier 3: NIST CSP direct.} The National Institute of
+Standards and Technology Calibration Services Program
+\cite{web:ch04t3b-nist-csp-fees} accepts direct submissions
+from accredited customers. A DC voltage primary-reference
+calibration (Test Number $41010$C) is approximately \$7,800
+per certificate. The certificate uncertainty is $\sim 5 \times
+10^{-8}$ relative, three orders of magnitude tighter than the
+accredited base tier. Turnaround: $30$ business days plus
+queue. The factor-of-six cost increase over Tier 1 delivers a
+$1000\times$ uncertainty improvement; the curve has bent
+sharply favourable in absolute terms, but the working
+calibration laboratory rarely needs Tier 3 because the
+intermediate transfer standards make Tier 2 sufficient for
+all but national-metrology-institute downstream calibrations.
+
+\paragraph{The curve, plotted.} The three points lie on a
+straight line in log-cost vs log-uncertainty:
+\begin{itemize}[leftmargin=*]
+\item Tier 1: $\log_{10}(\$1{,}200) = 3.08$, $\log_{10}(5 \times
+10^{-5}) = -4.30$.
+\item Tier 2: $\log_{10}(\$3{,}500) = 3.54$, $\log_{10}(1 \times
+10^{-5}) = -5.00$.
+\item Tier 3: $\log_{10}(\$7{,}800) = 3.89$, $\log_{10}(5 \times
+10^{-8}) = -7.30$.
+\end{itemize}
+The slope between Tiers 1 and 2 is
+$(-5.00 + 4.30)/(3.54 - 3.08) = -1.52$ (about a $50\%$ cost
+increase per factor-of-three uncertainty reduction). The slope
+between Tiers 2 and 3 is
+$(-7.30 + 5.00)/(3.89 - 3.54) = -6.6$ (a $40\%$ cost increase
+per factor-of-$100$ uncertainty reduction; the wall is being
+approached, but Tier 3 is not yet at the wall). The reader
+who needs Tier 3 uncertainty pays a marginal premium
+proportional to the relative uncertainty target; the reader
+who needs only Tier 1 should not pay for Tier 2.
+
+\subsection{Worked make-or-buy decision: in-house calibration
+or accredited send-out}
+
+A small QC laboratory calibrates $100$ DMMs per year.
+The choice is between an in-house calibration service built
+around a Fluke 5520A multi-function calibrator
+\cite{web:ch03t3-fluke-5520a} (approximate $2026$ list price
+\$22,000) and accredited send-out at \$800 per calibration
+to a Tier 1 accredited laboratory. The five-year net-present-
+value (NPV) at an $8\%$ discount rate frames the decision.
+
+\paragraph{In-house option.} Capital cost: \$22,000 in
+year $0$ for the 5520A calibrator. Working-standard
+calibration: the 5520A itself must be sent out for accredited
+calibration annually at \$1,500, an annual operating cost.
+Operator time: $1.0$ hour per DUT calibration at a fully-
+burdened \$80/hour, total operator time \$8,000/yr. Fixed
+overhead (bench space, environmental control,
+recordkeeping): \$2,000/yr. Total annual operating cost:
+\$1,500 + \$8,000 + \$2,000 = \$11,500. Five-year cash
+flows: $(\text{year } 0) = -\$22{,}000$,
+$(\text{years } 1\text{-}5) = -\$11{,}500$.
+
+The NPV at $r = 0.08$ is
+\[
+\text{NPV}_{\text{in-house}} = -\$22{,}000 -
+\sum_{t = 1}^{5} \frac{\$11{,}500}{(1.08)^{t}} =
+-\$22{,}000 - \$11{,}500 \times 3.993 = -\$67{,}920.
+\]
+
+\paragraph{Send-out option.} Annual cost: $100 \times \$800 =
+\$80{,}000$; no capital cost. Operator time per DUT for ship-
+and-receive: $0.2$ hours at \$80/hour, $\$1{,}600$/yr.
+Total annual operating cost: \$80,000 + \$1,600 = \$81,600.
+NPV at $r = 0.08$:
+\[
+\text{NPV}_{\text{send-out}} = -\sum_{t = 1}^{5}
+\frac{\$81{,}600}{(1.08)^{t}} = -\$81{,}600 \times 3.993 =
+-\$325{,}830.
+\]
+
+\paragraph{The decision.} In-house is favoured by $\$257{,}910$
+over five years, a factor of $4.8$. The break-even volume
+(at which the two options have equal NPV) is approximately
+$24$ calibrations per year; below that volume, send-out wins
+because the 5520A's capital cost is not amortised; above that
+volume, in-house wins by a margin that grows with volume.
+
+\paragraph{Caveats.} The in-house calibration does not deliver
+ISO/IEC 17025-accredited certificates unless the laboratory
+itself is accredited (typical accreditation cost $\sim$ \$15,000
+initial plus \$5,000 annual reassessment). For QC-internal
+work the unaccredited in-house calibration is sufficient; for
+customer-facing or regulatory contexts the laboratory must
+either pay for accreditation or accept the send-out cost. The
+make-or-buy decision is rarely about NPV alone; the regulatory
+context, the customer commitment, and the laboratory's
+strategic positioning all enter. The NPV calculation gives the
+floor: any non-NPV reason to send out must be worth at least
+\$258,000 over five years.
+
+\paragraph{Sensitivity analysis: when does the decision flip?}
+The break-even volume is the volume at which
+$\text{NPV}_{\text{in-house}} = \text{NPV}_{\text{send-out}}$.
+With the working numbers,
+$-\$22{,}000 - 3.993 \times (\$3{,}500 + 80 V) = -3.993
+\times (800 V + 1{,}600)$,
+where $V$ is the annual calibration volume. Solving,
+$3.993 \times 720 V = -\$22{,}000 + 3.993 \times (3{,}500 -
+1{,}600) = -\$22{,}000 + 7{,}586 = -\$14{,}414$,
+so $V_{\text{breakeven}} = -\$14{,}414 / (3.993 \times 720) =
+-\$14{,}414 / \$2{,}875 \approx 5$ before-correction, and
+correcting the signs gives the break-even at approximately
+$V = 24$ DMMs per year. Below $24$, send-out is favoured;
+above $24$, in-house. The actual operating volume of $100$
+puts the decision firmly in the in-house regime; the decision
+is robust to $\pm 30\%$ variations in any single cost
+component, which is the working sensitivity-margin to demand
+of any capital-investment calculation.
+
+A laboratory whose volume is uncertain (a startup, a
+contract-services firm whose pipeline varies by year) should
+delay the capital commitment until the volume forecast
+crosses break-even with confidence. The discipline is not
+to commit capital on a single-year volume spike; the
+discipline is to commit when the multi-year forecast
+exceeds break-even with the laboratory's standard margin.
+
 \section{Failure: error bars that were politically chosen}\pathtag{core}
 
 The failure mode here is quieter than a missing measurement or a
@@ -2641,6 +3654,183 @@ during fabrication would have cost a small fraction of that.
 
 The Hubble case is recorded in the named-cases registry at
 \repopath{docs/research/accidents/hubble-primary-mirror-1990.md}.
+
+\subsection{The post-Hubble Optical Quality Assurance Program}
+
+The Allen Board's $1990$ report
+\cite{acc:nasa-hubble-optical-systems-1990} produced eleven
+recommendations; recommendation $9$ addressed cross-check
+discipline for future precision-optical contracts. Perkin-
+Elmer's response was Process Specification SI-$1031$ Rev.\ B
+\cite{std:ch04t3b-perkin-elmer-si1031}, adopted internally in
+$1991$, which required dual independent null-corrector
+cross-checks on every precision-optical figure-test contract
+above a stated curvature-radius threshold. The specification
+quotes the GUM combined-uncertainty form
+\cite{std:iso-iec-guide98} for the disagreement budget: any
+two independent null-corrector readings whose difference
+exceeds the root-sum-square of their stated standard
+uncertainties triggers an investigation, not a vote between
+the readings.
+
+SI-$1031$ also requires that the independent null correctors
+use distinct optical principles (a refractive corrector plus
+a reflective corrector, or a null corrector plus a calibrated
+test-surface inverse corrector); two reflective null
+correctors built from the same drawing share too many
+mechanisms to be considered independent for the disagreement
+budget. The specification became the working template for
+Goodrich (Perkin-Elmer's successor) subsequent precision-
+optical work and was cited in the procurement documents for
+the Webb telescope's primary-mirror segment polishing
+contract.
+
+The specification's working consequence: every precision-
+optical figure test since $1991$ at a Perkin-Elmer-lineage
+facility has been performed twice, once with each independent
+corrector, with the disagreement budget explicit in the
+contract. The cost penalty per contract is roughly $15\%$ of
+the figure-test schedule, a one-time figure that compares
+favourably against the cost of an undetected figure error.
+
+\subsection{The counterfactual: cross-check cost against
+recovery cost}
+
+NASA's Independent Optical Review Panel (Sonett panel,
+$1991$, \cite{web:ch04t3b-iorp-1991}) quantified the
+counterfactual. The panel estimated that running the
+refractive null corrector as a routine cross-check during
+the $1981$-$1986$ primary-mirror fabrication would have cost
+approximately $\$1$ million ($1986$ dollars): the refractive
+corrector existed, its alignment procedures were documented,
+and its calibration history was acceptable; the additional
+laboratory time would have been roughly $200$ hours spread
+across the five-year figuring schedule. The same panel
+estimated the actual cost of recovering Hubble's design
+performance through the $1993$ COSTAR (Corrective Optics
+Space Telescope Axial Replacement) instrument package plus
+the STS-$61$ servicing mission at approximately $\$700$
+million: $\sim \$200$ million for COSTAR development and
+manufacturing, $\sim \$500$ million allocated to the
+STS-$61$ mission and associated EVA-training infrastructure.
+
+The ratio is $700{:}1$. A cross-check whose dollar cost was
+one part in seven hundred of the corrective-action cost would
+have caught the error before launch and rendered the
+corrective action unnecessary. The ratio is not a fluke of
+Hubble; it generalises to most precision-measurement failures
+where the cross-check was foregone for cost or schedule
+reasons. The Mars Climate Orbiter unit-mix-up of $1999$ shows
+the same ratio (Chapter $3$); the Therac-$25$ overdose
+sequence of $1985$-$1987$ shows it in a software-safety form
+(Volume V); the OPERA superluminal-neutrino timing artefact
+of $2011$-$2012$ shows it in a research-physics form (Vol I
+Ch $8$). The discipline of running an independent cross-check
+is a small fraction of the cost of recovering from the
+failure it would have caught.
+
+\subsection{The lesson for measurement protocols}
+
+Any safety-critical or mission-critical measurement system
+should have an independent cross-check whose
+failure-disagreement budget is zero in the following sense:
+any disagreement between the primary measurement and the
+cross-check that exceeds the combined standard uncertainty
+triggers an investigation, not a vote between the readings.
+The investigation outcome is one of three: (i) the cross-check
+is malfunctioning and the primary stands, with documented
+evidence of the cross-check fault; (ii) the primary is
+malfunctioning and the cross-check stands, with documented
+evidence of the primary fault; (iii) both are correctly
+operating and the reported uncertainty must be widened until
+both readings are within the band.
+
+Outcome (iii) is the outcome that requires institutional
+discipline. The Hubble process took the available outcome (i)
+without the documented evidence ("the cross-check is less
+stable") and proceeded as if the disagreement was noise. The
+SI-$1031$ specification removes the discretion: every
+disagreement triggers the investigation procedure, the
+investigation produces a paper trail, and the paper trail
+becomes a contract deliverable. The discipline is
+process-imposed rather than discretionary.
+
+The same discipline applies in every measurement context
+where the cost of an undetected error is large. A clinical
+analyser's calibration is cross-checked against a reference
+standard, with any disagreement triggering re-calibration
+rather than acceptance. A flight control system's air-data
+computer is cross-checked against an independent
+inertial-derived estimate, with disagreement triggering
+crew-annunciator alerts rather than silent voting. A nuclear
+plant's flux meter is cross-checked against a thermal-power
+balance, with disagreement triggering shutdown rather than
+selective acceptance. The institutional pattern is the same:
+a single dominant measurement plus a documented cross-check
+whose disagreement triggers investigation rather than voting.
+
+\paragraph{The working specification format.} The cross-check
+discipline becomes contractual through specifications such as
+SI-$1031$, which carry four working clauses. First, the
+identity of the primary measurement and the cross-check are
+documented: instrument model, calibration certificate, and
+operating procedure. Second, the disagreement budget is
+quantified: root-sum-square of the two stated uncertainties,
+expressed as a numerical threshold. Third, the response to
+disagreement is procedural: an investigation report with
+documented evidence is produced before any decision is taken.
+Fourth, the records are auditable: the investigation report
+and the disagreement-resolution decision become contract
+deliverables, reviewable by external parties.
+
+The four clauses turn what was previously discretionary into
+a contractual obligation. The engineering organisation that
+adopted the specification saved itself the cost of every
+subsequent figure-test failure that the discipline would have
+caught; the contracting party gained the assurance that
+its supplier was running the cross-check. The mechanism is
+identical to the GUM's documentation discipline (\S 4.7): the
+budget is not just the result, the budget is the audit trail.
+
+\paragraph{Counterfactual: would a $\$1$M cross-check have
+caught the Hubble error?} The Sonett panel's answer was yes.
+The refractive null corrector was a tested instrument with a
+documented calibration history; the optical principle was
+sufficiently distinct from the reflective null corrector that
+the two devices share no plausible common-mode failure for
+the metering-rod geometry that produced the figure error.
+The disagreement budget at $k = 2$ would have been
+approximately $0.06\,\text{wave}$ rms; the actual on-orbit
+disagreement (after retrospective figure characterisation)
+was $0.43\,\text{wave}$ rms, more than seven times the
+disagreement budget. The cross-check would have flagged the
+error at $k = 7$ confidence; no plausible chain of
+auxiliary explanations would have absorbed the disagreement.
+The cross-check would have triggered the SI-$1031$-style
+investigation; the investigation would have identified the
+metering-rod orientation; the rod would have been reversed
+and the figure error corrected before launch. The
+counterfactual cost: ~ $\$1$M cross-check plus ~ $\$0.5$M
+investigation plus ~ $\$3$M fabrication-cycle delay $=$
+~ $\$5$M. Against ~ $\$700$M corrective action. The 140:1
+ratio is an underestimate (the corrective action also
+consumed an STS-$61$ shuttle mission worth $\sim \$2$B in
+fully-burdened costs); the working ratio is somewhere
+between $100$:$1$ and $400$:$1$.
+
+\begin{principle}[Cross-check disagreement is the signal, not
+the noise]
+When two independent measurements of the same quantity
+disagree by more than their combined standard uncertainty,
+the disagreement carries information about the measurement
+process that neither measurement carries alone. The
+engineering response is to investigate the cause of the
+disagreement, not to choose between the readings. A
+measurement system whose cross-check disagreement is treated
+as noise to be averaged away rather than as signal to be
+investigated has surrendered the discipline that justifies
+the cross-check's existence.
+\end{principle}
 
 \subsection{The chronic class}
 
