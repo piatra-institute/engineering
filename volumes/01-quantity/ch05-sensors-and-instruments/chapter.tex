@@ -1593,6 +1593,81 @@ The reader selecting a DMM for a measurement should consult the
 page; the front-panel display sometimes overstates the available
 precision.
 
+\paragraph{Reading the DMM datasheet.} The DC-voltage accuracy
+specification on a benchtop DMM is written as a sum of two
+fractional terms, with the Keysight 34470A datasheet
+\cite{text:ch05t3b-keysight-34470a-datasheet} as the representative
+example. The $34470A$'s DC-volts accuracy at the $10 \,\si{\volt}$
+range for the $24$-hour, $90$-day, and $1$-year horizons reads as
+$\pm (\text{ppm of reading} + \text{ppm of range})$, with the
+$24$-hour figure $11 + 0.5$, the $90$-day figure $18 + 0.5$, and the
+$1$-year figure $24 + 0.5$, all relative to a calibration temperature
+of $23 \pm 5 \,\degC$ after a $90$-minute warm-up. The first term
+scales with the input; the second term is a fixed contribution
+independent of the input that captures the zero-offset and
+gain-error of the instrument. A reading of $1.0 \,\si{\volt}$
+on the $10 \,\si{\volt}$ range at the $24$-hour spec carries
+$\pm (11 \,\si{ppm} \times 1.0 \,\si{\volt} + 0.5 \,\si{ppm} \times
+10 \,\si{\volt}) = \pm (11 + 5) \,\si{\micro\volt} = \pm 16
+\,\si{\micro\volt}$; a reading of $10.0 \,\si{\volt}$ on the same
+range carries $\pm (110 + 5) \,\si{\micro\volt} = \pm 115 \,\si{
+\micro\volt}$. The range term dominates for small readings; the
+reading term dominates near full scale. The working engineer's habit
+of asking which term dominates the budget is the practical output
+of reading the datasheet.
+
+The $24$-hour, $90$-day, and $1$-year horizons capture the
+calibration interval. A laboratory that recalibrates its $34470A$
+every $90$ days reads the $90$-day spec; one that recalibrates
+annually reads the $1$-year spec; one that recalibrates only when
+the measurement disagrees with a working reference reads no
+published spec at all and must establish its own uncertainty from
+check standards in the laboratory. The $24$-hour figure applies
+within a calibration session, where the operator has just
+transferred a voltage reference and the instrument's zero-offset
+has not had time to drift. The three figures form a ladder: the
+closer the measurement to the calibration in time, the tighter the
+accuracy. An engineer who reports a $24$-hour specification on a
+measurement taken six months after calibration has misread the
+datasheet.
+
+The temperature coefficient line is the third term. The
+$34470A$ specifies $\pm (\text{1 ppm of reading} + 0.1 \,\si{ppm} \,
+\text{of range})$ per $\degC$ outside the $23 \pm 5 \,\degC$
+calibration window. A laboratory at $30 \,\degC$, $2 \,\degC$
+outside the calibration window, adds
+$\pm (2 + 0.2) \,\si{ppm}$ to the reading-term and range-term
+accuracies. The display carries a digit, the indication-digit,
+that is the LSB of the display and not part of the accuracy; the
+$34470A$ at the $10 \,\si{\volt}$ range displays to $7.5$ digits
+(the indication-digit being the half-digit), with an accuracy of
+$\pm 16 \,\si{\micro\volt}$ on a $1.0 \,\si{\volt}$ reading. The
+digit beyond the accuracy is a hint about which way the
+instrument's zero-offset and gain-error are drifting between
+calibrations; it is not a measurement, and reporting it as one
+misuses the datasheet.
+
+A worked uncertainty calculation. A laboratory at $25 \,\degC$ reads
+$10.0000 \,\si{\volt}$ on a $10 \,\si{\volt}$ DC source. The
+laboratory has the $24$-hour spec available because it has just
+finished a calibration transfer from a Fluke 732C primary
+reference. The instrument-spec contribution:
+$\pm (11 + 0.5) \,\si{ppm} \times 10 \,\si{\volt}
+= \pm 115 \,\si{\micro\volt}$.
+The temperature-coefficient contribution at $\Delta T = 2 \,\degC$:
+$\pm (2 \times 1 + 2 \times 0.1) \,\si{ppm} \times 10 \,\si{\volt}
+= \pm 22 \,\si{\micro\volt}$.
+Combined in quadrature (assuming the two contributions are
+independent): $\sqrt{115^{2} + 22^{2}} = 117 \,\si{\micro\volt}$,
+giving $\pm 117 \,\si{\micro\volt}$ at the $1\sigma$ level, or
+$\pm 234 \,\si{\micro\volt}$ at the $2\sigma$ coverage of
+chapter 3. The reportable measurement is
+$10.0000 \,\si{\volt} \pm 0.0002 \,\si{\volt}$ at $2\sigma$, with
+the source of the uncertainty broken down by component for the
+laboratory record. The datasheet has done the chapter-3 calibration
+arithmetic for the laboratory; reading it is part of the
+measurement.
+
 \subsection{The oscilloscope}
 
 An \engterm{oscilloscope} displays voltage versus time. Modern
@@ -1948,6 +2023,135 @@ a footnote; reading the data sheet's channel-isolation and
 channel-cross-talk lines before specifying the module is part of
 the sensor-array selection discipline.
 
+\paragraph{Sensor fusion: the complementary filter and a Kalman
+preview.} A sensor array often delivers redundant measurements of
+the same underlying quantity through different physical principles
+with different error structures. A drone's attitude estimate
+combines an accelerometer (which reports the gravity vector but is
+corrupted by linear acceleration), a gyroscope (which reports the
+angular rate with sub-degree short-term accuracy but drifts at
+$\sim 5 \,\si{\degree}/\si{\hour}$ from bias), and a magnetometer
+(which reports the local magnetic-field vector but is corrupted by
+nearby ferrous metal). A working autopilot must produce a single
+attitude estimate from these three sensors, each of which lies in a
+different way. The working machinery is \engterm{sensor fusion}.
+
+The simplest fusion algorithm is the
+\engterm{complementary filter}: a one-line equation that uses the
+gyroscope for short-term dynamics and the accelerometer for
+long-term reference. For a pitch-angle estimate $\hat{\theta}$, the
+recursion is
+\[
+\hat{\theta}_{k+1} = \alpha \, \big( \hat{\theta}_{k} +
+\omega_{k} \Delta t \big) + (1 - \alpha) \, \theta_{\text{acc},k+1},
+\]
+where $\omega_{k}$ is the gyroscope's angular rate at step $k$,
+$\Delta t$ is the sample period, $\theta_{\text{acc}}$ is the
+accelerometer-derived pitch (computed from
+$\arctan(a_{x} / a_{z})$), and $\alpha \approx 0.98$ for typical
+$\Delta t = 5 \,\si{\milli\second}$ tuning. The filter trusts the
+integrated gyroscope rate over short intervals (the gyroscope's
+short-term noise floor is far below the accelerometer's
+linear-acceleration corruption) and trusts the accelerometer over
+long intervals (the accelerometer's gravity-vector reading does not
+drift, while the gyroscope integrates bias into unbounded angle
+error). The $\alpha = 0.98$ tuning corresponds to a high-pass corner
+of $\sim 1.6 \,\si{\hertz}$ on the gyroscope path and a low-pass
+corner of $\sim 1.6 \,\si{\hertz}$ on the accelerometer path,
+chosen so that the gyroscope handles dynamics above the corner and
+the accelerometer handles the long-term gravity reference.
+
+The \engterm{Kalman filter} is the working generalisation. The
+Honeywell HG1700 \cite{text:ch05t3b-honeywell-hg1700-datasheet}
+inertial measurement unit (IMU), at \$$10{,}000$ for the tactical
+grade, packs three ring-laser gyroscopes (Honeywell GG1320, drift
+$1 \,\si{\degree}/\si{\hour}$) and three accelerometers
+(QA-2000 family, bias stability $25 \,\mu g$) onto a common
+chassis with synchronised digital outputs at $600 \,\si{\hertz}$. A
+working navigation system fuses the HG1700's body-frame angular
+rates and accelerations with intermittent GPS position fixes (at
+$1$-to-$10 \,\si{\hertz}$, $\sim 3 \,\si{\meter}$ accuracy) through
+a Kalman filter that maintains an estimate of position, velocity,
+attitude, gyro bias, and accelerometer bias as a $15$-state vector,
+updated at each sample by the IMU's high-rate measurements and
+corrected at each GPS fix by the position observation. Between GPS
+fixes the IMU integrates inertial dynamics with the Kalman-tracked
+biases removed; at each fix the Kalman update redistributes the
+position error across the $15$ states, tightening the bias estimates
+and resetting the integrated drift. The working result: a navigation
+solution at $600 \,\si{\hertz}$ with position accuracy held to
+$\sim 5 \,\si{\meter}$ during $30 \,\si{\second}$ GPS outages,
+beyond what any single sensor could deliver. The mathematical
+machinery of the Kalman filter (state-transition model, measurement
+model, Kalman gain, covariance propagation) waits for Volume VI
+chapter 4 on time-frequency duality (where the state-space
+formulation lives) and Volume VII chapter 15 on state-space
+estimation (where the optimality, observability, and tuning
+discipline live).
+
+The sensor-fusion idea generalises: every working sensor array that
+combines elements with different error structures is a candidate
+for a fusion algorithm that extracts more than the per-element
+information. A car's stability-control system fuses wheel-speed
+sensors, yaw-rate gyroscope, steering-wheel angle, and lateral
+accelerometer to estimate vehicle slip angle; a smartphone fuses
+GPS, accelerometers, gyroscopes, magnetometer, barometer, and
+Wi-Fi RSSI to estimate position at $\sim 5 \,\si{\meter}$
+horizontal accuracy indoors where the GPS fix alone is unreliable;
+a power-plant condition monitoring system fuses vibration,
+temperature, oil-debris, and electrical-current sensors to estimate
+bearing remaining-useful-life. The sensor-engineering point: the
+single-sensor framing of section 5.2 is the starting case; the
+sensor-fusion lane is the working frontier where the chapter's
+material connects forward to Volumes VI, VII, and IX.
+
+The Kalman family extends along two working axes when the
+linear-Gaussian assumptions break down. The
+\engterm{extended Kalman filter (EKF)} linearises the
+state-transition and measurement models at each step around the
+current state estimate, trading the optimality of the linear case
+for tractability on nonlinear navigation, target tracking, and
+robotic-arm kinematics. The \engterm{unscented Kalman filter (UKF)}
+propagates a set of deterministic sample points (the sigma points)
+through the nonlinear models and reconstructs mean and covariance
+from the propagated samples, avoiding the Jacobian computation the
+EKF requires; the working trade-off is computational cost against
+linearisation error. The \engterm{particle filter} drops the
+Gaussian assumption entirely and represents the state as a sample
+of weighted Monte Carlo draws, propagated through the nonlinear
+models and resampled at each measurement update; the working choice
+when the state distribution is multimodal (a robot uncertain between
+two corridors, a target track that may correspond to either of two
+nearby blips). Each extension carries a working complexity cost:
+the EKF runs at a few times the linear-Kalman cost, the UKF at an
+order of magnitude more, the particle filter at the cost of
+thousands of particles per update. The working selection follows
+the working measurement: linear-Gaussian for an HG1700-grade IMU
+between GPS fixes, EKF for a Tesla Autopilot's vehicle dynamics
+fused with map data, UKF for a quadrotor's attitude estimate during
+aggressive manoeuvres, particle filter for a Mars-rover SLAM that
+must consider multiple terrain hypotheses simultaneously.
+
+The fault-detection branch of sensor fusion runs alongside the
+state-estimation branch. A \engterm{residual} is the difference
+between a sensor's measurement and the fused estimator's prediction
+of that measurement; a residual much larger than its predicted
+covariance flags a sensor as anomalous and triggers the working
+fault-isolation procedure. A working triplex-redundant air-data
+system (three pitot tubes, three angle-of-attack vanes, three total-
+temperature probes) runs a chi-squared test on the residuals at
+every sample, isolates a divergent sensor, votes out the divergent
+sample, and continues operation on the working two-of-three majority
+until the maintenance interval. The same residual machinery powers
+the predictive-maintenance lane: a working bearing's vibration
+spectrum diverges from its history at the working failure onset,
+the residual against the working baseline flags the working anomaly,
+and the working maintenance team intervenes before the bearing
+fails. The Kalman residual is, in this working role, a working
+discriminator that the sensor array could not produce element by
+element. The same discriminator returns in Volume IX chapter 8 on
+fault-detection-and-isolation for working flight-critical systems.
+
 \subsection{The spectrum analyser}
 
 A \engterm{spectrum analyser} displays signal amplitude versus
@@ -2107,6 +2311,76 @@ modulation coil; for a phase-locked-loop control system it is the
 oscillator's reference. Every working lock-in measurement carries
 the same architectural commitment: pick a frequency, modulate the
 quantity of interest at that frequency, demodulate, low-pass.
+Volume VI chapter 4 on time-frequency duality returns to this
+narrow-band recovery in the language of windowed Fourier
+transforms; the lock-in is the working hardware realisation of the
+mathematical machinery that volume develops.
+
+\subsection{The digital boxcar averager}
+
+A \engterm{boxcar averager} recovers a repetitive pulsed signal by
+integrating the input over a gated window timed to the pulse, then
+averaging the gate-window integrals across many pulses. Where the
+lock-in is the working instrument for continuous narrow-band
+signals, the boxcar is the working instrument for repetitive
+transients whose duty cycle is small, whose timing is known, and
+whose between-pulse interval carries no signal of interest. The
+Stanford Research Systems SR250 gated integrator and boxcar
+averager \cite{text:ch05t3b-srs-sr250-datasheet} is the working
+benchtop instrument: \$$5{,}000$ at the time of writing, gate
+widths from $2 \,\si{\nano\second}$ to $15 \,\si{\micro\second}$,
+trigger-to-gate jitter $< 50 \,\si{\pico\second}$, sample rates to
+$20 \,\si{\kilo\hertz}$, and an internal exponential moving-average
+filter that delivers $N$-pulse averaging with selectable equivalent
+time constants from $1$ to $10{,}000$ pulses.
+
+The working measurement. A laser-pulse experiment fires a pulse of
+$\sim 5 \,\si{\nano\second}$ duration at $10 \,\si{\kilo\hertz}$
+repetition rate; a photomultiplier views the laser-induced
+fluorescence; the working signal is a fluorescence transient
+$\sim 50 \,\si{\nano\second}$ wide whose peak is buried in
+photomultiplier shot noise. The boxcar gates on the trigger from
+the laser's Q-switch driver, opens an integration window
+$10 \,\si{\nano\second}$ before the fluorescence peak, closes the
+window $60 \,\si{\nano\second}$ later, and integrates the
+photomultiplier current over that window. Between pulses the
+photomultiplier sees only ambient and dark current; the boxcar
+ignores the between-pulse interval entirely. After $N$ pulses the
+averager has summed $N$ gate-window integrals. The signal-to-noise
+ratio scales as $\sqrt{N}$: $10{,}000$ pulses delivers a
+$100\times$ SNR improvement over a single pulse, and at the
+$10 \,\si{\kilo\hertz}$ repetition rate that gain is bought in
+$1 \,\si{\second}$ of measurement time.
+
+The duty-cycle gain is the working figure. A
+$50 \,\si{\nano\second}$ gate at $10 \,\si{\kilo\hertz}$ repetition
+rate has an on-time fraction of $5 \times 10^{-4}$; a
+DC-coupled amplifier looking at the same photomultiplier sees the
+between-pulse noise at all times, so its noise-equivalent-bandwidth
+is the full measurement bandwidth. The boxcar's effective bandwidth
+is the gate-width bandwidth times the duty cycle, a reduction of
+$2000\times$ in noise power at fixed signal power, equivalent to
+$33 \,\si{\decibel}$ of working SNR gain before any averaging is
+applied. The averager's $N$-pulse gain stacks on top of that.
+
+\paragraph{Lock-in or boxcar.} The working choice between lock-in
+and boxcar follows the signal's working duty cycle. A signal that
+fills the measurement interval at a known frequency (continuous-
+wave chopped optical absorption, sinusoidal modulation of a magnetic
+moment, AC excitation of a strain bridge) is a lock-in case: the
+modulation lives in a narrow band, and the lock-in's phase-sensitive
+detection recovers the in-band amplitude at the modulation frequency.
+A signal that lives in a small fraction of the measurement interval
+at a known repetition rate (laser-induced fluorescence, time-of-
+flight mass spectrometry, pulsed-NMR free-induction decay,
+single-photon counting from a Geiger-mode avalanche photodiode) is
+a boxcar case: the signal lives in the gate window, and the boxcar
+discards the between-gate interval where the signal of interest is
+absent. The Stanford Research catalogue makes the architectural
+point explicit by offering both the SR860 lock-in and the SR250
+boxcar from the same maker; the working engineer picks the
+instrument whose architecture matches the signal's working duty
+cycle, not the more familiar instrument.
 
 \subsection{The instrument arc: from artisanal calibration to the
 datasheet}
@@ -2213,6 +2487,143 @@ laboratory to the SI; the fraction of full-scale of error has its
 source in the manufacturer's design conventions. Reading both is
 part of the working sensor-selection discipline section 5.4
 codified.
+
+\subsection{The instrumentation amplifier}
+
+Between the sensor and the ADC sits the signal-conditioning
+amplifier. A thermocouple delivers $\sim 40 \,\si{\micro\volt}/
+\degC$; a $350 \,\si{\ohm}$ strain-gauge bridge at
+$2 \,\si{\milli\volt}/\si{\volt}$ excitation delivers
+$10 \,\si{\milli\volt}$ at full scale on a $5 \,\si{\volt}$ supply;
+a thermopile from a $15 \,\si{\watt\per\meter\squared}$ heat-flux
+probe delivers $\sim 30 \,\si{\micro\volt}$ per working measurement.
+None of these signals can be read directly by an ADC: the working
+ADC expects a $\pm 5 \,\si{\volt}$ or $\pm 10 \,\si{\volt}$ input
+range, and a $30 \,\si{\micro\volt}$ signal at the ADC input is
+below the LSB of any architecture short of the metrology DMM. The
+signal-conditioning chain amplifies the sensor's differential output
+by a factor of $100$ to $1000$, rejecting the common-mode component
+(the ground potential that lifts both inputs together) that would
+otherwise saturate the amplifier or appear as a signal-dependent
+error at the ADC. The working instrument is the
+\engterm{instrumentation amplifier}.
+
+\paragraph{The three-op-amp instrumentation amplifier.} The classical
+architecture, due to a 1960s refinement of the differential
+amplifier, places three operational amplifiers in a configuration
+that delivers high input impedance, high common-mode rejection ratio
+(CMRR), and a gain set by a single external resistor. The input
+stage uses two operational amplifiers in non-inverting configuration,
+each with unity gain to its own input and a gain to the other input
+set by the gain-setting resistor $R_{G}$; the output of the input
+stage is a differential signal $(V_{+} - V_{-})(1 + 2R/R_{G})$ where
+$R$ is the fixed feedback resistor and $R_{G}$ the external
+gain-setting resistor. The second stage is a difference amplifier
+that converts the differential output of the input stage to a
+single-ended output referenced to the amplifier's reference pin. CMRR depends on
+the matching of the second-stage resistors; the integrated-circuit
+instrumentation amplifier laser-trims those resistors during
+manufacturing to deliver $80$ to $130 \,\si{\decibel}$ CMRR at the
+part level, well beyond what a discrete construction can deliver.
+
+\paragraph{The working parts in 2026.} The Analog Devices AD620
+\cite{text:ch05t3b-adi-ad620-datasheet} is the workhorse
+single-channel instrumentation amplifier at
+\$$5$ per part: $80 \,\si{\decibel}$ minimum CMRR at unity gain,
+$110 \,\si{\decibel}$ at $G = 100$, $50 \,\si{\micro\volt}$ maximum
+input offset, $13 \,\si{\nano\volt}/\sqrt{\si{\hertz}}$ input
+voltage noise, and $120 \,\si{\kilo\hertz}$ bandwidth at $G = 100$.
+The Analog Devices AD8221
+\cite{text:ch05t3b-adi-ad8221-datasheet} (\$$8$) replaces the
+AD620 in precision applications: $90 \,\si{\decibel}$
+minimum CMRR at unity gain, $120 \,\si{\decibel}$ at $G = 100$,
+$25 \,\si{\micro\volt}$ maximum input offset,
+$8 \,\si{\nano\volt}/\sqrt{\si{\hertz}}$ input voltage noise. The
+Analog Devices AD8429 \cite{text:ch05t3b-adi-ad8429-datasheet}
+(\$$12$) is the ultra-low-noise instrumentation amplifier
+for strain-gauge and thermocouple readouts:
+$110 \,\si{\decibel}$ minimum CMRR at unity gain, $130
+\,\si{\decibel}$ at $G = 100$, $1 \,\si{\nano\volt}/\sqrt{\si{
+\hertz}}$ input voltage noise, and $1.2 \,\si{\mega\hertz}$
+bandwidth at $G = 100$. The ladder from AD620 to AD8221 to
+AD8429 is a price-versus-CMRR ladder: at $G = 100$, the
+amplified-signal-to-common-mode-interference ratio is
+$80 \,\si{\decibel}$ (factor $10^{4}$) on the AD620,
+$100 \,\si{\decibel}$ (factor $10^{5}$) on the AD8221,
+and $110 \,\si{\decibel}$ (factor $3 \times 10^{5}$) on the AD8429.
+For a strain-gauge bridge on a machine grounded to a
+$230 \,\si{\volt}$-mains-powered piece of equipment, a
+$1 \,\si{\volt}$ common-mode noise injected by power-line coupling
+appears at the amplifier output as $100 \,\si{\micro\volt}$ (AD620),
+$10 \,\si{\micro\volt}$ (AD8221), or $3 \,\si{\micro\volt}$
+(AD8429). The choice between the three is the choice between \$$5$
+and a $100 \,\si{\micro\volt}$ noise floor, \$$8$ and a
+$10 \,\si{\micro\volt}$ noise floor, or \$$12$ and a
+$3 \,\si{\micro\volt}$ noise floor.
+
+\paragraph{The chopper-stabilised instrumentation amplifier.} A
+class of signal-conditioning applications demands an
+input offset below $1 \,\si{\micro\volt}$ and an input-offset drift
+below $0.01 \,\si{\micro\volt}/\degC$: thermocouple readouts
+at the cold-junction reference, thermopile readouts at the
+heat-flux probe, strain-gauge bridges at the zero offset of the
+bonded gauge. The chopper-stabilised amplifier delivers those
+numbers by modulating the input at a chopper frequency (typically
+$10$ to $200 \,\si{\kilo\hertz}$), amplifying the modulated signal
+in an AC-coupled stage that has no DC offset, then demodulating
+back to DC. The input offset that survives the chopper-demodulator
+cycle is the residual after the chopper's switching mismatch;
+integrated-circuit chopper-stabilised amplifiers reduce that
+residual to $\sim 0.5 \,\si{\micro\volt}$.
+
+The Linear Technology (now Analog Devices) LTC2050
+\cite{text:ch05t3b-lt-ltc2050-datasheet} (\$$3$) is the
+chopper-stabilised operational amplifier of the working bench:
+$0.5 \,\si{\micro\volt}$ maximum input offset,
+$0.01 \,\si{\micro\volt}/\degC$ input-offset drift, and
+$1.5 \,\si{\micro\volt}/\sqrt{\si{\hertz}}$ input voltage noise at
+$1 \,\si{\hertz}$. The architecture's price is a higher input noise
+at low frequency than a continuous amplifier, traded for the
+offset-and-drift performance. The working bench uses the LTC2050 as
+a precision-reference buffer, a strain-gauge single-ended amplifier,
+and a thermopile readout where absolute-DC accuracy matters more
+than low-noise performance. For a configuration that needs both the
+low-offset and the differential-input architecture, the
+chopper-stabilised instrumentation amplifier (Analog Devices AD8237
+at \$$3$ per part, $5 \,\si{\micro\volt}$ maximum offset,
+$0.04 \,\si{\micro\volt}/\degC$ drift) is the single-chip solution.
+
+\paragraph{Worked example: a $350 \,\si{\ohm}$ strain-gauge bridge.}
+A machine-frame instrumentation reads strain on a
+$350 \,\si{\ohm}$ strain-gauge bridge at $2 \,\si{\milli\volt}/
+\si{\volt}$ sensitivity, excited at $5 \,\si{\volt}$ DC. The
+full-scale differential output is $10 \,\si{\milli\volt}$; the
+sensitivity is $\sim 1 \,\si{\micro\volt}$ per
+$\sim 1 \,\si{\micro\strain}$ (the strain unit, a dimensionless
+number $10^{-6}$). The downstream ADC expects a $\pm 5
+\,\si{\volt}$ input; the required gain is $G = 500$.
+
+A $1 \,\si{\volt}$ common-mode interference on the bridge (coupled
+from a $230 \,\si{\volt}$ mains-powered machine frame) appears at
+the amplifier output as the common-mode interference times the gain
+divided by the CMRR. At $G = 500$, the AD8429's CMRR reaches
+$\sim 134 \,\si{\decibel}$ (extrapolated from the $130 \,\si{
+\decibel}$ value at $G = 100$ and the $20 \,\si{\decibel}$/decade
+increase the datasheet specifies into the part's roll-off region).
+The common-mode-induced output: $1 \,\si{\volt} \times 500 /
+10^{134/20} = 500 \,\si{\volt} / 5 \times 10^{6} \approx
+100 \,\si{\micro\volt}$, equivalent to $\sim 1 \,\si{\micro
+\strain}$ of apparent strain at the input. By comparison, the AD620
+at $G = 500$ delivers $\sim 100 \,\si{\decibel}$ CMRR; the same
+$1 \,\si{\volt}$ common-mode gives an output error of
+$1 \,\si{\volt} \times 500 / 10^{100/20} = 5 \,\si{\milli\volt}$,
+equivalent to $\sim 50 \,\si{\micro\strain}$, two decades worse than
+the AD8429. For a working machine-strain measurement at
+$1 \,\si{\micro\strain}$ resolution the AD8429 is the working
+choice; for one at $50 \,\si{\micro\strain}$ resolution the AD620
+suffices and saves \$$7$. The choice of amplifier sets the noise
+floor of the strain measurement; the bridge's sensitivity is the
+denominator, not the numerator, of the working uncertainty.
 
 \subsection{The analog-to-digital converter}
 
