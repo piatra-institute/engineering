@@ -820,6 +820,81 @@ manageable level. The discipline is the same as the audio case: a
 sample rate without an anti-alias filter has not satisfied Nyquist
 on the spectral content actually present.
 
+\textbf{Worked failure case: vibration monitoring on an industrial
+blower.} A maintenance engineer instruments a $60 \,\si{\hertz}$
+shaft-speed centrifugal blower in a refinery utilities plant with a
+piezoelectric accelerometer (PCB Piezotronics 352C33,
+$100 \,\si{\milli\volt}/g$) and a portable data logger. The
+specification calls for harmonic-content monitoring through the
+fifth harmonic at $300 \,\si{\hertz}$. The engineer chooses a
+sample rate of $100 \,\si{\hertz}$, reasoning that the fundamental
+is well inside the Nyquist range. The accelerometer's bandwidth is
+flat from $1 \,\si{\hertz}$ to $10 \,\si{\kilo\hertz}$; no
+anti-alias filter sits between the accelerometer and the logger's
+$24$-bit converter.
+
+The third harmonic at $180 \,\si{\hertz}$ aliases to
+$|180 - 2 \times 100| = 20 \,\si{\hertz}$. The fifth harmonic at
+$300 \,\si{\hertz}$ aliases to $|300 - 3 \times 100| = 0 \,\si
+{\hertz}$ (DC). The spectrum displayed by the logger's analysis
+software shows a strong tone near $20 \,\si{\hertz}$ that does not
+correspond to any expected mechanical signature of the blower or
+its motor. The engineer's first hypothesis, drawn from the
+characteristic-frequency table for the blower's $6309$ deep-groove
+ball bearing (ball-pass frequency outer race
+$\approx 0.4 \times N_{b} \times f_{\text{shaft}}$ for $N_{b} = 8$
+balls, giving $\sim 192 \,\si{\hertz}$ at $60 \,\si{\hertz}$ shaft
+speed), does not match. The engineer instead reports a
+$20 \,\si{\hertz}$ bearing-fault signature, schedules an
+inspection, and the maintenance crew removes a healthy bearing.
+
+The disambiguating test: raise the sample rate to $1{,}000 \,\si
+{\hertz}$ with a $4$th-order Butterworth anti-alias filter at
+$400 \,\si{\hertz}$ corner. The $20 \,\si{\hertz}$ tone disappears
+and the spectrum shows clean lines at $60$, $120$, $180$,
+$240$, $300 \,\si{\hertz}$, the expected harmonic content of a
+healthy non-sinusoidal vibration source. The lesson is the same
+one the audio and data-logger cases carry: sample rate without
+anti-aliasing budgets nothing against aliased content above
+Nyquist. The cost of the wrong diagnosis here is a bearing
+replacement, a production outage during inspection, and erosion of
+trust in the vibration-monitoring program. ISO 10816-3:2009 sets
+the vibration-severity bands against which the spectrum is
+interpreted; an aliased spectrum interpreted against ISO 10816 is
+a category error.
+
+\textbf{Worked failure case: power-quality monitor on a 5th
+harmonic.} A facilities engineer deploys a Fluke 1748 three-phase
+power-quality logger at a $480 \,\si{\volt}$ industrial bus
+feeding a variable-frequency-drive (VFD) load that injects a
+strong fifth harmonic ($250 \,\si{\hertz}$ on a $50 \,\si{\hertz}$
+mains) into the supply. The logger is configured to sample voltage
+at $f_{s} = 200 \,\si{\hertz}$, a rate chosen to fit a long-
+duration recording onto local storage. The front-end anti-alias
+filter is a $1$st-order RC at $100 \,\si{\hertz}$ corner,
+attenuating $250 \,\si{\hertz}$ by only $20 \log_{10}(250/100)
+\approx 8 \,\si{\decibel}$.
+
+The $250 \,\si{\hertz}$ component aliases to
+$|250 - 2 \times 200| = 150 \,\si{\hertz}$, which is the third
+harmonic of the mains and a known signature of saturated
+transformers and arc-furnace loads. The engineer's report
+attributes the third-harmonic content to transformer saturation
+upstream of the logger, recommends a tap-changer adjustment, and
+the utility opens a ticket. The actual mechanism is the VFD's
+fifth harmonic aliasing through an under-specified power-quality
+logger. The fix is the same shape: raise the sampler to
+$f_{s} \geq 1{,}000 \,\si{\hertz}$ (IEC 61000-4-7 specifies
+$200 \times 50 = 10{,}000 \,\si{\hertz}$ as the reference sampling
+rate for harmonic analysis through the $40$th order on a
+$50 \,\si{\hertz}$ system), or replace the front-end filter with a
+$4$th-order Butterworth at $100 \,\si{\hertz}$ that attenuates
+$250 \,\si{\hertz}$ by $\sim 32 \,\si{\decibel}$. The IEC
+$200 \cdot f_{\text{line}}$ rule for harmonic analysers is the
+discipline that holds Nyquist at the spectral content the standard
+expects to measure; an installer who configures a slower sampling
+rate has departed from the standard's assumed budget.
+
 \subsection{Filter order, group delay, and the rolloff budget}
 
 A working anti-alias filter design carries an explicit error
@@ -1876,6 +1951,253 @@ than the unaugmented baseline. The budget legitimises the
 hardware cost: the unaugmented receiver leaves $\sim 5 \,\si
 {\meter}$ on the table that the RTK chain recovers.
 
+\subsection{Galileo, BeiDou, GLONASS, and the multi-GNSS
+receiver}\pathtag{standard}
+
+GPS is the original satellite-navigation system; it is no longer
+the only one in working service. As of 2026 four independent
+constellations broadcast civilian navigation signals on overlapping
+frequency bands, and the working receiver tracks signals from all
+four in a single least-squares solution. Each constellation carries
+its own clock ensemble, its own ground-control architecture, its
+own signal structure, and its own performance specification; the
+multi-GNSS receiver treats the combined set as a richer pseudorange
+budget than any single constellation can deliver.
+
+\paragraph{Galileo.} The European Union's navigation system entered
+Open Service in 2016 and has held a $28$-satellite operational
+constellation since 2022, with two spare satellites maintained on
+orbit at any time. The orbit is medium-Earth at $23{,}222 \,\si{
+\kilo\meter}$ altitude in three planes inclined at $56^{\circ}$,
+with eight operational satellites plus one spare per plane. The
+geometry differs deliberately from GPS's $20{,}200 \,\si{\kilo
+\meter}$, $55^{\circ}$, six-plane configuration; the higher altitude
+gives longer satellite passes and the steeper inclination improves
+high-latitude coverage. Each satellite carries four atomic
+frequency standards in a hot-redundant arrangement: two Passive
+Hydrogen Masers (PHM, manufactured by Spectratime / Orolia) as
+primary, and two Rubidium Atomic Frequency Standards (RAFS,
+manufactured by Selex Galileo / Leonardo, now SpacePNT) as
+backup. The PHM has Allan deviation $\sigma_{y}(\tau = 10{,}000
+\,\si{\second}) \approx 1 \times 10^{-14}$, about a factor of three
+better than the GPS rubidium clocks at the same averaging time
+\cite{web:ch06t3b-spectratime-phm-2024,
+web:ch06t3b-spectratime-rafs-2024}. The signal structure spans five
+bands: E1 ($1575.42 \,\si{\mega\hertz}$, the GPS L1 frequency for
+spectrum interoperability), E5a ($1176.45 \,\si{\mega\hertz}$, the
+GPS L5 frequency), E5b ($1207.14 \,\si{\mega\hertz}$), E5
+($1191.795 \,\si{\mega\hertz}$, AltBOC modulation combining E5a +
+E5b for high-precision ranging), and E6 ($1278.75 \,\si{\mega
+\hertz}$, carrier of the High Accuracy Service)
+\cite{web:ch06t3b-euspa-galileo-os-sdd-2023}. The Galileo Open
+Service specification calls for horizontal positioning accuracy
+$\leq 4 \,\si{\meter}$ ($95\%$, single-frequency) and UTC
+dissemination accuracy $\leq 30 \,\si{\nano\second}$; working
+GPS+Galileo solutions show roughly $50\%$ improvement in horizontal
+position accuracy versus GPS alone in open-sky conditions, and a
+larger improvement in obstructed environments where additional
+satellites in view recover an otherwise degraded geometry. The
+Galileo High Accuracy Service (HAS), declared in Initial Service
+status on 24 January 2023, broadcasts PPP and PPP-RTK corrections
+at $448 \,\si{\bit\per\second}$ on E6-B with a target horizontal
+accuracy $\leq 20 \,\si{\centi\meter}$ ($95\%$) after a
+$\sim 300 \,\si{\second}$ convergence, free at the point of use
+\cite{web:ch06t3b-euspa-galileo-has-sdd-2023}.
+
+\paragraph{BeiDou.} China's BeiDou Navigation Satellite System
+reached full operational capability with the BeiDou-3 constellation
+completion on 23 June 2020 and as of 2026 holds $35$ operational
+satellites: $24$ in medium Earth orbit ($21{,}528 \,\si{\kilo
+\meter}$, three planes at $55^{\circ}$), $3$ in inclined
+geosynchronous orbit (IGSO), and $8$ in geostationary orbit. The
+mixed-orbit constellation is the distinguishing engineering choice:
+the GEO and IGSO satellites give continuous overhead coverage
+across the Asia-Pacific region without the polar-orbit gap that
+pure-MEO constellations exhibit at low latitudes. Each BeiDou-3
+satellite carries a mix of passive hydrogen maser and rubidium
+clocks. Signal structure spans the legacy B1I
+($1561.098 \,\si{\mega\hertz}$, BeiDou-2), B2I ($1207.14 \,\si{
+\mega\hertz}$), and B3I ($1268.52 \,\si{\mega\hertz}$) plus the
+modernised B1C ($1575.42 \,\si{\mega\hertz}$, interoperable with
+GPS L1 and Galileo E1), B2a ($1176.45 \,\si{\mega\hertz}$,
+interoperable with GPS L5 and Galileo E5a), and B2b
+($1207.14 \,\si{\mega\hertz}$) carrying the PPP-B2b high-precision
+service \cite{web:ch06t3b-csno-tarc-beidou-icd-2020}. PPP-B2b,
+launched alongside BeiDou-3 in 2020, broadcasts SSR-style PPP
+corrections free of charge to Chinese-domestic users, with a
+working horizontal accuracy of order $\sim 30 \,\si{\centi\meter}$
+after convergence. As of 2026, BeiDou is the only GNSS with a
+fully operational mixed MEO/IGSO/GEO design; the engineering
+trade-off is more launch mass for the GEO/IGSO segment in exchange
+for continuous overhead coverage over a designated service area.
+
+\paragraph{GLONASS.} The Russian Federation's GLONASS holds a
+$24$-satellite operational constellation at $19{,}100 \,\si{\kilo
+\meter}$ altitude in three planes inclined at $64.8^{\circ}$, the
+steepest inclination of the four working constellations. The
+steeper inclination gives appreciably better high-latitude
+coverage than GPS or Galileo, a working consequence for users in
+the
+Arctic and northern Eurasia. The legacy GLONASS signals (L1OF
+near $1602 \,\si{\mega\hertz}$ and L2OF near $1246 \,\si{\mega
+\hertz}$) use Frequency Division Multiple Access (FDMA), assigning
+each satellite a unique carrier frequency slot rather than
+distinguishing satellites by code; the modernised GLONASS-K and
+GLONASS-K2 satellites broadcast CDMA signals L1OC
+($1600.995 \,\si{\mega\hertz}$), L2OC ($1248.06 \,\si{\mega
+\hertz}$), and L3OC ($1202.025 \,\si{\mega\hertz}$) on the same
+multiple-access design as GPS, Galileo, and BeiDou
+\cite{web:ch06t3b-glonass-icd-2016}. The FDMA-CDMA hybrid means a
+multi-GNSS receiver tracking the legacy GLONASS signals must
+synthesise a separate local-oscillator frequency for each
+satellite, doubling the front-end bandwidth and complicating the
+inter-satellite-bias calibration that an all-CDMA receiver
+sidesteps. The on-board clocks are a mixture of caesium-beam
+standards (legacy) and rubidium frequency standards (modernised),
+with rubidium-maser hybrids on the most recent satellites.
+
+\paragraph{The multi-GNSS receiver.} A working multi-constellation
+receiver synchronously tracks all four constellations and resolves
+the position-time solution against the combined pseudorange set.
+The u-blox ZED-F9P, the consumer-grade reference of 2024-2026,
+tracks GPS L1/L2, Galileo E1/E5b, GLONASS L1/L2, BeiDou B1I/B2I,
+QZSS L1/L2, and SBAS L1 simultaneously, supports RTK with
+$0.01 \,\si{\meter} + 1 \,\si{ppm}$ CEP accuracy when fed RTCM
+corrections, and is the chip behind a generation of low-cost
+survey rovers and precision-agriculture controllers
+\cite{web:ch06t3b-ublox-f9p-2024}. The NovAtel OEM7 family,
+mid-range survey-grade, adds inertial coupling and the company's
+Advanced Interference Mitigation (AIM+) front-end against jamming.
+The Septentrio PolaRx5, the working reference receiver for
+permanent CORS-grade installations, tracks $544$ channels across
+all GNSS, all SBAS, and all regional augmentations
+\cite{web:ch06t3b-septentrio-polarx5-2024}. A multi-constellation
+solution carries three engineering benefits over a GPS-only
+solution. First, satellite redundancy: with $24$ GPS + $28$
+Galileo + $24$ GLONASS + $35$ BeiDou nominally available, a
+receiver in an urban canyon that loses sight of half its sky still
+sees ten to fifteen satellites, well above the four-satellite
+minimum. Second, geometric improvement: the multi-constellation
+HDOP in obstructed environments routinely drops from
+$\sim 4$ (GPS-only) to $\sim 1.5$ (multi-GNSS), a factor-of-three
+reduction in horizontal-position uncertainty for the same
+pseudorange noise. Third, independence against single-system
+outage: the GPS week-rollover, the 26 January 2016 GPS UTC offset
+incident, the 2 October 2017 Galileo system clock anomaly, and
+the routine maintenance windows of any single constellation no
+longer take a multi-GNSS receiver offline.
+
+The working receiver-class trade-off as of 2026: a consumer-grade
+single-frequency GPS-only chipset (u-blox MAX-M10S, $\sim 5 \,\si
+{\meter}$ CEP) costs $\sim \$5$ per unit at volume; a
+dual-frequency multi-GNSS chipset (u-blox ZED-F9P,
+$\sim 1 \,\si{\meter}$ CEP autonomous, $1 \,\si{\centi\meter}$ RTK)
+costs $\sim \$200$; a survey-grade triple-frequency multi-GNSS
+receiver (Trimble R12i, Leica GS18 T) costs $\sim \$15{,}000$ to
+$\$25{,}000$ and carries the inertial-aided tilt compensation and
+calibration record that survey-of-record work demands. The
+hundred-to-thousand-fold cost difference buys the same hundred-to-
+thousand-fold reduction in position uncertainty seen across the
+GPS-only versus RTK budget above; a working engineer chooses the
+class against the application's accuracy and geographical-coverage
+requirement, not against the number of constellations supported.
+
+\subsection{GPS receiver acceptance test: the working
+protocol}\pathtag{standard}
+
+A GPS receiver entering working service in a survey, timing, or
+navigation application is qualified against an acceptance-test
+protocol that exercises the receiver's specified performance under
+controlled conditions. The protocol is a working analogue of the
+calibration discipline of Chapter 3 applied to a system rather
+than to a sensor. The aviation-grade reference is RTCA DO-229E
+\cite{std:ch06t3b-rtca-do229e-2016}; the survey-grade reference is
+the NovAtel APN-085 procedure
+\cite{web:ch06t3b-novatel-receiver-test-2023} or the equivalent
+Trimble document. The two protocols agree on the working sequence.
+
+\paragraph{Static accuracy at a known reference.} The receiver is
+mounted on a surveyed monument with published WGS-84 coordinates
+to better than the receiver's specified accuracy by a factor of
+ten. The U.S. CORS network's Pillar 1 marker class
+($\sigma \approx 5 \,\si{\milli\meter}$ horizontal, $1 \,\si{\centi
+\meter}$ vertical, post-processed) is the conventional working
+choice; permanent geodetic monuments at the IGS network's $\sim 500$
+global stations carry coordinates known to $\sim 2 \,\si{\milli
+\meter}$ horizontal. The test logs raw observations at
+$1 \,\si{\hertz}$ for $24 \,\si{\hour}$, post-processes against
+IGS Final products, and reports the residual position scatter.
+Pass criteria: a survey-grade receiver shows
+$\sigma_{H} \leq 5 \,\si{\milli\meter}$ and $\sigma_{V} \leq 1 \,\si
+{\centi\meter}$; a navigation-grade receiver, $\sigma_{H} \leq 2 \,\si
+{\meter}$.
+
+\paragraph{Dynamic accuracy versus a reference INS.} The receiver
+is mounted alongside a tactical-grade inertial measurement unit
+(Honeywell HG1700, KVH 1750, or Northrop Grumman LN-200) on a test
+vehicle driven through varied terrain (open highway, urban canyon,
+tunnels, tree-canopy forest road). The IMU position is integrated
+forward from the last good GPS fix; the receiver-under-test's
+position is differenced against the integrated reference. Pass
+criteria: survey-grade RTK shows
+$\leq 5 \,\si{\centi\meter}$ horizontal $95\%$ in open sky and
+$\leq 30 \,\si{\centi\meter}$ in obstructed conditions; navigation-
+grade, $\leq 2.5 \,\si{\meter}$ open sky and $\leq 10 \,\si{\meter}$
+in urban canyon.
+
+\paragraph{Multipath rejection.} The receiver antenna is mounted on
+a vertical-translation stage and its carrier-phase jitter is
+recorded against antenna height above the ground plane. A
+single-frequency consumer antenna shows
+$\sigma_{\varphi}$ jitter modulating at the ground-reflection
+period (typically $0.1$ to $1 \,\si{\meter}$ for L1); a
+multipath-rejecting choke-ring antenna shows nearly flat
+$\sigma_{\varphi}$ across the same translation. The test isolates
+the antenna's contribution to multipath, which a chipset's
+narrow-correlator architecture cannot fix.
+
+\paragraph{Time-to-first-fix (TTFF).} Three protocols apply: cold
+start (no almanac, no ephemeris, no recent position),
+warm start (valid almanac, no ephemeris), hot start (valid almanac
+and ephemeris, position known to better than $100 \,\si{\kilo
+\meter}$). Pass criteria for a 2024-era multi-GNSS receiver:
+cold start $\leq 30 \,\si{\second}$, warm start $\leq 15 \,\si
+{\second}$, hot start $\leq 2 \,\si{\second}$. The TTFF metric
+matters in tracker applications (asset tracking, dropped-call
+backup, emergency-services position) where the receiver duty-
+cycles to save power and must reacquire quickly each wake cycle.
+
+\paragraph{Receiver Autonomous Integrity Monitoring (RAIM).} For
+aviation-grade and safety-critical applications, the receiver
+must detect a satellite fault before the bad pseudorange
+contaminates the position solution. RAIM works by comparing the
+$N$-satellite least-squares residuals against the consistency
+expected from the satellite geometry; a residual that exceeds the
+geometry-derived threshold flags a fault. The receiver excludes
+the flagged satellite, resolves with $N - 1$ satellites, and
+checks again. RTCA DO-229E sets the RAIM availability and
+horizontal-protection-level requirements for Cat-I precision
+approach. The acceptance test injects a controlled pseudorange
+bias (typically $\sim 100 \,\si{\meter}$) into one tracked
+satellite via a GNSS simulator (Spirent GSS9000, IFEN NavX-NCS,
+or equivalent) and verifies that the receiver flags the fault and
+maintains horizontal accuracy within the protection level.
+
+The aggregate pass criterion is class-dependent. Consumer-grade
+receivers pass on TTFF and autonomous accuracy alone; survey-grade
+receivers also pass on the static-monument test, the multipath
+test, and the RTK-dynamic test; precision-timing receivers
+(GPSDOs for power-grid synchrophasors, financial-trading systems,
+telecom backhaul) pass on a stationary $24 \,\si{\hour}$ Allan-
+deviation test against UTC(USNO) showing
+$\sigma_{y}(\tau = 1 \,\si{\hour}) \leq 1 \times 10^{-12}$ and on
+the holdover-during-loss-of-signal test (typically
+$\leq 1 \,\si{\micro\second}$ drift after $1 \,\si{\hour}$ of GPS
+loss with a quartz OCXO holdover, $\leq 10 \,\si{\nano\second}$
+with a chip-scale-atomic-clock holdover). An acceptance-test
+report that does not address the class-specific criteria is an
+incomplete qualification record.
+
 \subsection{GPS week-rollover: a named-case companion}
 
 A second GPS-system failure mode, briefer than the Patriot but
@@ -1935,6 +2257,123 @@ trading systems, scientific instruments, and distributed
 measurement systems. A real deployment still needs antenna siting,
 holdover design, interference monitoring, and an alternate timing
 plan for GPS loss \cite{web:usno-gps-time,std:gps-sps-2020}.
+
+\subsection{Clock disciplining: the PI loop and the Allan-deviation
+crossover}\pathtag{standard}
+
+A GPS-disciplined oscillator (GPSDO) is a control loop. The local
+oscillator (typically an OCXO; in higher-grade systems, a
+chip-scale atomic clock) free-runs on its own physics; the GPS
+receiver delivers a time-of-day reference at $1$ pulse per second
+(1PPS); a control loop adjusts the oscillator's electronic tuning
+voltage (EFC, electronic-frequency-control input) so the
+oscillator's phase tracks the GPS reference. The discipline
+mathematics is a proportional-integral (PI) controller.
+
+Let $\phi(t)$ be the instantaneous phase error between the local
+oscillator and the GPS reference, measured at the $1 \,\si
+{\second}$ tick. The PI controller produces a tuning correction
+\[
+u(t) = K_{p} \phi(t) + K_{i} \int_{0}^{t} \phi(\tau) \, d\tau,
+\]
+where $K_{p}$ is the proportional gain (units: tuning-voltage per
+unit phase error) and $K_{i}$ is the integral gain (units:
+tuning-voltage per unit accumulated phase-error-time). The
+proportional term reacts immediately to short-term phase
+fluctuations; the integral term tracks the long-term drift of the
+oscillator's natural frequency. The two gains set two distinct
+time constants: a short-term loop time $\tau_{p} = 1/K_{p}$,
+typically $1$ to $100 \,\si{\second}$ for the GPSDO loop, and a
+long-term integration time $\tau_{i}$ in the range
+$1{,}000$ to $100{,}000 \,\si{\second}$. The choice of the two
+time constants is set by the Allan-deviation crossover: the
+oscillator dominates the noise budget at averaging times shorter
+than the crossover; the GPS link dominates at longer averaging
+times.
+
+\paragraph{Worked example: OCXO + GPS Allan-deviation crossover.}
+Consider a working OCXO with the canonical noise profile of
+\engterm{white frequency-modulation (FM) noise} at short
+$\tau$ and a flicker-FM floor at long $\tau$. The Allan-deviation
+diagnostic slopes (after Riley
+\cite{text:ch06t3b-riley-handbook-2008,
+std:ch06t3b-itu-tf538-2017} and the foundational definitions of
+Allan \cite{paper:ch06t3b-allan-1966}) are:
+
+\begin{itemize}[leftmargin=*]
+  \item White-PM (phase-modulation) noise: $\sigma_{y}(\tau)
+    \propto \tau^{-1}$; the curve falls steeply.
+  \item White-FM noise: $\sigma_{y}(\tau) \propto \tau^{-1/2}$;
+    the curve falls as the square root of averaging time, the
+    classical $1/\sqrt{N}$ improvement.
+  \item Flicker-FM noise: $\sigma_{y}(\tau) \propto \tau^{0}$;
+    the curve is flat, the "flicker floor" of the oscillator.
+  \item Random-walk FM noise: $\sigma_{y}(\tau) \propto
+    \tau^{+1/2}$; the curve rises, indicating long-term drift the
+    averaging cannot suppress.
+\end{itemize}
+
+The reading: a $\sigma_{y}$-vs-$\tau$ plot tells the engineer
+which noise mechanism dominates at each averaging time, and so
+where the dominant cost of timing uncertainty lives.
+
+A specific working OCXO (representative of the Vectron MD-011 or
+Wenzel Streamline OCXO classes, current as of 2026) has
+$\sigma_{y}(\tau = 1 \,\si{\second}) = 1 \times 10^{-11}$, falling
+as $\tau^{-1/2}$ through white-FM noise, reaching a flicker floor
+of $\sigma_{y} = 1 \times 10^{-12}$ at $\tau \approx 10^{4} \,\si{
+\second}$, then rising as $\tau^{+1/2}$ through random-walk
+frequency drift. The GPS link's contribution, after the receiver's
+quantisation noise and the broadcast-ephemeris uncertainty
+($\sim 1 \,\si{\nano\second}$ at the 1PPS output), is approximately
+$\sigma_{y}^{\text{GPS}}(\tau) \approx 10^{-9}/\tau$ for $\tau \geq
+1 \,\si{\second}$: a $\tau^{-1}$ white-PM noise that crosses the
+OCXO's flicker floor at $\tau_{\text{cross}} = 10^{-9}/10^{-12} =
+10^{3} \,\si{\second}$.
+
+The crossover sets the loop time constants. The PI integrator
+should average over $\tau_{i} \approx \tau_{\text{cross}} =
+10^{3} \,\si{\second}$, slightly longer than the crossover, so the
+GPS-disciplining authority engages only after the GPS noise has
+been averaged below the OCXO's flicker floor. The proportional
+gain handles short-term rejection of any GPS-link spikes
+($\tau_{p}$ of order $1$ to $10 \,\si{\second}$). The disciplined
+GPSDO output then shows the OCXO's white-FM short-term stability
+(better than $10^{-11}$ at $\tau = 1 \,\si{\second}$) blended with
+the GPS-link long-term accuracy (random-walk FM is suppressed
+because the integrator pulls the OCXO frequency back toward the
+GPS reference). The composite Allan deviation is the lower
+envelope of the two contributing curves, with a transition near
+$\tau_{\text{cross}}$.
+
+\paragraph{What the crossover tells the engineer.} A reader who
+inspects the Allan-deviation plot of a working GPSDO and a candidate
+OCXO sees three regions: a short-$\tau$ region where the OCXO's
+intrinsic noise dominates and the GPS link contributes nothing
+useful; a transition region near $\tau_{\text{cross}}$ where the
+two contributions are comparable; and a long-$\tau$ region where
+the GPS link dominates and the OCXO would have drifted without
+discipline. The engineer reads three working consequences off the
+plot. First, a GPSDO is no better than its free-running OCXO at
+short averaging times; the choice of OCXO grade therefore sets the
+sub-second timing performance, not the GPS receiver. Second, the
+crossover time is the natural choice for the integrator time
+constant; loops tuned much faster than the crossover transmit GPS
+noise into the output, loops tuned much slower fail to suppress
+OCXO drift. Third, an antenna or receiver outage of duration
+$T_{\text{out}}$ causes a holdover frequency error that random-
+walks at the OCXO's flicker-FM rate, giving an accumulated phase
+error of order $\sigma_{y}(T_{\text{out}}) \cdot T_{\text{out}}
+\approx 10^{-12} \cdot T_{\text{out}}$ for a 1 \,\si{\hour}
+outage of a $10^{-12}$-floor OCXO, $\sim 4 \,\si{\nano\second}$,
+inside the IEEE C37.118 synchrophasor budget. A chip-scale atomic
+clock holdover at $\sigma_{y} \approx 10^{-11}$ over the same
+hour, $\sim 36 \,\si{\nano\second}$, sits inside the same budget
+with less margin; the working design choice between OCXO and CSAC
+holdover therefore comes down to the worst-case outage duration
+the application tolerates against the cost difference between the
+two clock classes. The Allan-deviation plot is the working tool
+that makes the trade visible.
 
 \begin{estimation}
 \textbf{Estimate the on-board clock-rate stability required of a
