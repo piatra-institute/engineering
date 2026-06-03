@@ -1,0 +1,55 @@
+---
+name: Duke Potti genomic predictor clinical trials
+year: 2006-2015
+domain: medical
+primary_source: "no single primary report; closest-equivalent: paper:v6c11-baggerly-coombes-2009"
+secondary_sources: [paper:v6c11-iom-omics-2012, paper:v6c11-perez-omics-fda-2015]
+short_form: Three clinical trials at Duke University Medical Center used genomic predictors of chemotherapy response derived from microarray cell-line data by Anil Potti and colleagues; reanalysis by Baggerly and Coombes at MD Anderson, beginning in 2007 and continuing through 2009, found that the published predictors could not be reproduced from the supplied data and contained reproducible technical errors including swapped sensitive and resistant labels, off-by-one sample index shifts, and overlapping training and test sets, leading to suspension of the trials in 2010, retraction of the underlying papers, and an Institute of Medicine review in 2012 that codified omics-based predictor evaluation criteria for the United States National Institutes of Health.
+status: verified
+---
+
+# Duke Potti genomic predictor clinical trials, 2006-2015
+
+## Date(s) and location
+
+The work was performed at Duke University Medical Center, Durham, North Carolina, from approximately 2006 to 2010. The first papers reporting the chemotherapy-response predictors appeared in 2006 in \emph{Nature Medicine} and in 2007 in \emph{The Lancet Oncology} and \emph{The New England Journal of Medicine}. Three Duke clinical trials enrolling lung-cancer and breast-cancer patients used the predictors to assign patients to chemotherapy regimens starting in 2007. Reanalysis by Keith Baggerly and Kevin Coombes at the University of Texas MD Anderson Cancer Center began in 2007 and was published in \emph{The Annals of Applied Statistics} in 2009. The trials were suspended in October 2009 after Duke's internal review, briefly resumed, and finally halted in 2010. Several of the original publications were retracted between 2010 and 2015. The Institute of Medicine review report appeared in 2012.
+
+## Technical mechanism
+
+The Potti group reported genomic predictors that, given a microarray expression profile of a patient's tumour, would output a recommended chemotherapy regimen. The predictors were trained on cell-line data from the NCI-60 panel: each cell line had a published $\mathrm{IC}_{50}$ for each drug and a microarray expression profile, and the predictor learned to map expression profiles to a binary sensitive-or-resistant label for each drug. The published predictors and the clinical-trial assignments rested on the assumption that the predictor was an accurate, validated mapping from expression profile to drug response.
+
+Baggerly and Coombes's reanalysis identified several reproducible technical errors in the supplied supplementary data and code. First, in several of the reported predictors, the sensitive-and-resistant labels on the cell lines had been swapped, so the predictor was being trained to recommend the drug to which the cell line was resistant rather than the drug to which it was sensitive. Second, there were off-by-one shifts in sample indices, in which the expression profile labelled with one cell line corresponded to the next cell line in the database. Third, the reported training-set and test-set assignments overlapped, so that samples used to fit the predictor were also being counted as held-out test samples; this is the canonical data-leakage failure mode. Fourth, the predictors as reported could not be regenerated from the published supplementary code and data, even with substantial effort. Baggerly and Coombes call the combination "forensic bioinformatics" and treat the inability to reproduce the published results from the supplied materials as the primary finding (p. 1316).
+
+The Institute of Medicine's 2012 report, commissioned by the United States National Institutes of Health to codify the lessons from the case, identified a generalised failure of pre-launch validation for omics-based predictors. The report's recommended criteria for moving an omics predictor from discovery to clinical use include locked computational predictors, separate held-out validation datasets generated independently of the discovery cohort, predefined performance criteria with explicit statistical thresholds, and institutional-review-board approval that explicitly addresses the predictor's validation status (Recommendations 1-4).
+
+## Organisational / regulatory mechanism
+
+No single official investigation report exists. The closest-equivalent canonical source is the Baggerly-Coombes 2009 \emph{Annals of Applied Statistics} paper, which combines the technical reanalysis with a substantial appendix documenting the correspondence and the data-sharing problems. The Institute of Medicine's 2012 report \emph{Evolution of Translational Omics: Lessons Learned and the Path Forward} is the secondary canonical source: it was commissioned by NIH after the case, draws on the Baggerly-Coombes reanalysis and on additional documents subpoenaed in subsequent litigation, and produces the recommended omics-predictor evaluation framework that has been adopted across NIH-funded translational research. A 2015 PLOS Medicine perspective by FDA staff (Perez et al.) summarises the FDA's regulatory response and its impact on diagnostic-test approval pathways.
+
+The organisational mechanisms identified by the IOM report include: Duke's institutional review of the predictors before clinical-trial enrolment did not require an independent reanalysis of the underlying computational pipeline; the Duke clinical trials' IRB approval rested on assurances from the Potti group's institution rather than on independent validation; supplementary data and code were published in forms that did not permit independent regeneration of the predictors; correspondence between Baggerly-Coombes and Duke from 2007 onward identifying the errors was, for two years, not actioned at the institutional level; civil litigation filed by the families of patients enrolled in the trials produced the documentary record that later supported the IOM review. The case has become the canonical reference for the gap between publication and clinically usable validation in omics-based prediction.
+
+## Lessons by scale
+
+- Volume I, Chapter 8 ("Statistics for engineers"): pre-registration of analysis pipelines and the distinction between exploratory and confirmatory analysis.
+- Volume VI, Chapter 11 ("Bioinformatics: sequence, structure, omics"): canonical case for data leakage in biological machine learning; reference case for the failure section on training-test contamination.
+- Volume VI, Chapter 12 ("Biocompatibility and medical devices"): regulatory pathway for software-as-a-medical-device when the software is a predictive model derived from omics data.
+- Volume X, Chapter 5 ("Software defects, races, and undefined behaviour"): the off-by-one and label-swap class of errors as a systemic risk in scientific software.
+- Volume XI, Chapter 9 ("Design reviews, certification, sign-off"): the IOM 2012 recommendations as a worked template for predictor-validation review.
+
+## Citation keys
+
+- Closest-equivalent: `paper:v6c11-baggerly-coombes-2009`. Reason: no single official investigation report exists; Baggerly and Coombes's reanalysis is the consensus peer-reviewed source for the technical mechanism, and the supplementary correspondence appendix documents the data-sharing failures.
+- Secondary: `paper:v6c11-iom-omics-2012`. The Institute of Medicine review commissioned by NIH; produces the recommended omics-predictor evaluation framework.
+- Secondary: `paper:v6c11-perez-omics-fda-2015`. PLOS Medicine perspective by FDA staff on the regulatory response.
+
+## Short-form summaries
+
+\textbf{One sentence}: Genomic predictors of chemotherapy response published by Anil Potti and colleagues at Duke University and used in three clinical trials between 2007 and 2010 could not be reproduced by independent reanalysis at MD Anderson, which identified swapped sensitive-resistant labels, off-by-one sample shifts, and training-test set overlap, leading to trial suspension, paper retractions, and a 2012 Institute of Medicine review.
+
+\textbf{Two sentences}: The Potti group at Duke University Medical Center published genomic predictors of chemotherapy response between 2006 and 2007 and used those predictors to assign treatment in three clinical trials. Baggerly and Coombes's reanalysis at MD Anderson, published in 2009, found swapped sensitive-and-resistant labels, off-by-one index shifts, overlapping training and test sets, and an inability to regenerate the published predictors from the supplied data and code; the trials were suspended in 2010, the underlying papers were retracted between 2010 and 2015, and the case prompted the 2012 Institute of Medicine review of translational omics.
+
+\textbf{One paragraph}: Three clinical trials at Duke University Medical Center between 2007 and 2010 used genomic predictors of chemotherapy response, derived by Anil Potti and colleagues from NCI-60 cell-line microarray data, to assign chemotherapy regimens to lung-cancer and breast-cancer patients. Baggerly and Coombes at MD Anderson reanalysed the published predictors beginning in 2007, finding swapped sensitive-and-resistant labels on the training data, off-by-one sample index shifts, overlapping training and test sets, and an inability to regenerate the published predictors from the supplied supplementary materials. The clinical trials were suspended in 2010, and several of the underlying papers were retracted between 2010 and 2015. The Institute of Medicine's 2012 report \emph{Evolution of Translational Omics}, commissioned by NIH after the case, codified a recommended framework for omics-based predictor evaluation: locked computational predictors, independent held-out validation cohorts, predefined performance thresholds, and institutional-review-board approval that explicitly addresses validation status. The case is the canonical reference for data leakage in biological machine learning.
+
+## Provenance and verification
+
+Sources consulted: Baggerly and Coombes, "Deriving chemosensitivity from cell lines: Forensic bioinformatics and reproducible research in high-throughput biology," \emph{The Annals of Applied Statistics} 3(4):1309-1334 (2009); Institute of Medicine, \emph{Evolution of Translational Omics: Lessons Learned and the Path Forward} (National Academies Press, 2012); Perez et al., "Lessons learned from the omics-predictor controversy," \emph{PLOS Medicine} 12(1):e1001783 (2015). Trial dates, retraction dates, and the IOM recommendation numbering are taken from the IOM report's Executive Summary. Baggerly-Coombes is treated as closest-equivalent because no single official Duke or NIH investigation report exists; the IOM review is a commissioned post-hoc study rather than an investigation, and the most detailed reconstruction of the technical errors is the Baggerly-Coombes reanalysis. Verified: 2026-06-03.

@@ -1,0 +1,68 @@
+% Figure: Variant-calling pipeline schematic from raw reads to filtered
+% variant set with quality, depth, and strand-bias filters.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  block/.style={draw=engblack, rounded corners=2pt, minimum width=3.4cm,
+    minimum height=0.9cm, align=center, font=\small},
+  filt/.style={draw=engred!60, rounded corners=2pt, minimum width=3.4cm,
+    minimum height=0.9cm, align=center, font=\small, fill=engred!8},
+  arrow/.style={-{Stealth}, thick, draw=engblack!70},
+  reject/.style={-{Stealth}, thick, draw=engred!60, dashed},
+]
+
+\node[block, fill=engblue!10] (raw) at (0, 5)
+  {Raw reads\\(FASTQ)};
+\node[block, fill=engblue!10] (qc) at (0, 3.6)
+  {Quality trimming\\(Phred $\geq 20$)};
+\node[block, fill=engblue!10] (align) at (0, 2.2)
+  {Alignment\\(BWA-MEM, Bowtie2)};
+\node[block, fill=engblue!10] (dedup) at (0, 0.8)
+  {Duplicate removal\\(MarkDuplicates)};
+\node[block, fill=engblue!10] (call) at (0, -0.6)
+  {Raw variant calls\\(GATK, DeepVariant)};
+
+\node[filt] (qual) at (5.0, 0.8) {Quality filter\\$\mathrm{QUAL} \geq 30$};
+\node[filt] (depth) at (5.0, -0.6) {Depth filter\\$\mathrm{DP}\in[10,200]$};
+\node[filt] (sb) at (5.0, -2.0) {Strand-bias filter\\$\mathrm{FS} \leq 60$};
+\node[filt] (mq) at (5.0, -3.4) {Mapping-quality filter\\$\mathrm{MQ}\geq 40$};
+
+\node[block, fill=englime!20, minimum width=3.4cm, minimum height=1.0cm]
+  (final) at (10.0, -1.3)
+  {Filtered variants\\(VCF, PASS only)};
+
+\node[block, fill=enggray!10, font=\footnotesize] (rej) at (10.0, -3.6)
+  {Rejected variants\\(retained, flagged)};
+
+\draw[arrow] (raw) -- (qc);
+\draw[arrow] (qc) -- (align);
+\draw[arrow] (align) -- (dedup);
+\draw[arrow] (dedup) -- (call);
+\draw[arrow] (call) -- (qual);
+\draw[arrow] (qual) -- (depth);
+\draw[arrow] (depth) -- (sb);
+\draw[arrow] (sb) -- (mq);
+\draw[arrow] (mq.east) -| (final.south);
+
+\draw[reject] (qual.east) -- ++(1.5, 0) |- (rej.west);
+\draw[reject] (depth.east) -- ++(1.5, 0) |- (rej.west);
+\draw[reject] (sb.east) -- ++(1.5, 0) |- (rej.west);
+\draw[reject] (mq.east) -- ++(1.5, 0) |- (rej.west);
+
+\end{tikzpicture}
+\caption[Variant-calling pipeline]{Variant-calling pipeline from
+raw sequencing reads to a filtered set of confident variant calls.
+The pipeline is a cascade of filters, each justified by a known
+failure mode: low Phred scores reflect base-call uncertainty;
+deduplication removes the over-confidence introduced by PCR
+duplicates; the quality filter rejects calls whose variant-vs-error
+likelihood ratio is too small; the depth filter rejects calls
+supported by too few reads (low confidence) or by too many reads
+(repeat or copy-number artefact); the strand-bias filter rejects
+calls supported predominantly by one strand (read-orientation
+artefact); the mapping-quality filter rejects calls in regions of
+ambiguous alignment. Rejected variants are retained in the VCF with
+their FILTER field set, not deleted, so downstream tools can
+reconsider them.}
+\label{fig:vol06:ch11:variant-pipeline}
+\end{figure}

@@ -1,0 +1,63 @@
+% Figure: ML-leakage schematic showing the four canonical pathways
+% by which test data contaminates training in biological ML.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  pool/.style={draw=engblack, rounded corners=2pt, minimum width=2.8cm,
+    minimum height=1.0cm, align=center, font=\small},
+  leak/.style={->, thick, draw=engred!80, dashed},
+  ok/.style={->, thick, draw=engblack!70},
+  bad/.style={fill=engred!10},
+  good/.style={fill=englime!10},
+]
+
+% Top row: the intended pipeline
+\node[pool, good] (raw) at (0, 3) {Raw cohort};
+\node[pool, good] (split) at (3.5, 3) {Patient-level\\hold-out split};
+\node[pool, good] (train) at (7.5, 3.8) {Training set\\(80\%)};
+\node[pool, good] (test) at (7.5, 2.2) {Test set\\(20\%)};
+\node[pool, good] (mod) at (11.5, 3.8) {Train model};
+\node[pool, good] (eval) at (11.5, 2.2) {Evaluate};
+
+\draw[ok] (raw) -- (split);
+\draw[ok] (split) -- (train);
+\draw[ok] (split) -- (test);
+\draw[ok] (train) -- (mod);
+\draw[ok] (test) -- (eval);
+\draw[ok] (mod.south) -| (eval.north);
+
+% Below: four leakage paths
+\node[font=\small\bfseries, anchor=west] at (0, 0.8)
+  {Four leakage pathways:};
+
+\node[pool, bad] (l1) at (1.7, -0.7) {(1) Sample-level\\not patient-level\\split};
+\node[pool, bad] (l2) at (5.2, -0.7) {(2) Preprocessing\\on full cohort\\(normalisation,\\feature selection)};
+\node[pool, bad] (l3) at (8.7, -0.7) {(3) Hyperparameter\\tuning on\\test set};
+\node[pool, bad] (l4) at (12.2, -0.7) {(4) Same-source\\contamination\\(images, sites,\\scanners)};
+
+% Show paths leaking into the test set
+\draw[leak] (l1.north) to[bend right=15] (test.south);
+\draw[leak] (l2.north) to[bend left=10] (test.south);
+\draw[leak] (l3.north) to[bend left=20] (test.south);
+\draw[leak] (l4.north) to[bend left=30] (test.south);
+
+\end{tikzpicture}
+\caption[Data-leakage pathways in biological ML]{Four pathways by
+which test information leaks into a biological-ML pipeline. (1)
+Splitting the cohort at the sample level when multiple samples come
+from the same patient (the same tumour resected at two timepoints,
+two cells from the same individual): the model learns
+patient-specific signatures and reports them as generalisation. (2)
+Preprocessing (normalisation, batch correction, feature selection)
+fitted on the full cohort uses information from the held-out
+samples to set parameters that the model then exploits. (3)
+Hyperparameter selection by performance on what the engineer calls
+the test set converts the test set into a second training set. (4)
+Same-source contamination: when training and test share imaging
+sites, sequencing centres, or scanner instruments, the model can
+learn the site-specific artefact instead of the biological signal.
+The Duke Potti case combined pathways 1, 2, and 3 with reporting
+errors; the COVID-19 imaging review of 415 papers found pathway 4
+endemic.}
+\label{fig:vol06:ch11:ml-leakage}
+\end{figure}

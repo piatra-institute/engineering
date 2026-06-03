@@ -1,0 +1,57 @@
+% Figure: AlphaFold2 sequence-to-structure pipeline schematic.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  block/.style={draw=engblack, rounded corners=2pt, minimum width=2.6cm,
+    minimum height=1.0cm, align=center, font=\small},
+  arrow/.style={-{Stealth}, thick, draw=engblack!70},
+]
+
+\node[block, fill=engblue!10] (seq) at (0, 0) {Query\\sequence};
+\node[block, fill=engblue!15] (msa) at (3.2, 0.7)
+  {MSA search\\(MAFFT, HHsuite)};
+\node[block, fill=engblue!15] (tpl) at (3.2, -0.7)
+  {Template search\\(PDB)};
+
+\node[block, fill=englime!15, minimum width=3.2cm] (evo) at (7.0, 0)
+  {Evoformer\\48 blocks, attention\\over MSA + pairs};
+
+\node[block, fill=engamber!15, minimum width=3.2cm] (str) at (11.0, 0)
+  {Structure module\\IPA + frame update};
+
+\node[block, fill=engred!10, minimum width=2.6cm] (coord) at (14.5, 0)
+  {3D atomic\\coordinates};
+
+% Confidence head
+\node[block, fill=enggray!15, minimum width=2.6cm] (plddt) at (11.0, -2.0)
+  {pLDDT head\\(per-residue\\confidence)};
+
+\draw[arrow] (seq) -- (msa);
+\draw[arrow] (seq) -- (tpl);
+\draw[arrow] (msa) -- (evo);
+\draw[arrow] (tpl) -- (evo);
+\draw[arrow] (evo) -- (str);
+\draw[arrow] (str) -- (coord);
+\draw[arrow] (str.south) -- (plddt.north);
+\draw[arrow, draw=engblack!40] (evo.south) |- (plddt.west);
+
+% Recycling loop
+\draw[arrow, draw=engred!60, dashed]
+  (str.north) to[bend left=30] node[midway, above, font=\footnotesize]
+  {recycle ($\times 3$ typical)} (evo.north);
+
+\end{tikzpicture}
+\caption[AlphaFold pipeline schematic]{AlphaFold2 pipeline from
+sequence to predicted structure. A multiple-sequence alignment
+captures coevolutionary information across orthologues; templates
+from the PDB provide a starting geometry where homologues exist.
+The Evoformer alternates row-attention, column-attention, and
+triangle updates between the MSA stack and the pair stack. The
+structure module converts the pair representation to a sequence of
+backbone frames via invariant point attention. The pLDDT head emits
+a per-residue confidence score that is the calibrated check against
+the coordinates. The full forward pass is recycled three times
+during inference; the cost is approximately linear in target
+length for sequences below 2~kAA.}
+\label{fig:vol06:ch11:alphafold-pipeline}
+\end{figure}

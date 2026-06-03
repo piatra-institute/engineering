@@ -1,40 +1,1831 @@
 \chapter{Bioinformatics: sequence, structure, omics}
 \label{vol06:ch11}
 
-\epigraph{}{}
+\epigraph{It has not escaped our notice that the specific pairing we
+have postulated immediately suggests a possible copying mechanism for
+the genetic material.}{\citeauthor{paper:v6c11-watson-crick-1953},
+\citetitle{paper:v6c11-watson-crick-1953}, p.~737}
 
-\chapmeta{Half-life: medium-life. Archetypes: information, scaling, uncertainty. Exercise target: 30. Project track: TBD (physical, simulation, household, or hybrid).}
+\chapmeta{Half-life: medium-life. Archetypes: information, scaling, uncertainty. Exercise target: 30. Project track: simulation. Hazard class: none. Reader path default: standard, with sections explicitly tagged. Named cases: Duke Potti genomic predictor clinical trials.}
 
 \noindent
-\TODO{Volume 6, Chapter 11. Approx 100 pp.}
+Biology is the largest measurement programme on Earth. A single bacterial
+genome holds a few megabytes; a human genome holds about three gigabytes;
+a metagenomic sample of soil holds terabytes; the global archive of
+sequenced reads passed an exabyte during the early 2020s
+\cite{paper:v6c11-stephens-genomic-2015}. The discipline of bioinformatics
+is the engineering of how that measurement programme is stored,
+searched, aligned, compared, predicted, integrated, and used to support
+decisions about cells, organisms, and patients. Each step is a transformation
+on data with a known biological structure and an enormous noise budget,
+and the engineer's job is to keep the structure that the biology supplies
+visible against the noise that the measurement introduces. This chapter
+treats sequence data, sequence-to-structure prediction, genomics and
+variant calling, transcriptomics, the broader omics stack, phylogenetics,
+machine learning for biology, and the canonical failure mode by which
+biological machine learning leaks itself into reporting overdrawn results.
 
-\section{Sequence data: alphabets, alignment, search}
-\TODO{Section prose.}
+\section{Sequence data: alphabets, alignment, search}\pathtag{core}
 
-\section{Sequence-to-structure: prediction, AlphaFold and beyond}
-\TODO{Section prose.}
+\subsection{Alphabets, formats, and quality}
 
-\section{Genomics and variant calling}
-\TODO{Section prose.}
+A biological sequence is a string over a small alphabet. DNA and RNA use
+four symbols (A, C, G, T or U); protein sequences use the twenty
+standard amino acids, sometimes extended by codes for selenocysteine
+and pyrrolysine. The alphabet matters in two ways: it sets the maximum
+information per symbol ($\log_2 4 = 2$~bits for DNA, $\log_2 20
+\approx 4.32$~bits for protein), and it constrains the substitution
+statistics that an alignment algorithm uses.
 
-\section{Transcriptomics and single-cell RNA-seq}
-\TODO{Section prose.}
+Read data are stored most often as FASTA (header plus sequence) or
+FASTQ (header, sequence, separator, per-base quality string)
+\cite{paper:v6c11-cock-fasta-2010}. The Phred quality score $Q$ encodes
+an estimated base-call error probability $p$ as
+\[
+Q = -10 \log_{10} p,
+\]
+so $Q = 30$ means a one-in-a-thousand error rate at that position.
+Quality scores are encoded as ASCII characters offset by 33 (Sanger
+encoding) or 64 (early Illumina); modern pipelines assume Sanger
+unless told otherwise. A quality filter trims reads at the position
+where the Phred score falls below a threshold (commonly $Q=20$),
+because the downstream cost of an erroneous base in a low-quality
+position is greater than the cost of throwing the position away.
 
-\section{Proteomics, metabolomics, lipidomics, fluxomics}
-\TODO{Section prose.}
+Reference genomes and annotations are stored in FASTA (sequences),
+GFF or GTF (gene-model annotations), BED (interval features), VCF
+(variant calls), and BAM (aligned reads). Each format is a contract
+about which fields appear in which order; the engineering discipline
+of working in genomics is the discipline of reading the format
+specification before reading the data.
 
-\section{Phylogenetics and evolutionary engineering}
-\TODO{Section prose.}
+\subsection{Pairwise alignment by dynamic programming}
 
-\section{ML for biology: graph networks, foundation models}
-\TODO{Section prose.}
+The pairwise-alignment problem asks: given two sequences $a$ and $b$,
+what is the maximum-scoring alignment that maps each symbol of one to
+a symbol of the other or to a gap, under a fixed substitution score
+and gap penalty? Needleman and Wunsch \cite{paper:v6c11-needleman-wunsch-1970}
+solved the global version of this problem with dynamic programming in
+$O(mn)$ time and $O(mn)$ space, where $m$ and $n$ are the sequence lengths.
+The recurrence on the score matrix $M$ is
+\[
+M[i,j] = \max\!\Bigl\{ M[i-1,j-1] + s(a_i, b_j),\, M[i-1,j] + g,\, M[i,j-1] + g \Bigr\},
+\]
+with $M[0,0] = 0$ and the first row and column initialised to cumulative
+gap penalties: $M[i,0] = i\,g$, $M[0,j] = j\,g$. The score $s(a_i, b_j)$
+is a substitution score (positive for matches, negative for mismatches),
+and $g$ is a linear gap penalty.
 
-\section{Failure: data leakage in biological ML, batch effects, overfit-to-cohort}
-\TODO{Section prose.}
+Smith and Waterman \cite{paper:v6c11-smith-waterman-1981} adapted the
+recurrence for local alignment by adding a zero floor:
+\[
+M[i,j] = \max\!\Bigl\{ 0,\, M[i-1,j-1] + s(a_i, b_j),\, M[i-1,j] + g,\, M[i,j-1] + g \Bigr\}.
+\]
+The local maximum anywhere in the matrix is the best local-alignment
+score; traceback starts from that maximum and stops at the first zero.
 
+The recurrence is one of the cleanest illustrations of dynamic
+programming in any engineering domain. The state $(i,j)$ stores the
+best score for any alignment ending at position $i$ in $a$ and $j$ in
+$b$. Three predecessors capture the three ways to extend an alignment
+by one column. The optimum is a maximisation over the three. The
+correctness rests on the fact that an optimal alignment of the prefixes
+must be the prefix of an optimal alignment of the wholes, which is
+the discrete-time analogue of Bellman's principle.
 
-\section{Project}
-\TODO{align two bacterial genomes; identify variants and annotate functions}
+\Cref{fig:vol06:ch11:nw-matrix} traces the Needleman-Wunsch recurrence
+on the textbook pair GATTACA against GCATGCU with match $+1$, mismatch
+$-1$, and gap $-1$. The bottom-right cell holds the optimal global
+score; reading the traceback backwards recovers an optimal alignment.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-nw-matrix}
+
+\subsection{Affine gap penalties}
+
+The linear-gap model penalises a gap of length $k$ by $k\,g$. In real
+biology, gaps come from insertions and deletions whose opening cost is
+larger than their extension cost: opening a gap requires a single
+mutational event; extending the gap by one residue may cost much less.
+The affine-gap model uses two parameters $\alpha$ (gap open) and $\beta$
+(gap extend), with total cost $\alpha + (k-1)\,\beta$ for a gap of
+length $k\geq 1$. The Gotoh algorithm extends Needleman-Wunsch to
+affine gaps by maintaining three score matrices: $M$ for alignments
+ending in a match-or-mismatch, $X$ for alignments ending in a gap in
+$b$, and $Y$ for alignments ending in a gap in $a$. The recurrence
+becomes
+\begin{align*}
+M[i,j] &= \max\{ M[i-1,j-1], X[i-1,j-1], Y[i-1,j-1] \} + s(a_i, b_j), \\
+X[i,j] &= \max\{ M[i-1,j] - \alpha,\, X[i-1,j] - \beta \}, \\
+Y[i,j] &= \max\{ M[i,j-1] - \alpha,\, Y[i,j-1] - \beta \}.
+\end{align*}
+The optimal score sits in $\max\{M[m,n], X[m,n], Y[m,n]\}$. The cost
+remains $O(mn)$ in time and space.
+
+\subsection{Substitution matrices}
+
+For protein alignment, the substitution score $s(a_i, b_j)$ is read from
+an empirical matrix. PAM matrices (Dayhoff, 1978) were derived from
+closely related protein alignments and extrapolated; BLOSUM matrices
+\cite{paper:v6c11-henikoff-blosum-1992} were derived from blocks of
+conserved regions in less-related proteins. BLOSUM62, the default for
+most current BLAST searches, encodes a log-odds score:
+\[
+s(a, b) = \frac{1}{\lambda} \log \frac{P(a, b)}{P(a) P(b)},
+\]
+where $P(a, b)$ is the joint frequency of $a$ and $b$ at aligned
+positions in conserved blocks and $P(a) P(b)$ is the frequency expected
+under independence. The denominator is the null model: the score is
+positive when the observed pair appears more often than chance, and
+negative when it appears less. The factor $\lambda$ scales the matrix
+to integer entries; BLOSUM62 uses $\lambda \approx 0.318$ per nat, so
+entries near $\pm 10$ correspond to log-odds ratios of order $e^3$.
+
+\subsection{Heuristic search: BLAST}
+
+The dynamic-programming algorithm is $O(mn)$, which becomes prohibitive
+when one of the sequences is a multi-billion-residue database. BLAST
+\cite{paper:v6c11-altschul-blast-1990} replaces the exhaustive
+recurrence with a seed-and-extend heuristic. The algorithm extracts
+all $w$-letter words from the query (with $w=3$ for protein, $w=11$
+for DNA), enumerates all words that score above a threshold $T$ when
+aligned against the query word, looks up those words in a database
+index, and extends each seed hit by ungapped and then gapped local
+alignment. The price is a probability of missing significant hits;
+the prize is a roughly thousand-fold speedup at typical database
+sizes.
+
+The statistical significance of a BLAST hit is given by the
+Karlin-Altschul E-value \cite{paper:v6c11-karlin-altschul-1990}:
+\[
+E = K \, m \, n \, \exp(-\lambda S),
+\]
+where $S$ is the raw alignment score in score-system units, $m$ is the
+query length, $n$ is the total database size, and $K$ and $\lambda$
+are Karlin-Altschul parameters that depend only on the scoring system
+and the residue composition. The E-value is the expected number of
+distinct hits at score $S$ or higher under the null model of random
+sequences. A bit score normalises the raw score to a scoring-system-
+independent value:
+\[
+S' = \frac{\lambda S - \ln K}{\ln 2}, \qquad E = \frac{m\,n}{2^{S'}}.
+\]
+The bit score is portable across BLAST runs; the E-value depends on
+both $m$ and $n$ and is read with both numbers in mind.
+
+The E-value formula has an engineering consequence that catches
+students of bioinformatics off guard: doubling the database size
+doubles the E-value at fixed score, and the same hit that was
+significant against a 200~Mb reference becomes routine against a 50~Gb
+metagenomic database (\Cref{fig:vol06:ch11:blast-evalue}). The same
+sequence has not changed; the inferential weight of finding it by
+chance has changed because the search space has grown.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-blast-evalue}
+
+Profile-HMM methods (HMMER \cite{paper:v6c11-eddy-hmmer-2011}) replace
+the fixed substitution matrix with a position-specific scoring matrix
+that captures conserved-versus-variable positions in a protein family,
+and replace the linear-gap model with a position-specific gap model.
+Profile HMMs are the workhorse of remote-homologue detection, where a
+direct BLAST search returns nothing because the pairwise identity is
+below the substitution-matrix threshold but a family-level pattern is
+preserved.
+
+\begin{archetype}[Information: structure is the signal]
+A biological sequence is a string drawn from a small alphabet, but
+the strings that biology produces are not uniform over that alphabet.
+Real sequences encode coding regions, regulatory regions, structured
+RNA, repeats, and lineage-specific signatures. The structure is the
+signal: a uniform random string of the same length has Shannon entropy
+$\log_2 |\Sigma|$ per symbol (2~bits for DNA, $\approx 4.32$~bits for
+protein), but a real coding sequence has entropy on the order of
+$1.6$~bits per nucleotide and a homologue's mutual information with
+its parent is much larger than the entropy of either alone. The
+engineer's task throughout this chapter is to design algorithms that
+amplify the structural signal against the alphabet-uniform noise floor.
+\end{archetype}
+
+\begin{estimation}
+\textbf{Question.}
+Estimate the cost, in dollars and in storage, of sequencing and storing
+every human genome on Earth by the end of the decade
+(current as of 2024).
+
+The human population is approximately $8.0 \times 10^{9}$ persons. A
+30-fold-coverage whole-genome sequence at current Illumina pricing
+(approximately \$200 per genome amortised including sample prep, current
+as of late 2024) gives a per-person cost of order \$200 in pure reagent
+terms; clinical-grade processing roughly triples this. At
+$\$200 \times 8 \times 10^{9}$ the bare reagent bill is $1.6$~trillion
+USD, comparable to the annual healthcare budget of a large economy.
+
+A 30-fold-coverage human genome occupies about 100~GB of FASTQ raw,
+which compresses to roughly 30~GB with reference-based compression, and
+about 1~MB of meaningful variant calls. Storing the variants for the
+population takes $8 \times 10^{9} \times 1\,\text{MB} = 8$~PB. Storing
+the raw FASTQ takes $8 \times 10^{9} \times 30\,\text{GB} = 2.4 \times
+10^{20}$~bytes, that is, $240$~EB, exceeding by an order of magnitude
+the entire 2024 cloud-storage capacity offered by the three largest
+public cloud providers combined. The conclusion is operational: the
+field moved during the late 2010s from storing reads to storing
+variants for routine clinical use, and reverts to the raw reads only
+when a reanalysis with a new reference or a new caller is required
+\cite{paper:v6c11-stephens-genomic-2015,paper:v6c11-marx-storage-2013}.
+\end{estimation}
+
+\section{Sequence-to-structure: prediction, AlphaFold and beyond}\pathtag{standard}
+
+\subsection{The folding problem}
+
+A protein's three-dimensional structure determines its function, and
+its structure is determined by its sequence under physiological
+conditions. The folding problem asks for the inverse map: given the
+amino-acid sequence, predict the atomic coordinates of the native
+structure. The problem is in principle a free-energy minimisation over
+a configuration space of $10^{2}$ to $10^{4}$ residues, each with a
+backbone and a side chain, and the answer is the global minimum of a
+free-energy landscape that the cell traverses in milliseconds. The
+combinatorial intuition due to Levinthal makes the brute-force search
+hopeless: even a 100-residue protein with three rotamers per residue
+has $3^{100} \approx 10^{47}$ configurations. The cell does not search;
+the cell uses a landscape that funnels efficiently.
+
+\subsection{Physics, statistics, coevolution}
+
+The first generation of structure-prediction methods used physics-based
+force fields (CHARMM, AMBER, OPLS) with molecular-dynamics or
+Monte-Carlo sampling. Force fields parameterise bond, angle, dihedral,
+van der Waals, and electrostatic energies; sampling is the engineering
+challenge. The second generation added statistical potentials derived
+from the distribution of distances and angles in known structures
+(DOPE, Rosetta's terms). The third generation added coevolution
+signals: when two residues are in contact in the folded protein,
+mutations at one residue tend to be compensated by mutations at the
+contacting residue across orthologous sequences, so a multiple-sequence
+alignment encodes structural contacts in its correlation pattern.
+
+Direct Coupling Analysis (DCA) and its successors extract pairwise
+contact probabilities from MSA covariation by fitting a Potts model on
+the alignment and reading the inferred coupling parameters. The
+coupling matrix's strongest off-diagonal entries correspond to
+residues in contact in the folded structure. By the time of CASP12
+(2016), MSA-based contact predictors were producing contact maps
+sufficient to fold many proteins with a downstream physics model.
+
+\subsection{AlphaFold and the end-to-end approach}
+
+AlphaFold2 \cite{paper:v6c11-jumper-alphafold-2021} replaced the
+two-stage pipeline (contact prediction followed by folding) with an
+end-to-end neural-network architecture trained on the PDB. The pipeline
+(\Cref{fig:vol06:ch11:alphafold-pipeline}) takes the query sequence,
+constructs a multiple-sequence alignment of orthologues by HMM search
+(MAFFT or HHsuite \cite{paper:v6c11-katoh-mafft-2013}), searches the
+PDB for templates, and feeds both into the Evoformer module. The
+Evoformer is a stack of 48 attention blocks that alternates attention
+over rows and columns of the MSA representation with triangle updates
+of the pair representation. The structure module then converts the
+pair representation to a sequence of backbone frames via invariant
+point attention, and the side chains are placed by a rotamer head.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-alphafold-pipeline}
+
+Training combined the PDB ($\sim 175\text{k}$ structures by 2021) with
+self-distillation: AlphaFold predicted structures for sequences without
+deposited structures, filtered by predicted confidence, and added the
+high-confidence predictions back to the training set. The
+median backbone accuracy at CASP14 (2020) was $1.0$~A RMSD on
+template-free targets, comparable to experimental X-ray crystallography
+for the easier targets in the set
+\cite[][\ p.~586]{paper:v6c11-jumper-alphafold-2021}.
+
+The per-residue confidence score pLDDT (predicted local distance
+difference test) is the calibrated check on the coordinates. Regions
+with pLDDT below $50$ are predicted to be disordered or to have low
+local accuracy; regions with pLDDT above $90$ are predicted to be at
+near-experimental accuracy. Reading an AlphaFold structure without
+reading pLDDT is reading a prediction without its uncertainty.
+
+\subsection{ESMFold and the language-model lineage}
+
+A parallel line of work used protein language models (ESM-1, ESM-2)
+\cite{paper:v6c11-lin-esm2-2023} trained by masked-language modelling on
+hundreds of millions of unaligned protein sequences. ESMFold reads
+structure from a single sequence using only the language model's
+embeddings, with no MSA. The accuracy is below AlphaFold for targets
+with deep MSAs but is competitive for targets without orthologues
+(orphans, designed proteins, viral proteins from undersampled lineages),
+and is roughly two orders of magnitude faster. The two architectures
+embody two information sources for the folding problem: evolution
+across orthologues (AlphaFold's MSA), and the implicit grammar of
+folded proteins (ESMFold's language model).
+
+\subsection{What remains hard}
+
+Several classes of structure prediction remain difficult as of 2024.
+Multi-state proteins (kinases, GPCRs, transporters) fold into many
+distinct conformations; AlphaFold typically returns the dominant
+conformation in the training distribution, not the one relevant to the
+user's question. Intrinsically disordered regions (which make up
+$\approx 30\%$ of human protein residues) do not have a unique
+structure to predict; pLDDT is low in those regions, which is the
+correct answer, but the calling convention "structure of protein X"
+becomes ill-defined. Membrane proteins were under-represented in the
+PDB training corpus, and the accuracy on transmembrane regions remains
+below the accuracy on soluble proteins. Protein-ligand complexes,
+metal-binding sites, and post-translational modifications are not
+modelled in the base architecture; specialised heads (AlphaFill,
+AlphaFold-Multimer, RoseTTAFold All-Atom) extend coverage but at
+correspondingly degraded accuracy. The reader takes a pLDDT and the
+class of protein into account before quoting an AlphaFold structure
+as a fact.
+
+\section{Genomics and variant calling}\pathtag{standard}
+
+\subsection{Reference genomes and short-read alignment}
+
+Modern whole-genome sequencing produces hundreds of millions of short
+reads (75-300~bp typical Illumina, $10$-$100$~kb typical PacBio or
+Oxford Nanopore) per sample. The reads are aligned to a reference
+genome to identify the position from which each read originated. Two
+algorithmic ideas dominate short-read alignment: hash-based seeding
+(Bowtie-1 era) and FM-index seeding using the Burrows-Wheeler
+transform (BWA-MEM \cite{paper:v6c11-li-bwa-2009}, Bowtie 2
+\cite{paper:v6c11-langmead-bowtie-2012}).
+
+The FM-index stores the BWT of the reference along with a sparse rank
+data structure that supports exact substring search in time linear in
+the substring length and independent of the reference length. The
+total memory for a human-genome FM-index is approximately $4$~GB, which
+fits in memory on a workstation. Once seeds are placed by exact
+search, gapped extension uses a banded dynamic-programming alignment
+on the seed neighbourhood. The output is a SAM (sequence alignment
+map) record per read carrying position, CIGAR string (the alignment
+operation sequence), mapping quality, and per-base quality.
+
+\subsection{Variant calling}
+
+A variant call is a position in the reference where the sample
+sequence differs from the reference. The simplest variants are
+single-nucleotide variants (SNVs) and short insertions or deletions
+(indels, up to $\sim 50$~bp). Larger structural variants (inversions,
+translocations, copy-number variants) require specialised callers and
+are not treated here.
+
+The canonical SNV-and-indel pipeline (GATK
+\cite{paper:v6c11-mckenna-gatk-2010}) is a cascade of statistical
+steps. The HaplotypeCaller assembles short de Bruijn graphs from reads
+in active regions, identifies candidate haplotypes, realigns reads
+against the haplotypes, and calls variants from the realigned pileup.
+The output is raw variant calls with per-call statistics: QUAL (the
+log-odds of the variant being real), DP (total read depth), AF
+(alternate-allele fraction), FS (Fisher's exact strand-bias score),
+MQ (root-mean-square mapping quality), and others.
+
+Filtering converts raw calls to confident calls
+(\Cref{fig:vol06:ch11:variant-pipeline}). Hard filters apply
+thresholds: $\mathrm{QUAL} \geq 30$, $\mathrm{DP} \in [10, 200]$ for a
+diploid germline call, $\mathrm{FS} \leq 60$, $\mathrm{MQ} \geq 40$.
+Variant Quality Score Recalibration (VQSR) fits a Gaussian mixture to
+high-confidence training variants and scores new calls by their
+posterior probability of belonging to the high-confidence cluster;
+this is the recommended approach for population-scale projects.
+DeepVariant \cite{paper:v6c11-poplin-deepvariant-2018} reframes the
+problem as image classification on pileup images and trains a
+convolutional network to call variants directly, achieving
+state-of-the-art accuracy on the Genome in a Bottle benchmark.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-variant-pipeline}
+
+The filter cascade is not optional. A modern human whole-genome
+sequence yields approximately $4$ million raw single-nucleotide
+variants; the filtered set is approximately $3.5$ million, with
+discordance between callers running at $5$ to $10\%$ on the more
+difficult variant classes. The number that propagates to the clinical
+report (the medically actionable variants) is typically below $200$.
+Each filter step in the pipeline corresponds to a known failure mode
+that, left in, accounts for a fraction of the false positive rate.
+
+\subsection{Variant call format}
+
+Variants are stored in VCF \cite{paper:v6c11-danecek-vcf-2011}. Each
+data line carries CHROM, POS, ID, REF, ALT, QUAL, FILTER, INFO, plus
+per-sample genotype columns. The FILTER column carries either PASS or
+a semicolon-separated list of filter names that the record failed;
+rejected variants are retained in the file with their failure tags,
+not deleted, so a downstream tool can reconsider them if a different
+threshold applies. The INFO column carries semicolon-separated
+key=value pairs with the per-call statistics. The discipline of
+working in VCF is the discipline of reading the header lines, which
+declare what each INFO key means and how the file was produced.
+
+\subsection{Population-scale variant interpretation}
+
+A variant's biological significance is rarely apparent from the
+variant itself. The variant is matched against population databases
+(gnomAD, 1000 Genomes), against clinical-significance databases
+(ClinVar), against gene-annotation databases (Ensembl
+\cite{paper:v6c11-ensembl-2023}, RefSeq), and against the
+disease-specific cohort, before a clinical interpretation is issued.
+The same variant can be benign in a population with $5\%$ minor-allele
+frequency and pathogenic in a population where it is private and
+co-segregates with disease. The interpretation is a small calculation
+on top of a large lookup; the lookup tables are the asset.
+
+\section{Transcriptomics and single-cell RNA-seq}\pathtag{standard}
+
+\subsection{Bulk RNA-seq}
+
+The transcriptome is the set of all RNA molecules present in a sample.
+Bulk RNA-seq measures the abundance of each transcript across a
+population of cells. The workflow is: extract RNA, deplete ribosomal
+RNA or capture polyadenylated transcripts, fragment, reverse-transcribe
+to cDNA, attach sequencing adapters, sequence to a target depth (10-30
+million reads is typical for differential expression), align reads to
+the transcriptome or genome, count reads per transcript or per gene,
+normalise across samples, and test for differential expression.
+
+The output of a bulk RNA-seq experiment is a counts matrix: rows are
+features (genes or transcripts), columns are samples, entries are read
+counts. Counts must be normalised before comparison. Library-size
+normalisation divides by total counts per sample; TMM normalisation
+(edgeR) and median-of-ratios normalisation (DESeq2) fit a per-sample
+size factor under the assumption that most genes are not differentially
+expressed; quantile normalisation forces the empirical distribution of
+counts to be identical across samples (used when the assumption that
+most genes are not differential is questionable).
+
+Differential expression testing uses negative-binomial generalised
+linear models (edgeR, DESeq2). The negative binomial captures both the
+Poisson sampling component (the read-count process) and the
+biological over-dispersion (variance greater than mean across
+biological replicates). The dispersion parameter is estimated per
+gene with shrinkage toward a pooled estimate, which is the canonical
+empirical-Bayes pattern: borrow strength across genes to stabilise the
+per-gene variance estimate.
+
+\subsection{Single-cell RNA-seq}
+
+Single-cell RNA-seq (scRNA-seq) measures the transcriptome of each of
+many individual cells separately. The workflow uses microfluidic
+droplets (10x Genomics Chromium, inDrops, Drop-seq), microwells, or
+plate-based methods to capture each cell into its own reaction volume,
+attach a cell-specific barcode and a unique molecular identifier
+(UMI), and pool the reactions for sequencing. The output is a counts
+matrix with cells as columns instead of samples; a typical 10x
+Chromium run yields 5000 to 10000 cells per channel.
+
+The data are sparse: a typical cell has 1000 to 5000 captured
+transcripts out of 200,000 or more present in the cell, so the counts
+matrix is more than $90\%$ zero. Many of those zeros are "missing"
+(the transcript was present but not captured); some are "true"
+(the transcript was not expressed). The distinction matters for
+downstream analysis: differential expression tests that assume zero
+means absence will mis-call genes whose only failure was capture
+inefficiency. Modern scRNA-seq pipelines model the zeros explicitly
+(ZINB-WaVE) or use methods that are robust to zero-inflation (MAST,
+Wilcoxon rank-sum).
+
+\subsection{Workflow: QC, normalisation, clustering, integration}
+
+The canonical scRNA-seq workflow \cite{paper:v6c11-stuart-scrnaseq-2019}
+proceeds in stages. Quality control removes cells with too few or too
+many counted transcripts (likely empty droplets or doublets), removes
+cells with high mitochondrial-read fraction (likely stressed or dying
+cells), and removes ambient-RNA contamination by SoupX or DecontX.
+Normalisation by SCT (Seurat) or scran size-factors corrects for cell-
+to-cell capture variation. Highly variable genes are selected to
+reduce dimensionality. PCA projects to 30-50 components. A k-nearest-
+neighbour graph is constructed in PCA space; the graph is clustered by
+Leiden or Louvain. The cluster identities are assigned to cell types
+by marker-gene expression. UMAP or t-SNE produces a two-dimensional
+visualisation for inspection.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-scrna-umap}
+
+\Cref{fig:vol06:ch11:scrna-umap} shows the failure mode common to
+UMAP interpretation. Well-separated clusters in the embedding
+correspond to populations whose marker genes differ strongly. Clusters
+that overlap in UMAP may differ in a small number of canonical
+markers against a large shared transcriptional background; the
+cell-type call rests on the markers, not on the embedding coordinates.
+Reading a UMAP plot as a metric is the canonical first error of a
+new scRNA-seq analyst. The two-dimensional UMAP preserves local
+neighbourhoods at the expense of global geometry; distances in the
+plot do not faithfully represent distances in transcript space.
+
+\subsection{Integration across batches and conditions}
+
+scRNA-seq experiments are routinely conducted across multiple batches,
+laboratories, time points, or conditions. Integration aligns the
+common cell-type axis across batches while preserving the
+between-condition differences. Anchor-based methods (Seurat v3,
+SCMAP) find mutual nearest neighbours across batches in PCA space and
+use them to estimate batch-correction vectors. Variational autoencoder
+methods (scVI, scANVI) model the joint distribution and learn a latent
+representation in which batch is regressed out. The integration step
+is where the disease-vs-batch problem of the failure section appears:
+if a condition is collinear with batch, no integration can recover the
+condition signal honestly.
+
+\section{Proteomics, metabolomics, lipidomics, fluxomics}\pathtag{standard}
+
+\subsection{The omics stack}
+
+\Cref{fig:vol06:ch11:omics-stack} sketches the omics stack as a chain
+of measurement layers from genome (static, $\sim 3 \times 10^9$ bp in
+human) to phenotype (the system-level outcome). Each layer is
+measured by its own technology with its own artefact class. A study
+that uses only one layer measures the projection of a many-dimensional
+state onto a single axis; multi-omics integration estimates the joint
+state from partial views with very different noise statistics.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-omics-stack}
+
+\subsection{Proteomics by mass spectrometry}
+
+Mass-spectrometry-based proteomics \cite{paper:v6c11-aebersold-proteomics-2003}
+measures the abundance of proteins in a sample by digesting proteins to
+peptides (typically with trypsin), separating peptides by
+liquid chromatography, ionising them, and measuring their mass-to-charge
+ratio in a mass spectrometer. Modern instruments perform tandem MS:
+the precursor peptide ion is selected by its m/z, fragmented by
+collision-induced dissociation, and the fragment-ion spectrum is
+recorded. The fragment-ion pattern is a sequence-specific fingerprint
+of the peptide.
+
+Peptide identification by database search (SEQUEST, MaxQuant, MSFragger)
+compares each observed spectrum against the theoretical spectra of all
+peptides predicted from a digest of a reference proteome. The score is
+typically a hypergeometric or cross-correlation match. False discovery
+rate is controlled by target-decoy: searching the database concatenated
+with a shuffled or reversed copy and counting decoy matches at each
+score threshold to estimate the FDR among target matches above that
+threshold. The conventional reporting threshold is $1\%$ peptide FDR
+followed by $1\%$ protein FDR.
+
+Quantification approaches divide into label-free (the area under the
+chromatographic peak, normalised across runs), label-based (isobaric
+tags such as iTRAQ or TMT that allow multiplexed comparison in a
+single MS run), and SILAC (stable-isotope labelling by amino acids in
+cell culture, which compares two or three differentially labelled
+samples in the same instrument run). Each method has its own
+linearity range and its own batch-effect class.
+
+Post-translational modifications (PTMs) are read by mass shifts at
+the modification site: phosphorylation adds $+80$~Da, methylation
+$+14$~Da, ubiquitination leaves a $+114$~Da GG remnant after digestion.
+The combinatorial explosion of PTMs ($\sim 10^6$ proteoforms in a
+typical human proteome) is the upstream cause of the gap between
+proteome size ($\sim 2 \times 10^{4}$ canonical proteins) and
+proteoform space.
+
+\subsection{Metabolomics and lipidomics}
+
+The metabolome is the set of small molecules ($<1500$~Da) present in a
+sample. The lipidome is the lipid-specific subset. Both are measured
+by mass spectrometry (LC-MS, GC-MS) or by NMR. Targeted assays
+quantify a known list of metabolites with internal standards; untargeted
+assays scan the whole observable mass range and identify peaks
+post-hoc. The Human Metabolome Database \cite{paper:v6c11-wishart-hmdb-2022}
+catalogues approximately $250,000$ entries (current as of 2022),
+of which on the order of $5{,}000$ are routinely detected in plasma.
+
+The lipidomics taxonomy distinguishes glycerolipids, glycerophospholipids,
+sphingolipids, sterol lipids, prenol lipids, saccharolipids, polyketides,
+and fatty acyls \cite{paper:v6c11-han-lipidomics-2016}. Lipid identification
+requires both the precursor m/z and the head-group fragment-ion pattern;
+chain-length and double-bond position ambiguity remains the dominant
+identification uncertainty in shotgun lipidomics.
+
+\subsection{Fluxomics and flux balance analysis}
+
+The fluxome is the set of metabolic-reaction rates in a cell at steady
+state. Direct measurement uses isotope tracing ($^{13}$C-labelled
+glucose or amino acids, with the labelling pattern at downstream
+metabolites used to infer the flux through each pathway). Indirect
+estimation uses flux balance analysis (FBA \cite{paper:v6c11-orth-cobra-2010})
+on a constraint-based model of the metabolic network.
+
+The FBA formulation is a linear program. The stoichiometric matrix
+$S$ has rows for metabolites and columns for reactions. At steady state,
+the flux vector $v$ satisfies $S v = 0$. Reaction reversibility imposes
+lower and upper bounds, $v^{\mathrm{lb}} \leq v \leq v^{\mathrm{ub}}$.
+The objective is a linear function of the fluxes, typically the
+biomass-production rate (a synthetic reaction whose stoichiometry
+encodes the cellular composition needed for one unit of growth). The
+LP is
+\[
+\max_{v}\; c^{\top} v \quad \text{subject to} \quad S v = 0, \quad
+v^{\mathrm{lb}} \leq v \leq v^{\mathrm{ub}}.
+\]
+The solution is the flux distribution that maximises growth under the
+network's stoichiometric constraints. FBA is a single LP; it scales to
+genome-scale models with $\sim 10^{3}$ to $10^{4}$ reactions in
+seconds.
+
+The interpretive caveats are large. FBA assumes steady state; many
+biologically interesting transitions are not at steady state. FBA
+assumes the cell maximises growth; many cells in many contexts do not.
+FBA returns a flux distribution that is optimal under the assumed
+objective, not necessarily the actual flux distribution; flux
+variability analysis quantifies the range of fluxes consistent with
+the optimal objective. Thermodynamic feasibility adds further
+constraints \cite{paper:v6c11-noor-fluxomics-2014}: each reaction must
+have $\Delta G < 0$ in the direction of the flux. The FBA solution
+becomes credible when the constraints, the objective, and the steady-
+state assumption are each defended for the biological context.
+
+\begin{estimation}
+\textbf{Question.}
+Estimate the compute cost of folding every protein in the human
+proteome with AlphaFold2 on commercial cloud GPUs (current as of 2024).
+
+The human proteome contains approximately $2 \times 10^{4}$ canonical
+proteins with average length $\sim 400$ residues. AlphaFold2 inference
+scales roughly as $O(L^{2})$ in attention; on an A100 GPU, a 400-residue
+target takes approximately $2$ minutes including MSA construction. A
+shorter target may take $30$ seconds, a longer one (1000+ residues)
+may take an hour or more.
+
+Total compute: $2 \times 10^{4}$ proteins $\times$ $2$ minutes
+$= 4 \times 10^{4}$~min $\approx 670$~GPU-hours on A100. At
+commercial cloud spot pricing of approximately \$1.50 per A100-hour
+(current as of 2024), the total cost is approximately \$1{,}000 for
+the canonical proteome, plus the MSA-search cost (which adds memory
+and CPU time but is dominated by the GPU bill for short to medium
+proteins). DeepMind and the EBI \cite{web:v6c11-alphafold-db-2024}
+published a free database that contains approximately $214$ million
+predicted structures spanning UniProt as of 2024; the cost of the
+underlying compute is on the order of hundreds of thousands of
+GPU-hours. The order-of-magnitude conclusion is that proteome-scale
+folding is now within the reach of small laboratories at a per-proteome
+cost of $\sim 10^{3}$ USD; folding all of UniProt at $\sim 2.5 \times
+10^{8}$ entries requires substantially more compute and remains a
+shared-infrastructure project.
+\end{estimation}
+
+\section{Phylogenetics and evolutionary engineering}\pathtag{standard}
+
+\subsection{The phylogeny problem}
+
+Phylogenetics asks for the tree that best describes the evolutionary
+relationships among a set of taxa, given their molecular sequences.
+The tree has the taxa as leaves and internal nodes that correspond to
+hypothetical ancestral lineages; the tree's branch lengths represent
+amounts of evolutionary change between nodes. Three method families
+dominate: distance methods (UPGMA, neighbour-joining
+\cite{paper:v6c11-saitou-nj-1987}), parsimony methods (find the tree
+minimising the number of inferred substitutions), and likelihood or
+Bayesian methods (find the tree maximising the probability of the
+data under an explicit substitution model
+\cite{paper:v6c11-felsenstein-phylogeny-1981}).
+
+\subsection{Distance methods}
+
+Distance methods reduce the multiple-sequence alignment to a pairwise-
+distance matrix and reconstruct the tree from the distances.
+UPGMA (unweighted pair group method with arithmetic mean) iteratively
+joins the closest pair of clusters, weighting each cluster's
+contribution to the merged distance by its size. The resulting tree is
+ultrametric: every leaf is at the same distance from the root, which is
+consistent with a strict molecular clock and is rarely a good model for
+real lineages. Neighbour-joining drops the ultrametric assumption and
+produces an additive tree that minimises the total branch length;
+neighbour-joining is provably consistent under the assumption that the
+true distances are additive and that the distance estimates are
+asymptotically unbiased.
+
+The substitution-distance estimate corrects raw mismatch fractions
+for multiple substitutions at the same position. Under the Jukes-Cantor
+model (uniform substitution rate), the corrected distance from a
+mismatch fraction $p$ is
+\[
+d = -\frac{3}{4} \ln\!\left(1 - \frac{4}{3}p\right).
+\]
+The Kimura two-parameter model distinguishes transitions from
+transversions; the HKY and GTR models add unequal base frequencies and
+unequal substitution rates.
+
+\Cref{fig:vol06:ch11:phylo-tree} shows a five-taxon maximum-likelihood
+phylogeny from a 1.5~kb rRNA alignment, with branch lengths in
+substitutions per site and bootstrap support values on the internal
+edges. The bootstrap is a resampling procedure: the alignment columns
+are resampled with replacement to produce a new alignment of the same
+length, a tree is inferred from each resample, and the fraction of
+resamples that recover each internal partition is the bootstrap
+support. Values above 80 are commonly taken as strong evidence for the
+partition; values below 70 are not.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-phylo-tree}
+
+\subsection{Maximum-likelihood and Bayesian methods}
+
+Maximum-likelihood methods evaluate the likelihood
+$P(\text{alignment} \mid \text{tree}, \text{substitution model})$ using
+Felsenstein's pruning algorithm \cite{paper:v6c11-felsenstein-phylogeny-1981},
+which marginalises the unknown ancestral states recursively from the
+leaves toward the root in $O(n L)$ time per likelihood evaluation,
+where $n$ is the number of taxa and $L$ is the alignment length. The
+tree topology is searched by stochastic heuristics (nearest-neighbour
+interchange, subtree pruning and regrafting) because the topology
+space has $(2n-5)!!$ unrooted topologies, exploding super-exponentially.
+
+Bayesian methods (MrBayes, BEAST) sample tree topologies, branch
+lengths, and substitution-model parameters from the posterior
+distribution by Markov chain Monte Carlo. The posterior summarises the
+uncertainty in all three at once. The cost is computational: a
+modest-size analysis (50 taxa, 1500 sites) runs for hours to days; a
+large analysis runs for weeks on a cluster.
+
+\subsection{Evolutionary engineering}
+
+The phylogenetic apparatus extends from descriptive to prescriptive
+in two engineering contexts. Directed evolution applies iterative
+mutation, selection, and recombination to a starting protein or
+nucleic acid, navigating the fitness landscape toward a target
+function; the phylogenetic vocabulary supplies the population-genetic
+intuition for how the population moves under selection. Ancestral
+sequence reconstruction infers the most-likely sequence of an
+ancestral protein from its descendants, then synthesises and
+characterises the ancestor in the laboratory; reconstructed ancestors
+often have higher thermostability than their modern descendants and
+have been used to seed industrial enzyme-engineering campaigns.
+
+\section{ML for biology: graph networks, foundation models}\pathtag{standard}
+
+\subsection{The supervised learning template in biology}
+
+Most biological-ML tasks fit a supervised template: features extracted
+from a biological measurement, a target variable (cell type, disease
+state, binding affinity, structural property), and a regression or
+classification model. The differences from non-biological ML are not
+algorithmic; they are statistical. Biological data are observational,
+high-dimensional, low in independent replicates, structured by
+phylogeny or cohort, and contaminated by batch effects. The same
+neural network that performs well on ImageNet may overfit a 100-sample
+omics cohort in an afternoon.
+
+\subsection{Graph neural networks for molecular biology}
+
+Molecules and biological networks are naturally represented as graphs:
+nodes are atoms, residues, genes, or proteins; edges are bonds,
+interactions, or correlations. Graph neural networks aggregate
+information from a node's neighbourhood through learned message-passing
+operations, producing per-node or per-graph embeddings suitable for
+downstream prediction. Applications include molecular-property
+prediction (toxicity, solubility, binding affinity
+\cite{paper:v6c11-stark-graphnn-2022}), protein-protein interaction
+prediction, and drug-target prediction.
+
+The message-passing operation at layer $\ell$ updates the node
+embedding $h_v^{(\ell)}$ as
+\[
+h_v^{(\ell+1)} = \phi\!\left( h_v^{(\ell)}, \bigoplus_{u \in \mathcal{N}(v)}
+\psi(h_u^{(\ell)}, h_v^{(\ell)}, e_{uv}) \right),
+\]
+where $\mathcal{N}(v)$ is the neighbourhood of $v$, $e_{uv}$ is the edge
+feature, $\psi$ is a message function, $\bigoplus$ is a permutation-
+invariant aggregator (sum, mean, max), and $\phi$ is an update function.
+The number of layers controls the receptive field; for molecular
+graphs, three to six layers typically suffice because the relevant
+physical interactions are local.
+
+\subsection{Foundation models for sequences}
+
+Protein language models (ESM \cite{paper:v6c11-lin-esm2-2023}, ProtTrans)
+and nucleic-acid language models (DNABERT, Nucleotide Transformer)
+follow the foundation-model template of large-scale pre-training on
+unlabelled sequence data followed by task-specific fine-tuning. ESM-2
+is trained on $\sim 10^{8}$ UniRef protein sequences by masked-residue
+prediction. The learned embeddings carry residue-level structural
+information that transfers to downstream tasks (secondary-structure
+prediction, contact prediction, function annotation, variant-effect
+prediction) without explicit retraining of the backbone.
+
+The MSA Transformer \cite{paper:v6c11-rao-msa-transformer-2021}
+extends the architecture to attend over the rows and columns of a
+multiple-sequence alignment, capturing co-evolution explicitly. Its
+output is the architectural ancestor of AlphaFold's Evoformer; both
+are attention-over-alignments models trained on different objectives.
+
+\subsection{Practical considerations}
+
+Three operational issues are specific to biological ML. Hyperparameter
+tuning must use proper cross-validation that respects the cohort
+structure (patient-level, site-level, or cell-line-level folds, not
+sample-level folds). Reporting must include external-validation
+performance, that is, performance on a cohort independent of the
+training distribution; internal cross-validation is a development
+metric and not a release metric. Confidence calibration matters more
+than peak accuracy: an omics classifier used to triage patients must
+report a well-calibrated probability, because an over-confident
+prediction at the wrong threshold becomes the failure case described
+in the next section.
+
+\section{Failure: data leakage in biological ML, batch effects, overfit-to-cohort}\pathtag{core}
+
+\subsection{Three failure mechanisms with a common signature}
+
+Biological ML pipelines fail in three related ways. Data leakage admits
+information about the held-out set into the training process; the
+model learns to recognise the leakage and reports the recognition as
+generalisation. Batch effects produce systematic differences between
+samples processed in different runs, machines, sites, or days; if
+batch is correlated with the outcome of interest, the model learns
+batch instead of biology. Cohort overfit fits a model that performs
+well on the training cohort and fails on any other cohort because the
+training cohort's idiosyncrasies (genetic background, demographics,
+treatment history, ascertainment bias) are not shared by other
+cohorts.
+
+All three produce the same surface symptom: optimistic internal
+performance, failure on external validation, sometimes accompanied by
+a paper, a press release, or a clinical trial. The internal symptom
+is harder to read because it is sample-by-sample correct; the failure
+sits in the cohort, not in any individual case.
+
+\subsection{Data leakage}
+
+\Cref{fig:vol06:ch11:ml-leakage} sketches the four canonical pathways
+of leakage. Patient-level versus sample-level splitting: if two
+samples from one patient end up in the training and test sets
+respectively, the model learns the patient (the genotype, the imaging
+artefact, the institutional preference) rather than the disease, and
+reports the same-patient match as out-of-sample performance.
+Preprocessing on the full cohort: normalisation parameters, batch-
+correction vectors, feature-selection rankings, and PCA loadings that
+use information from the held-out samples leak that information into
+the training pipeline. Hyperparameter tuning on the test set: model
+selection or threshold tuning on the test set converts the test set
+into a second training set, and the final reported performance is
+optimistic by the amount of test-set adaptation. Same-source
+contamination: training and test sharing imaging sites, sequencing
+centres, or scanner instruments allows the model to learn the
+site-specific artefact instead of the biological signal.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-ml-leakage}
+
+The Duke Potti case \cite{paper:v6c11-baggerly-coombes-2009,
+paper:v6c11-iom-omics-2012} combined pathways one, two, and three with
+additional reporting errors. The Potti group at Duke University Medical
+Center published genomic predictors of chemotherapy response between
+2006 and 2007, used those predictors to assign treatment in three
+clinical trials between 2007 and 2010, and saw the predictors
+implemented in commercial diagnostic products. Baggerly and Coombes at
+MD Anderson reanalysed the published predictors beginning in 2007,
+finding swapped sensitive-and-resistant labels on the training data,
+off-by-one sample index shifts, overlapping training and test sets,
+and an inability to regenerate the published predictors from the
+supplied supplementary materials. The clinical trials were suspended
+in 2010, and several of the underlying papers were retracted between
+2010 and 2015. The Institute of Medicine's 2012
+report \emph{Evolution of Translational Omics}, commissioned by NIH
+after the case, codified a recommended framework for omics-based
+predictor evaluation: locked computational predictors, independent
+held-out validation cohorts, predefined performance thresholds, and
+institutional-review-board approval that explicitly addresses the
+predictor's validation status \cite[][IOM Recommendations
+1--4]{paper:v6c11-iom-omics-2012}.
+
+\subsection{Batch effects}
+
+Batch effects are systematic differences between groups of samples
+that depend on processing factors rather than on the biological factor
+of interest. Sources include sequencing run, library-preparation
+reagent lot, instrument, technician, time of day, freezer storage time,
+and laboratory of origin. The Leek et al. 2010 review
+\cite{paper:v6c11-leek-batch-2010} surveys the canonical mechanisms
+across genomics.
+
+\Cref{fig:vol06:ch11:batch-effect} shows a paradigmatic case. In the
+left panel, PC1 separates samples by laboratory of origin and the
+disease signal (healthy versus tumour) sits on PC2. A classifier
+trained on PC1 will appear to perform well on within-laboratory tests
+because PC1 captures real variance, but will misclassify when applied
+to a new laboratory because the new laboratory's PC1 has a different
+sign. The right panel shows the result after ComBat correction
+\cite{paper:v6c11-johnson-combat-2007}: PC1 now captures the disease
+signal, and healthy and tumour clusters align across laboratories.
+
+\input{volumes/06-life/ch11-bioinformatics/figures/fig-batch-effect}
+
+ComBat is an empirical-Bayes adjustment that fits per-feature, per-
+batch location and scale parameters and shrinks them toward a pooled
+prior. The model is
+\[
+y_{ijg} = \alpha_{g} + X\beta_{g} + \gamma_{ig} + \delta_{ig}\,\epsilon_{ijg},
+\]
+where $y_{ijg}$ is the expression of feature $g$ in sample $j$ of
+batch $i$, $\alpha_{g}$ is the overall mean, $X\beta_{g}$ is the
+biological-condition effect, $\gamma_{ig}$ is the additive batch
+effect, $\delta_{ig}$ is the multiplicative batch scale, and
+$\epsilon_{ijg}$ is the residual. Empirical-Bayes estimation borrows
+strength across features within a batch. The adjusted measurement
+$y_{ijg}^{\ast}$ removes the estimated $\gamma_{ig}$ and rescales by
+the estimated $\delta_{ig}$.
+
+The critical assumption is that batch and condition are not collinear.
+If laboratory A processed only healthy samples and laboratory B
+processed only tumour samples, ComBat cannot tell whether PC1 is
+laboratory or disease and will remove the disease signal as it removes
+the laboratory signal. The experimental-design rule that follows is
+that every batch must contain samples from every condition, in
+proportions that preserve identifiability. The rule is honoured more
+in the breach than in the observance.
+
+\subsection{Overfit-to-cohort}
+
+A model overfits its cohort when its training distribution differs
+systematically from the deployment distribution and the differences
+are not captured by the features the model sees. Wong et al.
+\cite{paper:v6c11-wong-sepsis-2021} externally validated the Epic
+Sepsis Model, a widely deployed proprietary sepsis-prediction model,
+at the University of Michigan health system and found that the model's
+area under the ROC was 0.63 (well below the 0.76 to 0.83 claimed by the
+vendor) and that the model missed 67$\%$ of true sepsis cases at the
+deployed threshold. The mechanism was a training-distribution mismatch:
+the model had been trained on a different patient mix with different
+diagnostic-coding practices, and the deployment institution's coding
+practice was systematically different from the training institution's.
+The model did not see the relevant difference because the relevant
+difference was not in any of the features it used.
+
+The COVID-19 imaging-AI review of Roberts et al.
+\cite{paper:v6c11-roberts-covid-ml-2021} systematically evaluated $415$
+machine-learning papers that claimed to detect or prognosticate
+COVID-19 from chest radiographs or CT scans, published between January
+and October 2020. None of the $415$ models were judged clinically
+usable. The most common failure mode was same-source contamination:
+COVID-positive and COVID-negative images came from different hospitals,
+and the models learned the hospital instead of the disease. Other
+failure modes included sample-level rather than patient-level splits,
+heavy class imbalance with no calibrated handling, and lack of
+external-cohort validation. The paper is the largest single audit of
+biological-ML failure modes in the post-2020 literature and is the
+canonical reference for the operational rules that govern
+biological-ML reporting.
+
+The Google Flu Trends episode \cite{paper:v6c11-lazer-google-flu-2014}
+illustrates the cohort-overfit mechanism on a population scale: a
+predictor trained on the correlation between flu-related Google search
+queries and CDC flu reports during 2003 to 2008 performed well in
+hold-out periods through 2010 and then over-predicted flu prevalence
+by a factor of two during the 2012-2013 season because the search-
+behaviour distribution had shifted. The relevant difference was not in
+the model's features.
+
+\begin{principle}[Biological structure is the signal; the engineer's discipline preserves it across the pipeline]
+A biological dataset arrives with structure: gene families, pathways,
+patient cohorts, sequencing batches, instrument lineages,
+phylogenetic relationships, and tissue contexts. The structure is
+the signal that the algorithm is meant to extract; the same structure
+is the route by which an undisciplined pipeline confuses cohort for
+biology, batch for condition, site for disease, and patient for
+population. The engineer's task is to design the pipeline so that
+each step preserves the biological signal and respects the
+non-biological structure as a constraint. The Duke Potti, Epic Sepsis,
+and COVID-19 imaging failures all violated this rule at a
+specific identifiable step: training and test from the same patient,
+preprocessing fitted on the full cohort, hyperparameter tuning on the
+test set, and same-source contamination respectively.
+\end{principle}
+
+\subsection{The operational rules}
+
+The post-Duke-Potti operational rules for biological ML are explicit.
+Lock the computational predictor before validation: every
+preprocessing parameter, every feature selection, every hyperparameter,
+and every threshold is fixed before the validation cohort is touched.
+Validate on a cohort generated independently of the discovery cohort,
+ideally at a different institution and on a different patient
+population. Pre-register the analysis pipeline and the performance
+thresholds. Report the cohort metadata fully, including the inclusion
+and exclusion criteria, the sample-collection procedures, the
+processing batches, and the per-batch sample composition. Use
+patient-level (or site-level, or cell-line-level) cross-validation
+folds, not sample-level folds. Quote calibration as a first-class
+performance metric, not only discrimination. Treat the FDA software-
+as-a-medical-device pathway as the regulatory binding for predictors
+intended for clinical use. The Institute of Medicine recommendations
+1 through 4 \cite{paper:v6c11-iom-omics-2012} codify these rules for
+the United States NIH-funded translational-omics community; the FDA
+NGS guidance \cite{std:v6c11-fda-ngs-2018} codifies them for
+diagnostic NGS panels.
+
+\section{Project}\pathtag{core}
+
+\begin{project}[Align two bacterial genomes and annotate variants]
+\textbf{Goal.}
+Take two short bacterial-genome fragments, perform global pairwise
+alignment, identify the variant positions, classify each variant by
+the kind of change it represents, and produce a one-page annotation
+summary suitable for a biology collaborator.
+
+\textbf{Phases.}
+The project runs in five phases.
+
+Phase 1: Alignment. Use the supplied pair
+\repopath{volumes/06-life/ch11-bioinformatics/data/genome_a.fasta} and
+\repopath{volumes/06-life/ch11-bioinformatics/data/genome_b.fasta}
+($\approx 5$~kb each, synthetic). Run
+\repopath{volumes/06-life/ch11-bioinformatics/code/needleman_wunsch.py}
+on the two sequences with match $+1$, mismatch $-1$, gap $-1$. Save the
+output alignment to a file. Report the alignment score and the number
+of matched, mismatched, and gapped positions.
+
+Phase 2: Variant identification. Walk the alignment column by column.
+For each column, classify the type: match, transition (purine-to-purine
+or pyrimidine-to-pyrimidine substitution), transversion (purine-to-
+pyrimidine substitution or vice versa), insertion (gap in genome A),
+deletion (gap in genome B). Produce a list of variants, each with its
+position in the alignment, its REF and ALT alleles, and its type.
+
+Phase 3: Filter and quality. Construct a hypothetical VCF for the
+variants you identified, with synthetic QUAL, DP, FS, and MQ values
+drawn from a plausible distribution. Run
+\repopath{volumes/06-life/ch11-bioinformatics/code/variant_filter.py}
+on it. Report which variants pass and which fail each filter, and
+explain how the synthetic distribution influenced the pass rate.
+
+Phase 4: Annotation. For each PASS variant, look up its position in
+the (synthetic) gene-model GFF that you write by hand for the
+fragment. Annotate each variant as intergenic, synonymous, missense
+(specify amino-acid change), nonsense, or frameshift. Provide a
+codon-table reference.
+
+Phase 5: Summary. Write a one-page report that contains: the alignment
+score and identity, the variant count by type, the filter pass rate,
+the functional annotations, and a one-paragraph honest statement of
+what this analysis can and cannot support. The honest statement is
+the load-bearing deliverable.
+
+\textbf{Deliverables.}
+A working alignment file, a tab-delimited variant table, a filtered
+VCF, a hand-written gene-model GFF, an annotation table, and a
+one-page summary report.
+
+\textbf{Success criteria.}
+The alignment is correct (the score and identity match a reference
+calculation). The variant table contains every column-level
+disagreement between the two genomes (no missing variants and no
+spurious matches reported as variants). The filter pipeline rejects
+the variants whose QUAL, DP, FS, or MQ fall outside the thresholds.
+The annotation is internally consistent with the gene-model GFF. The
+one-page summary states clearly what the analysis supports and what
+it does not (it does not, for instance, support a statement about
+biological consequence, because the gene model is synthetic).
+
+\textbf{Common failure modes.}
+Reporting alignment identity as the fraction of identical positions
+in the aligned region without correcting for the gaps. Reporting
+variants only at mismatch positions and forgetting indels. Setting
+filter thresholds by what makes the most variants pass rather than by
+what is defensible from the per-call statistics. Annotating
+synonymous-versus-missense without first identifying the reading
+frame. Writing a summary that claims more than the analysis supports.
+
+\textbf{Worked example pointer.}
+The synthetic pair $A$ and $B$ in
+\repopath{volumes/06-life/ch11-bioinformatics/data/pair_example.fasta}
+is a 50-nucleotide pair with about 4 substitutions and one short
+indel. The Needleman-Wunsch traceback recovers the unique optimal
+alignment for this pair; the variant table contains a small number of
+SNVs (mix of transitions and transversions) and one indel. Use this
+pair to verify your pipeline before running on the 5~kb pair.
+\end{project}
 
 \section{Exercises}
-\TODO{Approximately 30 exercises across calculation, derivation, estimation, simulation, design, and judgement.}
+
+\subsection*{Calculation}\pathtag{standard}
+
+\begin{exercise}
+Compute the Needleman-Wunsch optimal global alignment of the
+sequences AAGCT and AGCT using match $+1$, mismatch $-1$, gap $-1$.
+Write out the full $6 \times 5$ DP matrix and one optimal alignment.
+
+\paragraph{Solution sketch.}
+Initialise: $M[0,0]=0$, first row $0,-1,-2,-3,-4$, first column
+$0,-1,-2,-3,-4,-5$. Fill row by row using the recurrence:
+$M[1,1]=\max(0+1, -1-1, -1-1)=1$ (match A-A).
+$M[1,2]=\max(-1-1, 1-1, -2-1)=0$ etc.
+The final matrix has $M[5,4]=3$. One optimal alignment is
+AAGCT vs A-GCT with a single gap aligning the second A in the
+first sequence to a gap; the alignment has $4$ matches and one gap
+($4 - 1 = 3$).
+\end{exercise}
+
+\begin{exercise}
+A BLAST search of a $300$-residue query against a $10^{9}$-residue
+protein database returns a top hit with raw score $S = 130$ bits
+under BLOSUM62 with $K = 0.1$ and $\lambda = 0.3$ per bit. Compute the
+E-value and the normalised bit score. Is the hit significant at the
+$E = 0.01$ threshold?
+
+\paragraph{Solution sketch.}
+$E = K m n e^{-\lambda S} = 0.1 \times 300 \times 10^{9} \times
+e^{-0.3 \times 130} = 3 \times 10^{10} \times e^{-39} \approx 3 \times
+10^{10} \times 1.2 \times 10^{-17} \approx 3.6 \times 10^{-7}$.
+Normalised bit score $S' = (\lambda S - \ln K)/\ln 2 = (39 + 2.30)/0.693
+\approx 59.6$ bits. With $E \approx 4 \times 10^{-7} \ll 0.01$, the
+hit is significant. Confirmation: $m n / 2^{S'} = 3 \times 10^{11} /
+2^{59.6} \approx 3 \times 10^{11} / 8.7 \times 10^{17} \approx 3.5
+\times 10^{-7}$, agreeing.
+\end{exercise}
+
+\begin{exercise}
+The Phred quality string for the first 10 bases of a read reads
+\texttt{!"\#\$\%\&'()*} (Sanger encoding, ASCII offset 33). Compute the
+Phred scores and the per-base error probabilities for each of the 10
+positions, and decide whether the read passes a $Q_{\mathrm{min}}=20$
+filter at all 10 positions.
+
+\paragraph{Solution sketch.}
+Subtract 33 from each ASCII code: ! is $33$ so $Q=0$ ($p=1$); " is
+$34$ so $Q=1$ ($p\approx 0.79$); \# is $35$ so $Q=2$ ($p\approx 0.63$);
+\$ is $36$ so $Q=3$; through $*$ is $42$ so $Q=9$. Per-base error
+probabilities $p = 10^{-Q/10}$. None of the ten positions reaches
+$Q=20$ (the minimum $p$ is $10^{-0.9} \approx 0.126$ at position 10),
+so the entire prefix fails the $Q_{\mathrm{min}}=20$ filter; a trimmer
+would discard the read or trim the prefix to its first position with
+$Q\geq 20$.
+\end{exercise}
+
+\begin{exercise}
+A synthetic gene of length $L=900$~bp has GC content $0.55$. Compute
+the expected number of \texttt{GAATTC} sites (the EcoRI recognition
+sequence) in a uniform-random sequence of the same length and GC
+content. Assume positions are independent.
+
+\paragraph{Solution sketch.}
+For GC content $g=0.55$, $\Pr(\text{G}) = \Pr(\text{C}) = g/2 = 0.275$
+and $\Pr(\text{A}) = \Pr(\text{T}) = (1-g)/2 = 0.225$. The motif
+\texttt{GAATTC} has probability
+$p = 0.275 \times 0.225 \times 0.225 \times 0.225 \times 0.225 \times
+0.275 = 0.275^{2} \times 0.225^{4} \approx 0.0756 \times 0.00256
+\approx 1.94 \times 10^{-4}$. Expected sites in a sequence of length
+$L=900$ is $(L - 6 + 1) \times p \approx 895 \times 1.94 \times
+10^{-4} \approx 0.17$. The reasonable interpretation: under the null,
+this short region is expected to contain less than one EcoRI site;
+observing two or more would be moderately surprising.
+\end{exercise}
+
+\begin{exercise}
+Given the $5 \times 5$ distance matrix in
+\repopath{volumes/06-life/ch11-bioinformatics/code/phylo_distance.py}
+(species Aspergillus, Saccharomyces, E.~coli, B.~subtilis,
+Halobacterium with pairwise distances 0.13 to 0.74), execute one step
+of UPGMA by hand: identify the closest pair, compute the height of
+the join, write the partial Newick string after the merge, and write
+the updated $4 \times 4$ distance matrix.
+
+\paragraph{Solution sketch.}
+Closest pair: (Aspergillus, Saccharomyces) at distance $0.13$. Height
+of join: $0.13/2 = 0.065$. Each branch length from the leaf to the new
+node is $0.065 - 0 = 0.065$ (both leaves are at height 0). Partial
+Newick: (Aspergillus:0.065,Saccharomyces:0.065). Updated distance
+from the new cluster $(A,S)$ to the others: each is the mean of the
+two leaf distances. To E.~coli: $(0.62+0.59)/2 = 0.605$.
+To B.~subtilis: $(0.58+0.61)/2 = 0.595$. To Halobacterium:
+$(0.72+0.74)/2 = 0.73$. The other off-diagonal distances are
+unchanged. The next UPGMA step joins E.~coli and B.~subtilis at
+distance $0.23$ (height $0.115$).
+\end{exercise}
+
+\subsection*{Derivation}\pathtag{standard}
+
+\begin{exercise}
+Derive the Karlin-Altschul E-value formula
+$E = K m n e^{-\lambda S}$ from the extreme-value distribution for
+maxima of i.i.d. random variables. State the assumptions that go into
+$K$ and $\lambda$.
+
+\paragraph{Solution sketch.}
+Consider all ungapped local alignments between a query of length $m$
+and a database of length $n$. Under the null model (independent random
+residues drawn from a fixed background), the number of distinct local
+alignments is proportional to $m n$. Each alignment's score is the sum
+of $L$ independent substitution scores, where $L$ is the alignment
+length. For score systems with negative expected score per position
+(required to make the maximum non-degenerate), the local-alignment
+maximum follows the Gumbel extreme-value distribution: $\Pr(S_{\max} >
+x) \approx 1 - \exp(-K m n e^{-\lambda x})$ for large $m, n$. The
+expected number of distinct hits with score above $S$ is the
+right-tail of this distribution, $E \approx K m n e^{-\lambda S}$.
+The parameter $\lambda$ is the unique positive root of $\sum_{a,b}
+p_{a} p_{b} e^{\lambda s(a,b)} = 1$, where $p_{a}$ is the residue
+frequency. $K$ is a correction factor that depends on the score
+distribution. The derivation requires: ungapped alignments, fixed
+background composition, score system with negative expected score per
+position, and large $m, n$.
+\end{exercise}
+
+\begin{exercise}
+Derive the Jukes-Cantor distance-correction formula
+$d = -(3/4) \ln(1 - (4/3)p)$ from a continuous-time Markov chain on
+the four nucleotides with uniform substitution rate $\mu$.
+
+\paragraph{Solution sketch.}
+Under Jukes-Cantor, the rate matrix has $\mu$ in each off-diagonal
+position and $-3\mu$ on the diagonal. The transition probability over
+time $t$ has $\Pr(\text{same}\mid t) = 1/4 + (3/4) e^{-4\mu t}$ and
+$\Pr(\text{different} \mid t) = 3/4 - (3/4) e^{-4\mu t}$. The observed
+mismatch fraction $p = 3/4 - (3/4) e^{-4\mu t}$. Solve for $4\mu t$:
+$e^{-4\mu t} = 1 - (4/3) p$, so $4\mu t = -\ln(1 - (4/3) p)$. The
+substitution distance is the expected number of substitutions per
+site, $d = 3\mu t = -(3/4) \ln(1 - (4/3) p)$. The formula breaks down
+when $p \to 3/4$ (saturation): the logarithm diverges, reflecting that
+beyond this point the observed mismatch fraction is consistent with
+arbitrarily large numbers of substitutions.
+\end{exercise}
+
+\begin{exercise}
+Derive the chemostat washout condition for a Monod growth model in
+continuous culture. (This exercise draws on the bioreactor balance
+from Chapter 10; here, the derivation is the engineering parallel of
+the BLAST-search statistic: a threshold above which the system
+behaviour changes qualitatively.)
+
+\paragraph{Solution sketch.}
+Let $X$ be biomass concentration, $S$ substrate concentration, $D$
+dilution rate, $S_{f}$ feed substrate concentration. The chemostat
+balance is $dX/dt = (\mu(S) - D) X$, $dS/dt = D(S_{f} - S) -
+\mu(S) X / Y$, with Monod kinetics $\mu(S) = \mu_{\max} S/(K_{S} +
+S)$. At nonzero steady state, $\mu(S^{\ast}) = D$, so $S^{\ast} =
+K_{S} D / (\mu_{\max} - D)$. The steady-state $S^{\ast}$ is well
+defined and positive only if $D < \mu_{\max}$. As $D \to \mu_{\max}$,
+$S^{\ast} \to \infty$, which is impossible because $S^{\ast} \leq
+S_{f}$; the practical washout limit is $D_{\max} = \mu_{\max} S_{f}
+/ (K_{S} + S_{f})$. For $D > D_{\max}$, the only steady state is
+$X = 0, S = S_{f}$ (sterile pipe). The bioinformatics parallel: the
+washout condition is the equivalent of the BLAST E-value crossing the
+reporting threshold; both are single inequalities that switch the
+system from "useful" to "not useful" qualitatively.
+\end{exercise}
+
+\begin{exercise}
+Show that maximum-likelihood phylogeny inference under a time-reversible
+substitution model is independent of the choice of root for an unrooted
+binary tree. (This is the "pulley principle" of Felsenstein.)
+
+\paragraph{Solution sketch.}
+Under a time-reversible model, $\pi_{a} P_{ab}(t) = \pi_{b} P_{ba}(t)$
+for stationary frequencies $\pi$. The likelihood at the root is
+$\sum_{r} \pi_{r} \prod_{c} L_{c}(r)$ where $L_{c}(r)$ is the
+conditional likelihood of subtree $c$ given root state $r$. Moving the
+root from one position on an edge to another redistributes the edge
+length between the two sides of the root; by time-reversibility, the
+likelihood is unchanged because the product $\pi_{r} P_{rs}(t)$ on the
+new root-adjacent edges equals the same product computed at the old
+root. The pulley principle holds across edges of the tree as well: the
+root may be placed anywhere on the unrooted tree without changing the
+likelihood. The consequence for software design is that tree-likelihood
+computation may use any edge as the root, which Felsenstein's pruning
+algorithm exploits for efficiency.
+\end{exercise}
+
+\subsection*{Estimation}\pathtag{standard}
+
+\begin{exercise}
+Estimate the storage cost for one year of raw FASTQ output from a
+single Illumina NovaSeq 6000 instrument operated at full capacity.
+Use commercial cloud-storage pricing (current as of 2024).
+
+\paragraph{Solution sketch.}
+NovaSeq 6000 with S4 flow cell produces approximately $3$~TB
+of compressed FASTQ per run (about $20$~billion reads at $150$~bp
+paired end). One full run takes $\approx 44$~h; with maintenance and
+turnover, a single instrument can complete $\approx 160$ runs per year,
+producing $\approx 480$~TB. At AWS S3 standard pricing of approximately
+\$0.023 per GB-month (current as of 2024), one year of storage costs
+$480 \times 10^{3} \times 0.023 \times 12 = $~\$$132{,}000$ for one
+year of one instrument's output, before egress or compute. Compression
+to CRAM with the reference genome reduces the storage by a factor of
+$\approx 3$, cutting the bill to $\approx$~\$$45{,}000$. Many large
+sequencing centres operate $20$ or more such instruments, putting the
+annual storage cost into the millions of dollars per institution;
+this is the operational driver behind the move to archive only the
+called variants for routine cohort projects.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of UniProt entries (current as of 2024) and the
+fraction that are computationally annotated versus manually curated.
+
+\paragraph{Solution sketch.}
+UniProtKB has two sections: Swiss-Prot (manually curated) and TrEMBL
+(computationally annotated). Current as of 2024, Swiss-Prot has
+approximately $570{,}000$ entries; TrEMBL has approximately $250 \times
+10^{6}$ entries. The manual fraction is therefore approximately
+$2 \times 10^{-3}$, two parts per thousand. The growth gap is the
+operational driver behind structure-prediction databases: a manually
+curated PDB structure costs months of effort; AlphaFold and ESM
+predictions fill the TrEMBL space at compute cost. The corresponding
+curation discipline is to read which database an annotation came from
+before quoting it.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of clinically actionable variants typically
+reported from a single human whole-genome sequence in a research-grade
+clinical pipeline.
+
+\paragraph{Solution sketch.}
+A human WGS yields $\sim 4 \times 10^{6}$ raw single-nucleotide
+variants. After quality filtering, $\sim 3.5 \times 10^{6}$ pass.
+Restricting to coding regions: human coding sequence is $\sim 1\%$
+of the genome, so $\sim 3.5 \times 10^{4}$ coding variants. Restricting
+to missense, nonsense, frameshift, and canonical splice variants:
+$\sim 1.5 \times 10^{4}$ predicted-deleterious variants. Restricting
+to known disease-gene panels (ClinVar pathogenic or likely pathogenic
+in a curated gene list): $\sim 5$ to $50$ variants. Restricting to
+variants relevant to the patient's clinical question: typically $0$ to
+$5$. The funnel from $4 \times 10^{6}$ raw variants to $\sim 5$
+actionable variants is the per-patient version of the same
+information-extraction problem that runs throughout the chapter: most
+of the engineering work is filtering, not finding.
+\end{exercise}
+
+\begin{exercise}
+Estimate the number of single-cell RNA-seq experiments deposited in
+the Gene Expression Omnibus (GEO) per year. Estimate the implied
+aggregate cost.
+
+\paragraph{Solution sketch.}
+GEO deposits in 2023 exceeded $\sim 300{,}000$ submissions across all
+assay types. Estimates from the Human Cell Atlas project and other
+surveys (current as of 2024) place scRNA-seq submissions at
+$\sim 20{,}000$ per year, with a median submission containing
+$\sim 50{,}000$ cells. At a per-cell cost of $\$0.10$ to $\$0.50$ (a
+rough median that includes reagents, sequencing, and pipeline compute),
+the per-submission cost is $\sim \$5{,}000$ to $\$25{,}000$. The
+aggregate global investment in deposited scRNA-seq data is therefore
+on the order of $\$100$ million to $\$500$ million per year, before
+the cost of associated computational analysis. The order-of-magnitude
+takeaway: scRNA-seq is now a globally distributed measurement
+infrastructure on the same financial scale as a small satellite
+constellation.
+\end{exercise}
+
+\subsection*{Simulation}\pathtag{standard}
+
+\begin{exercise}
+Use
+\repopath{volumes/06-life/ch11-bioinformatics/code/blast_evalue.py}
+to compute E-values for a single hit of bit score $S' = 40$ against
+databases of size $10^{6}, 10^{7}, 10^{8}, 10^{9}, 10^{10}$ residues
+with query length $m = 300$. Plot $\log_{10} E$ as a function of
+$\log_{10} n$ and verify the slope.
+
+\paragraph{Solution sketch.}
+Use $E = m n / 2^{S'}$: at $S' = 40$, $E = 300 n / 2^{40} \approx
+2.7 \times 10^{-10} n$. For $n = 10^{6}$ to $10^{10}$, $E$ ranges from
+$2.7 \times 10^{-4}$ to $2.7$. The slope of $\log_{10} E$ versus
+$\log_{10} n$ is exactly $1$, because $E$ is linear in $n$. The same
+bit score that is highly significant against a $10^{6}$-residue
+database is borderline against a $10^{10}$-residue database; doubling
+the database doubles the E-value. The simulation confirms the linear
+scaling and gives the student a graphical anchor for the dependence.
+\end{exercise}
+
+\begin{exercise}
+Run
+\repopath{volumes/06-life/ch11-bioinformatics/code/batch_correct.py}
+with the default simulation parameters. Report the correlation of PC1
+with batch and with disease before and after ComBat. Then modify the
+simulation so that batch and disease are collinear (all batch-0 samples
+are healthy and all batch-1 samples are tumour) and run again. Explain
+the change.
+
+\paragraph{Solution sketch.}
+In the default simulation, batch and disease are crossed, and ComBat
+restores the disease signal on PC1. Expected output: $\text{corr(PC1,
+batch)}$ moves from $\approx +0.95$ before to $\approx 0$ after;
+$\text{corr(PC1, disease)}$ moves from $\approx 0$ to $\approx +0.9$.
+In the collinear modification, batch and disease produce the same
+column in the design matrix; ComBat removes the batch shift, which
+also removes the disease shift, and the post-correction PC1 captures
+residual noise. The correlation with disease drops near zero. The
+exercise illustrates the experimental-design rule: a batch must
+contain samples from every condition, in proportions that preserve
+identifiability; ComBat does not rescue a collinear design.
+\end{exercise}
+
+\begin{exercise}
+Simulate sample-level versus patient-level cross-validation on a
+synthetic dataset with $200$ samples drawn from $40$ patients ($5$
+samples each). Generate the target as a function of patient identity
+(strong) plus measurement noise (weak). Compare the apparent
+cross-validation accuracy under sample-level folds (random
+$80$/$20$ split) and patient-level folds (random split of patient
+IDs). Report the gap and explain.
+
+\paragraph{Solution sketch.}
+Under sample-level folds, every test sample has training samples from
+the same patient; the model learns the patient identifier and reports
+high accuracy ($\approx 95\%$ if the patient effect is strong).
+Under patient-level folds, no test patient has any training sample;
+the model can only generalise via features that share between
+patients, and the accuracy drops to chance ($\approx 50\%$ if the
+patient effect is the only signal). The gap of $\approx 45$
+percentage points is the leakage. This is the canonical sample-level
+versus patient-level split error from
+\Cref{fig:vol06:ch11:ml-leakage}.
+\end{exercise}
+
+\begin{exercise}
+Simulate the Karlin-Altschul E-value distribution by generating
+$10^{6}$ pairs of random protein sequences of length $100$ each from
+the BLOSUM62 background, computing the maximum ungapped alignment
+score for each pair, and comparing the resulting empirical
+distribution to the Gumbel prediction.
+
+\paragraph{Solution sketch.}
+Draw residues independently from the BLOSUM62 background frequencies;
+compute the maximum ungapped alignment score by scanning all start
+positions and using the cumulative-sum-to-zero trick. The empirical
+histogram of maxima fits the Gumbel CDF $1 - \exp(-K m n e^{-\lambda
+S})$ with $K$ and $\lambda$ matching the BLAST default values
+($K \approx 0.13$, $\lambda \approx 0.318$ for BLOSUM62). The right
+tail matches well; the left tail is dominated by the finite-length
+correction (Altschul's edge effect). A QQ-plot is the cleanest
+diagnostic. This exercise verifies by simulation the analytic E-value
+formula derived in the derivation section.
+\end{exercise}
+
+\begin{exercise}
+Use
+\repopath{volumes/06-life/ch11-bioinformatics/code/needleman_wunsch.py}
+to align the pair in
+\repopath{volumes/06-life/ch11-bioinformatics/data/pair_example.fasta}
+under three scoring systems: $(+1, -1, -1)$, $(+2, -1, -2)$, and
+$(+1, -2, -1)$. Report the optimal score and the number of gaps in
+each alignment. Explain how the scoring system shifts the trade-off
+between mismatches and gaps.
+
+\paragraph{Solution sketch.}
+Under $(+1, -1, -1)$, the algorithm balances mismatches and gaps
+evenly; the optimal alignment has a mix of both. Under $(+2, -1, -2)$,
+matches are rewarded more and gaps are penalised more; the alignment
+tolerates more mismatches and fewer gaps. Under $(+1, -2, -1)$,
+mismatches are penalised more than gaps; the alignment introduces gaps
+to avoid mismatches. The scoring system is a prior on which
+evolutionary scenario the alignment prefers; it should be chosen with
+the biological context in mind, not by what makes the score look
+best. This is the alignment-statistics version of choosing a prior in
+Bayesian analysis: it is not optional, and it must be defended.
+\end{exercise}
+
+\subsection*{Design}\pathtag{standard}
+
+\begin{exercise}
+Design an experimental layout for an scRNA-seq study comparing tumour
+and adjacent normal tissue across $40$ patients, processed in batches
+of $8$ samples per sequencing run, with two sequencing centres
+involved. State the per-batch composition explicitly. Justify your
+choices against the failure modes in
+\Cref{fig:vol06:ch11:batch-effect} and
+\Cref{fig:vol06:ch11:ml-leakage}.
+
+\paragraph{Discussion.}
+Rubric. (a) Each batch contains both tumour and normal samples (no
+all-tumour or all-normal batches). (b) Each batch contains samples
+from multiple patients (to allow patient-level cross-validation
+downstream). (c) Both sequencing centres receive a representative
+mix of batches over time (no all-centre-A-early and all-centre-B-late
+design that confounds time with site). (d) Patient assignment to
+batches is randomised, not by enrolment order or by clinical
+characteristic. (e) The block structure is documented in a metadata
+sheet so that downstream analysis can use mixed-effects models or
+batch-correction methods. The most defensible designs include a small
+shared technical-control sample present in every batch to estimate
+the residual batch shift after correction. A strong answer notes that
+the design must also allow patient-level cross-validation (no patient
+contributes to both training and test in any downstream ML).
+\end{exercise}
+
+\begin{exercise}
+Design a benchmarking protocol for a new variant caller. Specify the
+truth set, the performance metrics, the cohort selection, the
+external-validation cohort, and the per-class breakdown that the
+report must include.
+
+\paragraph{Discussion.}
+Rubric. (a) Truth set: Genome in a Bottle benchmarks (NA12878,
+HG002) with publicly available high-confidence variant calls. (b)
+Metrics: recall, precision, F1, plus per-class breakdowns (SNV vs
+indel; high-confidence regions vs low-confidence regions; common vs
+rare variants). (c) Cohort: at least two distinct samples processed
+on at least two distinct instrument lineages. (d) External validation:
+a cohort processed at an independent laboratory, ideally with a
+different sequencing chemistry. (e) Per-class breakdown: separate
+performance numbers for substitutions, single-base insertions,
+single-base deletions, multi-base indels, and complex variants;
+performance in repeats, in low-complexity regions, and at sites of
+common segmental duplication, because these are the hardest classes
+and the ones that distinguish callers. (f) Reporting must include
+calibration: a plot of empirical accuracy versus reported QUAL
+score, showing whether the caller's confidence is well calibrated.
+A strong answer notes that the truth set is itself the product of a
+benchmark consortium and that benchmarking against only one truth set
+risks circular validation; multi-truth-set evaluation is the next
+discipline up.
+\end{exercise}
+
+\begin{exercise}
+Design a regulatory submission package for an omics-based diagnostic
+predictor (transcriptional signature of disease subtype) intended for
+clinical use. The package must satisfy the IOM 2012 recommendations.
+
+\paragraph{Discussion.}
+Rubric. (a) Locked computational predictor: every preprocessing
+parameter, feature, weight, and threshold is fixed by a signed-and-dated
+specification before validation begins. (b) Discovery and validation
+cohorts: described in full, with inclusion and exclusion criteria,
+demographics, and processing history. The validation cohort is
+prospectively collected at one or more institutions independent of the
+discovery cohort. (c) Predefined performance thresholds: sensitivity,
+specificity, and calibration thresholds are stated in advance with the
+statistical justification. (d) IRB approval that explicitly addresses
+the predictor's validation status. (e) Software-as-a-medical-device
+qualification per FDA pathway. (f) Post-market surveillance plan:
+performance on the deployment population is monitored, and a
+re-validation trigger is defined for performance drift. A strong
+answer addresses the Wong et al. external-validation failure of the
+Epic Sepsis Model as the cautionary parallel and explains why
+post-market surveillance is not optional.
+\end{exercise}
+
+\begin{exercise}
+Design a multi-omics integration plan for a study with bulk RNA-seq,
+proteomics, and metabolomics measurements on $100$ patients. Specify
+the per-sample sample-prep order, the storage protocol, the
+identification keys, and the planned integration approach.
+
+\paragraph{Discussion.}
+Rubric. (a) Per-sample sample-prep order: simultaneous aliquoting of
+fresh sample into RNA-stabilising, protein-stabilising, and
+metabolite-quenching tubes at collection, because the metabolome
+shifts within seconds and the proteome within minutes after sample
+handling perturbations. (b) Storage protocol: $-80$~\degC{} freezer
+with documented time-to-freeze for every sample. (c) Identification
+keys: a single per-patient ID maps to per-tissue IDs; every aliquot
+carries the patient ID, the tissue ID, the aliquot index, and the
+date and time of processing. (d) Integration approach: discuss MOFA
+(multi-omics factor analysis) or DIABLO for joint dimension reduction,
+or a Bayesian hierarchical model that shares information across modes.
+(e) Cross-modal validation: a measurement that appears in two modes
+must agree to within the modes' joint uncertainty. A strong answer
+addresses the central failure mode of multi-omics: a per-mode batch
+effect can survive the integration if it is consistent across modes,
+because the integration estimator may interpret it as a real
+multi-omics signal.
+\end{exercise}
+
+\subsection*{Diagnosis}\pathtag{standard}
+
+\begin{exercise}
+A colleague reports that their RNA-seq differential-expression
+analysis identified $10{,}000$ genes at FDR $< 0.05$, comparing
+$8$ cancer samples against $8$ normal samples. They are excited and
+write a draft paper. What questions do you ask before allowing the
+analysis into the paper?
+
+\paragraph{Solution sketch.}
+(1) How are the $16$ samples blocked across batches? (Look for
+batch-condition collinearity.) (2) What is the per-sample mapping
+rate and the per-sample ribosomal-read fraction? (Look for sample
+outliers that drive the result.) (3) What is the dispersion estimate
+for the typical gene? (A $10{,}000$-gene DE list is biologically
+implausible unless the conditions are very different; a much more
+common cause is under-shrinkage of the dispersion estimate due to
+batch effect or sample contamination.) (4) Is the patient and the
+sample collection time recorded for each sample? (Same-patient
+matched-pair design changes the right test.) (5) Plot PCA before
+and after batch correction. (6) Plot the volcano plot and examine
+whether the top hits are biologically sensible or appear to be
+arbitrary high-variance features. (7) Repeat the analysis with one
+sample removed at a time and check the stability of the gene list.
+The most common answer to "$10{,}000$ DE genes at FDR $< 0.05$" in
+a $16$-sample comparison is "batch effect dominates the analysis."
+\end{exercise}
+
+\begin{exercise}
+A protein-structure prediction returns a 600-residue model with
+average pLDDT $52$ and one well-folded domain of pLDDT $85$ at
+residues 200--350. Diagnose what this prediction does and does not
+support, and recommend follow-up.
+
+\paragraph{Solution sketch.}
+Mean pLDDT of $52$ indicates that the bulk of the model is at low
+confidence and probably does not correspond to a single experimentally
+observable conformation. The high-pLDDT domain at 200--350 is at
+near-experimental accuracy for the local structure and is a credible
+prediction of the domain fold. The model supports: a domain-level
+fold call for residues 200--350; the inter-domain topology only
+weakly. The model does not support: atomic-coordinate-level claims
+about residues outside 200--350; a single biological conformation if
+the low-pLDDT regions are intrinsically disordered. Recommended
+follow-up: check the IUPred or other disorder-prediction tools for
+the low-pLDDT regions; if they predict disorder, the AlphaFold result
+is consistent and the protein has one folded domain plus disordered
+arms. If they do not predict disorder, consider that the low-pLDDT
+regions may fold but in a state under-represented in training data
+(membrane embedded, multimerised, ligand bound); recommend
+ESMFold or AlphaFold-Multimer with the appropriate partners.
+\end{exercise}
+
+\begin{exercise}
+A clinical variant report identifies a variant of uncertain
+significance (VUS) at a known disease gene. The variant has allele
+frequency $0.001$ in gnomAD, is predicted deleterious by SIFT and
+PolyPhen, and is in a conserved residue. The variant is absent from
+ClinVar. Diagnose what the report can support clinically.
+
+\paragraph{Solution sketch.}
+Allele frequency $0.001$ is rare but not vanishingly rare; the
+variant has been seen $\sim 100$ times in gnomAD's $\sim 10^{5}$
+exomes, which is too common for a fully penetrant Mendelian
+disease and too rare to dismiss. SIFT and PolyPhen are computational
+predictors with imperfect specificity; a "deleterious" call from
+both is suggestive but not diagnostic. Conservation supports
+functional importance but does not establish a disease link. Absent
+from ClinVar means that no clinical-significance call has been
+issued, not that the variant is benign. The ACMG/AMP variant-
+interpretation framework would weight these as moderate computational
+evidence (PP3), moderate population evidence (PM2 absent or rare),
+and would not assign pathogenic without additional segregation,
+functional, or phenotypic evidence. The report supports: continued
+clinical follow-up; family-segregation testing if the patient has an
+affected relative; functional assay if the gene's biology permits
+one. The report does not support: a confident pathogenic call. The
+correct clinical action is to communicate the variant as a VUS and to
+defer treatment decisions to the gene-and-disease-specific
+guidelines.
+\end{exercise}
+
+\subsection*{Judgement}\pathtag{mastery}
+
+\begin{exercise}
+Compare the ESMFold and AlphaFold approaches to protein structure
+prediction. Under what conditions would you trust ESMFold and not
+AlphaFold? Under what conditions would you trust AlphaFold and not
+ESMFold? Construct a one-paragraph decision rule for a working
+structural biologist.
+
+\paragraph{Discussion.}
+ESMFold uses a protein language model trained on hundreds of millions
+of unaligned sequences and predicts structure from a single sequence.
+AlphaFold uses a multiple-sequence alignment of orthologues and a
+template search of the PDB. AlphaFold's accuracy depends on the
+quality of the MSA; for proteins with deep MSAs (most well-studied
+families), it is the more accurate predictor by a sizeable margin.
+For proteins with no or very few orthologues (orphans, designed
+proteins, fast-evolving viral proteins, synthetic constructs),
+AlphaFold has nothing to work with and ESMFold's single-sequence
+prediction is the better tool. ESMFold is also two orders of
+magnitude faster, making it preferred for proteome-scale screens
+where the goal is to identify high-confidence targets for follow-up
+with AlphaFold. The working decision rule: if the protein has $\geq
+50$ diverse orthologues in UniRef, run AlphaFold and read the pLDDT;
+if it has $< 10$ orthologues or is a designed sequence, run ESMFold
+first and confirm with AlphaFold if the ESMFold prediction is
+biologically credible. A strong answer notes that both architectures
+share a common limitation: they predict the dominant conformation in
+the training distribution, not the relevant one for a particular
+biological question (membrane, partner-bound, allosteric state).
+\end{exercise}
+
+\begin{exercise}
+A genomics start-up claims that its AI-based predictor identifies
+patients who will respond to a novel chemotherapy with sensitivity
+$95\%$ and specificity $90\%$, on the basis of a discovery cohort of
+$240$ patients with $5$-fold cross-validation. The predictor's
+mechanism is proprietary. The company offers the predictor to your
+clinical-trials office for use in patient selection. Evaluate the
+offer.
+
+\paragraph{Discussion.}
+The offer fails the IOM 2012 recommendations on at least three counts.
+(1) No external-validation cohort is reported; cross-validation on
+the discovery cohort is a development metric, not a release metric.
+(2) The predictor's mechanism is proprietary; the IOM framework
+requires locked computational predictors with explicit documentation
+of the algorithm, the features, and the training data. (3) The cohort
+size is small ($240$ patients) and the predictor's apparent
+performance is implausibly high for chemotherapy response, which is
+notoriously multi-factorial. The correct action is to decline the
+offer pending: an independent external-validation cohort processed at
+the trials-office institution; a release of the predictor's algorithm
+and training set (under NDA acceptable) for independent reanalysis;
+and IRB approval that explicitly addresses the predictor's validation
+status. A strong answer cites Duke Potti as the precedent for
+declining this kind of offer and the consequences of accepting it.
+\end{exercise}
+
+\begin{exercise}
+A drug-target predictor based on a graph neural network achieves
+$0.92$ AUC on a held-out test set drawn from the same dataset as the
+training set. When applied prospectively to identify candidate
+targets for follow-up screening, $2$ of $50$ predicted targets
+validate experimentally. Is the model good, bad, or unevaluable from
+this evidence?
+
+\paragraph{Discussion.}
+$0.92$ AUC on within-distribution test and $2/50 = 4\%$ prospective
+hit rate is consistent with three explanations. (1) Same-distribution
+overfit: the test set shares structure with the training set
+(scaffold leakage, protein-family leakage) and the AUC is optimistic.
+(2) Distribution shift: the prospective targets come from a different
+chemical space than the training data; the model's predictions are
+unreliable out of distribution. (3) The prospective screen is the
+correct evaluation: $4\%$ hit rate is in fact much better than a
+random pick from the prior list ($\sim 1\%$ baseline for most drug-
+target screens), and the model is operating as designed. Without more
+information, the evidence is consistent with all three. The
+diagnostic action is to check the scaffold-clustering and protein-
+family-clustering structure between training set and prospective
+candidates; if there is no overlap, the model is doing useful work at
+the level its evidence supports. A strong answer notes that the
+relevant comparison is not against the within-distribution AUC, which
+is a development metric, but against a random-baseline prospective
+screen, which is the deployment metric. This is the same
+internal-versus-external evaluation distinction that anchors the
+failure section.
+\end{exercise}
+
+\subsection*{Failure analysis}\pathtag{mastery}
+
+\begin{exercise}
+Reconstruct the data-leakage mechanism in the Duke Potti case from the
+short-form summary in
+\repopath{docs/research/accidents/duke-potti-2006-2015.md}. For each
+of the four canonical leakage pathways in
+\Cref{fig:vol06:ch11:ml-leakage}, identify whether the pathway
+contributed and explain. Propose three structural changes to the
+NIH-funded translational-omics pipeline that would have caught the
+errors before clinical-trial enrolment.
+
+\paragraph{Solution sketch.}
+Pathway 1 (sample-level versus patient-level split): contributed
+partly. The predictor was trained on NCI-60 cell lines, not on
+patients, so the conventional split was at the cell-line level. The
+specific error Baggerly and Coombes identified was that some cell
+lines appeared in both training and test sets due to off-by-one
+shifts. Pathway 2 (preprocessing on full cohort): contributed.
+Feature-selection rankings reported in the original papers used the
+test set's labels in their selection, leaking outcome information
+into the training pipeline. Pathway 3 (hyperparameter tuning on test
+set): contributed. The reported performance numbers were optimistic
+because thresholds were tuned on the same data on which they were
+evaluated. Pathway 4 (same-source contamination): not the dominant
+mechanism; the NCI-60 cell lines have known same-source structure but
+that was understood. Three structural changes to the NIH pipeline:
+(a) require a locked computational predictor (per IOM 2012
+Recommendation 1) before validation begins, with the full code and
+data deposited and reproducibly re-executable; (b) require independent
+reanalysis by a designated group (the role Baggerly-Coombes played
+unofficially) before any clinical-trial enrolment can begin; (c)
+require that the IRB application for any clinical trial using an
+omics predictor explicitly state the validation status of the
+predictor and the criteria by which it was judged ready for clinical
+use. A strong answer notes that the family-of-failures pattern (Duke
+Potti, COVID-19 imaging, Epic Sepsis) is the canonical evidence for
+the post-2012 IOM framework being the right minimum standard.
+\end{exercise}
+
+\begin{exercise}
+A research paper reports a deep-learning model that predicts
+pancreatic-cancer survival from H\&E-stained histology slides with
+$0.83$ AUC on a $400$-patient cohort with $5$-fold cross-validation.
+The cohort comes from a single institution. The training and test
+folds were stratified by patient at the slide-image level. No
+external validation was performed. The paper makes no claim about
+clinical use; it is published as a methods demonstration. Evaluate
+the paper's claims and propose what it should be required to add
+before clinical deployment.
+
+\paragraph{Solution sketch.}
+The paper's claim (a methods demonstration on a $400$-patient cohort
+with patient-level cross-validation) is supported by the evidence
+presented. The reported AUC is on a within-institution distribution
+and is a development metric. The paper does not claim clinical
+utility; the methods-demonstration framing is appropriate. For
+clinical deployment, the paper must add: an external-validation
+cohort from at least one independent institution (preferably more,
+to span scanner and staining variation); a calibration analysis (the
+posterior probability of survival at the predicted threshold should
+match the empirical survival); a per-stratum performance breakdown
+(by stage, by treatment, by demographic) to identify subgroups where
+the model fails; a sensitivity analysis to known confounders
+(scanner instrument, staining lot, slide preparation time, patient
+demographics); and a pre-registered analysis plan for the external
+validation. The Roberts et al. COVID-19 review is the canonical
+reference for the failure mode the external-validation analysis
+guards against: $415$ comparable papers exist and none are clinically
+usable. The paper's authors have done their part as a methods
+demonstration; the path from methods to deployment requires another
+study, not a re-interpretation of this one. A strong answer
+distinguishes between two release tiers: the methods-demonstration
+tier (this paper) and the clinical-validation tier (a separate study
+yet to be done), and refuses to conflate them.
+\end{exercise}

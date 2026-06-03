@@ -246,7 +246,7 @@ Run `make stats` for live counts. Read `docs/status.md` for the current phase. L
 - **Phase 0.5** (structural hardening) **Complete** 2026-04-28.
 - **Phase 0.6** (curriculum expansion: 11 new chapters, 4 renames) **Complete** 2026-04-28.
 - **Phase 0.7** (registry foundation and pilot prose) **Complete** 2026-04-29.
-- **Phase 1** (production prose at scale) **In progress**. Volumes I-V drafted in full at first-draft density; Volume VI 10 of 13 drafted; Volumes VII, VIII, IX, X, XI, and XII drafted in full (19 of 19, 14 of 14, 19 of 19, 16 of 16, 13 of 13, and 14 of 14). Volume I is at Stage 5 (reviewed and resolved); Volumes II-XII are at Stage 4 awaiting Codex review. Codex-review lane for Vols II-XII and forward-prose lane into Vol VI Ch 11-13 both open; Q57 (page density vs target) gates the production-density choice and now has twelve volumes of evidence behind it.
+- **Phase 1** (production prose at scale) **In progress**. **All 174 chapters now at Stage 4 or later** as of 2026-06-03 (Vol VI Ch 11-13 drafted from Stage 1 in Wave 1 of Vol VI campaign). Volume I at Stage 5 (reviewed and resolved); Volumes II-XII at Stage 4 awaiting Codex review. Codex-review lane for Vols II-XII open; Q57 (page density vs target) gates the production-density choice and now has twelve volumes of evidence behind it.
 
 Verified at last edit (2026-06-03):
 
@@ -258,21 +258,21 @@ Verified at last edit (2026-06-03):
   - **Vol III** 13/13 at Stage 4, pp 711-984 (~274pp; target ~1300).
   - **Vol IV** 14/14 at Stage 4, pp 985-1218 (~234pp; target ~1400).
   - **Vol V** 12/12 at Stage 4, pp 1219-1456 (~238pp; target ~1200).
-  - **Vol VI** 10/13 at Stage 4, pp 1457-1634 (~178pp; target ~1300). Ch 11-13 still at Stage 1.
+  - **Vol VI** 13/13 at Stage 4. Wave 1 (2026-06-03): Ch 11-13 drafted from Stage 1 → Stage 4 via three parallel git-worktree agents. Ch 11 (Bioinformatics) 42pp, 30 exercises, 9 figures, 6 code, 5 datasets, Needleman-Wunsch / Karlin-Altschul / AlphaFold anchors; project track = simulation. Ch 12 (Biocompatibility) 48pp, 25 exercises, 7 figures, failure section on Therac-25 + Bjork-Shiley + DePuy ASR; project track = hybrid. Ch 13 (Living engineering / anatomical compiler) 46pp, 15 exercises, anchored on Levin's bioelectric morphogenesis (Levin 2014/2019/2021/2023, Pezzulo-Levin 2015, Mathews-Levin 2017); project track = read-and-critique (CERB position paper). Wave 2 (2026-06-03): Ch 1-5 expanded from Tier 1+2-with-missing-solutions to Tier 3 baseline via five parallel git-worktree agents. Ch 1 (Cells) 20→40pp, 25/25 solutions, 9 figures, 5 code, 4 data, cell-as-control-loop frame. Ch 2 (Metabolism) 20→36pp, 30/30 solutions, 8 figures, 5 code, 5 data, ATP/glycolysis/TCA/chemiosmosis/MFA, thermodynamic-hype failure subsection. Ch 3 (Genetics) 18→38pp, 30/30 solutions, 6 figures, 5 code, 5 data, central dogma + sequencing tech, HeLa-Lacks-1951 and He-Jiankui-CRISPR-2018 registries added. Ch 4 (Proteins) 18→38pp, 25/25 solutions, 9 figures, 5 code, 5 data, Michaelis-Menten/Hill/motor proteins/misfolding. Ch 5 (Tissue) 16→38pp, 25/25 solutions, 8 figures, 5 code, 4 data, Krogh/Murray/iPSC, Macchiarini-trachea-2008-2014 registry added. Six new registry entries across Vol VI: `acc:duke-potti-2006-2015`, `acc:bjork-shiley-cc-1979-1986`, `acc:depuy-asr-hip-2010`, `acc:hela-lacks-1951`, `acc:he-jiankui-crispr-2018`, `acc:macchiarini-trachea-2008-2014`. Bibliography grew 833 → 1140 entries via `v6c01-` through `v6c13-` scoped keys (with cumulative dedupe of pre-existing Vol II duplicate keys and three orphan-header repairs). Total Vol VI span ~370pp (target ~1200; ~31% of target). Per-chapter spans (Wave 2 + Wave 1): Ch 1 40pp, Ch 2 36pp, Ch 3 38pp, Ch 4 38pp, Ch 5 38pp, Ch 6 16pp (untouched), Ch 7 16pp (untouched), Ch 8 18pp (untouched), Ch 9 16pp (untouched), Ch 10 16pp (untouched), Ch 11 42pp, Ch 12 48pp, Ch 13 46pp.
   - **Vol VII** 19/19 at Stage 4, pp 1635-1898 (~264pp; target ~1980).
   - **Vol VIII** 14/14 at Stage 4, pp 1899-2240 (~342pp; target ~1610).
   - **Vol IX** 19/19 at Stage 4, pp 2241-2416 (~176pp; target ~1850).
   - **Vol X** 16/16 at Stage 4, pp 2417-2705 (~289pp; target ~1450). Highest first-draft density (Vol X-XII period) ($\approx$ 20\% of target).
   - **Vol XI** 13/13 at Stage 4, pp 2706-2863 (~158pp; target ~1080). Includes the design-studios chapter (Ch 12) and the capstone (Ch 13); Ch 13 carries the integrative project for the volume rather than exercises.
   - **Vol XII** 14/14 at Stage 4, pp 2864-2986 (~123pp; target ~1320). Drafted in the current session; includes the closing future-of-the-artificial chapter (Ch 14) that closes the entire book and carries the integrative personal-manifesto project rather than exercises.
-- 833 bibliography entries.
-- 40 named-case registry entries; 42 `acc:` keys cited in prose; `make accidents` PASS.
+- 1140 bibliography entries.
+- 46 named-case registry entries; 48 `acc:` keys cited in prose; `make accidents` PASS.
 - 1 research seed on disk under `docs/research/seeds/`.
-- 3 chapters still carry `Project track: TBD` (Vol VI Ch 11-13). Q55 settled per-chapter for Vols I-V, Vol VI Ch 1-10, and Vols VII-XII during drafting.
+- Project tracks resolved across all 174 chapters as of 2026-06-03 (Vol VI Ch 11 = simulation, Ch 12 = hybrid, Ch 13 = read-and-critique). Q55 fully settled per-chapter.
 - Vol I review log complete: `docs/reviews/ch01-pilot-review.md` plus `docs/reviews/vol01-ch02-review.md` through `docs/reviews/vol01-ch09-review.md`, each with a `Resolved:` banner. Vols II-XII reviews not yet started; the same three-role protocol carries forward.
 - Citation prefixes: `std:`, `acc:`, `law:`, `hist:`, `text:`, `paper:`, `method:`, `data:`, `web:`, `gen:`. The `method:` lane was introduced during Ch 8 review for replication-studies / p-hacking / HARKing literature.
 - Math operators in `eng-macros.sty`: linear-algebra (`\spn`, `\col`, `\nul`, `\rank`, `\sgn`, `\proj`); trace and diagonal (`\tr`, `\diag`); optimisation (`\argmin`, `\argmax` via `\DeclareMathOperator*`). Added during Vol II drafting; carried forward unchanged through Vols III-XII. Vol VII drafting added the `\usepackage[inline]{enumitem}` option in `preamble.tex` to support `enumerate*` inline lists.
-- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a 3870-page PDF (latexmk exit 12 due to one pre-existing PGF math error in Vol II Ch 11 figure; PDF builds despite it).
+- `make check`, `make audit-docs`, `make accidents`, `make exercise-counts` all PASS. `make distclean && make` produces a 4019-page PDF (latexmk exit 12 due to one pre-existing PGF math error in Vol II Ch 11 figure + "needed too many passes" iteration cap; PDF builds despite it). Pre-existing bib hygiene: ~10 cited `v6c04-` keys missing entries (carryover from agent that hit session limit before completing the bib append); orphan-header repairs done on `text:v2ch04-bender-orszag-1999`, `text:v2ch05-spivak-calculus`, `text:v2ch09-golub-vanloan2013`.
 
 ## What not to do
 
