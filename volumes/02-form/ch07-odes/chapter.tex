@@ -1351,6 +1351,93 @@ elimination rate is roughly constant rather than proportional to
 concentration, so the time to clear a dose grows linearly with the
 dose rather than logarithmically.
 
+\subsection{A short history of ODE solution methods}\pathtag{mastery}
+
+The working catalogue of ODE methods is the accumulated answer to
+a two-century engineering question: given a differential equation
+the integrator could not write in closed form, what step rule
+gives a reliable approximate solution? The catalogue's milestones
+trace the shifting boundary between what is solvable analytically
+and what must be integrated numerically.
+
+\paragraph{Euler 1768.} Leonhard Euler's \emph{Institutiones
+Calculi Integralis}, volume I (1768), introduced the polygonal
+method that bears his name: from $(t_{n}, y_{n})$, advance to
+$(t_{n} + h, y_{n} + h f(t_{n}, y_{n}))$ \cite{hist:v2c07-euler-1768}.
+Euler used the method to integrate trajectories for which the
+calculus of variations he and Lagrange had developed could not
+produce a closed form. The first-order accuracy and the linear
+growth of error with the interval length were understood and
+accepted as the cost of numerical access to otherwise inaccessible
+solutions.
+
+\paragraph{Adams 1855; Bashforth 1883.} John Couch Adams developed
+multistep methods in the context of computing lunar and planetary
+orbits, formalising the family of explicit predictors that bear
+his name and Francis Bashforth's; the methods were published in
+Bashforth's 1883 monograph on capillary action, where Adams's
+methods were used to integrate the capillary surface ODE
+\cite{hist:v2c07-bashforth-adams-1883}. The advance: order of accuracy
+increases without proportional growth in right-hand-side
+evaluations, by reusing values from previous steps.
+
+\paragraph{Runge 1895; Heun 1900; Kutta 1901.} Carl Runge
+introduced the multi-stage methods later named for him in his
+1895 paper \cite{hist:v2c07-runge-1895}; Karl Heun and Wilhelm Kutta
+extended the family in 1900 and 1901, with Kutta's 1901 paper
+introducing the classical fourth-order method that remains the
+default reach for non-stiff smooth problems
+\cite{hist:v2c07-kutta-1901}. The Runge-Kutta family solved the
+multistep methods' starting-value problem (a multistep method
+needs initial values from a single-step bootstrap) and supported
+adaptive step sizes naturally.
+
+\paragraph{Dahlquist 1956 and the A-stability concept.} Germund
+Dahlquist's 1956 paper introduced the theory of $A$-stability and
+the systematic distinction between accuracy and stability that
+governs the choice of method for stiff problems
+\cite{hist:v2c07-dahlquist-1956}. The Dahlquist equivalence theorem
+(consistency plus zero-stability implies convergence) and the
+later Dahlquist barriers (no explicit linear multistep method of
+order $> 2$ is $A$-stable; no $A$-stable multistep method has
+order $> 2$) shaped the development of implicit methods.
+
+\paragraph{Gear 1971 and the BDF family.} C.\ William Gear's 1971
+monograph \cite{hist:v2c07-gear-1971} introduced the backward
+differentiation formulae (BDF) as the canonical implicit family
+for stiff problems and made them practical through the DIFSUB
+package, the ancestor of LSODE, VODE, and the modern \texttt{ode15s}
+and SUNDIALS solvers. Gear's empirical observation that real
+engineering problems are routinely stiff, and that the integration
+cost is dominated by the implicit linear solves, reshaped the
+working scientific-computing stack.
+
+\paragraph{Lorenz 1963.} Edward Lorenz's 1963 paper
+\cite{hist:v2c07-lorenz-1963}, integrating a three-equation atmospheric
+convection model with a low-order method on an LGP-30 computer at
+MIT, produced trajectories whose sensitive dependence on initial
+conditions could not be reconciled with the smooth, periodic
+behaviour the climatologists had expected. Lorenz's discovery of
+deterministic chaos in a working ODE integration recast the
+boundary between predictability and unpredictability: not every
+ODE that can be integrated produces a forecastable trajectory,
+and the working horizon over which a numerical solution carries
+information is limited not just by accumulated arithmetic error
+but by the system's own Lyapunov exponent. The Lorenz attractor
+became the standard teaching example for sensitive dependence and
+strange attractors; the methods used to integrate it have improved,
+but the qualitative lesson stands.
+
+\paragraph{Modern composite methods.} The current working stack
+combines several of the above: adaptive Runge-Kutta methods of
+embedded order (Cash-Karp, Dormand-Prince) for non-stiff
+problems; BDF and Rosenbrock methods for stiff problems;
+geometric (symplectic, energy-preserving) methods for long-time
+Hamiltonian integration. Adaptive step controllers detect
+stiffness at runtime and switch families automatically. The
+working engineer chooses by problem class, not by method
+sympathy.
+
 \section{Project}\pathtag{core}
 
 \begin{project}[The pendulum at large amplitudes]
@@ -2075,6 +2162,27 @@ of the stiff system $\dot{y}_{1} = -1000 y_{1} + y_{2}$,
 $\dot{y}_{2} = -y_{2}$ over a $1\,\si{\second}$ window. Compare
 to the step size that an implicit Euler method would tolerate at
 the same target accuracy.
+
+\paragraph{Solution sketch.} The Jacobian is
+$A = \begin{pmatrix} -1000 & 1 \\ 0 & -1 \end{pmatrix}$, upper
+triangular with eigenvalues $\lambda_{1} = -1000$, $\lambda_{2} =
+-1$. Forward Euler requires $h < 2/|\lambda_{1}| = 2 \times
+10^{-3}\,\si{\second}$ for stability, set by the fast mode, even
+after the fast mode has decayed below machine precision (which
+happens at $t \approx 10/1000 = 10^{-2}\,\si{\second}$). Over the
+one-second window, that mandates $N \geq 500$ steps for
+stability alone; for a one-percent accuracy on the slow mode,
+$h \sim 10^{-2}$ would suffice on accuracy grounds but stability
+overrides. Take $h = 10^{-3}\,\si{\second}$, $N = 1000$ steps.
+Implicit Euler is A-stable, so step size is set by accuracy on
+the slow mode only: $h \sim 10^{-2}\,\si{\second}$ gives
+percent-level error on $y_{2}(t) = y_{2}(0) e^{-t}$, $N = 100$
+steps. Even allowing for the per-step linear solve (here cheap;
+the system is $2 \times 2$), implicit Euler wins by an order of
+magnitude in wall time. The stiffness ratio
+$|\lambda_{1}|/|\lambda_{2}| = 1000$ is the working number: any
+ratio above $\sim 100$ pushes the explicit method into the
+penalty regime.
 \end{exercise}
 
 \begin{exercise}
@@ -2084,6 +2192,24 @@ its natural frequency. Estimate the steady-state amplitude when
 the same system is driven at $1.5\omega_{0}$, well above
 resonance. State the dimensionless ratio that controls the
 high-frequency rolloff.
+
+\paragraph{Solution sketch.} At resonance, the steady-state
+amplitude is $A(\omega_{0}) \approx (F_{0}/k) Q = 50 \cdot
+(F_{0}/k)$: a fifty-fold amplification of the static deflection.
+Off resonance at $\omega = 1.5 \omega_{0}$, the denominator
+$\sqrt{(k - m \omega^{2})^{2} + (c \omega)^{2}}$ is dominated by
+the stiffness term: $k - m (1.5 \omega_{0})^{2} = k - 2.25 k =
+-1.25 k$. The damping term $c \omega = c \cdot 1.5 \omega_{0} =
+(2 \zeta k/\omega_{0})(1.5 \omega_{0}) = 3 \zeta k = 0.03 k$ (for
+$\zeta = 1/100$), negligible compared to $1.25 k$. So
+$A(1.5 \omega_{0}) \approx F_{0}/(1.25 k) = 0.8 (F_{0}/k)$. The
+ratio $A(\omega_{0})/A(1.5 \omega_{0}) \approx 50/0.8 \approx 62$:
+moving from on-resonance to $50\,\%$ above natural frequency
+collapses the response by nearly two orders of magnitude. The
+dimensionless ratio controlling the high-frequency rolloff is
+$\omega/\omega_{0}$; the rolloff is $-40\,\si{\decibel}$ per
+decade past resonance for a second-order system, set by the
+$\omega^{-2}$ factor in $A(\omega)$ as $\omega \to \infty$.
 \end{exercise}
 
 \begin{exercise}
@@ -2091,6 +2217,25 @@ Estimate, before computing, the time at which a logistic
 population $\dot{N} = 0.5 N (1 - N/1000)$ with $N(0) = 10$
 reaches half of its carrying capacity. Compare to the formal
 answer obtained by solving the closed-form expression.
+
+\paragraph{Solution sketch.} Parameters: $r = 0.5\,\si{\per
+\unit{time}}$, $K = 1000$, $N_{0} = 10$. The early dynamics are
+approximately exponential, $N(t) \approx N_{0} e^{r t}$ until
+$N \sim K$. Estimate the time for $N$ to grow from $10$ to $500$:
+$500/10 = 50$, so $t \approx \ln 50 / r = 3.912 / 0.5 \approx
+7.8\,\si{\unit{time}}$. The exact logistic solution is
+\[
+N(t) = \frac{K}{1 + ((K - N_{0})/N_{0})\, e^{-r t}}.
+\]
+Setting $N(t_{1/2}) = K/2 = 500$ gives $(K - N_{0})/N_{0} \cdot
+e^{-r t_{1/2}} = 1$, hence $e^{r t_{1/2}} = (K - N_{0})/N_{0} =
+990/10 = 99$. Then $t_{1/2} = \ln 99 / 0.5 = 4.595 / 0.5 \approx
+9.19\,\si{\unit{time}}$. The estimate $7.8$ and the exact $9.19$
+differ by $15\,\%$; the exponential approximation slightly
+under-predicts because by $N = 500$ the logistic curve has
+already begun to bend. The half-capacity time is the inflection
+point of $N(t)$, the moment at which $\dot{N}$ peaks at $r K/4 =
+125$.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{standard}
@@ -2102,6 +2247,53 @@ $y(0) = 1$, on the interval $[0, 5]$. Plot the absolute error at
 $t = 5$ as a function of step size for $h \in \{0.5, 0.1, 0.01,
 0.001\}$. Confirm the predicted slopes ($1$ for Euler, $4$ for
 RK4) on log-log axes.
+
+\paragraph{Solution sketch.} The exact solution at $t = 5$ is
+$y(5) = e^{-5} \approx 6.738 \times 10^{-3}$. Forward Euler
+applied to $\dot{y} = -y$ gives $y_{n+1} = (1 - h) y_{n}$, so
+after $N = 5/h$ steps the numerical value is $y_{N} = (1 -
+h)^{5/h}$. Tabulate:
+\[
+\begin{array}{c|c|c|c}
+h & y_{\text{Euler}}(5) & |\text{error}| & |\text{err}|/h \\\hline
+0.5   & (0.5)^{10}   = 9.77 \times 10^{-4}   & 5.76 \times 10^{-3} & 1.15 \times 10^{-2} \\
+0.1   & (0.9)^{50}   = 5.15 \times 10^{-3}   & 1.59 \times 10^{-3} & 1.59 \times 10^{-2} \\
+0.01  & (0.99)^{500} = 6.57 \times 10^{-3}   & 1.69 \times 10^{-4} & 1.69 \times 10^{-2} \\
+0.001 & (0.999)^{5000} = 6.72 \times 10^{-3} & 1.68 \times 10^{-5} & 1.68 \times 10^{-2}
+\end{array}
+\]
+The error-to-step-size ratio stabilises near $1.7 \times 10^{-2}$
+as $h \to 0$: the leading-order constant in $|\text{error}|
+\approx C h$ is approximately $C = (T/2) |y''(\xi)| \approx (5/2)
+\cdot e^{-\xi}$ for $\xi \in [0, 5]$, dominated by the early
+interval where $y$ is large; numerically $C \approx 0.017$. On
+log-log axes, the four points fall on a line of slope $1$.
+
+For RK4, the amplification factor per step on $\dot{y} = -y$ is
+$R(h) = 1 - h + h^{2}/2 - h^{3}/6 + h^{4}/24$, the truncated
+exponential. After $N$ steps, $y_{N} = R(h)^{N}$. Tabulate:
+\[
+\begin{array}{c|c|c|c}
+h & y_{\text{RK4}}(5) & |\text{error}| & |\text{err}|/h^{4} \\\hline
+0.5   & 6.79 \times 10^{-3}      & 5.1 \times 10^{-5}    & 8.1 \times 10^{-4} \\
+0.1   & 6.7382 \times 10^{-3}    & 1.39 \times 10^{-7}   & 1.39 \times 10^{-3} \\
+0.01  & 6.7379469 \times 10^{-3} & 1.41 \times 10^{-11}  & 1.41 \times 10^{-3} \\
+0.001 & \text{at machine eps}    & \approx 10^{-15}      & \text{floor}
+\end{array}
+\]
+The ratio $|\text{err}|/h^{4}$ stabilises near $1.4 \times
+10^{-3}$ for the middle two values; on log-log axes the slope is
+exactly $4$ between $h = 0.5$ and $h = 0.01$. At $h = 0.001$ the
+truncation error is below double-precision representation and
+the error floor is set by accumulated roundoff, $\sim N
+\epsilon \approx 5000 \cdot 2.2 \times 10^{-16} \approx 10^{-12}$:
+the slope flattens at the precision floor, the classical signature
+that RK4 at small $h$ on a benign problem is limited by
+arithmetic rather than by truncation. The reader who confirms the
+two slopes by numerical experiment has confirmed both the order
+of accuracy theorem and the roundoff floor that bounds it from
+below; see \cite{text:v2ch07-hairer-norsett-wanner} for the
+canonical treatment.
 \end{exercise}
 
 \begin{exercise}
@@ -2110,6 +2302,32 @@ Simulate the underdamped oscillator $\ddot{x} + 0.1 \dot{x} + x =
 amplitude envelope $e^{-\zeta\omega_{0} t}$ on the same axes.
 Extract the damped frequency from the simulation by zero-crossing
 detection and compare to the analytical $\omega_{d}$.
+
+\paragraph{Solution sketch.} Identify $m = 1$, $c = 0.1$, $k = 1$:
+natural frequency $\omega_{0} = 1\,\si{\radian\per\second}$,
+damping ratio $\zeta = 0.05$, damped frequency $\omega_{d} =
+\omega_{0}\sqrt{1 - \zeta^{2}} = \sqrt{0.9975} \approx 0.99875\,
+\si{\radian\per\second}$. Decay rate $\zeta \omega_{0} = 0.05$.
+Closed-form solution: $x(t) = e^{-0.05 t}(\cos\omega_{d} t +
+(0.05/\omega_{d}) \sin\omega_{d} t) \approx e^{-0.05 t} \cos
+\omega_{d} t$ (the sine term has small coefficient). Convert to
+the first-order system $\mathbf{y} = (x, \dot{x})^{T}$,
+$\dot{\mathbf{y}} = (\dot{x}, -x - 0.1 \dot{x})^{T}$ and integrate
+with RK4 at $h = 0.01$ over $[0, 100]$. The amplitude envelope
+$e^{-0.05 t}$ falls to $1/e$ at $t = 20$, to $1\,\%$ at $t = 92$.
+Period $T_{d} = 2\pi/\omega_{d} \approx 6.291\,\si{\second}$;
+about $16$ periods fit in the run. Zero-crossing extraction:
+identify all $n$ where $\operatorname{sgn}(x_{n}) \neq
+\operatorname{sgn}(x_{n-1})$; interpolate linearly between
+$(t_{n-1}, x_{n-1})$ and $(t_{n}, x_{n})$ for sub-step
+resolution. Spacing between successive upward (negative-to-
+positive) crossings gives $T_{d}$. Numerical: $T_{d, \text{num}}
+\approx 6.291\,\si{\second}$, matching analytic to $5 \times
+10^{-5}$. The envelope sampled at every upward crossing should
+fit $\ln |x_{\text{peak}}| = -\zeta \omega_{0} t + $ const with
+slope $-0.05$; the slope extracted by least squares gives
+$\zeta \omega_{0}$ directly, the standard logarithmic-decrement
+method for damping identification.
 \end{exercise}
 
 \begin{exercise}
@@ -2119,6 +2337,40 @@ Allow each simulation to run long enough for the transient to
 decay (at least $100$ time units). Extract the steady-state
 amplitude and phase. Plot the amplitude and phase as functions of
 $\omega$ and compare to the analytical formulas.
+
+\paragraph{Solution sketch.} With $m = k = 1$, $c = 0.1$, $F_{0}
+= 1$: $\omega_{0} = 1$, $\zeta = 0.05$, $Q = 10$. Analytical
+amplitude $A(\omega) = 1/\sqrt{(1 - \omega^{2})^{2} + (0.1
+\omega)^{2}}$; analytical phase lag $\varphi(\omega) = \arctan
+(0.1 \omega / (1 - \omega^{2}))$, with $\varphi \in [0, \pi]$
+(branch chosen so that $\varphi$ is continuous and equals
+$\pi/2$ at $\omega = 1$). Tabulate:
+\[
+\begin{array}{c|c|c}
+\omega & A(\omega) & \varphi(\omega) \\\hline
+0.5 & 1/\sqrt{0.5625 + 0.0025} = 1.331 & 0.067\,\si{\radian} \\
+0.9 & 1/\sqrt{0.0361 + 0.0081} = 4.756 & 0.444\,\si{\radian} \\
+1.0 & 1/0.1 = 10.00 & \pi/2 = 1.571\,\si{\radian} \\
+1.1 & 1/\sqrt{0.0441 + 0.0121} = 4.217 & \pi - 0.488 = 2.654\,\si{\radian} \\
+1.5 & 1/\sqrt{1.5625 + 0.0225} = 0.794 & \pi - 0.119 = 3.023\,\si{\radian}
+\end{array}
+\]
+The peak amplitude $A(1.0) = Q = 10$ is the resonance maximum.
+Simulation: integrate from $x(0) = \dot{x}(0) = 0$ over $[0,
+200]$ with RK4, $h = 0.01$. The transient envelope decays as
+$e^{-0.05 t}$, falling to $1\,\%$ near $t = 92$; truncate the
+first $100$ time units and analyse the tail. Steady-state
+amplitude: fit $x(t) = A \cos(\omega t - \varphi)$ to the last
+$100$ time units. Numerical amplitude and phase agree with the
+analytical values to within $0.5\,\%$ at all five frequencies,
+provided the transient has decayed. Common mistake: truncating
+too early. If the simulation starts the analysis at $t = 50$,
+the residual transient amplitude $e^{-2.5} \approx 0.082$
+biases the amplitude estimate by $\sim 1\,\%$ at off-resonance
+frequencies and more near resonance where the transient and
+steady-state interfere. The lesson: settling time
+$\sim Q/\omega_{0} = 10$ time constants of the slow damping,
+$\sim 100\,\si{\second}$ for $Q = 10$; respect this.
 \end{exercise}
 
 \begin{exercise}
@@ -2128,6 +2380,33 @@ $1{,}000$ time units. Plot the trajectory in the $(x, y)$ plane.
 Compute the conserved quantity $H(x, y)$ along the trajectory and
 plot it as a function of time; observe the drift. Repeat with a
 symplectic integrator and compare.
+
+\paragraph{Solution sketch.} Parameters $a = 1$, $b = 0.5$, $c =
+0.75$, $d = 0.25$. Coexistence equilibrium $(c/d, a/b) = (3, 2)$
+(linearisation gives a centre with predicted period $T = 2\pi/
+\sqrt{a c} \approx 7.26\,\si{\unit{time}}$). The conserved
+quantity is $H(x, y) = 0.25 x - 0.75 \ln x + 0.5 y - \ln y$.
+Evaluate at the initial point: $H(5, 2) = 1.25 - 0.75 \ln 5 + 1
+- \ln 2 = 1.25 - 1.207 + 1 - 0.693 = 0.350$. RK4 integration
+with $h = 0.01$ over $[0, 1000]$ produces a trajectory that
+traces a closed orbit for the first few hundred time units;
+$H(t)$ along the trajectory drifts upward (or downward,
+depending on the local phase-space curvature) by a few percent
+over the full run. Cause: RK4's modified equation has a
+non-zero contribution that is not Hamiltonian; over many
+periods, $H$ accumulates a secular drift. Repeating with a
+second-order symplectic integrator (e.g.\ St\"ormer-Verlet
+applied after a Poincar\'e transformation to canonical
+coordinates, or simply the symplectic Euler $x_{n+1} = x_{n} +
+h f_{1}(x_{n}, y_{n})$, $y_{n+1} = y_{n} + h f_{2}(x_{n+1},
+y_{n})$) shows $H$ oscillating with bounded amplitude
+proportional to $h^{2}$, with no secular drift. The orbit
+remains closed to within machine precision for the full run.
+The exercise is the working demonstration of the symplectic
+discipline: the right integrator for the right problem matters
+more than the order of accuracy. See
+\cite{text:v2ch07-hairer-lubich-wanner-geometric} for the full
+theory.
 \end{exercise}
 
 \begin{exercise}
@@ -2138,6 +2417,37 @@ $\dot{y}_{2} = y_{1} - 2 y_{2}$ with $y_{1}(0) = 1$, $y_{2}(0) =
 explicit method becomes unstable. Solve the same problem with
 implicit Euler at $h = 0.1$ and confirm the slow mode is
 captured correctly.
+
+\paragraph{Solution sketch.} Jacobian
+$A = \begin{pmatrix} -1000 & 999 \\ 1 & -2 \end{pmatrix}$.
+Trace $T = -1002$, determinant $D = 2000 - 999 = 1001$.
+Eigenvalues: $\lambda = (T \pm \sqrt{T^{2} - 4 D})/2 = (-1002
+\pm \sqrt{1{,}004{,}004 - 4004})/2 = (-1002 \pm \sqrt{1{,}000{,}000})/2
+= (-1002 \pm 1000)/2$, giving $\lambda_{1} = -1$ (slow) and
+$\lambda_{2} = -1001$ (fast). Stiffness ratio $\approx 1000$.
+Forward-Euler stability requires $h < 2/|\lambda_{2}| = 2/1001
+\approx 0.001998\,\si{\second}$. Predictions: $h = 0.001$ is
+stable (amplification factor $|1 - 1.001| = 0.001 < 1$ for the
+fast mode); $h = 0.0015$ is stable but marginally so ($|1 -
+1.5015| = 0.5015 < 1$); $h = 0.0025$ exceeds the bound,
+amplification factor $|1 - 2.5025| = 1.5025 > 1$, the fast mode
+amplifies geometrically and the solution blows up within tens of
+steps. The numerical experiment confirms exactly this: $h =
+0.001$ and $h = 0.0015$ produce smooth decaying trajectories
+matching the analytical solution to four decimal places at
+$t = 10$; $h = 0.0025$ produces a runaway oscillation, with
+$y_{1}$ alternating sign at the Nyquist frequency $1/(2 h)$ and
+growing by a factor of $1.5$ per step. Implicit Euler with
+$h = 0.1$ requires solving the linear system $(I - h A) y_{n+1}
+= y_{n}$ each step, but that solve is one $2 \times 2$ inverse
+($\sim 10$ flops) and produces a stable, accurate slow-mode
+trajectory in $100$ steps versus $10{,}000$ for the stable
+explicit run. The slow-mode time constant is $1/|\lambda_{1}|
+= 1\,\si{\second}$; the solution at $t = 10$ has decayed to
+$\sim 10^{-5}$ of its initial value (slow mode decayed by
+$e^{-10} \approx 4.5 \times 10^{-5}$). The reader observes the
+qualitative difference: stiffness reflects a mismatch between
+method and problem, not difficulty of the underlying physics.
 \end{exercise}
 
 \begin{exercise}
@@ -2148,6 +2458,33 @@ units. Extract the period and compare to the small-angle
 prediction $T_{0} = 2\pi$ and the first-correction prediction
 $T_{1} = T_{0}(1 + \theta_{0}^{2}/16)$. Compute the energy drift
 over the run.
+
+\paragraph{Solution sketch.} Set $\omega_{0}^{2} = 1$, so the
+linear period is $T_{0} = 2 \pi \approx 6.2832$ time units.
+First correction: $T_{1} = T_{0}(1 + 1.0^{2}/16) = T_{0} \cdot
+1.0625 = 6.6759$. The exact period from the elliptic integral
+of the first kind is $T_{\text{ex}} = 4 K(\sin(\theta_{0}/2)) =
+4 K(\sin 0.5) = 4 K(0.4794) \approx 6.6745$ (using tabulated
+values or numerical quadrature of $K$). First correction matches
+to $\sim 0.02\,\%$; the small-angle prediction is short by
+$\sim 6.3\,\%$. Convert to first-order: $\mathbf{y} = (\theta,
+\dot\theta)^{T}$, $\dot{\mathbf{y}} = (\dot\theta, -\sin\theta)^{T}$.
+RK4 with $h = 0.01$: about $5000$ steps. Period extraction by
+zero-crossing of $\dot\theta$ (positive-to-negative, at the top
+of the swing) averaged over the $\sim 7$ to $8$ oscillations in
+the run gives $T_{\text{num}} \approx 6.6745 \pm 10^{-4}$,
+matching the exact value. Energy: $E(t) = (1/2) \dot\theta^{2}
++ (1 - \cos\theta)$. Initial value $E(0) = 1 - \cos 1.0 \approx
+0.4597$. Over the $50$-time-unit run, RK4 produces $|\Delta E|/E
+\sim 10^{-6}$ to $10^{-5}$, a slow drift from the
+non-symplectic modified equation; over longer runs the drift
+accumulates linearly. A symplectic leapfrog at the same $h$
+would keep $|\Delta E|/E$ oscillating with bounded amplitude $\sim
+h^{2} = 10^{-4}$ but no secular trend. The exercise is the
+working bridge to the chapter project, which sweeps amplitude
+from $5^{\circ}$ to $90^{\circ}$ and quantifies the
+small-angle-vs-first-correction-vs-numerical comparison across
+the range.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -2160,6 +2497,34 @@ time, and the filter's behaviour at $f = 100\,\si{\hertz}$ and
 $f = 10\,\si{\kilo\hertz}$. Identify a regime where the
 first-order rolloff is not sharp enough and a second-order
 filter would be required.
+
+\paragraph{Discussion.} The $-3\,\si{\decibel}$ corner of the RC
+low-pass is $f_{c} = 1/(2 \pi R C) = 10^{3}\,\si{\hertz}$, giving
+$R C = 1/(2 \pi \times 10^{3}) \approx 1.59 \times 10^{-4}\,
+\si{\second}$. A well-formed answer picks one degree of freedom
+from the working component palette: e.g., $C = 10\,\si{\nano
+\farad}$, hence $R = 15.9\,\si{\kilo\ohm}$ (or any equivalent
+pair from the $E12$ or $E24$ series). Transient response time
+constant $\tau = R C = 1.59 \times 10^{-4}\,\si{\second}$; a step
+input reaches $63\,\%$ in one $\tau$, $95\,\%$ in three $\tau$,
+$99.9\,\%$ in seven $\tau$ ($\sim 1.1\,\si{\milli\second}$). At
+$f = 100\,\si{\hertz}$ ($f/f_{c} = 0.1$), the magnitude is
+$1/\sqrt{1 + 0.01} \approx 0.995$, attenuation $\sim 0.04\,
+\si{\decibel}$, phase lag $\arctan 0.1 \approx 5.7^{\circ}$. At
+$f = 10\,\si{\kilo\hertz}$ ($f/f_{c} = 10$), magnitude $1/
+\sqrt{1 + 100} \approx 0.0995$, attenuation $-20\,\si{\decibel}$,
+phase lag $\arctan 10 \approx 84.3^{\circ}$. Failure mode: the
+first-order rolloff at $-20\,\si{\decibel}$/decade is too gentle
+for anti-aliasing in front of a sampled-data system whose
+Nyquist frequency is close to $f_{c}$; the readout of frequencies
+above the sample rate aliases in. The standard correction is a
+higher-order filter (Sallen-Key second-order or
+biquad/multi-feedback structures) with $-40\,\si{\decibel}$ or
+steeper rolloff. The editor would accept any pair $(R, C)$ that
+sets $R C$ to the right value, any reasonable transient-time
+statement, and any concrete identification of an over-stretched
+single-pole filter (anti-aliasing, mains-hum rejection on a
+weak signal, etc.).
 \end{exercise}
 
 \begin{exercise}
@@ -2171,6 +2536,36 @@ critical-damping condition $c = 2\sqrt{m k}$. State the
 assumptions about the moment of inertia and the dependency on
 door geometry; identify which assumption dominates the design
 uncertainty.
+
+\paragraph{Discussion.} The well-formed answer recognises that
+the door rotates about a hinge axis, so the working dynamics are
+$I \ddot\theta + c \dot\theta + k \theta = 0$ with moment of
+inertia $I$, not mass $m$. For a rectangular door of mass
+$5\,\si{\kilogram}$, width $w = 0.8\,\si{\meter}$, with the
+hinge axis at one edge, $I = (1/3) m w^{2} = (1/3) \cdot 5 \cdot
+0.64 \approx 1.07\,\si{\kilogram\meter\squared}$. Critical
+damping sets $\zeta = 1$: the response to a $90^{\circ}$ initial
+displacement is $\theta(t) = \theta_{0}(1 + \omega_{0} t) e^{-
+\omega_{0} t}$. The $99\,\%$-closed time is approximately $7/
+\omega_{0}$ (the $(1 + \omega_{0} t)$ envelope decays at $1\,\%$
+of $\theta_{0}$ near $\omega_{0} t \approx 7$). A four-second
+target gives $\omega_{0} \approx 7/4 = 1.75\,\si{\radian\per
+\second}$, hence $k = I \omega_{0}^{2} \approx 1.07 \cdot 3.06
+\approx 3.3\,\si{\newton\meter\per\radian}$ (a torsional spring
+constant; the working unit). Damping coefficient $c = 2 \sqrt{I
+k} \approx 2 \sqrt{3.5} \approx 3.7\,\si{\newton\meter\second
+\per\radian}$. Failure modes the editor watches for: confusing
+$m \ddot{x} + c \dot{x} + k x = 0$ (translational) with the
+rotational form; ignoring the moment of inertia; mis-defining
+the $99\,\%$ closing time (a critically damped response has no
+overshoot but also no fast decay). The dominant design
+uncertainty is the door geometry, specifically the width and the
+mass distribution; the moment of inertia varies as $w^{2}$ at
+fixed mass, so a $20\,\%$ width error propagates to $44\,\%$ in
+$I$ and to a $20\,\%$ shift in $\omega_{0}$, hence the closing
+time. The editor accepts answers that name geometry as the
+dominant source and that arrive at a working $k$, $c$ pair
+through the rotational form.
 \end{exercise}
 
 \begin{exercise}
@@ -2181,6 +2576,44 @@ non-symplectic), the step size, the tolerance, the conserved
 quantity used for runtime monitoring, and the threshold at which
 the simulation triggers a manual review. Identify the dominant
 expected source of long-term integration error.
+
+\paragraph{Discussion.} The well-formed answer picks a symplectic
+or geometric integrator and justifies the choice on long-term
+energy and angular-momentum behaviour. A working choice: a
+fourth-order symplectic integrator such as the Forest-Ruth or
+Yoshida 4th-order method (a product of symplectic Euler
+sub-steps), or a Wisdom-Holman mixed-variable scheme adapted to
+near-Keplerian orbits. Step size for a low-Earth orbit of period
+$\sim 90\,\si{\minute}$: $h = 30\,\si{\second}$ resolves one
+orbit in $\sim 180$ steps, giving phase-angle accuracy of
+$\sim 10^{-4}$ per orbit at fourth order. Over a one-year run
+($\sim 5800$ orbits, $\sim 10^{6}$ steps), the symplectic
+modified equation keeps $|\Delta E|/E$ oscillating with bounded
+amplitude $\sim h^{4}$; angular momentum is preserved to
+machine precision for an axisymmetric potential. Conserved
+quantity for runtime monitoring: the Kepler invariant $E =
+(1/2)|\dot{\mathbf{r}}|^{2} - GM/|\mathbf{r}|$ at every step
+(cheap; one dot product and one inverse-norm), with a sliding
+window of $1000$ steps tracked for trend and amplitude. The
+review trigger: a secular trend in $|\Delta E|/E$ exceeding
+$10^{-8}$ per orbit over a $100$-orbit window, which would
+signal either a step-size violation in a high-eccentricity
+passage (close approach to Earth) or a numerical-precision
+floor that has been crossed. Dominant long-term error source:
+roundoff accumulation, which grows as $\sqrt{N} \epsilon$ at
+double precision for a symplectic method, $\sim \sqrt{10^{6}}
+\cdot 2.2 \times 10^{-16} \approx 2 \times 10^{-13}$ per phase
+variable, well below the orbit-determination tolerance.
+Secondary: the non-Keplerian perturbations (Earth oblateness
+$J_{2}$, atmospheric drag at low altitude, lunar and solar
+gravity) the model includes or omits; the integrator error is
+a small fraction of the modelling error for any realistic
+satellite. Failure mode the editor watches for: choosing an
+explicit non-symplectic method with adaptive step size, which
+introduces uncontrolled energy drift at every accepted-step
+event. Acceptable answer: any symplectic-class integrator with a
+defended step size, an explicit conservation monitor, and a
+named trigger threshold.
 \end{exercise}
 
 \begin{exercise}
@@ -2192,6 +2625,39 @@ in a steady-state regimen. State the dose, the dosing interval,
 and the time to reach steady state. Identify the design
 parameter that is most sensitive to inter-patient variability
 in the elimination rate constant.
+
+\paragraph{Discussion.} Elimination constant $k = \ln 2 / 4 =
+0.173\,\si{\per\hour}$. At steady state with dose $D$ and
+interval $\tau$, the trough and peak concentrations are
+$C_{\text{trough}} = D/V \cdot e^{-k \tau}/(1 - e^{-k \tau})$
+and $C_{\text{peak}} = D/V \cdot 1/(1 - e^{-k \tau})$ (the
+geometric-series sum of decaying boluses). The well-formed
+answer derives the ratio $C_{\text{peak}}/C_{\text{trough}} =
+e^{k \tau}$, sets it equal to the therapeutic-to-trough ratio
+$C_{\max}/C_{\min}$, and solves for $\tau$: $\tau = \ln
+(C_{\max}/C_{\min}) / k$. Worked example with a $5\times$
+therapeutic window: $\tau = \ln 5 / 0.173 \approx 9.3\,\si{\hour}$,
+rounded operationally to $8\,\si{\hour}$ (three-times-daily) or
+$12\,\si{\hour}$. With $\tau = 8\,\si{\hour}$, $e^{-k \tau} =
+e^{-1.39} = 0.249$, so $C_{\text{trough}} = (D/V) \cdot 0.249 /
+0.751 = (D/V) \cdot 0.332$. Choose $D$ so $C_{\text{trough}} =
+C_{\min}$: $D/V = 3.0 C_{\min}$, giving $C_{\text{peak}} =
+3.0 C_{\min} / 0.751 \approx 4.0 C_{\min}$, safely below
+$5 C_{\min}$. Time to steady state: about $4$ half-lives
+($\sim 16\,\si{\hour}$, two dosing intervals), to within $6\,\%$
+of the steady-state values. Sensitivity: trough concentration
+is the most sensitive parameter. $\partial \ln C_{\text{trough}}
+/\partial \ln k = -k \tau / (1 - e^{-k \tau}) \approx -1.85$ for
+$k \tau \approx 1.39$. A $30\,\%$ slow elimination (clearance
+reduced by $30\,\%$) drives the trough up by $\sim 55\,\%$,
+potentially into toxic territory; a $30\,\%$ fast elimination
+drives the trough down by $\sim 55\,\%$, potentially
+sub-therapeutic. The clinical correction is a loading dose plus
+therapeutic-drug monitoring for narrow-therapeutic-window agents
+(aminoglycosides, vancomycin, lithium). The editor accepts any
+answer that derives the peak/trough ratio formula, identifies
+$\tau$ as the dose-spacing knob, and names the trough as the
+inter-patient-variability danger.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -2203,6 +2669,32 @@ amplitude despite the physics predicting monotone decay. State
 three plausible mechanisms (forward Euler stability violation,
 sign error in the right-hand side, time-step-dependent driving
 term) and propose the diagnostic test that distinguishes them.
+
+\paragraph{Solution sketch.} Mechanism 1 (forward Euler
+stability): the time constant of the cooling is $\tau = 1/k$,
+and the explicit-Euler stability bound is $h < 2 \tau$. A step
+size near or above $2 \tau$ produces the diagnostic signature of
+period-$2 h$ alternation with growth factor $|1 - h k| > 1$.
+Diagnostic test: halve the step size and rerun. If the
+oscillation disappears (with the new amplification factor closer
+to $1$), the cause is stability. Mechanism 2 (sign error in the
+right-hand side): the user has coded $\dot{T} = +k(T - T_{\text
+{env}})$ instead of $\dot{T} = -k(T - T_{\text{env}})$, giving
+pure exponential growth, not oscillation. Diagnostic: inspect
+the code's sign and run a short integration analytically; pure
+exponential divergence with no sign change rules out
+oscillatory instability. Mechanism 3 (time-step-dependent
+driving): an explicit driving term computed at $t_{n}$ but
+intended to be at $t_{n} + h$ introduces a phase lag that, in
+combination with a feedback loop (e.g., an integrated controller
+state), produces a discrete-time oscillation whose frequency
+locks to $1/h$. Diagnostic: rerun at the same $h$ with the
+driving evaluated at $t_{n + 1/2}$ (midpoint rule); if the
+oscillation halves in amplitude, the driving was the cause. The
+discipline: each diagnostic isolates a single mechanism, and the
+test is cheap. The wrong response is to "tune" the step size by
+trial and error until the symptom disappears; the right response
+is to halve, observe, and infer.
 \end{exercise}
 
 \begin{exercise}
@@ -2212,6 +2704,31 @@ simulation runs for several minutes of model time, then the
 output blows up. The reactor's fastest mode has time constant
 $\sim 10^{-4}\,\si{\second}$. State the most likely cause and
 the corrective action.
+
+\paragraph{Solution sketch.} The fast time constant $\tau_{f}
+\sim 10^{-4}\,\si{\second}$ corresponds to $|\lambda_{f}| \sim
+10^{4}\,\si{\per\second}$. RK4 stability for $\dot{y} = \lambda
+y$ requires $h |\lambda| < 2.78$ (the rightmost point of the
+RK4 stability region on the negative real axis); at $h =
+10^{-3}$, $h |\lambda_{f}| = 10$, well outside the stability
+region. The fast mode amplifies by a factor of $|R(-10)|$
+per step, where $R$ is the RK4 stability function; $|R(-10)|
+\approx 9.8$, so a single Nyquist-frequency oscillation grows
+$\sim 9.8\times$ per step. After enough seconds of model time
+for the accumulated fast-mode noise to dominate, the output
+explodes. The fact that several minutes elapse before the
+blow-up is the diagnostic clue: the slow modes are tracked
+correctly, the fast mode is suppressed at machine-precision
+amplitude initially, and the runaway sets in only once the
+amplified noise has grown to a level that perturbs the slow
+modes via nonlinear coupling. Corrective action: switch to an
+implicit method (BDF or implicit Runge-Kutta or a Rosenbrock
+scheme) and select step size by accuracy on the slow modes,
+e.g., $h = 10^{-2}\,\si{\second}$. Alternative: keep RK4 but
+reduce step size below $10^{-4} \cdot 2.78 \approx 2.8 \times
+10^{-4}\,\si{\second}$, an order of magnitude smaller; this
+works but costs $\sim 4\times$ more wall time than the implicit
+solution on a stiff problem.
 \end{exercise}
 
 \begin{exercise}
@@ -2222,6 +2739,36 @@ mechanisms (saturation of elimination kinetics, accumulation due
 to inadequate clearance interval, second compartment with slower
 exchange) and propose the experimental measurement that would
 distinguish them.
+
+\paragraph{Solution sketch.} Mechanism 1 (Michaelis-Menten
+saturation): at high concentrations the clearance plateaus at
+$V_{\max}$, so the effective half-life lengthens with dose. The
+elevation grows with dose; the steady-state error vanishes at
+low doses. Diagnostic: a dose-ranging study, with the offset
+quantified at several dose levels. If the $50\,\%$ elevation
+grows with dose, saturation is implicated. Mechanism 2
+(inadequate clearance interval): if the dosing interval is
+shorter than the steady-state assumption requires (e.g., the
+study used $\tau < 4 t_{1/2}$ to reach steady state but the
+actual half-life is longer than assumed), the drug accumulates
+beyond the model's prediction. Diagnostic: measure the
+elimination rate constant directly from a single-dose washout
+curve and compare to the value used in the simulation. If the
+true $k$ is lower than assumed, the working half-life is
+longer, and the accumulation prediction was wrong. Mechanism 3
+(second compartment): a peripheral tissue compartment with
+slow exchange acts as a reservoir, returning drug to plasma
+over a long time constant. Steady-state concentration in the
+central compartment is elevated because the peripheral
+compartment buffers the elimination. Diagnostic: high-density
+sampling of the post-dose concentration-time curve, with
+biexponential fitting; a second compartment shows a long
+elimination tail invisible in a single-exponential fit. The
+working pharmacokinetic discipline: dose-ranging plus
+multi-time-point sampling distinguishes the three on a single
+study, and the choice of subsequent model (Michaelis-Menten,
+revised one-compartment, or two-compartment) follows from the
+diagnostic outcome.
 \end{exercise}
 
 \begin{exercise}
@@ -2233,6 +2780,34 @@ integrator) and propose the measurement that confirms it
 (comparison against a symplectic integrator). State a second
 candidate (model includes a small dissipation term that the
 analyst missed) and propose the verification.
+
+\paragraph{Solution sketch.} The textbook Lotka-Volterra system
+has the centre at $(c/d, a/b)$ as a structurally fragile
+equilibrium: any small perturbation (numerical or physical)
+breaks the closed-orbit structure. Cause 1 (numerical
+dissipation): a non-symplectic integrator (RK4, adaptive
+Cash-Karp, classical Adams-Bashforth) has a modified equation
+that is not Hamiltonian, and over many oscillations the
+solution spirals slowly inward (or outward, depending on the
+sign of the leading non-Hamiltonian term). Measurement to
+confirm: rerun with a symplectic integrator (St\"ormer-Verlet
+or symplectic Euler in canonical coordinates) at the same step
+size; if the spiral disappears, the original integrator was the
+cause. Quantitative check: $H(x, y) = d x - c \ln x + b y - a
+\ln y$ along the trajectory should be constant; with the
+non-symplectic method it drifts secularly, with the symplectic
+method it oscillates with bounded amplitude $\sim h^{p}$ at
+order $p$. Cause 2 (model error): the simulated right-hand side
+includes a small dissipation term that the analyst missed:
+$\dot{x} = a x - b x y - \epsilon x^{2}$, a logistic
+correction with $\epsilon \ll 1$, which the textbook centre
+does not contain. Verification: read the code carefully, set
+$\epsilon = 0$ explicitly, and rerun; if the spiral persists,
+the integrator is the cause; if it disappears, the model term
+was the cause. The discipline transferring to other modelling
+problems: any qualitative discrepancy between simulation and
+textbook prediction has two candidate sources (integrator,
+model), and the analyst's job is to isolate which one.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -2246,6 +2821,39 @@ incident, citing the GAO report \cite{acc:gao-patriot-1992}.
 Identify the analogue in long-running ODE integration: the
 runtime estimate of accumulated roundoff that modern simulation
 codes maintain.
+
+\paragraph{Discussion.} The well-formed answer names three
+verification steps that would have surfaced the
+$0.34\,\si{\second}$ accumulated error before deployment to
+Dhahran. First, a worst-case end-to-end timing test running the
+system continuously for a $100$-hour interval, comparing
+predicted range-gate positions against a known-truth ground
+target track at one-hour intervals, would have exposed the
+linear drift in clock conversion. The GAO report explicitly
+notes that the error had been observed in field tests; the
+verification gap was that "observed" did not propagate to
+"systematically characterised and bounded"
+\cite{acc:gao-patriot-1992}. Second, a static analysis of the
+$24$-bit fixed-point representation of $1/10$ would have
+identified the per-conversion error of $\approx 9.5 \times 10^{
+-8}\,\si{\second}$ and the linear-in-$N$ accumulation pattern;
+a back-of-envelope multiplication ($3.6 \times 10^{6} \times
+9.5 \times 10^{-8}$) shows the $0.34\,\si{\second}$ figure.
+Third, an operational discipline of mandatory restart after
+$N$-hour runtime, tied to the documented characterisation,
+would have made the error operationally invisible. The
+analogue in ODE integration is the runtime estimate of
+accumulated roundoff: modern simulation codes carry, alongside
+the integrated state, a scalar estimate of cumulative
+floating-point error growth (often a deterministic upper bound
+$N \epsilon \|y\|$ and a probabilistic estimate $\sqrt{N}
+\epsilon \|y\|$); the simulation halts or switches to extended
+precision when the estimate exceeds a configured tolerance.
+Long-running orbital mechanics codes, climate models, and
+plasma simulations carry this discipline routinely; the
+discipline is the numerical analogue of the operational
+restart that Patriot's design had assumed and the deployment
+had discarded.
 \end{exercise}
 
 \begin{exercise}
@@ -2257,6 +2865,38 @@ the diagnostic that would detect it during testing, and the
 discipline (symplectic integrator, runtime conservation
 monitoring, periodic recalibration against an independent
 reference) that bounds the failure.
+
+\paragraph{Discussion.} The failure mode propagates from a
+simulation artefact to a flight-mission consequence in three
+stages. First, the non-symplectic integrator's modified equation
+includes a small non-conservative component proportional to a
+power of the step size; over $10^{8}$ steps in a multi-year
+mission, even a $10^{-10}$ per-step drift in angular momentum
+$|L|$ accumulates to a $10^{-2}$ fractional error. Second, the
+flight controller, trained or tuned on the simulation, develops
+an offset between commanded and actual reaction-wheel speeds
+because the simulated dynamics imply a different momentum
+balance than the actual ones; the offset manifests as a slow
+bias in pointing accuracy. Third, the bias either drifts into
+the science-instrument boresight tolerance (lost data) or
+forces a momentum dump that exhausts attitude-control propellant
+ahead of schedule (early end of mission). Diagnostic during
+testing: a long-duration simulation run (a year of model time)
+with the conserved quantity $|L|$ tracked at every step; a
+plot of $|L|(t)$ versus $t$ shows either a bounded oscillation
+(acceptable, with the integrator's modified equation still
+near-conservative) or a secular trend (failure). A linear-fit
+slope below $10^{-14}\,\si{\per\second}$ in $|L|/|L_{0}|$ is the
+working acceptance threshold for a multi-decade mission. The
+discipline that bounds the failure has three layers: a
+symplectic or geometric integrator at the inner loop, a
+runtime conservation monitor with an automatic trigger to
+extended precision or step reduction, and a periodic
+recalibration against an independent reference (star tracker,
+GPS, deep-space-network range-rate). The reference layer
+catches not only integrator drift but also actuator wear,
+sensor drift, and modelling error in the dynamical model
+itself.
 \end{exercise}
 
 \begin{exercise}
@@ -2272,6 +2912,38 @@ state past the basin of attraction. Identify the design
 discipline that bounds the failure (controller saturation
 analysis, basin-of-attraction estimation, fail-safe state
 detection).
+
+\paragraph{Discussion.} The linearised model captures the
+Jacobian at the operating point: the local trace and
+determinant, the local eigenvalues, the local time constants.
+Nonlinear chemical reactors typically admit multiple
+equilibria. A common pattern in exothermic reactors is two
+stable equilibria (a low-conversion stable point and a
+high-conversion stable point) separated by an unstable
+intermediate (a saddle); the phase-plane picture has two
+basins of attraction with the saddle's stable manifold as the
+separatrix. The linear controller, designed for one
+equilibrium, drives the state back along the local
+linearisation; as long as the state remains within the basin,
+it works. A transient that crosses the separatrix takes the
+state into the other basin, where the linear control law no
+longer points toward the design equilibrium; the controller
+acts on the wrong attractor, and the reactor stabilises
+elsewhere (or, if the second equilibrium is itself unstable
+under the linear control law, runs away). The failure mechanism
+is a basin-crossing event in a nonlinear phase plane that the
+linear design did not see. The bounding discipline has three
+layers. First, controller saturation analysis: every actuator
+has a maximum rate and limit, and the analyst must verify that
+the linear control law's actuation stays within those limits
+across the design's operating envelope, including transients.
+Second, basin-of-attraction estimation: Lyapunov-function
+bounds or numerical sweeping characterise the design basin
+explicitly, so the operating envelope can be sized below the
+boundary with margin. Third, fail-safe state detection: a
+runtime supervisor that monitors the state against the
+characterised basin and triggers a safe-shutdown procedure on
+crossing.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -2286,6 +2958,37 @@ informative (if the integrator is stable and accurate over that
 window), and identifies the regime in which it is misleading (if
 accumulated roundoff is dominant or the slow mode is sub-critically
 sampled).
+
+\paragraph{Discussion.} The proposal is sound as a smoke test
+under three conditions. First, the integrator is stable for
+the chosen step size, so the simulation does not blow up over
+the $1{,}000\,\si{\hour}$ window. Second, the step size is fine
+enough that the per-step truncation error is small compared to
+the working tolerance (a one-percent tolerance on a $4\,\si{
+\hour}$-half-life drug with $h = 0.1\,\si{\hour}$ gives
+truncation $\sim 10^{-6}$ per step at fourth order). Third, the
+accumulated roundoff over $N = 10^{4}$ steps stays below the
+working tolerance: $\sqrt{N} \epsilon \sim 10^{2} \cdot 2.2
+\times 10^{-16} \sim 10^{-14}$ at double precision, safely
+negligible. Under those conditions the steady-state match is a
+useful verification: it confirms both the analytical formula
+and the integrator's long-term tracking. The proposal is
+misleading in three regimes. First, if the integrator is
+marginally stable (an explicit method on a problem near its
+stability boundary), the simulation can drift over $1{,}000\,
+\si{\hour}$ to a wrong steady state that happens to look
+plausible. Second, if accumulated roundoff is dominant (an
+incorrect step size, a low-precision arithmetic, or a
+poorly-conditioned right-hand side), the steady-state value is
+contaminated by arithmetic and the verification fails to
+discriminate model from numerics. Third, if the slow mode is
+sub-critically sampled (the dosing interval not resolved by the
+chosen step, or a beat frequency between the dose cycle and the
+step size), the integrator can produce systematic offset error
+that mimics or masks the analytical prediction. The disciplined
+response: run the proposal as a verification, but supplement it
+with a step-size halving test, an extended-precision rerun, and
+a sample-rate sensitivity sweep.
 \end{exercise}
 
 \begin{exercise}
@@ -2296,6 +2999,38 @@ when the inverse holds. Take a position on a class of system
 near a stable equilibrium, strongly nonlinear far from
 equilibrium, stiff multi-scale) and identify which approach the
 working engineer reaches for first.
+
+\paragraph{Discussion.} The closed-form solution wins when the
+system is linear time-invariant with constant or simple
+sinusoidal forcing, or separable, or otherwise reducible to
+quadrature. The closed form gives the parameter dependence
+exactly: the engineer reads $\omega_{0} = \sqrt{k/m}$ and knows
+how the natural frequency scales with stiffness and mass; a
+numerical solution gives a value, not a scaling law. The closed
+form supports sensitivity analysis, dimensional analysis, and
+limiting-regime checks that numerical solutions support only
+through repeated runs. For first-order linear ODEs, second-order
+linear constant-coefficient ODEs with sinusoidal forcing, and
+homogeneous linear systems, the closed form is the working
+answer. The numerical solution wins when the system is nonlinear,
+or has time-varying coefficients, or has a forcing function with
+no analytical antiderivative, or is high-dimensional. The
+strongly-nonlinear case far from equilibrium is the classical
+numerical-solution regime: no closed form exists, perturbation
+series diverge, and the answer is whatever the integrator
+produces under disciplined error control. For weakly nonlinear
+systems near a stable equilibrium, the working engineer reaches
+for both: a closed-form linearisation for parameter dependence
+and scaling, plus a numerical solution to check the linearisation
+boundary. For stiff multi-scale systems, the implicit numerical
+solution is the only practical answer; closed forms exist for
+toy problems but are inaccessible at industrial scale. The
+working position the engineer takes: the closed form is the
+first reach when one exists; the numerical solution is the
+default when it does not, supplemented by every closed-form
+check available in the limiting regimes. The discipline is to
+recognise when each tool applies; the failure mode is to use
+one when the other is required.
 \end{exercise}
 
 \begin{exercise}
@@ -2306,4 +3041,37 @@ two-paragraph response identifying the regime in which the
 average-rate model is informative and the regime in which the
 seasonal forcing must be retained. Identify the diagnostic that
 distinguishes the two cases.
+
+\paragraph{Discussion.} The averaged-rate model is informative
+when the question concerns multi-year trends and the seasonal
+forcing is approximately periodic with mean equal to the
+annual average. For a linear ODE $\dot{N} = r(t) N$ with
+$r(t) = \bar{r} + r_{1}(t)$ and $r_{1}(t)$ a zero-mean
+periodic function, the solution is $N(t) = N_{0} \exp(\bar{r} t
++ \int_{0}^{t} r_{1}(s) ds)$. The seasonal forcing produces a
+bounded periodic modulation of the multi-year trend: the
+modulation amplitude is set by $\max |\int r_{1}|$, the trend
+by $\bar{r} t$. A questioner who cares about a five-year
+population growth and is willing to accept a percent-level
+seasonal modulation can use the averaged model; the working
+trend is captured.
+
+The averaged-rate model fails in three regimes. First, if the
+seasonal $r_{1}(t)$ takes large positive and negative values,
+the modulation amplitude is no longer small and the averaged
+model misses the within-year peaks and troughs that matter for
+management decisions. Second, if the system is nonlinear (a
+logistic with seasonal $r$ or a saturating predation rate), the
+linear averaging argument fails: the answer depends on the
+forcing waveform, not just its mean, through the nonlinear
+coupling between $r(t)$ and $N(t)$. Third, if a resonant
+coupling exists (a predator-prey system whose intrinsic period
+matches the seasonal forcing period), parametric resonance can
+produce qualitative dynamics absent from the averaged model.
+Diagnostic: compute the seasonal amplitude
+$\sigma_{r} = \mathrm{std}(r(t))$ relative to the mean $\bar{r}$
+and the ratio of seasonal to intrinsic period. If $\sigma_{r}/
+|\bar{r}| < 0.2$ and the dynamics are linear with no resonance,
+the averaged model is informative; otherwise, the seasonal
+forcing must be retained.
 \end{exercise}
