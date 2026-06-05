@@ -307,6 +307,78 @@ default, and Volume II continues the convention. The radian is the
 SI-coherent unit of angle, and calculus on trigonometric functions
 is dimensionally clean only when angles are measured in radians.
 
+\subsection{Differentiability is stronger than continuity}
+
+A function can be continuous at a point without being
+differentiable there. The implication runs one way: a function
+differentiable at $x$ is continuous at $x$, because the existence
+of the limit $f'(x) = \lim_{h \to 0} (f(x + h) - f(x))/h$ forces
+the numerator $f(x + h) - f(x)$ to vanish as $h \to 0$ (otherwise
+the quotient would be unbounded), which is the definition of
+continuity. The converse fails. The function $f(x) = |x|$ is
+continuous everywhere and differentiable everywhere except at the
+origin, where the difference quotient approaches $+1$ from the
+right and $-1$ from the left. Continuity asks the function to have
+no jumps; differentiability asks the function to have no corners,
+which is a stronger demand. Section~5.8 catalogues the ways the
+stronger demand fails on functions the engineer meets in practice.
+
+The hierarchy has more levels than two. A function may be once
+differentiable but not twice, twice but not three times, and so on.
+The notation $C^{0}$ denotes continuous functions, $C^{1}$ denotes
+functions with a continuous first derivative, $C^{k}$ denotes
+functions with a continuous $k$-th derivative, and $C^{\infty}$
+denotes infinitely differentiable (smooth) functions. The
+smoothness class of a function controls which numerical methods
+apply to it: a finite-difference scheme of order $p$ requires the
+function to be in $C^{p+1}$ for its truncation-error analysis to
+hold, and a spline interpolant is built to match a stated
+smoothness class at its knots. The engineer who differentiates a
+$C^{1}$ function with a method that assumes $C^{4}$ gets an answer
+whose error bound does not apply.
+
+\begin{remark}
+A continuous function can fail to be differentiable not merely at
+isolated points but everywhere. The Weierstrass function
+$W(x) = \sum_{n=0}^{\infty} a^{n} \cos(b^{n} \pi x)$, with
+$0 < a < 1$ and $b$ an odd integer satisfying $a b > 1 + 3\pi/2$,
+is continuous on the whole real line and differentiable at no
+point. The graph is a fractal: every magnification reveals the
+same roughness. The engineer rarely meets a Weierstrass function
+directly, but its qualitative behaviour, structure at every scale
+with no well-defined slope, is the model for a class of real
+signals: turbulent velocity fields, financial price series at fine
+time resolution, and rough fracture surfaces. For such signals the
+derivative is not a useful summary at any scale, and the engineer
+reaches instead for a scaling exponent or a spectral description.
+\end{remark}
+
+\subsection{The derivative as a sensitivity}
+
+The engineer reads $f'(x)$ as a sensitivity: the factor by which a
+small change in the input $x$ is amplified into a change in the
+output $f$. If $\Delta x$ is a small perturbation of the input,
+then $\Delta f \approx f'(x) \, \Delta x$ to first order. A large
+derivative means the output is sensitive to the input; a small
+derivative means the output is insensitive. This reading is the
+bridge between the calculus of this chapter and the
+uncertainty-propagation discipline of Volume~I.
+
+A worked instance. The period of a simple pendulum is $T(L) =
+2\pi \sqrt{L/g}$, where $L$ is the length and $g$ is the local
+gravitational acceleration. The sensitivity of the period to the
+length is $\dv{T}{L} = \pi / \sqrt{g L} = T / (2 L)$. A relative
+change in length produces half the relative change in period:
+$\Delta T / T = \tfrac{1}{2} \, \Delta L / L$. A pendulum clock
+whose rod lengthens by one part in $10^{4}$ from thermal expansion
+gains or loses half a part in $10^{4}$ in its period, which over a
+day of $86\,400 \,\si{\second}$ is about $4 \,\si{\second}$. The
+derivative converts a dimensioned sensitivity into a working error
+budget, and the half-power scaling is read directly off the
+exponent in the formula. Volume~I deferred the general
+several-variable form of this propagation to the present chapter;
+section~5.5 redeems the promise.
+
 \section{Rules: product, chain, quotient, implicit}\pathtag{core}
 
 The limit definition gives the derivative directly, but a working
@@ -537,6 +609,126 @@ substituting the point's coordinates. The expression is unwieldy,
 but it is also exact, and the engineer who needs the slope at a
 single point reads it off in one substitution.
 
+\subsection{Related rates}
+
+Implicit differentiation with respect to time turns a geometric or
+physical constraint into a relation between rates. If two
+quantities are linked by an equation that holds at every instant,
+then differentiating the equation with respect to time relates the
+rate of change of one quantity to the rate of change of the other.
+The technique is the workhorse of kinematics, fluid filling and
+draining, and any setting where one rate is measured and another
+is wanted.
+
+\engterm{The sliding ladder}. A ladder of fixed length $L$ rests
+against a vertical wall. Let $x(t)$ be the horizontal distance from
+the wall to the foot of the ladder and $y(t)$ the height of the
+top on the wall. The Pythagorean constraint holds at every instant:
+$x(t)^{2} + y(t)^{2} = L^{2}$. Differentiating both sides with
+respect to time,
+
+\[
+2 x \dv{x}{t} + 2 y \dv{y}{t} = 0 \implies \dv{y}{t} = -\frac{x}{y}
+\dv{x}{t}.
+\]
+
+If the foot is pulled away from the wall at a constant
+$\dv{x}{t} = 0.5 \,\si{\meter\per\second}$, then when the foot is
+$x = 4 \,\si{\meter}$ from a wall with a $L = 5 \,\si{\meter}$
+ladder, the top is at $y = 3 \,\si{\meter}$ and descends at
+$\dv{y}{t} = -(4/3)(0.5) \approx -0.67 \,\si{\meter\per\second}$.
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-related-rates.tex}
+
+\Cref{fig:vol02:ch05:related-rates} pictures the constraint and the
+two rates. The qualitative content is in the factor $-x/y$: as the
+top nears the floor ($y \to 0$) the descent rate diverges in the
+idealised model, a kinematic singularity that real ladders avoid by
+separating from the wall before the limit. The accompanying script
+\texttt{code/related\_rates.py} tabulates the descent rate as the
+foot approaches the base.
+
+\engterm{The draining tank}. A conical tank of half-angle $\alpha$
+drains so that the water volume falls at a known rate $\dv{V}{t} =
+-Q$. The volume of water at depth $h$ is $V = \tfrac{1}{3} \pi
+(h \tan\alpha)^{2} h = \tfrac{1}{3} \pi \tan^{2}\alpha \, h^{3}$.
+Differentiating with respect to time, $\dv{V}{t} = \pi \tan^{2}
+\alpha \, h^{2} \dv{h}{t}$, so the surface descends at $\dv{h}{t} =
+-Q / (\pi \tan^{2}\alpha \, h^{2})$. The descent accelerates as the
+depth falls, because the cross-sectional area shrinks with depth in
+a cone. An engineer sizing an overflow or a drain reads the worst
+case off this relation: the fastest level change happens at the
+shallowest depth.
+
+\engterm{The inflating balloon}. A spherical balloon is inflated at
+a constant volume rate $\dv{V}{t} = R$. With $V = \tfrac{4}{3} \pi
+r^{3}$, differentiation gives $\dv{V}{t} = 4 \pi r^{2} \dv{r}{t}$,
+so the radius grows at $\dv{r}{t} = R / (4 \pi r^{2})$. The radial
+expansion slows as the balloon grows, because the same volume rate
+is spread over a larger surface. The surface area $A = 4 \pi r^{2}$
+itself grows at $\dv{A}{t} = 8 \pi r \dv{r}{t} = 2 R / r$. Three
+rates (volume, radius, area) are linked by one geometric relation
+and two differentiations.
+
+\subsection{Inverse functions}
+
+If $y = f(x)$ is differentiable and invertible near a point, with
+inverse $x = f^{-1}(y)$, the derivative of the inverse is the
+reciprocal of the derivative of the original, evaluated at the
+matching point:
+
+\[
+\dv{}{y} f^{-1}(y) = \frac{1}{f'(x)}, \qquad x = f^{-1}(y),
+\]
+
+valid wherever $f'(x) \neq 0$. The result is the chain rule applied
+to the identity $f(f^{-1}(y)) = y$: differentiating both sides with
+respect to $y$ gives $f'(f^{-1}(y)) \cdot (f^{-1})'(y) = 1$. The
+geometric reading is that the graph of $f^{-1}$ is the reflection
+of the graph of $f$ across the line $y = x$, and reflection swaps
+rise and run, inverting the slope.
+
+A worked use derives the derivative of $\arcsin$. Let $y =
+\arcsin x$, so $x = \sin y$ with $y \in (-\pi/2, \pi/2)$. Then
+$\dv{x}{y} = \cos y$, and $\dv{y}{x} = 1/\cos y$. Since $\cos y =
+\sqrt{1 - \sin^{2} y} = \sqrt{1 - x^{2}}$ (positive on the chosen
+branch), $\dv{}{x} \arcsin x = 1/\sqrt{1 - x^{2}}$, the entry in
+the table of section~5.1. The same route gives $\dv{}{x} \arctan x
+= 1/(1 + x^{2})$ from $x = \tan y$, $\dv{x}{y} = \sec^{2} y = 1 +
+\tan^{2} y = 1 + x^{2}$.
+
+\subsection{Parametric differentiation}
+
+A curve in the plane is often given parametrically, as $x = x(t)$
+and $y = y(t)$ with $t$ a parameter (often time). The slope of the
+curve $\dv{y}{x}$ is recovered from the two parametric derivatives
+by the chain rule:
+
+\[
+\dv{y}{x} = \frac{\dv{y}{t}}{\dv{x}{t}}, \qquad \dv{x}{t} \neq 0.
+\]
+
+A worked use traces a projectile. With $x(t) = v_{0} \cos\theta
+\cdot t$ and $y(t) = v_{0} \sin\theta \cdot t - \tfrac{1}{2} g
+t^{2}$, the parametric derivatives are $\dv{x}{t} = v_{0}
+\cos\theta$ and $\dv{y}{t} = v_{0} \sin\theta - g t$. The path
+slope is $\dv{y}{x} = (v_{0} \sin\theta - g t)/(v_{0} \cos\theta)$,
+which is zero at the top of the trajectory ($t = v_{0}
+\sin\theta / g$) and negative on the descent. The second
+derivative along the path, needed for curvature, follows from
+differentiating $\dv{y}{x}$ with respect to $t$ and dividing again
+by $\dv{x}{t}$:
+
+\[
+\frac{\dd^{2} y}{\dd x^{2}} = \frac{\dv{}{t}\!\left(\dv{y}{x}
+\right)}{\dv{x}{t}}.
+\]
+
+For the projectile this gives $\frac{\dd^{2} y}{\dd x^{2}} = -g /
+(v_{0} \cos\theta)^{2}$, a constant: the trajectory is a parabola,
+whose second derivative in $x$ is the same everywhere, as the
+algebra of $y$ as an explicit quadratic in $x$ confirms.
+
 \subsection{Logarithmic differentiation}
 
 Implicit differentiation has a useful special case for products,
@@ -629,6 +821,16 @@ $f''(x) < 0$, the graph is curving downward; we say $f$ is
 = 0$ and $f''$ changes sign, the graph has an \engterm{inflection
 point}.
 
+\input{volumes/02-form/ch05-differentiation/figures/fig-concavity.tex}
+
+\Cref{fig:vol02:ch05:concavity} draws the reading directly: in a
+convex region the tangent line lies below the curve, in a concave
+region it lies above, and the inflection point is where the two
+regimes meet. The engineer who carries this picture reads the sign
+of $f''$ off the shape of the graph without computing it, and reads
+the shape of the graph off the sign of $f''$ when only the formula
+is in hand.
+
 The convexity reading is the engineer's working tool for
 optimisation. A function whose second derivative is positive
 everywhere has at most one local minimum, which is also its
@@ -664,6 +866,48 @@ laws and material constants relate the second derivative of a
 field to forcing terms (Newton's second law, the wave equation,
 the heat equation, the Schrödinger equation). The reader will
 meet the higher derivatives most often through these three uses.
+
+\subsection{The Leibniz rule for repeated products}
+
+The product rule iterates. Differentiating a product $n$ times
+produces a binomial sum, the \engterm{Leibniz rule}:
+
+\[
+(f g)^{(n)} = \sum_{k=0}^{n} \binom{n}{k} f^{(k)} g^{(n - k)}.
+\]
+
+The structure mirrors the binomial theorem, with derivatives in
+place of powers. The first-order case $(f g)' = f' g + f g'$ is the
+ordinary product rule; the second-order case is $(f g)'' = f'' g +
+2 f' g' + f g''$, the coefficients $1, 2, 1$ being the second row
+of Pascal's triangle. The rule earns its keep when one factor has a
+short derivative sequence. For $f(x) = x^{2} e^{x}$, the factor
+$x^{2}$ has only three nonzero derivatives ($x^{2}$, $2x$, $2$),
+so the $n$-th derivative is a three-term sum: $(x^{2} e^{x})^{(n)}
+= \binom{n}{0} x^{2} e^{x} + \binom{n}{1} 2x \, e^{x} +
+\binom{n}{2} 2 \, e^{x} = e^{x}(x^{2} + 2 n x + n(n-1))$, since
+every derivative of $e^{x}$ is $e^{x}$. A reader who needs the
+fortieth derivative of $x^{2} e^{x}$ reads it off the formula
+rather than differentiating forty times.
+
+\begin{mastery}
+The higher-derivative sequence at a single point encodes the
+function's local behaviour to all orders. For an infinitely
+differentiable function the Taylor series
+$f(x) = \sum_{n=0}^{\infty} f^{(n)}(a) (x - a)^{n} / n!$ collects
+the entire derivative sequence into one object. The series need not
+converge to $f$ even when it converges: the function
+$f(x) = e^{-1/x^{2}}$ (with $f(0) = 0$) has every derivative equal
+to zero at the origin, so its Taylor series at $0$ is identically
+zero, yet the function is positive for every $x \neq 0$. A
+function whose Taylor series converges to it in a neighbourhood is
+called \engterm{analytic}; the example shows that smooth and
+analytic are different classes. The engineering consequence is that
+Taylor-series accuracy claims require analyticity, not merely
+smoothness, and that a numerical method calibrated on analytic test
+functions may behave differently on a merely smooth signal. The
+distinction returns in the convergence theory of chapter~16.
+\end{mastery}
 
 \section{Local linearisation}\pathtag{core}
 
@@ -780,6 +1024,71 @@ algebraic-propagation rule for uncertainty $(u(y)/y)^{2} =
 (Volume I chapter~4). Each is a Taylor approximation to first
 order, and each acquires its remainder bound here.
 
+\subsection{The second-order correction}
+
+When first order is not accurate enough, the engineer keeps the
+quadratic term. Taylor's theorem to second order reads
+
+\[
+f(a + h) = f(a) + f'(a) h + \tfrac{1}{2} f''(a) h^{2} +
+\tfrac{1}{6} f'''(\xi) h^{3},
+\]
+
+for some $\xi$ between $a$ and $a + h$. The quadratic model
+$Q_{a}(h) = f(a) + f'(a) h + \tfrac{1}{2} f''(a) h^{2}$ matches the
+function in value, slope, and curvature at $a$, and its error is of
+order $h^{3}$. The improvement over the linear model is dramatic
+where the function curves: for $f(x) = \sqrt{x}$ at $a = 1$ with
+$h = 0.1$, the linear model gives $1.05$ (error $0.0012$), while the
+quadratic model adds $\tfrac{1}{2} f''(1) h^{2} = \tfrac{1}{2}
+(-1/4)(0.01) = -0.00125$, giving $1.04875$ against the true
+$1.04881$, an error of $6 \times 10^{-5}$, twenty times smaller.
+Each retained order multiplies the working range by a factor for
+the same accuracy, or the accuracy by a factor for the same range.
+
+The engineer chooses the order by the accuracy budget. A
+control-loop linearisation about an operating point keeps first
+order, because the loop is designed to hold the system near the
+point where the linear model is good. A trajectory propagator that
+must run for many steps keeps second or higher order, because the
+cubic error of each step accumulates and a smaller per-step error
+buys a longer run before the accumulated error exceeds tolerance.
+The bias-variance arithmetic of section~5.7 is the same arithmetic
+seen from the numerical-differentiation side.
+
+\subsection{Differentials and the working notation}
+
+The differential notation $\dd f = f'(x) \, \dd x$ packages the
+linear approximation as a statement about infinitesimal changes.
+Read operationally, it says: a change $\dd x$ in the input produces
+a change $\dd f = f'(x) \, \dd x$ in the output, to first order. The
+engineer uses the differential as a quick error-propagation device.
+For $f(x) = x^{3}$, $\dd f = 3 x^{2} \, \dd x$, so a $1\,\%$ change
+in $x$ near $x = 2$ produces $\dd f / f = 3 \, \dd x / x = 3\,\%$
+change in $f$: the cube amplifies relative error by three. The
+differential reproduces the power-law propagation rule of Volume~I
+directly from the derivative, and it generalises in chapter~11 to
+the total differential $\dd f = \sum_{i} (\partial f / \partial
+x_{i}) \, \dd x_{i}$ for functions of several variables, which is
+the engine of the GUM formula.
+
+\subsection{Linearisation about an operating point}
+
+A nonlinear device characterised by $y = f(x)$ is often operated in
+a narrow band around a fixed working point $(x_{0}, y_{0})$. The
+small-signal model replaces the device by its tangent: $\delta y
+\approx f'(x_{0}) \, \delta x$, where $\delta x = x - x_{0}$ and
+$\delta y = y - y_{0}$ are the deviations from the operating point.
+The coefficient $f'(x_{0})$ is the small-signal gain. A diode with
+exponential characteristic $I = I_{s}(e^{V/V_{T}} - 1)$ has
+small-signal conductance $\dv{I}{V} = (I_{s}/V_{T}) e^{V/V_{T}} =
+(I + I_{s})/V_{T} \approx I/V_{T}$ at a bias current $I$. The
+reciprocal $V_{T}/I$ is the diode's small-signal resistance, the
+quantity a circuit designer uses to analyse the device in its
+linear regime. The entire discipline of small-signal analysis,
+which Volume~IX develops for amplifiers and control systems, is the
+local linearisation of this chapter applied at a bias point.
+
 \subsection{Linearisation in action: Newton's iteration for roots}
 
 The most heavily used application of the linear approximation in
@@ -794,18 +1103,56 @@ generate the iteration
 \[
 x_{n+1} = x_{n} - \frac{g(x_{n})}{g'(x_{n})}.
 \]
-The convergence theorem (proved by Taylor expansion to second
-order) states that, when $g'$ is nonzero at the root and $g''$
-is bounded near it, the iteration converges quadratically: the
-error at step $n+1$ scales as the square of the error at step
-$n$. Each iteration roughly doubles the number of correct
-significant figures. Starting far from the root may produce
-chaotic or divergent iteration; the working discipline is to
-bracket the root by sign change, take a coarse first guess
-inside the bracket, and verify that the iteration stays inside.
-The accompanying script \texttt{code/newton\_root.py} runs the
-iteration for $g(x) = x^{3} - 2 x - 5$, illustrating the
-quadratic-convergence claim numerically.
+\input{volumes/02-form/ch05-differentiation/figures/fig-newton-iteration.tex}
+
+\Cref{fig:vol02:ch05:newton-iteration} draws the iteration as
+repeated linearisation: each tangent is the local model of section
+5.4, and each tangent's zero crossing is the model's prediction of
+the root. Starting from $x_{0} = 3$, the iteration on $g(x) = x^{3}
+- 2x - 5$ reaches the root $x^{*} \approx 2.0946$ in three steps.
+
+The convergence theorem makes the quadratic claim precise.
+Expanding $g$ to second order about the root $x^{*}$ and using
+$g(x^{*}) = 0$, the iteration error $e_{n} = x_{n} - x^{*}$ obeys
+
+\[
+e_{n+1} = e_{n} - \frac{g(x_{n})}{g'(x_{n})} =
+\frac{g''(\xi_{n})}{2 g'(x_{n})} \, e_{n}^{2},
+\]
+
+for some $\xi_{n}$ between $x_{n}$ and $x^{*}$. When $g'(x^{*}) \neq
+0$ and $g''$ is bounded near the root, the prefactor approaches the
+constant $C = |g''(x^{*})| / (2 |g'(x^{*})|)$, and the error squares
+at each step: $|e_{n+1}| \approx C \, e_{n}^{2}$. Each iteration
+roughly doubles the number of correct significant figures. The
+quadratic law is the reason Newton's method is the default
+root-finder for smooth problems: a starting error of $10^{-1}$
+becomes $10^{-2}$, then $10^{-4}$, then $10^{-8}$, then $10^{-16}$
+in four steps, reaching machine precision faster than any
+linearly-convergent method.
+
+The quadratic convergence is local. It holds only once the iterate
+is inside a neighbourhood of the root where the error model
+applies. Starting far from the root, or near a point where $g'$ is
+small, the iteration can overshoot wildly, cycle, or diverge.
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-newton-divergence.tex}
+
+\Cref{fig:vol02:ch05:newton-divergence} shows the divergent mode on
+$g(x) = \arctan x$, whose only root is at the origin. The function
+flattens away from the origin, so $g'$ is small where $|x|$ is
+large. A tangent taken at a flat point crosses zero far from the
+current iterate, and each step overshoots by more than the
+previous: the iterates run away. For $g(x) = \arctan x$ the basin
+of attraction is roughly $|x_{0}| < 1.39$; outside it, the method
+diverges. The defensive discipline is to bracket the root by a sign
+change, take a coarse first guess inside the bracket, and verify
+the iterate stays inside; when it leaves, fall back to a bracketing
+method (bisection) for a few steps to re-enter the basin. The
+accompanying scripts \texttt{code/newton\_root.py} (quadratic
+convergence on $x^{3} - 2x - 5$) and \texttt{code/newton\_basins.py}
+(convergence-versus-divergence sweep over starting points)
+illustrate both regimes numerically.
 
 \section{Mean value theorem and L'H\^opital}\pathtag{core}
 
@@ -852,6 +1199,16 @@ physical reading: a car that travels from $A$ to $B$ in a stated
 time has, at some moment between $A$ and $B$, an instantaneous
 velocity equal to the average velocity over the trip. The theorem
 does not say where that moment is; it says only that it exists.
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-mean-value.tex}
+
+\Cref{fig:vol02:ch05:mean-value} draws the parallel tangent. The
+existence claim has a working consequence for measurement: an
+average-speed enforcement camera that records a vehicle's entry and
+exit times over a known distance computes the average speed, and
+the mean value theorem certifies that the vehicle reached at least
+that speed at some instant inside the interval. The legal logic and
+the calculus coincide.
 
 The proof is short. Define $g(x) = f(x) - L(x)$ where $L(x)$ is
 the linear function passing through $(a, f(a))$ and $(b, f(b))$.
@@ -909,6 +1266,60 @@ $\infty - \infty$, $0^{0}$, $1^{\infty}$, $\infty^{0}$). Each
 non-quotient form is converted to a $0/0$ or $\infty/\infty$ ratio
 by algebraic manipulation, often using $\ln$ to handle exponential
 forms.
+
+A worked exponential form. The limit $\lim_{x \to 0^{+}} x^{x}$ is
+the indeterminate $0^{0}$. Take the logarithm: $\ln(x^{x}) = x \ln
+x$, an $0 \cdot (-\infty)$ form, which rewrites as $\ln x / (1/x)$,
+an $\infty/\infty$ ratio. L'H\^opital gives $\lim (1/x)/(-1/x^{2})
+= \lim (-x) = 0$, so $\ln(x^{x}) \to 0$ and $x^{x} \to e^{0} = 1$.
+The compound-interest limit $\lim_{n \to \infty} (1 + r/n)^{n}$ is
+the indeterminate $1^{\infty}$; its logarithm is $n \ln(1 + r/n)$,
+which by the same route tends to $r$, so the limit is $e^{r}$, the
+continuous-compounding formula.
+
+\subsection{Sensitivity propagation, several inputs}
+
+The first-order linearisation of section~5.4, applied to a function
+of several inputs, is the working form of error propagation. If a
+derived quantity $y = f(x_{1}, \ldots, x_{m})$ depends on inputs
+each known with a small uncertainty, then the deviation in $y$ is
+the sum of the deviations in each input weighted by its
+sensitivity,
+
+\[
+\delta y \approx \sum_{i=1}^{m} \frac{\partial f}{\partial x_{i}}
+\, \delta x_{i},
+\]
+
+where the partial derivative $\partial f / \partial x_{i}$ is the
+ordinary one-variable derivative taken with all other inputs held
+fixed (chapter~11 introduces the partial derivative formally). For
+independent inputs whose uncertainties combine in quadrature, the
+deviations add as variances rather than linearly, giving the GUM
+general formula
+
+\[
+u^{2}(y) = \sum_{i=1}^{m} \left(\frac{\partial f}{\partial x_{i}}
+\right)^{2} u^{2}(x_{i}),
+\]
+
+the promise Volume~I deferred to this chapter. The partial
+derivatives are the sensitivity coefficients: they convert each
+input's uncertainty, in its own units, into a contribution to the
+output's uncertainty, in the output's units.
+
+A worked instance. The electrical power dissipated in a resistor is
+$P = V^{2}/R$. The sensitivities are $\partial P / \partial V =
+2V/R$ and $\partial P / \partial R = -V^{2}/R^{2}$. Dividing the
+GUM formula through by $P^{2} = V^{4}/R^{2}$ collapses it to the
+relative form $(u(P)/P)^{2} = 4 (u(V)/V)^{2} + (u(R)/R)^{2}$: the
+voltage enters with its relative uncertainty doubled (the square in
+$V^{2}$), the resistance with its relative uncertainty unamplified.
+A reader measuring power across a $1\,\%$-uncertain voltage and a
+$0.5\,\%$-uncertain resistance gets $(u(P)/P)^{2} = 4(0.01)^{2} +
+(0.005)^{2} = 4.25 \times 10^{-4}$, so $u(P)/P \approx 2.1\,\%$.
+The voltage dominates the budget, and the engineer who wants a
+tighter power figure improves the voltage measurement first.
 
 \begin{mastery}
 The mean value theorem extends in several directions. The Cauchy
@@ -1037,6 +1448,73 @@ is positive, so $v^{*}$ minimises drag. The cruise speed of an
 aircraft, current as of 2026 in commercial design practice, is
 chosen near this optimum, modified by engine efficiency and
 flight-time considerations.
+
+\engterm{Economic order quantity}. A warehouse orders a part in
+batches of size $Q$. Ordering costs $K$ per order, and holding the
+inventory costs $h$ per unit per year; the annual demand is $D$.
+The annual total cost is $C(Q) = K D / Q + h Q / 2$: the first term
+falls with larger batches (fewer orders), the second rises (more
+held stock). Setting $C'(Q) = -K D / Q^{2} + h/2 = 0$ gives the
+economic order quantity $Q^{*} = \sqrt{2 K D / h}$. The second
+derivative $C''(Q) = 2 K D / Q^{3} > 0$ confirms a minimum. The
+square-root form is the signature of a two-term cost with one term
+rising and one falling; the same algebra recurs in batch-process
+scheduling, server-provisioning, and any setting trading a fixed
+per-event cost against a per-unit holding cost. At the optimum the
+two cost terms are equal, $K D / Q^{*} = h Q^{*}/2$, a balance the
+engineer can check by inspection.
+
+\engterm{Snell's law from least time}. Light travels from a point
+in one medium to a point in a second medium, crossing a flat
+interface. The speed is $v_{1}$ in the first medium and $v_{2}$ in
+the second. Fermat's principle states that the path taken minimises
+the travel time. Parametrise the crossing point on the interface by
+its horizontal coordinate $x$; the travel time is $T(x) =
+\sqrt{a^{2} + x^{2}}/v_{1} + \sqrt{b^{2} + (d - x)^{2}}/v_{2}$,
+where $a$ and $b$ are the perpendicular distances of the two points
+from the interface and $d$ is their horizontal separation.
+Differentiating and setting $T'(x) = 0$ gives
+
+\[
+\frac{x}{v_{1}\sqrt{a^{2} + x^{2}}} = \frac{d - x}{v_{2}
+\sqrt{b^{2} + (d - x)^{2}}},
+\]
+
+which is $\sin\theta_{1}/v_{1} = \sin\theta_{2}/v_{2}$, Snell's law
+of refraction, with $\theta_{1}$ and $\theta_{2}$ the angles from
+the interface normal. A physical law falls out of a one-variable
+optimisation; the derivative locates the path nature actually
+takes. The same least-time argument, applied to a lifeguard
+running on sand and swimming in water, gives the lifeguard's
+optimal entry point, the standard pedagogical mirror of the optical
+problem.
+
+\begin{estimation}
+\textbf{Question.} A delivery company runs warehouses that each
+order a fast-moving part with annual demand $D = 50{,}000$ units.
+Each order costs about $K = \$80$ to place and process, and holding
+one unit in stock for a year costs about $h = \$4$. Estimate the
+economic order quantity and the number of orders placed per year,
+then estimate how sensitive the total cost is to ordering, say,
+twice the optimal batch.
+
+\textbf{Estimate.} The economic order quantity is $Q^{*} =
+\sqrt{2 K D / h} = \sqrt{2 \cdot 80 \cdot 50{,}000 / 4} =
+\sqrt{2 \times 10^{6}} \approx 1{,}400$ units, so the company
+places about $D/Q^{*} \approx 36$ orders per year, roughly three
+per month. The minimum annual cost is $C(Q^{*}) = \sqrt{2 K D h} =
+\sqrt{2 \cdot 80 \cdot 50{,}000 \cdot 4} \approx \$5{,}700$.
+Ordering twice the optimum, $Q = 2 Q^{*}$, gives $C = K D /(2 Q^{*})
++ h (2 Q^{*})/2 = \tfrac{1}{2} C_{\text{order}}^{*} + 2
+C_{\text{hold}}^{*}$. Since the two cost halves are equal at the
+optimum, this is $\tfrac{1}{2}(C^{*}/2) + 2(C^{*}/2) = \tfrac{5}{4}
+C^{*}$, a $25\,\%$ cost penalty for a factor-of-two batch error.
+The cost minimum is flat: near the optimum the total cost is
+quadratic in the relative batch error, so modest mis-sizing costs
+little. This flatness is why simple round-number batch policies
+survive in practice, and it is the optimisation analogue of the
+small remainder near a smooth minimum.
+\end{estimation}
 
 \subsection{Constrained optimisation in one variable}
 
@@ -1263,6 +1741,39 @@ two-point central difference is the better trade. For functions
 with derivative discontinuities, all stencils break and section~5.8
 applies.
 
+\begin{mastery}
+The bias-variance V has a clean escape when the function is
+real-analytic and can be evaluated in complex arithmetic. The
+\engterm{complex-step derivative} evaluates the function at a
+complex argument $x + i h$ and reads the derivative off the
+imaginary part:
+
+\[
+f'(x) \approx \frac{\operatorname{Im} f(x + i h)}{h}.
+\]
+
+The expansion $f(x + i h) = f(x) + i h f'(x) - \tfrac{1}{2} h^{2}
+f''(x) - \cdots$ shows the imaginary part is $h f'(x) - \tfrac{1}{6}
+h^{3} f'''(x) + \cdots$, so dividing by $h$ gives $f'(x)$ with
+truncation error $\oom{h^{2}}$, the accuracy of a central
+difference. The advantage is that no subtraction of nearly equal
+numbers occurs: the formula has no difference in the numerator, so
+catastrophic cancellation is absent, and $h$ may be taken as small
+as $10^{-200}$ with the derivative accurate to machine precision.
+The cost is that the function must be coded to accept complex
+arguments and must be analytic (no $\operatorname{abs}$, no
+branch on the real part, no comparison operators that break
+analyticity). Where it applies, the complex-step derivative removes
+the step-size tuning problem entirely. The accompanying script
+\texttt{code/complex\_step.py} tabulates the complex-step error
+against the central-difference error for $f(x) = e^{x}$ and shows
+the complex-step error falling monotonically as $h^{2}$ with no
+round-off floor. The technique is the simplest member of the
+automatic-differentiation family, which chapter~16 develops as the
+modern alternative to finite differences for machine-evaluated
+functions.
+\end{mastery}
+
 \subsection{Differentiating noisy data}
 
 When the function is a measured time series, the noise in each
@@ -1291,6 +1802,14 @@ The chapter's apparatus assumes the function is smooth. We now
 catalogue the cases where the assumption fails and the apparatus
 breaks. The catalogue is the engineer's guard against using a
 calculus tool on a function that does not admit it.
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-nondifferentiable.tex}
+
+\Cref{fig:vol02:ch05:nondifferentiable} sets the four canonical
+failures side by side: jump, kink, cusp, and wild oscillation. Each
+panel is a function for which the difference quotient fails to
+settle to a single finite limit at the marked point, and each has
+the engineering instances developed below.
 
 \subsection{Jump discontinuities}
 
@@ -1660,6 +2179,80 @@ calculation, with different $r$ and $K$, governs viral spread,
 animal-population management, and many engineered fermentation
 processes.
 
+\subsection{Transport: the gradient as flux density}
+
+\begin{archetype}[Transport, gradient as flux density]
+A second pattern enters with the derivative: the gradient of a
+field drives a flux. Heat flows down a temperature gradient, mass
+diffuses down a concentration gradient, charge flows down a voltage
+gradient, fluid flows down a pressure gradient. In one spatial
+dimension each is a constitutive law of the form
+\[
+J = -\kappa \dv{\phi}{x},
+\]
+where $\phi$ is the driving field, $J$ is the flux (a quantity per
+unit area per unit time), and $\kappa$ is a material transport
+coefficient. The minus sign encodes that the flux runs from high
+field to low. The derivative is the engine of the law; the
+transport coefficient converts the dimensioned gradient into a
+dimensioned flux. The archetype recurs across Volumes~IV through
+VII, in Fourier's law of heat conduction, Fick's law of diffusion,
+Ohm's law in its local form, and Darcy's law for porous flow. The
+multivariable generalisation replaces the one-dimensional
+derivative by the gradient vector of chapter~8 and the scalar
+$\kappa$ by a conductivity tensor.
+\end{archetype}
+
+\engterm{Fourier's law in a wall}. Heat conducts through a plane
+wall of thickness $L$ whose faces are held at temperatures $T_{1}$
+and $T_{2} < T_{1}$. In steady state the temperature falls linearly
+across the wall, $T(x) = T_{1} - (T_{1} - T_{2}) x / L$, so the
+gradient is constant, $\dv{T}{x} = -(T_{1} - T_{2})/L$. Fourier's
+law gives the heat flux $q = -k \dv{T}{x} = k (T_{1} - T_{2})/L$,
+with $k$ the thermal conductivity in $\si{\watt\per\meter\per
+\kelvin}$. For a $0.2 \,\si{\meter}$ brick wall with $k = 0.7
+\,\si{\watt\per\meter\per\kelvin}$ and a $20 \,\si{\kelvin}$ face-
+to-face difference, the flux is $q = 0.7 \cdot 20 / 0.2 = 70
+\,\si{\watt\per\meter\squared}$. The derivative of the temperature
+profile is the quantity the law multiplies; a steeper gradient (a
+thinner wall or a larger temperature difference) drives a
+proportionally larger flux.
+
+\engterm{Fick's law for diffusion}. A membrane of thickness $L$
+separates two solutions of a solute at concentrations $c_{1}$ and
+$c_{2}$. In steady state the concentration falls linearly across
+the membrane, and Fick's first law gives the molar flux $J = -D
+\dv{c}{x} = D (c_{1} - c_{2})/L$, with $D$ the diffusion
+coefficient in $\si{\meter\squared\per\second}$. The structure is
+identical to Fourier's law with concentration in place of
+temperature and the diffusion coefficient in place of the thermal
+conductivity. An engineer who has internalised one transport law
+has internalised them all; the derivative-driven flux is the
+shared skeleton.
+
+\subsection{Civil engineering: the deflection of a beam}
+
+The shape of a loaded beam is described by its deflection $y(x)$
+along its length. The successive derivatives carry the structural
+quantities the engineer designs against. The first derivative
+$\dv{y}{x}$ is the slope of the deflected beam. The second
+derivative $\frac{\dd^{2} y}{\dd x^{2}}$ is proportional to the
+bending moment $M(x)$ through the curvature relation $M = E I \,
+\frac{\dd^{2} y}{\dd x^{2}}$, where $E$ is the elastic modulus and
+$I$ is the second moment of area of the cross-section. The third
+derivative is proportional to the shear force $V(x) = \dv{M}{x} =
+E I \, \frac{\dd^{3} y}{\dd x^{3}}$, and the fourth derivative is
+proportional to the distributed load $w(x) = -\dv{V}{x} = -E I \,
+\frac{\dd^{4} y}{\dd x^{4}}$. Four derivatives of one deflection
+function generate the entire family of structural quantities:
+slope, moment, shear, and load. The Euler-Bernoulli beam equation
+$E I \, \frac{\dd^{4} y}{\dd x^{4}} = w(x)$ that organises this
+family is solved in chapter~7 of this volume; the derivatives that
+populate it are the subject of the present chapter. A reader who
+designs a beam reads the maximum bending stress off the second
+derivative and the maximum shear off the third, each located where
+the corresponding derivative reaches its extreme along the span.
+
 \section{Project}\pathtag{core}
 
 \begin{project}[Numerically differentiate a noisy signal; defend a smoothing strategy]
@@ -1820,31 +2413,61 @@ reader-path tier.
 Compute the derivative of $f(x) = 3 x^{4} - 2 x^{3} + x - 7$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Linearity and the power rule give the derivative term by term.
-$f'(x) = 12 x^{3} - 6 x^{2} + 1$. The constant $-7$ contributes
-zero. A quick check: at $x = 0$, $f'(0) = 1$, agreeing with the
-linear term of $f$.
+\paragraph{Solution.}
+Linearity lets the derivative be taken term by term, and the power
+rule $\dv{}{x} x^{n} = n x^{n-1}$ handles each term:
+$\dv{}{x}(3 x^{4}) = 12 x^{3}$, $\dv{}{x}(-2 x^{3}) = -6 x^{2}$,
+$\dv{}{x}(x) = 1$, and $\dv{}{x}(-7) = 0$, since the derivative of
+a constant is zero. Assembling,
+\[
+f'(x) = 12 x^{3} - 6 x^{2} + 1.
+\]
+A check at $x = 0$ reads $f'(0) = 1$, which must equal the
+coefficient of the linear term of $f$ (the derivative at the origin
+of a polynomial is its linear coefficient); it does. A second check
+notes that the leading behaviour of $f'$ for large $x$ is $12 x^{3}$,
+one degree below the $3 x^{4}$ that dominates $f$, as the power rule
+requires.
 
 \begin{exercise}
 Compute the derivative of $f(x) = x^{2} \sin x$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Product rule with $u = x^{2}$ and $v = \sin x$, $u' = 2 x$,
-$v' = \cos x$. $f'(x) = 2 x \sin x + x^{2} \cos x$. At
-$x = \pi$, $f'(\pi) = 0 + \pi^{2} \cdot (-1) = -\pi^{2}$.
+\paragraph{Solution.}
+The expression is a product, so the product rule applies with
+$u = x^{2}$ and $v = \sin x$. Then $u' = 2x$ (power rule) and
+$v' = \cos x$ (elementary table), giving
+\[
+f'(x) = u' v + u v' = 2 x \sin x + x^{2} \cos x.
+\]
+At $x = \pi$, $\sin\pi = 0$ and $\cos\pi = -1$, so $f'(\pi) =
+0 + \pi^{2}(-1) = -\pi^{2} \approx -9.87$. The result is negative
+there, consistent with the graph of $x^{2}\sin x$ descending as it
+crosses $x = \pi$. Near the origin, $\sin x \approx x$, so
+$f(x) \approx x^{3}$ and $f'(x) \approx 3 x^{2}$; expanding the
+exact derivative for small $x$ gives $2x \cdot x + x^{2} \cdot 1 =
+3 x^{2}$, matching.
 
 \begin{exercise}
 Compute the derivative of $f(x) = e^{-x^{2}/2}$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Chain rule with outer $u \mapsto e^{u}$ and inner $x \mapsto
--x^{2}/2$. The outer derivative is $e^{u}$, the inner derivative
-is $-x$, so $f'(x) = -x \, e^{-x^{2}/2}$. The derivative vanishes
-at $x = 0$ and is negative for $x > 0$, consistent with the bell
-shape of the Gaussian.
+\paragraph{Solution.}
+The function is a composition $f = e^{u}$ with $u(x) = -x^{2}/2$, so
+the chain rule applies. The outer derivative is $\dv{}{u} e^{u} =
+e^{u}$, and the inner derivative is $u'(x) = -x$. Multiplying,
+\[
+f'(x) = e^{-x^{2}/2} \cdot (-x) = -x \, e^{-x^{2}/2}.
+\]
+The derivative vanishes at $x = 0$, where the Gaussian peaks; it is
+negative for $x > 0$ (the bell descending to the right) and positive
+for $x < 0$ (ascending to the peak). The factor $-x$ in front of the
+ever-positive exponential makes $f'$ an odd function, mirroring the
+even symmetry of $f$. The second derivative, by the product rule on
+$-x e^{-x^{2}/2}$, is $(x^{2} - 1) e^{-x^{2}/2}$, which vanishes at
+$x = \pm 1$: the inflection points of the bell, one standard
+deviation from the centre when the exponent is read as a unit-
+variance Gaussian.
 
 \begin{exercise}
 Compute the derivative of $f(x) = (x^{2} + 1)/(x^{2} - 1)$ for

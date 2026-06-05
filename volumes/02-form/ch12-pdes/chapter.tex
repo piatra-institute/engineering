@@ -137,6 +137,62 @@ domain of dependence, the smoothing or propagating character, the
 appropriate boundary and initial data, and the numerical methods
 that converge.
 
+\subsection{Classification by discriminant}\pathtag{standard}
+
+The three-way split has an algebraic source. A general
+second-order linear PDE in two independent variables has the form
+\[
+A\, u_{xx} + 2B\, u_{xy} + C\, u_{yy} + D\, u_{x} + E\, u_{y} + F\, u = G,
+\]
+with coefficients $A, B, C, \ldots$ that may depend on position.
+The character of the equation is fixed by the
+\engterm{discriminant} of its principal part:
+\[
+\Delta = B^{2} - AC.
+\]
+The equation is \engterm{elliptic} where $\Delta < 0$,
+\engterm{parabolic} where $\Delta = 0$, and \engterm{hyperbolic}
+where $\Delta > 0$. The names are taken from the conic sections:
+the level curves of the quadratic form $A\xi^{2} + 2B\xi\eta +
+C\eta^{2}$ are ellipses, parabolas, or hyperbolas by exactly this
+sign. The three canonical equations sit one in each class. Laplace
+$u_{xx} + u_{yy} = 0$ has $A = C = 1$, $B = 0$, so $\Delta = -1 <
+0$: elliptic. The heat equation $u_{t} - \alpha u_{xx} = 0$, read
+with $y = t$, has $A = -\alpha$ (the coefficient on $u_{xx}$), $C =
+0$ (no $u_{tt}$ term), $B = 0$, so $\Delta = 0$: parabolic. The
+wave equation $u_{tt} - c^{2} u_{xx} = 0$ has $A = -c^{2}$, $C =
+1$, $B = 0$, so $\Delta = c^{2} > 0$: hyperbolic.
+
+The classification is the engineer's first diagnostic on an
+unfamiliar equation, and it is invariant under smooth changes of
+coordinates, so it is a genuine property of the physics rather than
+an artefact of the chosen variables. An equation can change type
+across its domain: the Tricomi equation $u_{yy} + y\, u_{xx} = 0$
+is elliptic for $y > 0$ and hyperbolic for $y < 0$, and this
+sign-change is the working model for the transition from subsonic
+to supersonic flow (the elliptic, smooth subsonic field and the
+hyperbolic, characteristic-bearing supersonic field meet at the
+sonic line). The reader who meets a mixed-type equation should
+expect different solution methods and different well-posed data on
+the two sides. \Cref{fig:vol02:ch12:classification} places the
+three prototypes in the coefficient plane.
+
+\input{volumes/02-form/ch12-pdes/figures/fig-classification.tex}
+
+The classification predicts the data each type wants.
+Hyperbolic equations carry information along characteristics at
+finite speed; they want initial data (a Cauchy problem) and admit
+a bounded domain of dependence. Parabolic equations have an arrow
+of time and an infinite signal speed; they want one initial
+condition plus boundary conditions for all time, and the backward
+problem is ill-posed. Elliptic equations have no time and no
+characteristics; they want boundary data on the entire boundary of
+a closed region, and they smooth that data into the interior. A
+reader who tries to impose initial data on Laplace's equation, or
+to solve the heat equation backward in time, has mismatched the
+data to the type, and the resulting problem is ill-posed in a way
+that no solver can repair (\S12.8).
+
 \subsection{Notation, conventions, working domains}
 
 We write $u_{t} = \pdv{u}{t}$, $u_{x} = \pdv{u}{x}$, $u_{xx} =
@@ -351,6 +407,52 @@ other domains, with the appropriate kernel substituted for the
 heat kernel. The full Green's-function machinery is in Volume III
 (electrostatics) and Volume VII (electromagnetics).
 
+\subsection{Adding drift: the convection-diffusion equation}
+
+Many transport problems carry the quantity along with a bulk flow
+as well as spreading it by diffusion. Pollutant in a river, heat in
+a moving coolant, a dye plume in wind: each obeys the
+\engterm{convection-diffusion equation}
+\[
+u_{t} + v\, u_{x} = \alpha\, u_{xx},
+\]
+with $v$ the advection velocity. The two terms compete. Advection
+$v u_{x}$ translates the profile downstream at speed $v$ without
+changing its shape; diffusion $\alpha u_{xx}$ spreads it. Their
+relative strength over a length $L$ is the dimensionless
+\engterm{P\'eclet number}
+\[
+\mathrm{Pe} = \frac{v L}{\alpha},
+\]
+the ratio of the diffusion time $L^{2}/\alpha$ to the advection
+time $L/v$. At low P\'eclet the transport is diffusion-dominated and
+the heat equation alone is a good model; at high P\'eclet the
+transport is advection-dominated and the profile sweeps downstream
+faster than it spreads. A river with $v = 1\,\si{\meter\per\second}$
+and a tracer diffusivity $\alpha \sim 10^{-9}\,\si{\meter\squared
+\per\second}$ over $L = 100\,\si{\meter}$ has $\mathrm{Pe} \sim
+10^{11}$: the plume travels essentially undeformed by molecular
+diffusion (turbulent mixing, a separate and much larger effective
+diffusivity, does the spreading in practice).
+
+On the infinite line the equation solves by riding along with the
+flow. Substitute $\eta = x - v t$; the equation becomes the plain
+heat equation $u_{t} = \alpha u_{\eta\eta}$ in the moving frame, so
+the solution is the heat kernel centred on the drifting point $x =
+v t$:
+\[
+u(x, t) = \frac{1}{\sqrt{4\pi\alpha t}}\exp\!\left(-\frac{(x - v t)^{2}}{4\alpha t}\right).
+\]
+The plume drifts at speed $v$ while spreading with the familiar
+$\sqrt{t}$ width. The P\'eclet number returns as a warning in the
+numerical chapter: a centred-difference discretisation of $v u_{x}$
+develops non-physical oscillations when the grid P\'eclet number
+$v\Delta x/\alpha$ exceeds two, the advection-dominated analogue of
+the CFL failure, and the standard remedy is upwind differencing.
+The convection-diffusion equation is the working bridge from the
+pure-diffusion prototype of this chapter to the transport equations
+of fluid mechanics in Volume IV.
+
 \subsection{Diffusive smoothing: information loss in finite time}
 
 A discontinuous initial condition $u(x, 0)$ becomes, at any $t >
@@ -389,6 +491,97 @@ $\tau$. The detailed Fourier-series solution is constructed in
 §12.5.
 
 \input{volumes/02-form/ch12-pdes/figures/fig-heat-evolution.tex}
+
+\subsection{Worked example: thermal penetration depth and the skin-effect analogy}
+
+A periodic surface temperature drives a damped temperature wave
+into a solid, and the depth to which it penetrates is one of the
+most useful working numbers in heat transfer. Take a semi-infinite
+solid $x \geq 0$ with surface temperature oscillating as
+$u(0, t) = u_{0} \cos(\omega t)$ about a mean. The heat equation
+$u_{t} = \alpha u_{xx}$ admits the steady periodic solution
+\[
+u(x, t) = u_{0}\, e^{-x/\delta}\, \cos\!\left(\omega t - \frac{x}{\delta}\right), \qquad \delta = \sqrt{\frac{2 \alpha}{\omega}}.
+\]
+A direct check: write $u = u_{0}\,\mathrm{Re}\bigl[e^{i\omega t}
+e^{-(1 + i) x/\delta}\bigr]$, substitute, and the equation reduces
+to $i\omega = \alpha (1 + i)^{2}/\delta^{2} = 2 i \alpha/\delta^{2}$,
+which holds exactly when $\delta = \sqrt{2\alpha/\omega}$. The
+length $\delta$, the \engterm{thermal penetration depth}, is where
+the amplitude has fallen to $1/e$ of the surface value, and the
+phase lag at that depth is one radian.
+
+The number is worth carrying. For a daily cycle, $\omega = 2\pi/
+(86{,}400\,\si{\second}) = 7.3 \times 10^{-5}\,\si{\per\second}$;
+for concrete at $\alpha = 5 \times 10^{-7}\,\si{\meter\squared\per
+\second}$, $\delta = \sqrt{2 \cdot 5 \times 10^{-7}/7.3 \times
+10^{-5}} \approx 0.12\,\si{\meter}$, so a $30\,\si{\centi\meter}$
+wall attenuates the daily swing by $e^{-0.3/0.12} = e^{-2.5}
+\approx 0.08$, an eightfold damping, and delays the indoor peak by
+$0.3/\delta = 2.5$ radians, about $9.5\,\si{\hour}$. The annual
+cycle penetrates $\sqrt{365} \approx 19$ times deeper, which is why
+the temperature a few metres underground tracks the seasons but not
+the days, and why a wine cellar at four metres holds a near-constant
+temperature year-round. The same algebra, with the magnetic
+diffusivity in place of the thermal one, gives the electromagnetic
+skin depth of Volume VII; the mathematics is identical because both
+fields obey a diffusion equation driven at a boundary.
+
+\begin{mastery}
+The penetration-depth solution exposes a subtlety in the
+diffusion-length rule $\delta = \sqrt{\alpha\tau}$ used elsewhere
+in the chapter. For a step input, the relevant time is the elapsed
+time and the front advances as $\sqrt{\alpha t}$. For a periodic
+input of angular frequency $\omega$, the relevant time is the
+period and the penetration depth is $\sqrt{2\alpha/\omega} =
+\sqrt{\alpha T_{\text{period}}/\pi}$, smaller than $\sqrt{\alpha
+T_{\text{period}}}$ by a factor $\sqrt{\pi}$. The two agree only up
+to an order-one constant, which is the right level of agreement for
+an estimate and the wrong level for a design margin. The general
+moral: the diffusion length is set by whichever time scale the
+forcing imposes, and the order-one prefactor depends on the
+forcing's shape (step, ramp, sinusoid, pulse). An engineer who
+quotes $\sqrt{\alpha\tau}$ should be ready to name which $\tau$ and
+should carry the prefactor when the margin is tight. The full
+catalogue of prefactors for canonical forcings is tabulated in
+\textcite{text:incropera2007}, Chapter 5.
+\end{mastery}
+
+\subsection{Worked example: contact of two semi-infinite solids}
+
+Two semi-infinite solids initially at uniform temperatures $T_{A}$
+and $T_{B}$ are suddenly brought into perfect thermal contact at
+$x = 0$. The interface jumps instantly to a temperature $T_{i}$
+that stays constant for all later time, a counter-intuitive result
+that the heat equation predicts cleanly. Each half obeys the heat
+equation with its own diffusivity, and the self-similar variable
+$\eta = x/\sqrt{4 \alpha t}$ collapses the problem to an ordinary
+differential equation whose solution is the error function. Matching
+temperature and heat flux at the interface gives
+\[
+T_{i} = \frac{e_{A}\, T_{A} + e_{B}\, T_{B}}{e_{A} + e_{B}}, \qquad e = \sqrt{k\, \rho\, c_{p}},
+\]
+where $e$ is the \engterm{thermal effusivity}, the property that
+governs transient surface contact (distinct from the diffusivity
+$\alpha$ that governs how fast a profile spreads). The interface
+temperature is the effusivity-weighted average of the two initial
+temperatures, independent of time.
+
+The result explains a daily tactile experience. A metal doorknob
+and a wooden door in the same cold room sit at the same
+temperature, yet the metal feels colder to the touch. The skin
+(at $T_{A} \approx 33\,\degC$) contacting steel ($e_{B} \approx
+14{,}000$ in SI units of
+$\text{J}\,\text{m}^{-2}\text{K}^{-1}\text{s}^{-1/2}$)
+drives the contact temperature far toward the steel's $T_{B}$,
+because steel's effusivity dwarfs skin's ($e_{A} \approx
+1{,}500$). Contacting wood ($e_{B} \approx 400$), the contact
+temperature stays near the skin's own, because wood's effusivity is
+below the skin's. "Feeling cold" is reading the interface
+temperature, which the effusivity ratio sets; the room temperature
+is identical for both objects. The engineer who designs handles,
+seats, or surgical instruments for thermal comfort designs the
+effusivity, not the temperature.
 
 \subsection{Material diffusivities and the working calibration}\pathtag{standard}
 
@@ -528,6 +721,63 @@ as a smear that retains energy from earlier moments. The
 two-dimensional case is intermediate (and lacks a sharp Huygens
 principle), which is why a stone dropped in water produces ripples
 that ring rather than a single passing front.
+
+\subsection{Worked example: characteristics and the domain of dependence}
+
+The d'Alembert solution is cleanest read on the characteristic
+diagram. Plot the $(x, t)$ plane. Through any point $(x_{0},
+t_{0})$ run two lines of slope $\pm 1/c$: the backward
+characteristics $x \pm c t = x_{0} \pm c t_{0}$. They reach the
+initial line $t = 0$ at the two points $x_{0} - c t_{0}$ and
+$x_{0} + c t_{0}$. The d'Alembert formula says $u(x_{0}, t_{0})$
+depends on $\phi$ at exactly those two points and on $\psi$
+averaged over the interval between them. That interval is the
+\engterm{domain of dependence}. Initial data outside it cannot
+affect $(x_{0}, t_{0})$; this is finite signal speed made
+geometric.
+
+The same diagram read forward gives the \engterm{range of
+influence}. A disturbance localised at a single initial point
+$x_{*}$ can affect $(x, t)$ only if $x_{*}$ lies in the domain of
+dependence of $(x, t)$, that is only inside the forward cone
+$|x - x_{*}| \leq c t$. A concrete reading: a hammer strike at one
+point of a long rail at $t = 0$ is felt at a station $1\,\si
+{\kilo\meter}$ down the line no earlier than $t = 1000/c$. For steel
+with $c \approx 5{,}000\,\si{\meter\per\second}$ (the bar-wave
+speed, $\sqrt{E/\rho}$), that is $0.2\,\si{\second}$; a listener
+with an ear to the rail hears the strike through the steel well
+before the airborne sound arrives at $1000/343 \approx 2.9\,\si
+{\second}$. The factor-of-fifteen gap between the two arrival times
+is the working content of the old prairie trick of listening to the
+rail. The characteristic cone is not a metaphor; it is a schedule.
+
+This finite-speed structure is exactly what the numerical CFL
+condition (\S12.7) protects. An explicit scheme that marches faster
+than the physical characteristic, $c\,\Delta t > \Delta x$, asks the
+grid point $(x_{j}, t_{n+1})$ to depend on initial data outside the
+analytical domain of dependence the scheme can see. The scheme
+cannot supply that information, and the result is the blow-up named
+in the failure section. The continuous geometry of characteristics
+and the discrete stability condition are the same statement.
+
+\begin{archetype}[Stability, as a finite domain of dependence]
+The stability archetype appears in this chapter in two faces that
+are one fact. The continuous face is the bounded domain of
+dependence of the hyperbolic equation: $u(x, t)$ depends only on
+initial data within $|x - x_{0}| \leq c t$, so a localised error in
+the data stays localised inside its forward cone and does not
+contaminate the whole field at once. The discrete face is the CFL
+condition $c\,\Delta t/\Delta x \leq 1$, which demands that the
+numerical domain of dependence (the grid stencil's reach) contain
+the analytical one. The same geometric containment underwrites
+well-posedness of the continuous problem and stability of the
+discrete scheme. The reader meets the stability archetype again as
+Lyapunov stability of dynamical systems (Volume V), as numerical
+stability of time integrators (Volume XII), and as structural
+stability against buckling (Volume III); in every case the question
+is whether a small perturbation stays bounded, and in every case
+the answer is read off a containment or a contraction.
+\end{archetype}
 
 \subsection{Worked example: a plucked string}
 
@@ -716,6 +966,74 @@ would decay faster into the interior; a slower disturbance would
 penetrate further. The same low-pass character that the heat
 equation exhibits in time, Laplace's equation exhibits in space.
 
+\subsection{Poisson's equation and the role of sources}
+
+Laplace's equation describes a region free of sources. Where a
+source is present, the equation acquires a right-hand side and
+becomes \engterm{Poisson's equation}
+\[
+\laplacian u = -f,
+\]
+with $f$ the source density. In steady-state heat conduction,
+$f = S/k$ with $S$ a volumetric heat-generation rate (in $\si{\watt
+\per\meter\cubed}$): resistive heating in a wire, exothermic
+reaction in a catalyst pellet, nuclear heating in a fuel rod. In
+electrostatics, $\laplacian \phi = -\rho/\varepsilon_{0}$ with
+$\rho$ the charge density, the form the reader meets again in
+Volume VII. In structural mechanics, the deflection of a uniformly
+loaded membrane satisfies Poisson's equation with $f$ the pressure
+over the tension.
+
+The general solution of a Poisson problem splits into a particular
+solution that carries the source and a harmonic solution that fits
+the boundary. A worked instance: a slab $0 \leq x \leq L$ with
+uniform internal generation $S$, both faces held at $0$, satisfies
+$k\, u'' = -S$ in steady state, integrating to the parabolic profile
+\[
+u(x) = \frac{S}{2k}\, x\,(L - x),
+\]
+with peak $u_{\max} = S L^{2}/(8k)$ at the centre. The profile is a
+downward parabola pinned to zero at both ends, the steady
+temperature of a current-carrying busbar or a self-heating
+battery cell cooled at its faces. The peak scales as $L^{2}$, so
+halving the cooled spacing quarters the central temperature rise,
+the working lever the thermal engineer pulls when a generation rate
+is fixed and the centre is running too hot.
+
+\subsection{Worked example: the discrete mean-value property}
+
+The mean-value property has a discrete shadow that is the
+foundation of every relaxation solver for Laplace's equation. On a
+uniform grid with spacing $h$, the five-point Laplacian is
+\[
+\laplacian u(x_{i}, y_{j}) \approx \frac{U_{i+1,j} + U_{i-1,j} + U_{i,j+1} + U_{i,j-1} - 4 U_{i,j}}{h^{2}}.
+\]
+Setting this to zero (the discrete Laplace equation) and solving for
+the centre value gives
+\[
+U_{i,j} = \frac{1}{4}\bigl(U_{i+1,j} + U_{i-1,j} + U_{i,j+1} + U_{i,j-1}\bigr).
+\]
+The discrete harmonic value at any node is the average of its four
+neighbours, the exact discrete analogue of the continuous
+mean-value property. The discrete maximum principle follows by the
+same argument as the continuous one: a discrete harmonic function
+cannot have an interior node strictly larger than all its
+neighbours, so its extrema sit on the boundary. The Jacobi
+iteration of \S12.7 simply applies the averaging rule repeatedly
+until the field stops changing, which is the numerical statement
+that the field has become discretely harmonic. The reader who has
+seen a relaxation solver "settle" a temperature field into a smooth
+equilibrium has watched the discrete mean-value property converge.
+
+A quick application: a square plate with three edges at $0$ and one
+edge at $100$, discretised on the coarsest non-trivial grid (a
+single interior node by symmetry on a $3 \times 3$ mesh), gives that
+node the value $\tfrac{1}{4}(100 + 0 + 0 + 0) = 25\,\degC$, the same
+quarter-of-the-boundary answer the exact symmetry argument produces
+for the plate centre. The coarsest discretisation already carries
+the right answer at the centre because the symmetry that fixes it is
+preserved by the five-point stencil.
+
 \section{Separation of variables, Fourier series introduction}\pathtag{core}
 
 Separation of variables is the workhorse method for solving the
@@ -883,6 +1201,86 @@ right basis for separable boundary-value problems on rectangles
 with periodic, Dirichlet, or Neumann boundaries. Other bases
 (Bessel for cylindrical, Legendre for spherical, Chebyshev for
 spectral methods) appear when the geometry calls for them.
+
+\input{volumes/02-form/ch12-pdes/figures/fig-gibbs.tex}
+
+\subsection{Why the eigenfunctions are orthogonal: Sturm-Liouville structure}\pathtag{standard}
+
+The coefficient formula $b_{n} = (2/L)\int_{0}^{L} f \sin(n\pi
+x/L)\,\dd x$ works because the eigenfunctions are mutually
+orthogonal. That orthogonality is not a coincidence of the sine
+function; it is a structural property of the eigenvalue problem,
+and naming the structure tells the engineer when the same machinery
+will and will not carry over to a new geometry. The spatial
+eigenvalue problem
+\[
+-\dv{}{x}\!\left(p(x)\,\dv{X}{x}\right) + q(x)\, X = \lambda\, w(x)\, X,
+\]
+with homogeneous boundary conditions of the Dirichlet, Neumann, or
+Robin kind, is a \engterm{Sturm-Liouville problem}. The
+Dirichlet heat-rod case is the special instance $p = 1$, $q = 0$,
+$w = 1$. Every regular Sturm-Liouville problem has three properties
+the engineer relies on: the eigenvalues are real and form an
+increasing sequence $\lambda_{1} < \lambda_{2} < \cdots \to
+\infty$; the eigenfunctions corresponding to distinct eigenvalues
+are orthogonal with respect to the weight $w$, that is
+$\int_{0}^{L} X_{n}\, X_{m}\, w\,\dd x = 0$ for $n \neq m$; and the
+eigenfunctions are complete, so any reasonable $f$ expands as
+$f = \sum_{n} c_{n} X_{n}$ with $c_{n} = \int f X_{n} w\,\dd x /
+\int X_{n}^{2} w\,\dd x$.
+
+The orthogonality proof is one integration by parts. For two
+eigenfunctions $X_{n}, X_{m}$ with eigenvalues $\lambda_{n} \neq
+\lambda_{m}$, multiply the equation for $X_{n}$ by $X_{m}$, subtract
+the equation for $X_{m}$ times $X_{n}$, and integrate; the boundary
+terms vanish by the homogeneous boundary conditions, leaving
+$(\lambda_{n} - \lambda_{m})\int X_{n} X_{m} w\,\dd x = 0$, so the
+integral is zero. The working consequence: whenever the engineer
+sets up a separable boundary-value problem and the spatial operator
+is Sturm-Liouville, the coefficients are inner products against the
+eigenfunctions, and the recipe is mechanical. Cylindrical geometry
+gives a Sturm-Liouville problem with $p(x) = x$ whose eigenfunctions
+are Bessel functions; spherical geometry gives Legendre polynomials;
+both inherit the orthogonality-and-completeness guarantee. The
+trigonometric case is the one the reader computes by hand; the
+structure is what makes the others tractable.
+
+\subsection{Worked example: a partially heated rod and term-by-term decay}
+
+Take the rod $0 \leq x \leq L$ with both ends at zero and an
+initial profile that is hot on the left half and cold on the right:
+$f(x) = T_{0}$ for $0 < x < L/2$ and $f(x) = 0$ for $L/2 < x < L$.
+The Fourier sine coefficients are
+\[
+b_{n} = \frac{2}{L}\int_{0}^{L/2} T_{0} \sin\!\left(\frac{n\pi x}{L}\right)\dd x = \frac{2 T_{0}}{n\pi}\left(1 - \cos\frac{n\pi}{2}\right).
+\]
+The factor $1 - \cos(n\pi/2)$ runs through the cycle $1, 2, 1, 0$
+for $n = 1, 2, 3, 4$ and repeats, so the spectrum is irregular:
+$b_{1} = 2T_{0}/\pi$, $b_{2} = 4T_{0}/(2\pi) = 2T_{0}/\pi$, $b_{3}
+= 2T_{0}/(3\pi)$, $b_{4} = 0$, $b_{5} = 2T_{0}/(5\pi)$, and so on.
+The discontinuity in the middle of the initial data, where the
+profile jumps from $T_{0}$ to $0$, is the source of the slow $1/n$
+falloff of the envelope, and it is where the truncated series rings
+(\cref{fig:vol02:ch12:gibbs} shows the same ringing for the
+indicator function this profile resembles).
+
+The evolution is then
+\[
+u(x, t) = \sum_{n=1}^{\infty} b_{n} \sin\!\left(\frac{n\pi x}{L}\right) \exp\!\left(-\frac{n^{2}\pi^{2}\alpha t}{L^{2}}\right).
+\]
+The instructive feature is how fast the discontinuity heals. At
+$t = 0$ the profile has a sharp jump that the full series
+reproduces (with Gibbs overshoot at any truncation). After a time
+$t = \tau_{1}/9$ (one time constant of the $n = 3$ mode), the modes
+$n \geq 3$ have decayed to $e^{-1}$ or less of their initial value
+while the fundamental is essentially intact; the jump has rounded
+into a smooth shoulder. After $t = \tau_{1}$ only the fundamental
+and second mode survive at any appreciable amplitude, and the
+profile is a smooth bump leaning left. The heat equation has
+converted a discontinuous initial condition into an analytic
+function in arbitrarily short time, the smoothing property of
+\S12.2 read mode by mode: the high modes that encode the sharp
+corner are exactly the fast-decaying ones.
 
 \subsection{Worked example: cooling of a uniformly heated rod}
 
@@ -1081,6 +1479,18 @@ $\Delta t$. The local truncation errors come from Taylor
 expansion (Chapter 4); the leading error in the second
 derivative, for instance, is $-(\Delta x^{2}/12) u_{xxxx}$.
 
+The choice of which values a scheme couples is read off its
+stencil, the set of grid points that enter one update.
+\Cref{fig:vol02:ch12:stencils} draws the three standard
+heat-equation stencils side by side. A stencil that links one
+unknown to several known values gives an explicit scheme; a stencil
+that links several unknowns to each other gives an implicit scheme
+and a linear system to solve. The shape of the stencil therefore
+predicts both the per-step cost and the stability character before
+any algebra.
+
+\input{volumes/02-form/ch12-pdes/figures/fig-stencils.tex}
+
 \subsection{The FTCS scheme for the heat equation}
 
 The Forward-Time-Centred-Space (FTCS) scheme for $u_{t} = \alpha
@@ -1196,6 +1606,104 @@ finite-difference references such as
 
 \input{volumes/02-form/ch12-pdes/figures/fig-cfl-stability.tex}
 
+\subsection{Worked example: explicit and implicit, by the numbers}\pathtag{standard}
+
+A concrete comparison fixes the trade-off. Solve $u_{t} = u_{xx}$
+($\alpha = 1$) on $0 \leq x \leq 1$ with $u(0,t) = u(1,t) = 0$ and
+$u(x,0) = \sin(\pi x)$, whose exact solution is $u(x,t) =
+\sin(\pi x)\, e^{-\pi^{2} t}$. Take a grid of $N = 50$ interior
+points, so $\Delta x = 1/51 = 0.0196$ and $\Delta x^{2} = 3.84
+\times 10^{-4}$.
+
+\textbf{Explicit (FTCS).} The CFL bound caps the step at $\Delta
+t_{\max} = \Delta x^{2}/(2\alpha) = 1.92 \times 10^{-4}$. To reach
+$t = 0.5$ (about five fundamental time constants, since $\tau_{1} =
+1/\pi^{2} = 0.101$) the scheme needs at least $0.5/1.92 \times
+10^{-4} \approx 2{,}600$ steps. Each step is one array pass,
+$\mathcal{O}(N)$ multiply-adds, so the total work is about $2{,}600
+\times 50 = 1.3 \times 10^{5}$ operations. The error at $t = 0.5$
+is dominated by the spatial truncation $\sim \Delta x^{2}\,u_{xxxx}/
+12$ and lands near $5 \times 10^{-5}$ in $L^{2}$, well below a
+percent.
+
+\textbf{Implicit (BTCS).} The scheme is stable at any step, so the
+step is set by accuracy. Take $\Delta t = 0.01$, fifty times the
+explicit ceiling, giving $r = \alpha\Delta t/\Delta x^{2} = 26$.
+Reaching $t = 0.5$ now takes only 50 steps. Each step solves a
+tridiagonal system by the Thomas algorithm, $\mathcal{O}(N)$ work,
+roughly twice the cost of an FTCS step, so each step is about $100$
+operations and the total is $50 \times 100 = 5 \times 10^{3}$
+operations, a factor of twenty-five fewer than FTCS for the same
+final time. The BTCS error at $t = 0.5$ is now dominated by the
+first-order temporal truncation $\sim \alpha\pi^{2}\Delta t/2
+\approx 0.05$ relative, a few percent, larger than the explicit
+error but still acceptable for many purposes.
+
+\textbf{Crank-Nicolson.} Same step $\Delta t = 0.01$, same 50
+steps, same tridiagonal cost per step, but the second-order time
+accuracy drops the temporal error to $\sim (\alpha\pi^{2}\Delta
+t)^{2}/12 \approx 8 \times 10^{-4}$ relative, recovering near the
+explicit accuracy at one-twenty-fifth the step count.
+\Cref{fig:vol02:ch12:explicit-implicit}(a) shows the three
+midpoint trajectories against the exact decay at this coarse step:
+BTCS over-damps, Crank-Nicolson tracks the exact curve, and FTCS
+would have diverged and is not plotted. The reference
+implementation \texttt{code/heat\_implicit.py} runs both implicit
+schemes at $r = 0.4$, $5$, and $26$ and prints the $L^{2}$ errors
+that confirm BTCS first-order and Crank-Nicolson second-order
+temporal accuracy.
+
+The lesson is in panel (b) of the figure. The explicit ceiling
+falls as $\Delta x^{2}$, so on a grid ten times finer the explicit
+step shrinks a hundredfold and the explicit method needs a hundred
+times more steps, while the implicit step is unchanged. For
+long-time relaxation on fine grids the implicit method wins by
+orders of magnitude; for short-time high-fidelity runs on coarse
+grids where the CFL step is already fine enough, the explicit
+method's lower per-step cost and trivial implementation make it
+competitive. The engineer reads off which regime the problem sits
+in from the ratio of the desired final time to the CFL step on the
+intended grid.
+
+\input{volumes/02-form/ch12-pdes/figures/fig-explicit-implicit.tex}
+
+\subsection{Worked example: the CFL bound checked numerically}\pathtag{standard}
+
+The von Neumann result $r \leq 1/2$ is worth seeing as arithmetic
+on the amplification factor. The FTCS scheme multiplies the Fourier
+mode of wavenumber $k$ by $\xi(k) = 1 - 4 r \sin^{2}(k\Delta x/2)$
+each step. The most dangerous mode is the Nyquist mode $k\Delta x =
+\pi$, where $\sin^{2}(\pi/2) = 1$ and $\xi = 1 - 4r$. Tabulating:
+
+\begin{center}
+\begin{tabular}{cccl}
+\toprule
+$r$ & $\xi_{\text{Nyquist}} = 1 - 4r$ & $|\xi|$ & behaviour \\
+\midrule
+$0.25$ & $0.00$  & $0.00$ & strongly damped, very stable \\
+$0.40$ & $-0.60$ & $0.60$ & damped, stable \\
+$0.50$ & $-1.00$ & $1.00$ & marginal (oscillates, no decay) \\
+$0.51$ & $-1.04$ & $1.04$ & grows $4\%$ per step \\
+$0.60$ & $-1.40$ & $1.40$ & grows $40\%$ per step \\
+$1.00$ & $-3.00$ & $3.00$ & triples per step \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+At $r = 0.51$ the Nyquist mode grows by a factor $1.04$ each step;
+after $200$ steps it is amplified by $1.04^{200} \approx 2{,}550$,
+and whatever round-off seeded that mode at the part-per-billion
+level has reached order unity and is climbing. At $r = 0.6$ the
+factor $1.4^{n}$ reaches $10^{14}$ in about $100$ steps. The
+checkerboard the user sees is the Nyquist mode, whose spatial
+pattern is $(-1)^{j}$, alternating sign on every grid cell. The
+data file \texttt{data/cfl\_amplification.csv} tabulates $|\xi(k)|$
+across the full wavenumber range for several $r$, the numbers
+plotted in \cref{fig:vol02:ch12:cfl-stability}(c). The reader who
+runs the project at $r = 0.51$ should watch the maximum value print
+out and confirm it crosses the initial maximum within the first ten
+to twenty steps, exactly as the table predicts.
+
 \subsection{Stability of explicit schemes for the wave equation}
 
 The analogous explicit scheme for the wave equation $u_{tt} =
@@ -1217,6 +1725,50 @@ solution. The CFL condition for hyperbolic equations is linear in
 $\Delta t/\Delta x$, in contrast to the parabolic condition's
 quadratic dependence; the cost of refining a hyperbolic grid is
 much milder than for a parabolic grid of the same resolution.
+
+A worked instance fixes the magnitude. An acoustic simulation in
+air, $c = 343\,\si{\meter\per\second}$, on a grid resolving down to
+$\Delta x = 1\,\si{\centi\meter}$, has CFL step $\Delta t_{\max} =
+\Delta x/c = 0.01/343 = 2.9 \times 10^{-5}\,\si{\second}$, about
+$29\,\si{\micro\second}$. To simulate one second of sound takes at
+least $1/2.9 \times 10^{-5} \approx 34{,}000$ steps. Refining the
+grid to $\Delta x = 1\,\si{\milli\meter}$ (to resolve a
+$10\,\si{\kilo\hertz}$ tone with thirty points per wavelength)
+shrinks the step tenfold and the step count grows to $340{,}000$,
+a linear cost. The same tenfold refinement of a heat-equation grid
+would multiply the explicit step count a hundredfold; propagation
+problems are forgiving of fine grids in a way diffusion problems
+are not.
+
+\subsection{Numerical dispersion: the right speed only at long waves}\pathtag{mastery}
+
+The wave-equation scheme is stable below the CFL bound, but stable
+does not mean exact. Substituting the discrete Fourier mode
+$U_{j}^{n} = e^{i(kj\Delta x - \omega n\Delta t)}$ into the
+leapfrog update gives the \engterm{numerical dispersion relation}
+\[
+\sin^{2}\!\left(\frac{\omega\Delta t}{2}\right) = C^{2}\sin^{2}\!\left(\frac{k\Delta x}{2}\right), \qquad C = \frac{c\Delta t}{\Delta x}.
+\]
+The exact relation is $\omega = c k$, a single propagation speed
+for every wavelength. The discrete relation reduces to $\omega
+\approx c k$ only for long waves ($k\Delta x \ll 1$); shorter waves
+travel at a numerical phase speed that depends on wavelength, so a
+sharp pulse made of many wavelengths spreads as it propagates even
+though the continuous equation would keep it rigid. This is
+\engterm{numerical dispersion}, and it is the leading error of an
+otherwise-correct wave solver. At the special value $C = 1$ (the
+CFL bound exactly) the discrete relation collapses to $\omega\Delta
+t = k\Delta x$, which is $\omega = ck$ exactly: the scheme becomes
+dispersion-free and propagates every wavelength at the right speed.
+The wave-equation leapfrog scheme run \emph{at} its stability
+boundary is exact, the rare case where the numerically dangerous
+setting is also the most accurate. For variable-coefficient or
+multi-dimensional problems the magic value cannot be hit everywhere
+at once, and the engineer accepts a controlled amount of dispersion
+or moves to a higher-order or spectral scheme. The practical
+diagnostic is to propagate a known pulse a known distance and check
+that its shape survives; visible spreading on a fixed grid is the
+dispersion signature.
 
 \subsection{The finite-element method, at a recognition level}
 
@@ -1247,6 +1799,39 @@ should at minimum know the convergence-with-refinement diagnostic:
 solve the same problem on a coarse and a fine mesh, and verify
 that the difference is small enough relative to the engineering
 tolerance.
+
+\begin{mastery}
+The finite-element method rests on the \engterm{weak form} of the
+PDE, and the weak form is worth seeing once because it explains why
+FEM handles irregular geometry and natural boundary conditions so
+gracefully. Multiply Poisson's equation $-\laplacian u = f$ by a
+test function $\phi$ that vanishes on the Dirichlet boundary, and
+integrate over the domain. Integration by parts (the divergence
+theorem of Chapter 8) moves one derivative off $u$ and onto $\phi$:
+\[
+\int_{\Omega} \grad u \cdot \grad \phi \,\dd V = \int_{\Omega} f\,\phi\,\dd V + \int_{\partial\Omega_{N}} g\,\phi\,\dd S,
+\]
+where the boundary integral over the Neumann part $\partial
+\Omega_{N}$ carries the prescribed flux $g$. Two features pay off.
+First, the highest derivative on $u$ is now first order, so $u$ need
+only be once-differentiable, which lets piecewise-linear basis
+functions on a mesh of triangles represent it. Second, the Neumann
+condition appears as a boundary integral rather than as a
+constraint, so it is satisfied automatically by the variational
+statement (it is a \engterm{natural} boundary condition), while the
+Dirichlet condition must be imposed on the trial space (an
+\engterm{essential} boundary condition). The Galerkin method then
+restricts both $u$ and $\phi$ to the same finite-dimensional space
+of mesh basis functions, turning the weak form into the linear
+system $\mathbf{K}\mathbf{u} = \mathbf{b}$ with $\mathbf{K}$ the
+stiffness matrix $K_{ij} = \int \grad\phi_{i}\cdot\grad\phi_{j}$.
+The matrix is sparse because basis functions overlap only on shared
+elements, symmetric because the bilinear form is symmetric, and
+positive definite because the form is coercive. The whole
+linear-algebra apparatus of Chapter 9 then applies. The full
+development, including element assembly, isoparametric mapping, and
+error estimation, is in Volume XII.
+\end{mastery}
 
 \section{Failure: ill-posed problems and the cost of bad boundary conditions}\pathtag{core}
 
@@ -1338,6 +1923,67 @@ high-fidelity simulation on coarse grids, the explicit method may
 be cheaper if the CFL condition is satisfiable. The engineer
 should know which regime the problem sits in before starting the
 integration.
+
+\subsection{Gibbs ringing read as a failure of the basis}
+
+A subtler failure than divergence is a solution that is stable,
+convergent, and wrong in a way that matters. Expand a discontinuous
+profile in a Fourier series and truncate; the partial sum overshoots
+the jump by about $9\%$ of the jump height, and the overshoot does
+not shrink as terms are added (\cref{fig:vol02:ch12:gibbs}). For a
+heat-equation solution the ringing is harmless because the offending
+high modes decay within a fraction of $\tau_{1}$ and the physical
+profile is smooth thereafter. For a problem where the discontinuity
+persists, the ringing persists, and an engineer who reads a peak
+value off the truncated series reads a value $9\%$ too high.
+
+The mechanism is a mismatch between the data and the basis. The
+sine basis is built from smooth functions; representing a jump
+requires infinitely many of them, and any finite truncation cannot
+follow the corner. The failure shows up wherever a spectral or
+Fourier-based method meets a shock, a contact discontinuity, or a
+sharp material interface: in compressible-flow solvers the Gibbs
+oscillations near a shock can drive the computed density negative,
+a non-physical value that crashes the equation of state. The
+diagnostic is to refine the truncation and watch the overshoot
+\emph{not} decrease in height while its width shrinks; that
+signature distinguishes Gibbs ringing from ordinary
+under-resolution, which does decrease in amplitude under refinement.
+The remedy is to change the basis or to filter: a localised basis
+(finite elements, wavelets), a flux-limited or essentially-
+non-oscillatory scheme for hyperbolic problems, or a spectral filter
+that damps the highest modes at the cost of smearing the jump. The
+working honesty is to report which remedy was applied, because each
+trades the overshoot for a controlled amount of smearing.
+
+\subsection{Wrong boundary condition giving a non-physical solution}
+
+A third silent failure is a boundary condition that admits a
+mathematically valid but physically impossible solution. The
+clearest case is a pure-Neumann problem for the steady heat
+equation: insulate every face of a body that contains an internal
+heat source. The compatibility condition of \S12.6 demands that the
+net flux out of the boundary equal the total source inside, by the
+divergence theorem; with every face insulated the boundary flux is
+zero, so no steady state exists unless the source is also zero. A
+solver handed this problem returns one of two artefacts: a linear
+solver reports a singular matrix (the all-ones vector is in the null
+space, since adding a constant to any solution gives another), or an
+iterative solver drifts without converging because the temperature
+rises without bound. The physics is correct, the model is wrong: an
+insulated body with internal generation heats up forever, and the
+steady equation has no answer because there is no steady state.
+
+The diagnostic is to check the compatibility condition before
+solving: integrate the source, integrate the prescribed boundary
+flux, and confirm they balance. If they do not, the problem as
+posed has no steady solution, and the fix is either to admit a
+transient (solve the time-dependent equation and watch the
+temperature climb), to add a sink (one face that conducts heat
+away, a Dirichlet or Robin patch), or to recognise that the
+physical system would in fact never reach steady state. The error
+is not in the solver; it is in pretending a body can both generate
+heat and never lose it.
 
 \subsection{Hadamard's three conditions, restated}
 

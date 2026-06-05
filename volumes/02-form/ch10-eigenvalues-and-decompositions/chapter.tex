@@ -32,6 +32,32 @@ needs a different decomposition. The singular value decomposition
 covers every matrix without exception and is the workhorse of this
 chapter and the rest of the volume.
 
+\begin{mastery}
+\textit{Historical sketch: where the word eigenvalue comes from.}
+The idea predates the name by more than a century. Euler and Lagrange
+met eigenvalues in the eighteenth century while studying the rotation
+of rigid bodies and the small oscillations of coupled pendulums; the
+``principal axes'' of an inertia tensor and the ``normal modes'' of a
+vibrating system are eigenvectors, computed long before the modern
+vocabulary existed. Cauchy, in the 1820s, proved that the eigenvalues
+of a symmetric matrix (in his language, the roots of the
+characteristic equation of a quadratic form) are real, the result
+this chapter calls part of the spectral theorem. The German word
+\emph{eigen} means ``own'' or ``characteristic,'' and Hilbert used
+\emph{Eigenwert} (own-value) in his work on integral equations around
+1904; the hybrid English ``eigenvalue'' settled into use in the 1920s
+and 1930s, pushed by the quantum-mechanics literature, where the
+allowed energies of a system are eigenvalues of an operator. The
+singular value decomposition has a parallel lineage: Beltrami (1873)
+and Jordan (1874) found it independently for real square matrices,
+Eckart and Young (1936) proved its optimality for low-rank
+approximation, and Golub and collaborators turned it into a stable
+numerical algorithm in the 1960s. The reader meets, in one chapter,
+two hundred years of accumulated apparatus. The vocabulary is recent;
+the mathematics is old, and it was driven from the start by physical
+problems of vibration, rotation, and stability.
+\end{mastery}
+
 \section{Eigenvalues and eigenvectors}\pathtag{core}
 
 A square matrix $\mat{A} \in \R^{n \times n}$ acts on a vector
@@ -102,6 +128,157 @@ matrix is the diagonal $2 \mat{I}$ in some basis. When it is one,
 the matrix has only a one-dimensional eigenspace and is
 \engterm{defective}: it cannot be diagonalised. The defective case
 is where the engineer's panic in section 10.7 begins.
+
+\subsection{Similarity and what the spectrum does not depend on}
+
+Two matrices $\mat{A}$ and $\mat{B}$ are \engterm{similar} when
+$\mat{B} = \mat{S}\inv \mat{A} \mat{S}$ for some invertible
+$\mat{S}$. Similarity is the algebraic statement that $\mat{A}$ and
+$\mat{B}$ are the same linear map written in two different bases.
+Similar matrices share their characteristic polynomial, hence their
+eigenvalues (with multiplicities), their trace, and their
+determinant. The proof is one line: $\det(\mat{S}\inv \mat{A}
+\mat{S} - \lambda \mat{I}) = \det(\mat{S}\inv (\mat{A} - \lambda
+\mat{I}) \mat{S}) = \det(\mat{S}\inv) \det(\mat{A} - \lambda
+\mat{I}) \det(\mat{S}) = \det(\mat{A} - \lambda \mat{I})$, since the
+determinant of $\mat{S}\inv$ cancels the determinant of $\mat{S}$.
+
+This is why the eigenvalues deserve to be called the matrix's
+intrinsic numbers. Every quantity the engineer reads off a square
+matrix that should not depend on the choice of coordinates, the
+determinant, the trace, the rank, the spectral radius, the
+conditioning, is a function of the spectrum and is preserved under
+similarity. Diagonalisation, when it exists, is the choice of basis
+that makes the map maximally transparent: $\mat{A} = \mat{S}
+\mat{\Lambda} \mat{S}\inv$ says $\mat{A}$ is similar to the diagonal
+matrix of its eigenvalues. The whole programme of the chapter is to
+find the basis in which a given matrix is as close to diagonal as it
+can be made.
+
+\subsection{The Rayleigh quotient}
+
+For a symmetric matrix $\mat{A}$ and a nonzero vector $\vect{x}$,
+the \engterm{Rayleigh quotient} is
+
+\[
+R(\vect{x}) = \frac{\vect{x}\transpose \mat{A} \vect{x}}
+{\vect{x}\transpose \vect{x}}.
+\]
+
+When $\vect{x}$ is an eigenvector $\vect{v}_{i}$, the quotient
+returns the eigenvalue: $R(\vect{v}_{i}) = \lambda_{i}$, since
+$\mat{A} \vect{v}_{i} = \lambda_{i} \vect{v}_{i}$ collapses the
+numerator to $\lambda_{i} \vect{v}_{i}\transpose \vect{v}_{i}$. For
+a general $\vect{x}$ the quotient lies between the smallest and
+largest eigenvalues, $\lambda_{\min} \leq R(\vect{x}) \leq
+\lambda_{\max}$, and the extremes are achieved exactly at the
+corresponding eigenvectors. This is the variational characterisation
+of eigenvalues, the engine behind the power method's eigenvalue
+estimate (section 10.6) and behind the Courant-Fischer minimax
+theorem that proves the spectral theorem and the Eckart-Young
+theorem.
+
+The Rayleigh quotient is the engineer's cheap eigenvalue estimate.
+Given an approximate eigenvector $\vect{x}$, $R(\vect{x})$ is a far
+better estimate of the eigenvalue than $\vect{x}$ is of the
+eigenvector: the error in $R(\vect{x})$ is of order the square of
+the error in $\vect{x}$, because $R$ is stationary at the
+eigenvectors. A vector that is $1\%$ off the true eigenvector
+direction gives a Rayleigh quotient that is about $0.01\%$ off the
+true eigenvalue. The quadratic accuracy is why production
+eigensolvers report eigenvalues by Rayleigh quotients of their
+iterates rather than by any cruder formula.
+
+\subsection{Gerschgorin discs: bounding the spectrum from the entries}
+
+The eigenvalues of a matrix can be localised, without computing
+them, directly from its entries. For each row $i$ of $\mat{A}$,
+define the \engterm{Gerschgorin disc} as the closed disc in the
+complex plane centred at the diagonal entry $A_{ii}$ with radius
+$r_{i} = \sum_{j \neq i} \abs{A_{ij}}$, the sum of the
+off-diagonal magnitudes in that row.
+
+\begin{principle}[Gerschgorin circle theorem]
+Every eigenvalue of $\mat{A}$ lies in at least one of the
+Gerschgorin discs. If a union of $k$ discs is disjoint from the
+remaining $n - k$, that union contains exactly $k$ eigenvalues,
+counted with multiplicity.
+\end{principle}
+
+The proof is short. Let $\lambda$ be an eigenvalue with eigenvector
+$\vect{x}$, and let $i$ be the index of the largest-magnitude entry
+of $\vect{x}$, so $\abs{x_{i}} \geq \abs{x_{j}}$ for all $j$. The
+$i$-th row of $\mat{A} \vect{x} = \lambda \vect{x}$ reads
+$\sum_{j} A_{ij} x_{j} = \lambda x_{i}$, which rearranges to
+$(\lambda - A_{ii}) x_{i} = \sum_{j \neq i} A_{ij} x_{j}$. Taking
+magnitudes and dividing by $\abs{x_{i}}$,
+$\abs{\lambda - A_{ii}} \leq \sum_{j \neq i} \abs{A_{ij}}
+\abs{x_{j}}/\abs{x_{i}} \leq \sum_{j \neq i} \abs{A_{ij}} = r_{i}$,
+since each ratio $\abs{x_{j}}/\abs{x_{i}}$ is at most one. So
+$\lambda$ lies in the $i$-th disc.
+
+Gerschgorin is the engineer's first, free diagnostic. A strictly
+diagonally dominant matrix (each $\abs{A_{ii}} > r_{i}$) has every
+disc clear of the origin, so no disc contains zero, so no eigenvalue
+is zero, so the matrix is invertible, all established without a
+single floating-point operation on the matrix itself. The stability
+bound for stochastic matrices in section 10.5 is a Gerschgorin
+argument; so is the claim that the eigenvalues of a perturbed
+diagonal matrix stay near the diagonal entries when the
+perturbation is small.
+
+\subsection{Worked example: a $3 \times 3$ matrix end to end}
+
+The two-by-two case hides the bookkeeping that makes larger
+problems realistic. Consider
+
+\[
+\mat{A} = \begin{pmatrix} 2 & 0 & 0 \\ 1 & 2 & 0 \\ 1 & 1 & 3
+\end{pmatrix},
+\]
+
+a lower-triangular matrix. The eigenvalues of a triangular matrix
+are its diagonal entries, because $\det(\mat{A} - \lambda \mat{I})$
+expands to the product of the diagonal entries of the triangular
+matrix $\mat{A} - \lambda \mat{I}$: here
+$(2 - \lambda)(2 - \lambda)(3 - \lambda)$. The eigenvalues are
+$\lambda = 2$ (algebraic multiplicity two) and $\lambda = 3$
+(algebraic multiplicity one). Gerschgorin offers an independent
+sanity check: the discs are centred at $2$, $2$, $3$ with radii
+$0$, $1$, $2$, and the eigenvalues $2, 2, 3$ all fall inside the
+union $[1, 5]$ on the real axis, as required.
+
+The eigenspace at $\lambda = 3$ is the null space of
+
+\[
+\mat{A} - 3\mat{I} = \begin{pmatrix} -1 & 0 & 0 \\ 1 & -1 & 0 \\
+1 & 1 & 0 \end{pmatrix}.
+\]
+
+Row reduction forces $x_{1} = 0$ from the first row, then
+$x_{1} - x_{2} = 0$ from the second gives $x_{2} = 0$, leaving
+$x_{3}$ free. The eigenvector is $\vect{v}_{3} = (0, 0, 1)
+\transpose$.
+
+The eigenspace at $\lambda = 2$ is the null space of
+
+\[
+\mat{A} - 2\mat{I} = \begin{pmatrix} 0 & 0 & 0 \\ 1 & 0 & 0 \\
+1 & 1 & 1 \end{pmatrix}.
+\]
+
+The second row forces $x_{1} = 0$; the third row then forces
+$x_{2} + x_{3} = 0$, that is $x_{3} = -x_{2}$. The eigenspace is
+one-dimensional, spanned by $\vect{v}_{2} = (0, 1, -1)\transpose$.
+Algebraic multiplicity two, geometric multiplicity one: the matrix
+is defective. There are only two independent eigenvectors,
+$\vect{v}_{2}$ and $\vect{v}_{3}$, for a three-dimensional space.
+The matrix cannot be diagonalised, and the apparatus of section 10.7
+applies. The trace check still holds, $2 + 2 + 3 = 7 = \tr \mat{A}$,
+because the trace counts eigenvalues with algebraic multiplicity
+regardless of defectiveness; the determinant check gives
+$2 \cdot 2 \cdot 3 = 12 = \det \mat{A}$. The two invariants are
+blind to the defect, which is one reason the defect is easy to miss.
 
 \subsection{Computation by hand for small matrices}
 
@@ -325,6 +502,157 @@ dynamics as a transient that grows like $t e^{\lambda t}$ alongside
 the pure exponential. We return to it in section 10.7.
 \end{mastery}
 
+\subsection{Cayley-Hamilton and the algebra of a matrix}\pathtag{mastery}
+
+A matrix satisfies its own characteristic polynomial. The
+\engterm{Cayley-Hamilton theorem} states that if $p_{\mat{A}}
+(\lambda) = \det(\mat{A} - \lambda \mat{I})$, then $p_{\mat{A}}
+(\mat{A}) = \mat{0}$, where the polynomial is now evaluated with
+$\mat{A}$ substituted for $\lambda$ and the constant term multiplied
+by $\mat{I}$. For the $2 \times 2$ matrix of section 10.1 with
+$p_{\mat{A}}(\lambda) = \lambda^{2} - 7\lambda + 10$, the theorem
+asserts $\mat{A}^{2} - 7\mat{A} + 10\mat{I} = \mat{0}$, which the
+reader can verify by direct multiplication. The diagonalisable
+proof is immediate: $p_{\mat{A}}(\mat{A}) = \mat{S}\, p_{\mat{A}}
+(\mat{\Lambda})\, \mat{S}\inv$, and $p_{\mat{A}}(\mat{\Lambda})$ is
+diagonal with entries $p_{\mat{A}}(\lambda_{i}) = 0$, so the whole
+product vanishes. The theorem holds for every square matrix,
+including defective ones, by a continuity or adjugate argument.
+
+The engineering payoff is that every power $\mat{A}^{k}$ for $k \geq
+n$, and every matrix function expressible as a power series, reduces
+to a polynomial in $\mat{A}$ of degree at most $n - 1$. The inverse,
+when it exists, is one such polynomial: rearranging $\mat{A}^{n} +
+c_{n-1}\mat{A}^{n-1} + \cdots + c_{1}\mat{A} + c_{0}\mat{I} =
+\mat{0}$ and multiplying by $\mat{A}\inv$ gives $\mat{A}\inv =
+-(1/c_{0})(\mat{A}^{n-1} + \cdots + c_{1}\mat{I})$, valid whenever
+$c_{0} = (-1)^{n}\det\mat{A} \neq 0$. The relation is the basis of
+the Krylov-subspace methods of Volume II Chapter 16: a matrix's
+action is captured by its first $n$ powers acting on a vector.
+
+\section{Quadratic forms and definiteness}\pathtag{core}
+
+A symmetric matrix carries a function attached to it, the
+\engterm{quadratic form} $q(\vect{x}) = \vect{x}\transpose \mat{A}
+\vect{x}$. Quadratic forms are the energy of a vibrating system,
+the curvature of an optimisation objective near a critical point,
+the variance of a linear combination of random variables, and the
+shape of a level set. The eigenvalues of $\mat{A}$ decide the sign
+and the geometry of the form, and the vocabulary of definiteness
+that follows is used in every optimisation argument in the rest of
+the volume.
+
+\subsection{Definiteness and the eigenvalue test}
+
+A symmetric matrix $\mat{A}$ is
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{positive definite} if $q(\vect{x}) > 0$ for every
+    nonzero $\vect{x}$;
+  \item \engterm{positive semidefinite} if $q(\vect{x}) \geq 0$ for
+    every $\vect{x}$;
+  \item \engterm{negative definite} or \engterm{negative
+    semidefinite} with the inequalities reversed;
+  \item \engterm{indefinite} if $q$ takes both signs.
+\end{itemize}
+
+The eigenvalues settle the classification completely. In the
+orthonormal eigenbasis, write $\vect{x} = \sum_{i} y_{i}
+\vect{v}_{i}$; then $q(\vect{x}) = \sum_{i} \lambda_{i} y_{i}^{2}$,
+a weighted sum of squares with the eigenvalues as weights. The form
+is positive definite exactly when every $\lambda_{i} > 0$, positive
+semidefinite when every $\lambda_{i} \geq 0$, negative definite when
+every $\lambda_{i} < 0$, and indefinite when the eigenvalues
+straddle zero. The geometry of the level set $q(\vect{x}) = 1$
+follows at once: an ellipsoid with semi-axis lengths
+$1/\sqrt{\lambda_{i}}$ along the eigenvectors when the form is
+positive definite, a degenerate cylinder when one eigenvalue is
+zero, a hyperboloid when the signs are mixed.
+
+\subsection{Cheaper tests: pivots and leading minors}
+
+Computing eigenvalues to test definiteness is more work than the
+test needs. Two cheaper tests exist for a symmetric $\mat{A}$.
+Sylvester's criterion: $\mat{A}$ is positive definite if and only
+if all $n$ leading principal minors (the determinants of the
+top-left $1 \times 1$, $2 \times 2$, \ldots, $n \times n$ blocks)
+are positive. The pivot test: $\mat{A}$ is positive definite if and
+only if Gaussian elimination without row exchanges produces $n$
+positive pivots, which is exactly the condition that the Cholesky
+factorisation $\mat{A} = \mat{L} \mat{L}\transpose$ succeeds.
+Cholesky is the production test: it costs half the work of a general
+$\mat{LU}$ factorisation and signals indefiniteness by encountering
+a non-positive pivot mid-factorisation, at which point it stops.
+
+\begin{archetype}[Scaling, in the form of curvature]
+A quadratic form is a scaling of squared coordinates by the
+eigenvalues, $q(\vect{x}) = \sum_{i} \lambda_{i} y_{i}^{2}$ in the
+eigenbasis. The eigenvalues are the curvatures of the form along its
+principal directions. A positive-definite form is a bowl that curves
+upward in every direction; an indefinite form is a saddle. The
+optimisation chapters read the eigenvalues of the Hessian to
+classify a critical point: all positive is a local minimum, all
+negative a local maximum, mixed signs a saddle. The same scaling
+archetype that named eigenvalues in section 10.1 names the curvature
+of the objective here.
+\end{archetype}
+
+\subsection{Worked example: classifying a quadratic form}
+
+Consider $q(\vect{x}) = 5x_{1}^{2} + 8x_{1}x_{2} + 5x_{2}^{2}$. The
+symmetric matrix is
+
+\[
+\mat{A} = \begin{pmatrix} 5 & 4 \\ 4 & 5 \end{pmatrix},
+\]
+
+with the off-diagonal $4$ being half the cross-term coefficient $8$,
+because the cross term $2 A_{12} x_{1} x_{2}$ splits between the
+$(1,2)$ and $(2,1)$ entries. The trace is $10$, the determinant is
+$25 - 16 = 9$, and the eigenvalues solve $\lambda^{2} - 10\lambda +
+9 = (\lambda - 9)(\lambda - 1)$, giving $\lambda_{1} = 9$ and
+$\lambda_{2} = 1$. Both positive, so the form is positive definite.
+The eigenvectors are $\vect{v}_{1} = (1, 1)/\sqrt{2}$ and
+$\vect{v}_{2} = (1, -1)/\sqrt{2}$, so in the rotated coordinates
+$y_{1} = (x_{1} + x_{2})/\sqrt{2}$, $y_{2} = (x_{1} - x_{2})/\sqrt{2}$
+the form becomes $9 y_{1}^{2} + y_{2}^{2}$. The level set
+$q = 1$ is an ellipse with semi-axes $1/3$ along $\vect{v}_{1}$ and
+$1$ along $\vect{v}_{2}$: nine times stiffer along the diagonal than
+along the anti-diagonal.
+
+Sylvester's criterion confirms the classification without
+eigenvalues: the leading minors are $5 > 0$ and $\det \mat{A} = 9 >
+0$, both positive, so the form is positive definite. Change the
+$(1,1)$ entry to $3$ and the determinant becomes $9 - 16 = -7 < 0$;
+the second minor is negative, the form is indefinite, the level set
+is a hyperbola, and the matrix has one positive and one negative
+eigenvalue. The sign of a single $2 \times 2$ determinant flips the
+geometry from bowl to saddle.
+
+\begin{estimation}
+\textbf{Question.} A symmetric $10 \times 10$ stiffness matrix has
+diagonal entries near $4$ and off-diagonal entries near $-1$, the
+pattern of a one-dimensional chain. Estimate whether it is positive
+definite, and estimate its smallest eigenvalue, without computing
+the spectrum.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+Gerschgorin places every eigenvalue in a disc centred at $4$ with
+radius at most $2$ (two neighbours, each contributing $\abs{-1} =
+1$), so the spectrum lies in $[2, 6]$, comfortably positive. The
+matrix is positive definite, and the smallest eigenvalue is at least
+$2$. The exact tridiagonal chain has eigenvalues $4 - 2\cos(j\pi/11)$
+for $j = 1, \ldots, 10$, the smallest being $4 - 2\cos(\pi/11)
+\approx 4 - 2(0.96) \approx 2.08$, just inside the Gerschgorin bound.
+The free Gerschgorin estimate of $2$ is within $5\%$ of the truth.
+The diagonal dominance of the chain ($4 > 1 + 1$) was enough to
+guarantee positive definiteness and a usable lower bound on the
+stiffness, both without a single matrix operation.
+\end{estimation}
+
 \section{The singular value decomposition}\pathtag{core}
 
 The diagonalisation of section 10.2 applies only to square matrices,
@@ -439,6 +767,127 @@ $\sigma_{r} = 10^{-10}$ has $\kappa = 10^{11}$ and stretches some
 inputs by $10$ while shrinking others to $10^{-10}$ of their length.
 The conditioning trouble of Chapter 9 is the same trouble read
 off the spectrum directly.
+
+\subsection{Worked example: an SVD by hand}
+
+The constructive proof becomes concrete on a small matrix. Consider
+
+\[
+\mat{A} = \begin{pmatrix} 1 & 1 \\ 0 & 1 \\ 1 & 0 \end{pmatrix}
+\in \R^{3 \times 2}.
+\]
+
+The first step is the Gram matrix
+
+\[
+\mat{A}\transpose \mat{A} = \begin{pmatrix} 1 & 0 & 1 \\ 1 & 1 & 0
+\end{pmatrix} \begin{pmatrix} 1 & 1 \\ 0 & 1 \\ 1 & 0 \end{pmatrix}
+= \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix}.
+\]
+
+This $2 \times 2$ symmetric matrix has trace $4$, determinant $3$,
+and eigenvalues solving $\lambda^{2} - 4\lambda + 3 = (\lambda - 3)
+(\lambda - 1)$, so $\sigma_{1}^{2} = 3$ and $\sigma_{2}^{2} = 1$.
+The singular values are $\sigma_{1} = \sqrt{3}$ and $\sigma_{2} = 1$.
+The right singular vectors are the eigenvectors of $\mat{A}\transpose
+\mat{A}$: at eigenvalue $3$, $\vect{v}_{1} = (1, 1)/\sqrt{2}$; at
+eigenvalue $1$, $\vect{v}_{2} = (1, -1)/\sqrt{2}$.
+
+The left singular vectors come from $\vect{u}_{i} = \mat{A}
+\vect{v}_{i}/\sigma_{i}$:
+
+\[
+\vect{u}_{1} = \frac{1}{\sqrt{3}} \mat{A} \frac{(1,1)\transpose}
+{\sqrt{2}} = \frac{1}{\sqrt{6}} \begin{pmatrix} 2 \\ 1 \\ 1
+\end{pmatrix}, \qquad
+\vect{u}_{2} = \frac{1}{1} \mat{A} \frac{(1,-1)\transpose}{\sqrt{2}}
+= \frac{1}{\sqrt{2}} \begin{pmatrix} 0 \\ -1 \\ 1 \end{pmatrix}.
+\]
+
+Both are unit vectors and $\vect{u}_{1}\transpose \vect{u}_{2} = 0$,
+as the construction guarantees. The matrix is $3 \times 2$ of rank
+two, so the column space is two-dimensional and the third left
+singular vector spans the one-dimensional left null space; it is the
+unit normal to the plane spanned by the columns,
+$\vect{u}_{3} = (1, -1, -1)/\sqrt{3}$ up to sign. The full
+factorisation is $\mat{A} = \mat{U} \mat{\Sigma} \mat{V}\transpose$
+with
+
+\[
+\mat{U} = \begin{pmatrix} 2/\sqrt{6} & 0 & 1/\sqrt{3} \\
+1/\sqrt{6} & -1/\sqrt{2} & -1/\sqrt{3} \\
+1/\sqrt{6} & 1/\sqrt{2} & -1/\sqrt{3} \end{pmatrix}, \quad
+\mat{\Sigma} = \begin{pmatrix} \sqrt{3} & 0 \\ 0 & 1 \\ 0 & 0
+\end{pmatrix}, \quad
+\mat{V} = \frac{1}{\sqrt{2}} \begin{pmatrix} 1 & 1 \\ 1 & -1
+\end{pmatrix}.
+\]
+
+The condition number is $\sigma_{1}/\sigma_{2} = \sqrt{3} \approx
+1.73$, so the matrix is well conditioned. The reader who multiplies
+$\mat{U} \mat{\Sigma} \mat{V}\transpose$ back out recovers $\mat{A}$
+exactly. This hand computation is the algorithm production code
+avoids (forming $\mat{A}\transpose \mat{A}$ squares the
+conditioning, section 10.3's exercises), but it makes the geometry
+of the factorisation visible: a $3 \times 2$ map sends the unit
+circle of $\R^{2}$ to an ellipse living in a tilted plane of
+$\R^{3}$, with semi-axes $\sqrt{3}\vect{u}_{1}$ and $\vect{u}_{2}$.
+
+\subsection{The pseudoinverse and least squares}
+
+The SVD gives the cleanest construction of the
+\engterm{Moore-Penrose pseudoinverse}, the matrix that solves the
+least-squares problem for any matrix, square or rectangular, full
+rank or not. For $\mat{A} = \mat{U} \mat{\Sigma} \mat{V}\transpose$,
+the pseudoinverse is
+
+\[
+\mat{A}^{+} = \mat{V} \mat{\Sigma}^{+} \mat{U}\transpose,
+\]
+
+where $\mat{\Sigma}^{+}$ is formed from $\mat{\Sigma}$ by
+transposing it and replacing each nonzero singular value
+$\sigma_{i}$ by its reciprocal $1/\sigma_{i}$, leaving the zeros in
+place. The vector $\vect{x} = \mat{A}^{+} \vect{b}$ is the
+minimum-norm least-squares solution of $\mat{A} \vect{x} =
+\vect{b}$: among all $\vect{x}$ that minimise $\norm{\mat{A}\vect{x}
+- \vect{b}}_{2}$, it is the one of smallest norm. When $\mat{A}$ is
+square and invertible, $\mat{A}^{+} = \mat{A}\inv$; when $\mat{A}$
+is tall with full column rank, $\mat{A}^{+} = (\mat{A}\transpose
+\mat{A})\inv \mat{A}\transpose$, the normal-equations solution of
+Chapter 9.
+
+The pseudoinverse exposes the conditioning trap of least squares
+directly. Each singular direction is scaled by $1/\sigma_{i}$, so a
+tiny singular value $\sigma_{i}$ amplifies the component of
+$\vect{b}$ along $\vect{u}_{i}$ by the large factor $1/\sigma_{i}$.
+Measurement noise in $\vect{b}$, projected onto the small-singular-
+value directions, is magnified into large, meaningless swings in
+$\vect{x}$. The remedy is the \engterm{truncated pseudoinverse}:
+discard the singular directions below a threshold, treating their
+reciprocals as zero rather than as enormous. This is regularisation
+read off the spectrum, and it is the bridge to Tikhonov
+regularisation and ridge regression in Volume VII.
+
+\subsection{The polar decomposition}\pathtag{mastery}
+
+A square matrix factors as $\mat{A} = \mat{Q} \mat{P}$, with
+$\mat{Q}$ orthogonal and $\mat{P}$ symmetric positive semidefinite,
+the \engterm{polar decomposition}. It is the matrix analogue of
+writing a complex number $z = e^{i\theta} r$ as a rotation times a
+non-negative stretch. The SVD delivers it immediately: from
+$\mat{A} = \mat{U} \mat{\Sigma} \mat{V}\transpose$, group as
+$\mat{A} = (\mat{U} \mat{V}\transpose)(\mat{V} \mat{\Sigma}
+\mat{V}\transpose) = \mat{Q} \mat{P}$, where $\mat{Q} = \mat{U}
+\mat{V}\transpose$ is orthogonal and $\mat{P} = \mat{V} \mat{\Sigma}
+\mat{V}\transpose$ is symmetric positive semidefinite. The
+decomposition is the standard apparatus of continuum mechanics: the
+deformation gradient of a strained body factors into a rotation
+$\mat{Q}$ and a stretch tensor $\mat{P}$, separating rigid rotation
+from genuine deformation. It also solves the orthogonal Procrustes
+problem (find the rotation that best aligns two point sets), which
+recurs in computer vision, crystallography, and molecular
+structure alignment.
 
 \section{Spectral methods and low-rank approximation}\pathtag{core}
 
@@ -595,6 +1044,46 @@ late 1980s and is foundational for the embedding methods of Volume
 VII (information). We mention it at recognition level. The reader
 who completes the project of this chapter has implemented PCA, which
 is LSA on a different data matrix.
+
+\subsection{QR decomposition and the QR algorithm}\pathtag{standard}
+
+Every matrix $\mat{A} \in \R^{m \times n}$ with $m \geq n$ factors
+as $\mat{A} = \mat{Q} \mat{R}$, with $\mat{Q} \in \R^{m \times n}$
+having orthonormal columns and $\mat{R} \in \R^{n \times n}$ upper
+triangular. The columns of $\mat{Q}$ are an orthonormal basis for
+the column space of $\mat{A}$, built by Gram-Schmidt
+orthogonalisation of the columns of $\mat{A}$, and $\mat{R}$ records
+the coefficients that express each original column in that basis.
+Production code uses Householder reflections rather than classical
+Gram-Schmidt, because the classical procedure loses orthogonality
+under rounding while the Householder version is backward stable
+\cite[ch.~10]{text:trefethen-bau1997}.
+
+The QR decomposition is the engineer's default for overdetermined
+least squares: to solve $\min \norm{\mat{A}\vect{x} - \vect{b}}_{2}$
+with $\mat{A}$ tall and full column rank, factor $\mat{A} = \mat{Q}
+\mat{R}$ and solve $\mat{R} \vect{x} = \mat{Q}\transpose \vect{b}$
+by back substitution. The route avoids forming $\mat{A}\transpose
+\mat{A}$ and the conditioning squaring that comes with it, the same
+discipline the SVD imposes, at lower cost than the SVD when the full
+spectral picture is not needed.
+
+The QR decomposition also names the standard general eigenvalue
+algorithm. The \engterm{QR algorithm} computes eigenvalues by
+repeated factor-and-reverse: factor $\mat{A}_{k} = \mat{Q}_{k}
+\mat{R}_{k}$, form $\mat{A}_{k+1} = \mat{R}_{k} \mat{Q}_{k}$, and
+iterate. Each step is a similarity transformation ($\mat{A}_{k+1} =
+\mat{Q}_{k}\transpose \mat{A}_{k} \mat{Q}_{k}$), so the eigenvalues
+are preserved, and under mild conditions $\mat{A}_{k}$ converges to
+an upper-triangular (or quasi-triangular) matrix whose diagonal
+displays the eigenvalues. With shifts and a preliminary reduction to
+Hessenberg form the algorithm is the workhorse behind LAPACK's dense
+eigensolvers and is what a library call to compute eigenvalues
+actually runs \cite[ch.~28-29]{text:trefethen-bau1997}. The reader
+should recognise that the eigenvalue computation the chapter has
+been quoting as a black box is itself built from the QR
+decomposition, applied iteratively, with the Schur form of section
+10.7 as its limit.
 
 \section{Markov chains and stochastic matrices}\pathtag{standard}
 
@@ -792,6 +1281,54 @@ worked example of how a spectral algorithm with a stochastic matrix
 solves a problem that would be intractable as a combinatorial
 optimisation.
 
+\subsection{Worked example: PageRank on a four-page web}
+
+A graph small enough to compute by hand makes the mechanism
+concrete. Take four pages with links: page $1 \to 2$ and $1 \to 3$;
+page $2 \to 3$; page $3 \to 1$; page $4 \to 3$. Page $1$ has
+out-degree two, pages $2$, $3$, $4$ have out-degree one. The raw
+link matrix, with $H_{ij} = 1/\deg(i)$ when $i$ links to $j$, is
+
+\[
+\mat{H} = \begin{pmatrix}
+0 & 1/2 & 1/2 & 0 \\
+0 & 0 & 1 & 0 \\
+1 & 0 & 0 & 0 \\
+0 & 0 & 1 & 0
+\end{pmatrix}.
+\]
+
+Every row sums to one, so there are no dangling nodes here and the
+dangling correction is not needed. The graph is, however, not
+strongly connected (no page links to page $4$), so without
+teleportation the random surfer can never reach page $4$ and the
+stationary distribution would assign it zero, an artefact of the
+crawl rather than a judgment of importance. Teleportation fixes it.
+With $\alpha = 0.85$ and uniform $\vect{u} = (1/4, 1/4, 1/4, 1/4)$,
+the Google matrix is $\mat{G} = 0.85\,\mat{H} + 0.15\,\vect{1}
+\vect{u}\transpose$, every entry of which is at least $0.15/4 =
+0.0375$, so $\mat{G}$ is strictly positive, irreducible, and
+aperiodic. Perron-Frobenius guarantees a unique positive stationary
+distribution.
+
+Power iteration from the uniform start $\vect{\pi}_{0} = (1/4, 1/4,
+1/4, 1/4)$ updates $\vect{\pi}_{t+1} = \vect{\pi}_{t} \mat{G}$.
+After a handful of steps the iterate settles to approximately
+$\vect{\pi}^{*} \approx (0.373, 0.196, 0.394, 0.038)$. The ranking
+is page $3 > $ page $1 > $ page $2 > $ page $4$. Pages $1$ and $3$
+dominate, page $3$ narrowly, because page $3$ is pointed at by three
+of the four pages while page $1$ receives the return link from page
+$3$ and so recirculates the bulk of the mass; page $4$ scores lowest
+because nothing links to it and its only mass comes from
+teleportation, $0.15/4 \approx 0.0375$. The numbers match the
+intuition that importance flows along
+links, with teleportation supplying a small floor so that no page is
+exactly zero and no rank-sink can trap all the mass. The reference
+implementation in \texttt{code/pagerank\_small.py} reproduces these
+values and lets the reader vary $\alpha$ and watch the ranking shift
+toward the uniform distribution as $\alpha \to 0$ and toward the
+pure link structure as $\alpha \to 1$.
+
 \section{Failure: when the matrix has no real eigenvectors and the engineer panics}\pathtag{core}
 
 Two failure modes complicate eigenvalue analysis for real matrices.
@@ -947,6 +1484,46 @@ The engineering import for this chapter: if a transient analysis
 matters and the matrix is non-normal, the eigenvalues alone are not
 the right diagnostic and a pseudospectral plot is the next tool.
 
+\subsection{Worked example: transient growth from a stable spectrum}
+
+The non-normal trap is best seen on a single small matrix. Consider
+
+\[
+\mat{A} = \begin{pmatrix} -0.5 & 10 \\ 0 & -0.6 \end{pmatrix}.
+\]
+
+It is upper triangular, so its eigenvalues are the diagonal entries
+$-0.5$ and $-0.6$, both negative. A naive reading declares the
+discrete system $\vect{x}_{t+1} = \mat{A} \vect{x}_{t}$ and the
+continuous system $\dot{\vect{x}} = \mat{A} \vect{x}$ stable: every
+eigenvalue has negative real part, so $\norm{e^{\mat{A}t}\vect{x}_{0}}
+\to 0$. The asymptotic claim is correct. The transient claim is
+where the engineer is ambushed. The off-diagonal $10$ makes the
+matrix strongly non-normal; the two eigenvectors are nearly
+parallel, $\vect{v}_{1} = (1, 0)\transpose$ and $\vect{v}_{2}
+\approx (1, -0.01)\transpose$, with an angle between them of well
+under one degree.
+
+Start from $\vect{x}_{0} = (0, 1)\transpose$, a unit vector along
+the second coordinate. Write it in the eigenbasis: because the
+eigenvectors are nearly parallel, the coefficients $c_{1}$ and
+$c_{2}$ are large and nearly cancelling, of magnitude around $100$
+each. The continuous solution $e^{\mat{A}t}\vect{x}_{0} = c_{1}
+e^{-0.5t}\vect{v}_{1} + c_{2}e^{-0.6t}\vect{v}_{2}$ is a difference
+of two large terms that decay at slightly different rates. For early
+$t$ the cancellation is incomplete and the norm climbs to roughly
+$\norm{e^{\mat{A}t}\vect{x}_{0}}_{\max} \approx 7$ near $t \approx
+2$, a sevenfold transient amplification, before the slower
+asymptotic decay finally wins. A system whose spectrum says
+``decaying'' produces, on the way down, a transient large enough to
+trip a saturation limit, exceed a stress allowable, or push a
+linearised model outside its valid range. The eigenvalues are not
+wrong; they are answering the asymptotic question, and the transient
+question has a different answer that only the non-normality, or the
+pseudospectrum, or a direct simulation, reveals. The control-system
+failure-analysis exercise at the end of the chapter is built on
+exactly this trap.
+
 \subsection{Real-valued failure: linear stability}
 
 In dynamical systems, eigenvalues of the Jacobian at a fixed point
@@ -1096,6 +1673,79 @@ use the discrete cosine transform, which is data-independent and
 much cheaper at encode time. The truncated SVD is the
 data-dependent reference: the optimal rank-$k$ approximation in the
 matrix-norm sense, against which the cheaper transforms are judged.
+
+\subsection{Low-rank structure in a ratings matrix}
+
+The same truncated-SVD apparatus that compresses an image recovers
+hidden structure in a ratings matrix. Suppose five users rate four
+films on a one-to-five scale, with missing entries left for the
+moment. The intuition behind collaborative filtering is that the
+ratings matrix is approximately low rank: a small number of latent
+factors (a film's position on an action-to-drama axis, a user's
+taste along the same axis) explains most of the variation, and the
+full $5 \times 4$ table is close to a rank-two or rank-three
+approximation.
+
+Take the complete matrix
+
+\[
+\mat{R} = \begin{pmatrix}
+5 & 5 & 1 & 1 \\
+4 & 5 & 1 & 2 \\
+1 & 1 & 5 & 5 \\
+2 & 1 & 4 & 5 \\
+1 & 2 & 5 & 4
+\end{pmatrix},
+\]
+
+where the first two columns are one genre and the last two are
+another, and the first two users prefer the first genre while the
+last three prefer the second. The SVD of $\mat{R}$ has singular
+values that drop sharply after the second: $\sigma_{1} \approx 13.5$,
+$\sigma_{2} \approx 7.5$, $\sigma_{3} \approx 1.4$, and $\sigma_{4}
+\approx 0.8$. The rank-two truncation $\mat{R}_{2} = \sigma_{1}
+\vect{u}_{1}\vect{v}_{1}\transpose + \sigma_{2}\vect{u}_{2}
+\vect{v}_{2}\transpose$ reproduces every entry of $\mat{R}$ to within
+about half a rating point, and the Eckart-Young Frobenius error
+$\sqrt{\sigma_{3}^{2} + \sigma_{4}^{2}}$ is about $10\%$ of the
+total energy $\sqrt{\sum_{i}\sigma_{i}^{2}}$, so two latent factors
+carry roughly $90\%$ of the table. The first right
+singular vector $\vect{v}_{1}$ has all-positive entries: it is the
+``overall popularity'' direction. The second, $\vect{v}_{2}$, has
+opposite signs on the two genre blocks: it is the genre axis that
+separates the two clusters of films. The first left singular vector
+groups users by overall generosity; the second separates the two
+taste groups. The latent factors that a recommender system learns
+are exactly these singular vectors. Filling missing entries by the
+rank-$k$ reconstruction is the matrix-completion problem at the
+heart of the recommender systems of Volume VII, and the truncated
+SVD is its linear-algebra core.
+
+\subsection{Reading a scree plot}
+
+Each of these applications, PCA, modal analysis, image compression,
+recommender factorisation, ends at the same diagnostic plot: the
+singular values (or their squares, the variances) against their
+index. The plot is the \engterm{scree plot}, named for the loose
+rock that accumulates at the base of a cliff, because the
+characteristic shape is a steep face followed by a shallow talus.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-scree-plot.tex}
+
+\Cref{fig:vol02:ch10:scree-plot} draws the two readings the
+engineer takes from a scree plot. The \engterm{elbow}, the index
+where the curve bends from steep to shallow, marks the boundary
+between structural components (the cliff face) and noise components
+(the talus); choosing $k$ at the elbow keeps the structure and
+discards the noise. The \engterm{cumulative explained-variance
+curve}, the running sum of $\sigma_{i}^{2}$ normalised by the total,
+rises toward one and is read by drawing a horizontal line at the
+chosen retention level ($90\%$, $95\%$, $99\%$) and dropping to the
+axis. The two readings usually disagree by a few components, and the
+chapter's discipline is to report both, then let the downstream task
+break the tie. A plot with no clear elbow (the slow power-law decay
+of natural images) warns that no honest low-rank truncation exists,
+and the engineer who forces one is discarding signal.
 
 \section{Project}\pathtag{core}
 

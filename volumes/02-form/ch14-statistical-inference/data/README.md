@@ -33,6 +33,18 @@ and as a starting point for the reader's own project, with the
 proviso that the reader's project should use real data, not
 simulated data.
 
+## `tensile-yield.csv`
+
+The eight-point worked least-squares example of section 14.5. The
+predictor `x` is carbon content in hundredths of a percent and the
+response `y` is yield strength in arbitrary working units. The
+ordinary-least-squares fit is `yhat = 2.293 + 0.907 x` with
+residual standard deviation `0.262`, slope 95% confidence interval
+`[0.808, 1.006]`, and `R^2 = 0.988`. The eight points are chosen so
+the arithmetic of the normal equations is tractable by hand and the
+residuals scatter without a systematic pattern, making the dataset
+a clean reference for `code/regression_diagnostics.py`.
+
 ## Provenance
 
 Authors' synthetic data, generated 2026-05-16, seeded

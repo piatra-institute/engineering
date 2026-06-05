@@ -15,6 +15,8 @@ uv run code/<script>.py
 | `erdos_renyi.py` | Erdos-Renyi $G(n, p)$ generator and giant-component sweep; reproduces the phase-transition simulation. | Section 17.2, simulation exercise 4. |
 | `miller_rabin.py` | Deterministic-witness Miller-Rabin primality test in the working range; finds the first 100 primes above $10^{18}$. | Section 17.7, simulation exercise 5. |
 | `sat_brute.py` | Brute-force SAT solver and random 3-CNF generator for the $2^{n}$ scaling benchmark. | Section 17.4, simulation exercise 3. |
+| `number_theory.py` | Extended Euclid, modular inverse, CRT, and a toy RSA round trip; reproduces the gcd of exercise 17.8 and the worked CRT and RSA instances. | Section 17.7. |
+| `checksums.py` | Luhn (mod 10), ISBN-10 (mod 11), and an 8-bit CRC, each catching a single-character corruption. | Section 17.7 (hashing and checksums). |
 
 ## Conventions
 

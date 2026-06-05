@@ -1,12 +1,12 @@
 # Engineering
 
-A ~20,000-page sequential formation text for serious adult learners, structured as twelve volumes covering quantity, form, force, energy, matter, life, information, machines, systems, failure, design, and civilization. The thesis:
+A ~18,400-page sequential formation text for serious adult learners, structured as twelve volumes covering quantity, form, force, energy, matter, life, information, machines, systems, failure, design, and civilization. The thesis:
 
 > Engineering is the discipline by which measured reality becomes reliable intervention under constraint, failure, scale, and responsibility.
 
 Engineering is not applied science. Engineering is disciplined intervention.
 
-A Piatra . Institute project. Phases 0 and 0.5 complete: scaffolding, full per-volume outlines, dossier-driven chapter metadata, structural-check tooling, and editorial policy docs are in place. Chapter prose has not started; the pilot chapter (Volume I Chapter 1) is the named next move.
+A Piatra Institute project. Scaffolding, full per-volume outlines, dossier-driven chapter metadata, structural-check tooling, and editorial policy docs are in place, and the project is well into Phase 1 (production prose). All 174 chapters carry first-draft or denser prose; Volume I is reviewed, resolved, and carried to a Tier 3 density pass, and Volumes II-XII are at Stage 4 awaiting Codex review. See `docs/status.md` for the live per-volume state.
 
 ## Structure
 
@@ -74,7 +74,7 @@ make clean     # remove auxiliary files
 make distclean # remove main.pdf and rebuild trackers (full fresh rebuild next time)
 ```
 
-The build produces `main.pdf`, currently 491 pages of structural content (cover + frontmatter + 12 volumes × 174 chapters with sub-section TOC entries + appendices + bibliography stub).
+The build produces `main.pdf`, currently ~4019 pages (cover + frontmatter + 12 volumes × 174 chapters of prose + appendices + bibliography). The first build runs ~30-60 seconds.
 
 ## Regenerating chapter shells
 
@@ -122,6 +122,6 @@ See `docs/editorial-decisions.md` for the full settlement record and `docs/voice
 - Phase 0.5: structural hardening (post-diagnostic). **Complete** (2026-04-28). Chapter shells now carry `\chapmeta` blocks with dossier-derived half-life, archetypes, project, and exercise count; `make check`, `make stats`, `make strict` added; voice / citation / case-study / reviewer / release / pipeline policies written; bibliography reorganised by source category.
 - Phase 0.6: curriculum expansion. **Complete** (2026-04-28). Eleven new chapters added to close substantive gaps (acoustics, mass transfer, plasma physics, bioinformatics, quantum computing, power electronics, MEMS, project management, user research, defence systems, space infrastructure). Four chapter renames for register and naming consistency. Vol IX Ch 12 sub-section expanded with stigmergy. Net: 163 → 174 chapters, ~17.2K → ~18.4K planned pages, ~491-page structural PDF.
 - Phase 0.7: registry foundation and pilot prose. **Complete** (2026-04-29). Volume I prose drafted across all nine chapters and reviewed individually; named-cases registry stood up with schema, index, and `make accidents` audit; `method:` citation prefix introduced; `make audit-docs` and `make exercise-counts` added.
-- Phase 1: production prose at scale. **In progress** (as of 2026-05-16). Volumes I through V are drafted in full at first-draft density; Volume VI is partially drafted (Ch 1-10 of 13); Volumes VII, VIII, and IX are drafted in full (19 of 19, 14 of 14, and 19 of 19). Volume I is at Stage 5 (reviewed and resolved); Volumes II-IX are at Stage 4 awaiting Codex review. Current build: 2519-page PDF, 128 chapters with prose, 261 bibliography entries, 23 named-case registry entries. All discipline guards (`make check`, `make audit-docs`, `make accidents`, `make exercise-counts`) report PASS.
+- Phase 1: production prose at scale. **In progress** (as of 2026-06-05). All 174 chapters carry first-draft or denser prose. Volume I is at Stage 5 (reviewed and resolved) and carried to a Tier 3 density pass; Volumes II-XII are at Stage 4 awaiting Codex review. Volume II has its Tier 1+2 baseline complete across all 18 chapters. Current build: ~4019-page PDF, 174 chapters with prose, 1286 bibliography entries, 47 named-case registry entries. All discipline guards (`make check`, `make audit-docs`, `make accidents`, `make exercise-counts`) report PASS.
 
 For the live state, run `make stats` or read `docs/status.md`.

@@ -24,6 +24,223 @@ search has been launched. The mathematics here is the language in
 which Volumes VII (Information), VIII (Machines), and IX (Systems)
 are written. The chapter is the engineer's working introduction.
 
+\section{Logic, sets, and proof}\pathtag{core}
+
+Every claim in the rest of the chapter is a claim about discrete
+objects, and the apparatus for stating and verifying such claims is
+logic, set theory, and proof. The treatment here is the working
+fragment an engineer uses to read a specification, to reason about
+a program's branches, and to check that a combinatorial count is
+exhaustive and disjoint. Chapter 1 of this volume set the proof
+discipline; we apply it here to discrete structures.
+
+\subsection{Propositional logic}
+
+A \engterm{proposition} is a statement with a definite truth value,
+true or false. \engterm{Propositional logic} combines propositions
+with the connectives $\lnot$ (not), $\land$ (and), $\lor$ (or),
+$\implies$ (implies), and $\iff$ (if and only if). The truth value
+of a compound proposition is a function of the truth values of its
+parts, computable from the truth tables of section 17.4. The
+connectives are the same Boolean operations that build a digital
+circuit; the difference is one of register, not of substance.
+
+The connective that most often trips an engineer is implication.
+$p \implies q$ is false in exactly one case, $p$ true and $q$
+false; in particular it is true whenever $p$ is false, the
+\engterm{vacuous truth} that surprises every reader on first
+contact. A warranty clause ``if the device is opened, the guarantee
+is void'' makes no claim about an unopened device. Three
+propositions derived from $p \implies q$ recur constantly. The
+\engterm{converse} $q \implies p$ is a different statement and may
+have a different truth value. The \engterm{inverse} $\lnot p
+\implies \lnot q$ likewise. The \engterm{contrapositive} $\lnot q
+\implies \lnot p$ is logically equivalent to the original; proving
+the contrapositive proves the implication, and the equivalence is
+the engine of every proof by contraposition.
+
+\begin{principle}[Logical equivalence]
+Two propositions are \engterm{logically equivalent}, written $\equiv$,
+if they have the same truth value under every assignment. The
+working equivalences are:
+\begin{align*}
+p \implies q &\equiv \lnot p \lor q
+  &&\text{(implication as disjunction)},\\
+p \implies q &\equiv \lnot q \implies \lnot p
+  &&\text{(contraposition)},\\
+\lnot(p \land q) &\equiv \lnot p \lor \lnot q
+  &&\text{(De Morgan)},\\
+p \iff q &\equiv (p \implies q) \land (q \implies p)
+  &&\text{(biconditional)}.
+\end{align*}
+\end{principle}
+
+A proposition true under every assignment is a \engterm{tautology};
+one false under every assignment is a \engterm{contradiction}. The
+satisfiability problem of section 17.4 asks whether a proposition is
+\emph{not} a contradiction, that is, whether some assignment makes
+it true.
+
+\subsection{Predicate logic and quantifiers}
+
+Propositional logic cannot express ``every'' and ``some.''
+\engterm{Predicate logic} adds a \engterm{predicate} $P(x)$, a
+statement whose truth depends on a variable ranging over a domain,
+and two \engterm{quantifiers}: the universal $\forall x\, P(x)$
+(``for all $x$, $P(x)$'') and the existential $\exists x\, P(x)$
+(``there exists $x$ with $P(x)$'').
+
+Quantifier order is not free. The statement $\forall x\, \exists y\,
+(y > x)$ over the integers is true (each integer has a larger one);
+the swapped statement $\exists y\, \forall x\, (y > x)$ is false (no
+single integer exceeds every integer). An engineer who reads a
+specification ``for every request there is a server that handles
+it'' as ``there is a server that handles every request'' has
+inverted a load-balancing requirement into a single-point-of-failure
+requirement. The two readings differ by quantifier order alone.
+
+Negation passes through quantifiers by swapping them and negating
+the body, the predicate-logic De Morgan:
+\[
+\lnot \forall x\, P(x) \equiv \exists x\, \lnot P(x),
+\qquad
+\lnot \exists x\, P(x) \equiv \forall x\, \lnot P(x).
+\]
+The negation of ``every packet arrives'' is ``some packet does not
+arrive,'' the precise statement a test engineer hunts for as a
+counterexample.
+
+\begin{archetype}[Specification]
+A formal specification is a quantified predicate over the system's
+state space. ``The controller never commands a valve fully open and
+fully closed at once'' is $\forall t\, \lnot(\mathrm{open}(t) \land
+\mathrm{closed}(t))$. ``Every alarm is eventually acknowledged'' is
+$\forall a\, \exists t\, \mathrm{ack}(a, t)$. The engineer who can
+write a requirement as a quantified predicate can hand it to a model
+checker (Volume VII) or refute it with a single counterexample. The
+archetype recurs whenever correctness is the deliverable: protocol
+verification, controller safety, and contract design all reduce to
+quantified predicates over a state space.
+\end{archetype}
+
+\subsection{Sets, relations, functions}
+
+A \engterm{set} is an unordered collection of distinct objects. The
+working operations are union $A \cup B$, intersection $A \cap B$,
+difference $A \setminus B$, complement $\overline{A}$ relative to a
+universe $U$, and Cartesian product $A \times B = \set{(a, b) : a
+\in A, b \in B}$. The \engterm{power set} $2^{A}$ is the set of all
+subsets of $A$; for finite $A$ it has $\abs{2^{A}} = 2^{\abs{A}}$
+elements, the count we meet again in the next section as the number
+of binary configurations. The set operations satisfy the same De
+Morgan laws and distributive laws as their Boolean counterparts,
+because a subset of $U$ is exactly a Boolean function $U \to \set{0,
+1}$, its \engterm{indicator}.
+
+A \engterm{relation} from $A$ to $B$ is a subset $R \subseteq A
+\times B$; we write $a\, R\, b$ for $(a, b) \in R$. A relation on a
+single set $A$ (the case $B = A$) is the engineer's working object,
+and three properties classify it. $R$ is \engterm{reflexive} if
+$a\, R\, a$ for all $a$, \engterm{symmetric} if $a\, R\, b$ implies
+$b\, R\, a$, \engterm{transitive} if $a\, R\, b$ and $b\, R\, c$
+imply $a\, R\, c$, and \engterm{antisymmetric} if $a\, R\, b$ and
+$b\, R\, a$ imply $a = b$.
+
+\begin{definition}[Equivalence relation and partition]
+A relation that is reflexive, symmetric, and transitive is an
+\engterm{equivalence relation}. Its \engterm{equivalence classes}
+partition $A$ into disjoint non-empty blocks whose union is $A$;
+conversely every partition of $A$ defines an equivalence relation.
+\end{definition}
+
+Equivalence relations are how an engineer collapses a set into the
+distinctions that matter: congruence modulo $n$ (section 17.7)
+partitions the integers into $n$ residue classes; ``connected by a
+path'' partitions a graph's vertices into connected components
+(section 17.2); ``equal up to floating-point rounding'' partitions
+candidate values into the buckets a numerical comparison treats as
+the same.
+
+\begin{definition}[Partial order]
+A relation that is reflexive, antisymmetric, and transitive is a
+\engterm{partial order}. A set with a partial order is a
+\engterm{partially ordered set} (poset). A \engterm{total order}
+additionally compares every pair.
+\end{definition}
+
+Partial orders model precedence and dependency. ``Task $a$ must
+finish before task $b$'' is a partial order on tasks, drawn as the
+directed acyclic graph of section 17.3 and linearised by topological
+sort. The subset relation $\subseteq$ on a power set, the divides
+relation on the integers, and the ``reachable from'' relation on a
+DAG are the canonical examples.
+
+A \engterm{function} $f: A \to B$ is a relation that assigns to each
+$a \in A$ exactly one $b \in B$. It is \engterm{injective}
+(one-to-one) if distinct inputs give distinct outputs,
+\engterm{surjective} (onto) if every $b \in B$ is hit, and
+\engterm{bijective} if both. A bijection between two finite sets
+forces them to have the same size; this is the \engterm{bijective
+principle}, the most reliable counting tool in the chapter, because
+it replaces a hard count by an easy one whenever a bijection can be
+exhibited.
+
+\begin{principle}[Bijective counting]
+If there is a bijection $f: A \to B$ between finite sets, then
+$\abs{A} = \abs{B}$. To count $A$, exhibit a bijection to a set
+whose size is already known.
+\end{principle}
+
+The subsets of an $n$-element set are in bijection with the binary
+strings of length $n$ (a string's $i$-th bit records whether element
+$i$ is in the subset), so there are $2^{n}$ subsets. The bijection
+turns a subset count into a string count, and the string count is a
+product-rule count. Most clean combinatorial identities are
+bijections in disguise.
+
+\subsection{Proof methods for discrete structures}
+
+Four proof methods carry nearly all the discrete arguments an
+engineer writes.
+
+\textbf{Direct proof} chains implications from hypothesis to
+conclusion. Most of the algebraic identities in this chapter are
+direct proofs.
+
+\textbf{Contraposition} proves $p \implies q$ by proving $\lnot q
+\implies \lnot p$. To show ``if $n^{2}$ is even then $n$ is even,''
+prove the contrapositive ``if $n$ is odd then $n^{2}$ is odd'':
+$n = 2k + 1$ gives $n^{2} = 4k^{2} + 4k + 1$, odd.
+
+\textbf{Contradiction} assumes $\lnot q$ and derives a falsehood.
+The pigeonhole principle (section 17.1) is proved by contradiction,
+as is the infinitude of primes.
+
+\textbf{Induction} proves $\forall n \geq n_{0}\, P(n)$ by a base
+case $P(n_{0})$ and an inductive step $P(k) \implies P(k+1)$.
+\engterm{Strong induction} assumes $P(j)$ for all $j < k$ in the
+step; it is the natural form for recurrences and for recursive
+algorithms, where a problem of size $n$ depends on several smaller
+subproblems. \engterm{Structural induction} generalises the
+principle to recursively-defined structures: to prove a property of
+every tree, prove it for the single-vertex tree and show that
+attaching a subtree preserves it. The handshake lemma, the tree
+edge count, and the correctness of recursive graph algorithms are
+all structural inductions.
+
+\begin{archetype}[Exhaustiveness and disjointness]
+A combinatorial count is correct when its cases are
+\engterm{exhaustive} (every object is counted) and
+\engterm{disjoint} (no object is counted twice). Pascal's identity
+splits subsets into those containing element $n$ and those not, two
+disjoint exhaustive cases. Inclusion-exclusion corrects a count
+whose cases overlap. The two failure modes of a hand count,
+double-counting and missing a case, are exactly the failures of
+disjointness and exhaustiveness. The engineer who states which
+property each case split establishes catches the error before the
+arithmetic does.
+\end{archetype}
+
 \section{Counting, permutations, combinations}\pathtag{core}
 
 A counting problem asks how many objects of a stated kind exist.
@@ -203,6 +420,62 @@ in Volume VIII as the size of state spaces an algorithm cannot
 afford to enumerate.
 \end{archetype}
 
+\subsection{Combinations with repetition: stars and bars}
+
+A frequent variant counts the ways to choose $k$ items from $n$
+types \emph{with repetition allowed}, order disregarded. The
+question ``how many ways to fill a tray with a dozen pastries chosen
+from five kinds'' is this count with $k = 12, n = 5$. The
+\engterm{stars and bars} bijection answers it. Represent a selection
+as $k$ stars (the chosen items) separated into $n$ groups by $n - 1$
+bars (the type boundaries); for example $\star\star \mid \star \mid
+\mid \star\star\star \mid$ encodes two of type 1, one of type 2,
+none of type 3, three of type 4, none of type 5, with $k = 6, n =
+5$. Each selection corresponds to one arrangement of $k$ stars and
+$n - 1$ bars, and each such arrangement corresponds to one
+selection; the bijective principle gives the count as the number of
+ways to place the bars among the $k + n - 1$ symbols:
+\[
+\left(\!\!\binom{n}{k}\!\!\right) = \binom{n + k - 1}{k}
+= \binom{n + k - 1}{n - 1}.
+\]
+The dozen-pastries count is $\binom{12 + 5 - 1}{12} = \binom{16}{12}
+= \binom{16}{4} = 1820$. The same formula counts the monomials of
+degree $k$ in $n$ variables, the non-negative integer solutions of
+$x_{1} + \cdots + x_{n} = k$, and the ways to distribute $k$
+identical tasks across $n$ servers.
+
+\begin{archetype}[Recognising the count]
+The four elementary counts are distinguished by two questions: does
+order matter, and is repetition allowed. Order matters with no
+repetition gives the $k$-permutation $P(n, k)$; order matters with
+repetition gives $n^{k}$; order disregarded with no repetition gives
+the binomial $\binom{n}{k}$; order disregarded with repetition gives
+the stars-and-bars count $\binom{n + k - 1}{k}$. An engineer who
+poses the two questions before reaching for a formula avoids the
+most common counting error, applying the permutation count to an
+unordered selection or the reverse. The discipline is the same one
+the bijective principle enforces: name the objects, then count them.
+\end{archetype}
+
+\subsection{Worked example: a counting audit}
+
+A team designs a $6$-character access code. The first two characters
+are uppercase letters, the next three are digits, and the final
+character is a symbol drawn from a set of $8$. How many codes exist,
+and how many contain no repeated digit in the digit block?
+
+The total count is a product-rule count: $26^{2}$ for the letters,
+$10^{3}$ for the digits, $8$ for the symbol, giving $26^{2} \cdot
+10^{3} \cdot 8 = 676 \cdot 1000 \cdot 8 = 5{,}408{,}000$. The
+no-repeated-digit count replaces the digit block's $10^{3}$ by the
+$3$-permutation $P(10, 3) = 10 \cdot 9 \cdot 8 = 720$, giving $676
+\cdot 720 \cdot 8 = 3{,}893{,}760$. The fraction of codes with a
+repeated digit is $1 - 3{,}893{,}760 / 5{,}408{,}000 \approx 0.28$,
+the complement count again. The audit matters because a designer
+who assumed ``most codes have distinct digits'' would be wrong by a
+wide margin: more than a quarter of the space repeats a digit.
+
 \subsection{Inclusion-exclusion}
 
 The sum rule gives $\abs{A \cup B} = \abs{A} + \abs{B}$ when $A$
@@ -236,6 +509,33 @@ the count of permutations with no fixed points (the number of
 derangements), which inclusion-exclusion delivers as $D_{n} = n!
 \sum_{k=0}^{n} (-1)^{k}/k!$, a quantity the reader will meet again
 in queueing analysis and in error-correcting code design.
+
+A worked inclusion-exclusion count makes the alternating sign
+concrete. How many integers in $\set{1, \ldots, 1000}$ are divisible
+by none of $2$, $3$, or $5$? Let $A_{2}, A_{3}, A_{5}$ be the
+multiples of $2, 3, 5$ respectively. Then $\abs{A_{2}} = \lfloor
+1000/2 \rfloor = 500$, $\abs{A_{3}} = 333$, $\abs{A_{5}} = 200$;
+pairwise, $\abs{A_{2} \cap A_{3}} = \lfloor 1000/6 \rfloor = 166$,
+$\abs{A_{2} \cap A_{5}} = 100$, $\abs{A_{3} \cap A_{5}} = 66$; and
+$\abs{A_{2} \cap A_{3} \cap A_{5}} = \lfloor 1000/30 \rfloor = 33$.
+Inclusion-exclusion gives
+\[
+\abs{A_{2} \cup A_{3} \cup A_{5}}
+= (500 + 333 + 200) - (166 + 100 + 66) + 33 = 734,
+\]
+so $1000 - 734 = 266$ integers are divisible by none of the three.
+The same computation, run with the primes up to $\sqrt{N}$, is the
+arithmetic skeleton of the sieve of Eratosthenes and of the
+prime-counting estimates of section 17.7.
+
+The derangement count then follows by reading ``permutation with a
+fixed point at position $i$'' as the set $A_{i}$ and applying the
+principle. For $n = 4$, $D_{4} = 4!(1 - 1 + 1/2 - 1/6 + 1/24) = 9$;
+the ratio $D_{n}/n! \to e^{-1} \approx 0.368$ as $n$ grows, so the
+chance that a random permutation has no fixed point settles near
+$37\%$ for all but the smallest $n$. The constant is why a
+naive ``random reassignment'' of $n$ items to $n$ slots leaves about
+$37\%$ of items moved off every original slot regardless of scale.
 
 \subsection{Estimation before calculation}
 
@@ -335,6 +635,52 @@ canonical model for dependency, precedence, and irreversibility,
 and the canonical structure underlying topological sort and
 critical-path analysis (Volume IX).
 
+\subsection{Euler trails and Hamilton cycles}\pathtag{standard}
+
+Two questions about traversing a whole graph look superficially
+similar and have radically different difficulty. An \engterm{Euler
+trail} is a trail that uses every edge exactly once; an
+\engterm{Euler circuit} is a closed one. A \engterm{Hamilton path}
+visits every vertex exactly once; a \engterm{Hamilton cycle} is a
+closed one. Euler edges, Hamilton vertices.
+
+Euler's 1736 analysis of the seven bridges of K\"{o}nigsberg
+(figure \ref{fig:vol02:ch17:konigsberg}) founded the subject and
+settled the Euler question completely.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-konigsberg.tex}
+
+\begin{principle}[Euler's theorem]
+A connected undirected graph has an Euler circuit if and only if
+every vertex has even degree. It has an Euler trail that is not
+closed if and only if exactly two vertices have odd degree (the
+trail begins at one and ends at the other).
+\end{principle}
+
+The proof in one direction is a count: each time the trail enters a
+vertex it must leave, pairing edges at every interior vertex, so
+each vertex other than the endpoints contributes an even number of
+edge-ends. The K\"{o}nigsberg multigraph has four odd-degree
+vertices, so no Euler trail exists, and the townsfolk's hoped-for
+Sunday walk crossing each bridge once was impossible. The same
+even-degree test settles the modern instances: a snowplough route
+that must traverse every street, a wiring harness that must run
+every segment, a circuit-board trace test that must exercise every
+connection. The test runs in $O(n + m)$, and Hierholzer's algorithm
+constructs the circuit in the same time when one exists.
+
+The Hamilton question is, by contrast, intractable in general.
+Deciding whether a graph has a Hamilton cycle is NP-complete, and
+the closely related travelling-salesman problem (find the
+minimum-weight Hamilton cycle) is the canonical hard optimisation
+problem of operations research. No even-degree-style local test
+exists; the difference between an edge-traversal question and a
+vertex-traversal question is the difference between a problem an
+engineer settles by inspection and one that drives a combinatorial
+explosion (section 17.8). The reader who conflates the two, assuming
+a Hamilton cycle is as easy to find as an Euler circuit, has
+committed the chapter's most expensive misjudgement.
+
 \subsection{Connectedness, components, trees}
 
 An undirected graph is \engterm{connected} if there is a path
@@ -360,10 +706,35 @@ Trees admit a root, after which every non-root vertex has a unique
 parent and every vertex has a (possibly empty) set of children. The
 \engterm{depth} of a vertex is the length of the path from the root
 to the vertex; the \engterm{height} of the tree is the maximum
-depth. The reader will meet trees again as parse trees in compilers
-(Volume VII), as decision trees in machine learning (Volume X), as
-binary search trees in algorithms (Volume VIII), and as spanning
-trees in section 17.3 of this chapter.
+depth (figure \ref{fig:vol02:ch17:rooted-tree}). The reader will
+meet trees again as parse trees in compilers (Volume VII), as
+decision trees in machine learning (Volume X), as binary search
+trees in algorithms (Volume VIII), and as spanning trees in section
+17.3 of this chapter.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-rooted-tree.tex}
+
+The height controls the cost of the operations a tree supports. A
+search, insertion, or deletion in a binary search tree walks one
+root-to-leaf path and so costs $\Theta(h)$ where $h$ is the height.
+A balanced tree on $n$ vertices keeps $h = \Theta(\log n)$, the
+target a self-balancing structure (AVL, red-black, B-tree) maintains
+under updates; the degenerate chain of figure
+\ref{fig:vol02:ch17:rooted-tree} has $h = \Theta(n)$, the worst case
+that turns a tree into a linked list and an $O(\log n)$ operation
+into an $O(n)$ one. The reader will recognise the same
+balanced-versus-degenerate distinction in the recursion trees of
+section 17.6, where a balanced split gives $\Theta(n \log n)$ and a
+maximally unbalanced split gives $\Theta(n^{2})$.
+
+A tree on $n$ \emph{labelled} vertices is far from unique. Cayley's
+formula counts the labelled trees on $n$ vertices as $n^{n-2}$: one
+tree for $n = 2$, three for $n = 3$, sixteen for $n = 4$, and a
+combinatorial explosion thereafter. The count is the reason a
+network designer cannot enumerate candidate spanning trees for a
+graph of any size, and the reason the minimum-spanning-tree
+algorithms of section 17.3 earn their place: they find the cheapest
+tree without listing the $n^{n-2}$ candidates.
 
 \subsection{Working metrics}
 
@@ -481,6 +852,20 @@ assignment, register allocation, and scheduling problems whose
 conflict graphs are planar. We refer the reader to
 \cite{text:v2ch17-bondy-murty} for the proofs.
 
+The edge bound $e \leq 3v - 6$ is a fast planarity \emph{refutation}
+an engineer can apply by counting. The complete graph $K_{5}$ has $v
+= 5$ and $e = \binom{5}{2} = 10$; the bound permits at most $3 \cdot
+5 - 6 = 9$ edges, and $10 > 9$, so $K_{5}$ is non-planar without any
+drawing attempt. For $K_{3,3}$ the simple bound does not apply
+directly (a bipartite graph has no triangles, so the sharper bound
+$e \leq 2v - 4$ holds): $v = 6$, $e = 9$, and $9 > 2 \cdot 6 - 4 =
+8$, so $K_{3,3}$ is non-planar too. These are exactly the two
+forbidden minors of Kuratowski's theorem, and the edge-count
+refutation is the engineer's first check before committing a
+single-layer board layout: if the connection graph exceeds the
+planar edge ceiling, no via-free routing exists and the design needs
+a second copper layer.
+
 A \engterm{bipartite} graph $G = (V, E)$ has $V = A \cup B$ with
 $A \cap B = \emptyset$ and every edge between $A$ and $B$. A graph
 is bipartite if and only if it has no odd-length cycle, a test that
@@ -497,6 +882,44 @@ cycles, equivalently the connected graph with $n - 1$ edges.
 working data structure for hierarchical organisation: file systems,
 parse trees, decision trees, dependency trees, and the
 divide-and-conquer recursion trees we meet in section 17.6.
+
+\subsection{Graph colouring}\pathtag{standard}
+
+A \engterm{proper vertex colouring} assigns a colour to each vertex
+so that no edge joins two vertices of the same colour; the
+\engterm{chromatic number} $\chi(G)$ is the fewest colours a proper
+colouring needs. Colouring is the abstract form of conflict
+resolution: vertices are tasks and an edge marks two tasks that
+cannot share a resource, so a proper colouring with $\chi(G)$
+colours is a conflict-free schedule using the fewest resource slots.
+The applications are direct. In compiler \engterm{register
+allocation}, vertices are program variables, edges join variables
+live at the same time, and a $k$-colouring assigns the variables to
+$k$ machine registers without two live variables sharing one. In
+radio \engterm{frequency assignment}, vertices are transmitters,
+edges join transmitters close enough to interfere, and the
+chromatic number is the minimum number of frequency bands. In exam
+\engterm{timetabling}, vertices are exams, edges join exams with a
+common student, and the colouring is a clash-free schedule.
+
+Computing $\chi(G)$ is NP-hard in general, and even deciding whether
+$\chi(G) \leq 3$ is NP-complete; this is the failure section again,
+since a register allocator that needs an exact colouring on a large
+interference graph cannot afford one and uses a heuristic
+(greedy colouring with spilling) that may use more registers than
+strictly necessary. Two bounds an engineer can compute cheaply: a
+greedy colouring in any vertex order uses at most $\Delta + 1$
+colours, where $\Delta$ is the maximum degree, and a graph with a
+clique (a set of mutually adjacent vertices) of size $\omega$ needs
+at least $\omega$ colours. A worked instance: the $5$-cycle $C_{5}$
+has maximum degree $2$ but chromatic number $3$, because an odd
+cycle cannot be $2$-coloured (alternating two colours around an odd
+cycle forces two adjacent vertices to share the last colour). The
+bipartite graphs are exactly the $2$-colourable graphs, the test of
+the special-families discussion above. For \emph{planar} graphs the
+four-colour theorem caps $\chi(G) \leq 4$, the result behind
+four-colour map shading and used wherever the conflict graph is
+known to be planar.
 
 \subsection{Graph traversal: BFS and DFS}\pathtag{standard}
 
@@ -535,6 +958,51 @@ shallowest match, or level structure; DFS when the application is
 about reachability, ordering, or recursive structure on the
 exploration tree. The implementations differ in one line of code
 and produce algorithmically distinct outputs.
+
+\subsection{Worked example: BFS distances by hand}\pathtag{standard}
+
+Run BFS from vertex $A$ on the graph of figure
+\ref{fig:vol02:ch17:bfs-dfs}, whose edges are $\set{A,B}$,
+$\set{A,C}$, $\set{B,D}$, $\set{B,E}$, $\set{C,D}$, $\set{C,E}$,
+$\set{D,F}$, $\set{E,G}$. The queue starts as $[A]$ with $d(A) = 0$.
+Dequeue $A$, enqueue its undiscovered neighbours $B, C$ at distance
+$1$; queue $[B, C]$. Dequeue $B$, enqueue $D, E$ at distance $2$;
+queue $[C, D, E]$. Dequeue $C$; its neighbours $D, E$ are already
+discovered, so nothing is enqueued; queue $[D, E]$. Dequeue $D$,
+enqueue $F$ at distance $3$. Dequeue $E$, enqueue $G$ at distance
+$3$. Dequeue $F$, then $G$; both have only discovered neighbours.
+Final distances: $d(A) = 0$; $d(B) = d(C) = 1$; $d(D) = d(E) = 2$;
+$d(F) = d(G) = 3$. The level structure is exactly the discovery
+order of figure \ref{fig:vol02:ch17:bfs-dfs}(a), and because the
+graph is unweighted these BFS distances are the true shortest-path
+distances, the guarantee Dijkstra's algorithm must work harder to
+recover once edge weights appear.
+
+\subsection{Topological sort of a DAG}\pathtag{standard}
+
+A directed acyclic graph imposes a partial order on its vertices: an
+edge $u \to v$ reads ``$u$ precedes $v$.'' A \engterm{topological
+sort} extends this partial order to a total order, a linear listing
+in which every edge points forward (figure
+\ref{fig:vol02:ch17:topo-sort}). A topological order exists if and
+only if the graph has no directed cycle, since a cycle is a circular
+precedence no linear schedule can satisfy.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-topo-sort.tex}
+
+Two algorithms produce a topological order in $\Theta(n + m)$.
+Kahn's algorithm repeatedly removes a vertex of in-degree zero (a
+\engterm{source}), appending it to the output and decrementing its
+successors' in-degrees; when no source remains and vertices are
+left, the graph has a cycle. The DFS algorithm runs a depth-first
+search and lists vertices in decreasing order of finish time. Both
+underwrite the working systems an engineer relies on daily: a build
+system schedules compilation in topological order of the dependency
+graph; a spreadsheet recalculates cells in topological order of
+their formula references; a package manager installs dependencies
+before dependents. A circular dependency, detected when the
+topological sort fails, is the standard build-system error message,
+and the chapter's vocabulary names exactly what went wrong.
 
 \section{Algorithmic graph problems}\pathtag{standard}
 
@@ -626,6 +1094,32 @@ opportunities, currency-conversion arbitrage detection, and any
 problem in which an edge weight encodes a benefit rather than a
 cost.
 
+\subsection{All-pairs shortest path: Floyd-Warshall}
+
+When the question is the distance between every pair of vertices,
+not from a single source, the \engterm{Floyd-Warshall algorithm}
+answers in three lines. It maintains a distance matrix $D$,
+initialised to the edge weights ($D_{ij} = w(i, j)$, $D_{ii} = 0$,
+$D_{ij} = \infty$ for non-edges), and iterates over candidate
+intermediate vertices $k$, relaxing every pair through $k$:
+\[
+D_{ij} \leftarrow \min\big(D_{ij},\; D_{ik} + D_{kj}\big),
+\qquad k = 1, \ldots, n.
+\]
+The triple loop is three lines of code and runs in $\Theta(n^{3})$
+time with $\Theta(n^{2})$ space. The correctness rests on a clean
+loop invariant: after the $k$-th outer iteration, $D_{ij}$ is the
+shortest distance using only intermediate vertices drawn from
+$\set{1, \ldots, k}$. The algorithm tolerates negative edge weights
+(but not negative cycles, which it detects as a negative diagonal
+entry $D_{ii} < 0$). For a dense graph, or one small enough that
+$n^{3}$ is affordable, Floyd-Warshall beats running Dijkstra from
+every source both in code simplicity and in constant factor; for a
+large sparse graph, the $n$ Dijkstra runs at $O(n(n+m)\log n)$ win.
+The choice is the all-pairs analogue of the adjacency-matrix versus
+adjacency-list decision: dense favours the matrix method, sparse
+favours the list method.
+
 \subsection{Minimum spanning tree: Prim and Kruskal}
 
 A \engterm{spanning tree} of a connected undirected graph is a tree
@@ -681,6 +1175,22 @@ Prim's algorithm is the cut property iterated with $S$ as the
 current tree's vertex set; Kruskal's is the cut property iterated
 across changing cuts as the algorithm builds the tree.
 
+A worked Prim trace fixes the mechanics. Take the weighted graph of
+exercise 17.5: vertices $\set{1, 2, 3, 4, 5}$ with edges $\set{1,2}{:}1$,
+$\set{1,3}{:}3$, $\set{2,3}{:}4$, $\set{3,4}{:}2$, $\set{4,5}{:}5$,
+$\set{2,4}{:}6$. Start Prim from vertex $1$; the tree is $S =
+\set{1}$. The cheapest edge leaving $S$ is $\set{1,2}{:}1$; add it,
+$S = \set{1, 2}$. The cheapest edge leaving $S$ now is $\set{1,3}{:}3$
+(the alternative $\set{2,3}{:}4$ and $\set{2,4}{:}6$ are heavier);
+add it, $S = \set{1, 2, 3}$. The cheapest edge leaving $S$ is
+$\set{3,4}{:}2$; add it, $S = \set{1, 2, 3, 4}$. The cheapest edge
+leaving $S$ is $\set{4,5}{:}5$; add it, $S = \set{1, 2, 3, 4, 5}$,
+and the tree spans. Total weight $1 + 3 + 2 + 5 = 11$. The edge set
+$\set{\set{1,2}, \set{1,3}, \set{3,4}, \set{4,5}}$ is identical to
+the one Kruskal produces in the exercise, the expected agreement:
+the MST is unique here because all edge weights are distinct, and
+the cut property then forces every algorithm to the same tree.
+
 \subsection{Matching: bipartite case}
 
 A \engterm{matching} in a graph $G$ is a set of edges $M \subseteq
@@ -704,6 +1214,28 @@ problem of the form ``assign $n$ jobs to $n$ machines with cost
 $c_{ij}$, minimise total cost'' is the classical assignment problem,
 the Hungarian algorithm is the standard solver, and a working
 solver is one library call away in any production language.
+
+The mechanism the matching algorithms share is the
+\engterm{augmenting path}. Given a matching $M$, an augmenting path
+is a path that alternates between non-matching and matching edges and
+begins and ends at unmatched vertices. Flipping every edge along
+such a path (matching becomes non-matching and the reverse)
+increases the matching size by exactly one, because the path has one
+more non-matching edge than matching edge. Berge's theorem states
+that a matching is maximum if and only if no augmenting path exists,
+which converts the optimisation into a search: repeatedly find an
+augmenting path and flip it until none remains. A worked instance:
+workers $\set{w_{1}, w_{2}, w_{3}}$ and tasks $\set{t_{1}, t_{2},
+t_{3}}$ with $w_{1}$ able to do $t_{1}, t_{2}$; $w_{2}$ able to do
+$t_{1}$; $w_{3}$ able to do $t_{2}, t_{3}$. Greedily match $w_{1}
+t_{1}$ and $w_{3} t_{2}$, leaving $w_{2}$ and $t_{3}$ unmatched with
+no edge between them. The path $t_{3} \to w_{3} \to t_{2} \to w_{1}
+\to t_{1} \to w_{2}$ alternates unmatched-matched-unmatched and
+augments: the new matching is $w_{1} t_{2}, w_{2} t_{1}, w_{3}
+t_{3}$, a perfect matching the greedy start missed. The example is
+the warning of the failure section in miniature: a greedy matching
+is not a maximum matching, and only the augmenting-path search
+certifies optimality.
 
 \begin{archetype}[Optimisation]
 A graph algorithm is an optimisation procedure on a discrete
@@ -857,11 +1389,35 @@ Boolean expression $\varphi$ in $n$ variables, does there exist an
 assignment of values to the variables that makes $\varphi$
 evaluate to true?
 
-SAT is the canonical NP-complete problem (Cook's theorem, 1971).
-For an arbitrary expression in $n$ variables, the worst-case
-running time of every known algorithm is exponential in $n$. The
-problem is the prototype of computational intractability for the
-general case.
+SAT is the canonical NP-complete problem (Cook's theorem, 1971;
+\cite{text:sipser} gives the modern textbook proof). For an
+arbitrary expression in $n$ variables, the worst-case running time
+of every known algorithm is exponential in $n$. The problem is the
+prototype of computational intractability for the general case,
+and ``is this problem at least as hard as SAT'' is the engineer's
+working test for whether a combinatorial problem admits a
+polynomial-time algorithm at all.
+
+A small worked instance shows both the brute-force structure and the
+propagation a real solver exploits. The CNF formula
+\[
+\varphi = (x_{1} \lor x_{2}) \land (\lnot x_{1} \lor x_{3})
+\land (\lnot x_{2} \lor \lnot x_{3}) \land (\lnot x_{1} \lor
+\lnot x_{2})
+\]
+has $2^{3} = 8$ assignments. Brute force checks them in turn;
+\engterm{unit propagation}, the core of a DPLL/CDCL solver, reasons
+instead. Try $x_{1} = \text{true}$: clause two forces $x_{3} =
+\text{true}$, clause four forces $x_{2} = \text{false}$, and clause
+one is satisfied; clause three becomes $(\text{true} \lor \lnot
+x_{3})$, satisfied. The assignment $x_{1} = \text{true}, x_{2} =
+\text{false}, x_{3} = \text{true}$ satisfies $\varphi$, found
+without enumerating all eight rows. When a branch forces a
+contradiction, the solver backtracks and, in the CDCL refinement,
+\engterm{learns} a clause recording why, pruning the part of the
+search tree that would repeat the same conflict. The learned clauses
+are the engine that lets a solver beat the $2^{n}$ worst case on
+structured instances.
 
 The engineer's working level is recognition. SAT solvers (modern
 CDCL implementations: MiniSat, Glucose, Kissat, CaDiCaL) routinely
@@ -901,6 +1457,39 @@ tools (Espresso, ABC, the synthesis pipelines of Synopsys, Cadence,
 and Mentor) handle the multi-million-gate scale automatically. The
 engineer's working level is to recognise the problem and to read
 the synthesis tool's output, not to perform minimisation by hand.
+
+A small worked minimisation shows what the tool does. The function
+$f(a, b, c)$ true on the minterms $abc \in \set{001, 011, 110, 111}$
+(the worked function of exercise 17.6) has the four-term DNF $f =
+(\lnot a \land \lnot b \land c) \lor (\lnot a \land b \land c) \lor
+(a \land b \land \lnot c) \lor (a \land b \land c)$. Adjacent
+minterms differing in one variable combine: the first two share
+$\lnot a \land c$ and differ only in $b$, collapsing to $\lnot a
+\land c$; the last two share $a \land b$ and differ only in $c$,
+collapsing to $a \land b$. The minimised form $f = (\lnot a \land c)
+\lor (a \land b)$ uses two product terms instead of four, halving
+the gate count. The combining step is the Boolean identity $(X \land
+y) \lor (X \land \lnot y) = X$, applied wherever two minterms are
+adjacent; a Karnaugh map is just a layout that places adjacent
+minterms next to each other so the eye finds the combinations.
+
+\begin{mastery}
+The data structure behind a modern logic-synthesis and
+formal-verification tool is the \engterm{reduced ordered binary
+decision diagram} (ROBDD), a canonical DAG representation of a
+Boolean function. Fixing a variable order, the ROBDD merges
+isomorphic subfunctions and skips variables a subfunction does not
+depend on, so two functions are equal if and only if their ROBDDs
+are identical, a constant-time check once built. The catch is the
+variable order: a good order can give a polynomial-size diagram
+where a bad order gives an exponential one, and finding the optimal
+order is itself NP-hard. The ROBDD is the reason equivalence
+checking of two circuit netlists, a question that is co-NP-complete
+in general, runs in seconds on industrial designs, and it is a
+working instance of the section 17.8 pattern: the worst case is
+intractable, but the instances arising from real hardware structure
+are tractable with the right representation.
+\end{mastery}
 
 \section{Asymptotic notation}\pathtag{core}
 
@@ -1009,6 +1598,35 @@ without checking the model is at risk of a one-line objection from a
 reviewer.
 \end{mastery}
 
+\subsection{Amortised analysis}\pathtag{standard}
+
+A single operation can be expensive while a long sequence of
+operations is cheap on average, and \engterm{amortised analysis}
+charges each operation its average cost over the worst-case
+sequence, not its worst-case individual cost. The canonical example
+is the dynamic array (Python's \texttt{list}, C++'s
+\texttt{vector}). An append is usually $O(1)$, but when the array is
+full it doubles its capacity and copies all $k$ elements, an $O(k)$
+operation. Charging each append the worst case $O(k)$ would suggest
+$n$ appends cost $O(n^{2})$. The amortised analysis is sharper:
+across $n$ appends the total copying work is $1 + 2 + 4 + \cdots +
+n < 2n$ (a geometric series dominated by its last term), so the
+total is $O(n)$ and the amortised cost per append is $O(1)$. The
+geometric growth factor is what makes the amortised cost constant; a
+fixed-increment growth strategy (grow by a constant, not a factor)
+gives $O(n^{2})$ total and is the textbook performance bug.
+
+The union-find structure of Kruskal's algorithm (section 17.3) is
+the other working example: with path compression and union by rank,
+a sequence of $m$ operations on $n$ elements costs $O(m\, \alpha(n))$
+amortised, where the inverse Ackermann $\alpha(n)$ is at most $4$
+for every input an engineer will see. The per-operation worst case
+is larger; the amortised bound is the one that governs the
+algorithm's running time. The engineer who benchmarks only the worst
+single operation of a dynamic structure, rather than a representative
+sequence, will misjudge the structure's cost in exactly the
+direction the amortised analysis corrects.
+
 \section{Recurrences and generating functions}\pathtag{standard}
 
 Recurrences arise whenever a problem of size $n$ is reduced to one
@@ -1075,6 +1693,48 @@ Karatsuba's $T(n) = 3 T(n/2) + n$ is case 1, giving $\Theta(n^{\log_{2}
 3}) = \Theta(n^{1.585\ldots})$. Strassen's $T(n) = 7 T(n/2) +
 n^{2}$ is case 1, giving $\Theta(n^{\log_{2} 7})$.
 
+\subsection{Linear recurrences and the characteristic equation}
+
+A \engterm{linear homogeneous recurrence with constant
+coefficients}, $a_{n} = c_{1} a_{n-1} + \cdots + c_{d} a_{n-d}$,
+has a closed-form solution read off its \engterm{characteristic
+equation}
+\[
+x^{d} = c_{1} x^{d-1} + c_{2} x^{d-2} + \cdots + c_{d}.
+\]
+If the equation has $d$ distinct roots $r_{1}, \ldots, r_{d}$, the
+general solution is $a_{n} = \sum_{i} \alpha_{i} r_{i}^{n}$, with
+the constants $\alpha_{i}$ fixed by the initial conditions. A
+repeated root $r$ of multiplicity $\mu$ contributes the terms $r^{n},
+n r^{n}, \ldots, n^{\mu-1} r^{n}$.
+
+The method is the discrete analogue of solving a linear ODE by its
+characteristic polynomial (Chapter 7), and the parallel is exact:
+the recurrence is a difference equation, the ODE a differential one,
+and both linearise through an exponential ansatz. The Fibonacci
+recurrence $F_{n} = F_{n-1} + F_{n-2}$ has characteristic equation
+$x^{2} = x + 1$, roots $\phi = (1 + \sqrt{5})/2$ and $\psi = (1 -
+\sqrt{5})/2$, and so $F_{n} = \alpha \phi^{n} + \beta \psi^{n}$;
+$F_{0} = 0, F_{1} = 1$ fix $\alpha = 1/\sqrt{5}, \beta = -1/\sqrt{5}$,
+recovering the closed form below. Because $\abs{\psi} < 1$ the
+second term vanishes for large $n$, so $F_{n}$ grows like
+$\phi^{n}/\sqrt{5}$: the Fibonacci sequence is exponential with base
+the golden ratio $\phi \approx 1.618$, the same constant that bounds
+the Euclidean algorithm's step count in section 17.7.
+
+A worked second example: $a_{n} = 5 a_{n-1} - 6 a_{n-2}$ with $a_{0}
+= 0, a_{1} = 1$. The characteristic equation $x^{2} - 5x + 6 = 0$
+factors as $(x - 2)(x - 3) = 0$, roots $2$ and $3$. So $a_{n} =
+\alpha 2^{n} + \beta 3^{n}$; $a_{0} = \alpha + \beta = 0$ and $a_{1}
+= 2\alpha + 3\beta = 1$ give $\beta = 1, \alpha = -1$, hence $a_{n} =
+3^{n} - 2^{n}$. The dominant root $3$ sets the growth rate, the
+recurrence-solving habit the engineer carries: the largest-magnitude
+characteristic root is the asymptotic base. Table values for several
+combinatorial sequences (Fibonacci, Catalan, Bell, integer
+partitions) are tabulated in
+\repopath{volumes/02-form/ch17-discrete-mathematics/data/recurrence_growth.csv},
+where the divergent growth rates are visible by column.
+
 \subsection{Generating functions}
 
 A \engterm{generating function} encodes a sequence $(a_{0}, a_{1},
@@ -1104,6 +1764,26 @@ machinery exists in symbolic-computation packages (Mathematica's
 \texttt{RSolve}, SageMath, SymPy) that handle the routine cases
 without manual calculation.
 
+\begin{mastery}
+Generating functions count as well as solve. The
+\engterm{Catalan numbers} $C_{n}$ count the binary trees on $n$
+nodes, the balanced bracket sequences of length $2n$, the
+triangulations of a convex $(n+2)$-gon, and a dozen other structures
+that turn out to be the same count in disguise. Their generating
+function $C(x) = \sum_{n \geq 0} C_{n} x^{n}$ satisfies the
+quadratic $C(x) = 1 + x\, C(x)^{2}$, which comes directly from the
+recursive decomposition of a binary tree into a root, a left
+subtree, and a right subtree. Solving the quadratic and expanding
+gives the closed form $C_{n} = \frac{1}{n+1}\binom{2n}{n}$, which
+grows like $4^{n}/(n^{3/2}\sqrt{\pi})$. The growth rate is the
+engineer's warning that enumerating parse trees or bracketings is a
+combinatorial explosion (section 17.8). The systematic treatment of
+generating functions for both solving and counting is in
+\textcite{text:v2ch17-graham-knuth-patashnik}; the recursive
+structure of the count is the same optimal-substructure property
+that makes dynamic programming work, met again in Volume VIII.
+\end{mastery}
+
 \section{Number theory engineers actually use}\pathtag{standard}
 
 Number theory in this section means the small fragment that
@@ -1124,6 +1804,38 @@ non-zero element has a multiplicative inverse) if and only if $n$
 is prime. The structural difference is the source of the
 cancellation rule's failure for non-prime moduli, the example we
 gave in Chapter 1.
+
+Modular arithmetic is best pictured on a clock face (figure
+\ref{fig:vol02:ch17:modular-clock}). Counting forward by a fixed
+stride wraps around the modulus; whether the stride visits every
+residue or only a sub-cycle is decided by a gcd. A stride $a$
+coprime to the modulus $n$ generates the whole additive group
+$\Z/n\Z$, so repeated $+a$ cycles through all $n$ residues before
+returning to the start; a stride sharing a factor $g > 1$ with $n$
+traces a cycle of length only $n/g$.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-modular-clock.tex}
+
+The same fact decides the period of a linear-congruential
+pseudo-random number generator (the multiplier and increment must be
+chosen against the modulus, by the Hull-Dobell conditions, to reach
+full period) and the probe sequence of an open-addressing hash table
+(a probe stride coprime to the table size visits every slot, a
+stride sharing a factor wastes most of the table). The engineer who
+reads the gcd reads the period.
+
+Modular exponentiation, $a^{b} \bmod n$, is the workhorse operation
+of public-key cryptography, and the naive ``multiply $b$ times'' is
+infeasible for cryptographic $b$. \engterm{Fast exponentiation by
+squaring} computes $a^{b} \bmod n$ in $O(\log b)$ multiplications by
+reading the binary expansion of $b$: square the running base at each
+bit, multiply into the accumulator when the bit is set. A $2048$-bit
+exponent costs about $3000$ modular multiplications rather than
+$2^{2048}$, the difference between a millisecond and an eternity.
+The reference implementation in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/number_theory.py}
+uses the standard-library \texttt{pow(a, b, n)}, which applies this
+method.
 
 \subsection{Greatest common divisor and the Euclidean algorithm}
 
@@ -1159,7 +1871,39 @@ $\gcd(a, b)$, integers $x, y$ such that $ax + by = \gcd(a, b)$.
 B\'{e}zout's identity guarantees the existence of such $x, y$. The
 extended algorithm is the standard tool for computing modular
 inverses: when $\gcd(a, n) = 1$, $ax + ny = 1$ implies $a x \equiv 1
-\pmod{n}$, that is, $x \equiv a^{-1} \pmod{n}$.
+\pmod{n}$, that is, $x \equiv a^{-1} \pmod{n}$. Running the extended
+algorithm on $a = 7$, $n = 40$ returns $7 \cdot 23 - 40 \cdot 4 = 1$,
+so $7^{-1} \equiv 23 \pmod{40}$, the inverse the RSA key generation
+below requires.
+
+\subsection{The Chinese remainder theorem}
+
+A system of congruences with pairwise-coprime moduli has a unique
+solution modulo the product, the \engterm{Chinese remainder theorem}
+(CRT), recorded by Sun-tzu in the third century.
+
+\begin{principle}[Chinese remainder theorem]
+If $n_{1}, \ldots, n_{k}$ are pairwise coprime with product $N =
+\prod n_{i}$, then the system $x \equiv r_{i} \pmod{n_{i}}$ has a
+unique solution $x$ modulo $N$, constructed as
+\[
+x \equiv \sum_{i=1}^{k} r_{i}\, N_{i}\, M_{i} \pmod{N},
+\qquad N_{i} = N / n_{i},
+\quad M_{i} \equiv N_{i}^{-1} \pmod{n_{i}}.
+\]
+\end{principle}
+
+Sun-tzu's original problem asks for the number that leaves remainder
+$2$ on division by $3$, remainder $3$ on division by $5$, and
+remainder $2$ on division by $7$. With $N = 105$ the construction
+gives $x \equiv 23 \pmod{105}$, the value the reference code
+reproduces. The CRT is the engineer's tool for splitting a
+computation modulo a large composite into independent computations
+modulo its prime-power factors, run in parallel and recombined; RSA
+implementations decrypt roughly four times faster by working modulo
+$p$ and $q$ separately and recombining by CRT, and residue number
+systems exploit the same decomposition for fast parallel arithmetic
+in signal processing.
 
 \subsection{Primes}
 
@@ -1213,6 +1957,20 @@ private key is $d$. Encryption is $c = m^{e} \bmod n$; decryption
 is $m = c^{d} \bmod n$. Correctness rests on Fermat's little
 theorem and its Euler generalisation.
 
+A toy instance, small enough to check by hand, exposes the
+machinery. Take $p = 61$, $q = 53$, so $n = 3233$ and $\varphi(n) =
+60 \cdot 52 = 3120$. Choose $e = 17$ (coprime to $3120$); the
+extended Euclidean algorithm gives $d \equiv 17^{-1} \equiv 2753
+\pmod{3120}$. To encrypt the message $m = 65$, compute $c = 65^{17}
+\bmod 3233 = 2790$ by fast exponentiation. To decrypt, compute
+$2790^{2753} \bmod 3233 = 65$, recovering the message. The reference
+code in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/number_theory.py}
+runs this round trip and asserts the recovery. The toy uses
+two-digit primes; a deployed system uses primes of a thousand bits
+or more, where factoring $n$ to recover $p, q$ (and hence $d$) is
+the infeasible computation the security rests on.
+
 \textbf{Diffie-Hellman}. Two parties agree on a prime $p$ and a
 generator $g$ of the multiplicative group $(\Z/p\Z)^{\ast}$. Each
 party picks a private exponent and exchanges $g^{a} \bmod p$ and
@@ -1238,6 +1996,85 @@ scratch: the field has produced enough subtle disasters that the
 discipline is to use a vetted library implementation and to keep
 the cryptographic boundary thin. The reader is referred to Volume
 VII for the depth treatment.
+
+\subsection{Hashing and checksums}
+
+Most engineers meet number theory not through cryptography but
+through the non-cryptographic checks that catch transcription and
+transmission errors. These are modular-arithmetic constructions
+whose modulus is chosen to detect a characterised class of error,
+and reading them as folklore rather than as designed devices is the
+common mistake.
+
+A \engterm{hash function} for a hash table maps keys to bucket
+indices, ideally spreading $n$ keys evenly across $k$ buckets. The
+simplest is $h(\text{key}) = \text{key} \bmod k$ for an integer key.
+The choice of $k$ matters: a prime $k$ avoids the clustering that
+occurs when keys share a factor with a composite $k$, because the
+residues of structured keys (multiples of a stride) collapse onto
+few buckets exactly when that stride shares a factor with $k$, the
+gcd phenomenon of the modular clock. The pigeonhole principle
+(section 17.1) bounds the worst case: $n$ keys in $k$ buckets force
+some bucket to hold at least $\lceil n/k \rceil$ keys, the
+collision-chain length an engineer sizes the table to keep small.
+
+A \engterm{check digit} appends a redundant symbol computed from the
+payload so that common errors fail the check. The \engterm{Luhn
+algorithm} (mod $10$), used on payment-card and IMEI numbers,
+doubles alternate digits and sums; a valid number has digit sum
+$\equiv 0 \pmod{10}$. It catches every single-digit error and
+almost all adjacent-transposition errors, the two dominant
+hand-entry mistakes. The \engterm{ISBN-10} check uses a weighted sum
+modulo $11$, and the prime modulus $11$ lets it catch \emph{every}
+single-digit error and \emph{every} transposition, a strictly
+stronger guarantee than Luhn's mod $10$, at the cost of an
+occasional check symbol $X$ for the residue $10$. The choice of
+modulus, composite $10$ versus prime $11$, is a deliberate
+error-detection trade, not an arbitrary convention.
+
+A \engterm{cyclic redundancy check} (CRC) generalises the idea to
+bit strings: the message is treated as a polynomial over $\mathrm{GF}(2)$
+and the CRC is its remainder modulo a fixed generator polynomial. A
+well-chosen generator detects all single-bit errors, all
+double-bit errors, all odd numbers of bit errors, and all burst
+errors shorter than the generator's degree, which is why CRC-32
+guards Ethernet frames and stored files. The reference code in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/checksums.py}
+implements Luhn, ISBN-10, and an $8$-bit CRC, and shows each
+catching a single-character corruption. The recognition-level
+lesson: a checksum that ``mostly works'' is one whose error class
+was never characterised, and the modulus is where the
+characterisation lives.
+
+\begin{estimation}
+\textbf{Question.} A system assigns each of $N$ items a random
+$64$-bit hash and treats the hash as a unique identifier. Estimate,
+before reading on, how many items can be assigned before the
+probability of at least one collision (two items sharing a hash)
+reaches roughly one half.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+This is the birthday problem with $k = 2^{64}$ ``days.'' The
+collision probability reaches one half not at $N \approx k$ but at
+$N \approx \sqrt{k}$, the birthday-paradox scaling. The pigeonhole
+principle guarantees a collision only at $N = k + 1 \approx 1.8
+\times 10^{19}$; the \emph{probabilistic} collision arrives far
+earlier, at $N \approx 1.2 \sqrt{k} = 1.2 \cdot 2^{32} \approx 5
+\times 10^{9}$. The estimate matters: an engineer who reasons from
+the pigeonhole bound concludes that $64$-bit identifiers are safe up
+to $10^{19}$ items, off by ten orders of magnitude. At a few billion
+items, $64$-bit random identifiers start colliding with even
+probability, which is why distributed systems that mint billions of
+identifiers reach for $128$-bit UUIDs (collision-even at $N \approx
+2^{64} \approx 10^{19}$) rather than $64$-bit ones. The square-root
+law is the engineer's working correction to the naive pigeonhole
+intuition, and it is the same law that sets the difficulty of a
+collision attack on a hash function: a $256$-bit digest gives $128$
+bits of collision resistance, not $256$.
+\end{estimation}
 
 \section{Failure: combinatorial explosion in design spaces}\pathtag{core}
 

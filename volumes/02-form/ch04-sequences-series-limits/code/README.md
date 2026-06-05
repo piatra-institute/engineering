@@ -16,6 +16,8 @@ uv run code/<script>.py
 | `newton_sqrt2.py` | Newton's iteration for $\sqrt{2}$ from $a_0 = 1$, tabulating the residual at each step. | Simulation exercise on Newton's iteration. |
 | `convergence_comparator.py` | Side-by-side iteration-count tables for fixed-point (linear), Newton (quadratic), and secant ($\phi$-order) iterations to a fixed tolerance. | Second estimation block; diagnostic exercise on convergence-rate identification. |
 | `series_test_picker.py` | Walks the convergence-test decision tree of figure `fig:vol02:ch04:test-decision-tree` on a small catalog of series and prints the test that settles each. | Pedagogical companion to section 4.3 and the test decision-tree figure. |
+| `fixed_point_cobweb.py` | Runs the fixed-point iteration $a_{n+1}=\cos a_n$ toward the Dottie number, printing the signed error and the empirical contraction ratio (settling to $-0.674$). | Section 4.1 worked fixed-point example; cobweb figure `fig:vol02:ch04:cobweb`. |
+| `cancellation_exp.py` | Compares direct Maclaurin summation of $e^{-x}$ (catastrophic cancellation) against the stable reciprocal-of-$e^{+x}$ route, reporting relative error vs `math.exp`. | Section 4.6 catastrophic-cancellation failure subsection. |
 
 ## Conventions
 

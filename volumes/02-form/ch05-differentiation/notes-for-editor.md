@@ -1,6 +1,53 @@
 # Notes for editor: Vol II Ch 5, Differentiation
 
-Drafted 2026-04-29.
+Drafted 2026-04-29. Tier-3 deepening pass 2026-06-05.
+
+## Tier-3 deepening pass (2026-06-05)
+
+Raised the chapter from ~50 pp toward the ~110 pp dossier target by
+deepening (no new exercises; count stays at 40, matching chapmeta).
+Added:
+
+- §5.1: subsections on differentiability-vs-continuity (with the
+  $C^{k}$ hierarchy and a Weierstrass-function remark) and on the
+  derivative-as-sensitivity (pendulum-period worked example).
+- §5.2: subsections on related rates (sliding ladder, draining
+  cone, inflating balloon), inverse-function differentiation
+  (deriving $\arcsin'$ and $\arctan'$), and parametric
+  differentiation (projectile path). Closed expansion lane 5.
+- §5.3: Leibniz rule for repeated products with a worked
+  $x^{2}e^{x}$ $n$-th derivative; mastery box on smooth-vs-analytic
+  ($e^{-1/x^{2}}$).
+- §5.4: subsections on the second-order Taylor correction,
+  differentials and working notation, and linearisation about an
+  operating point (diode small-signal). Newton subsection expanded
+  with the explicit error-squaring derivation and a divergence
+  treatment. Closed expansion lanes 1 and 3 (partial).
+- §5.5: worked exponential-form L'Hopital ($x^{x}$,
+  continuous-compounding), and a several-input sensitivity-
+  propagation subsection deriving the relative-form GUM result with
+  a $P=V^{2}/R$ worked example.
+- §5.6: three new worked optimisations (economic order quantity,
+  Snell's law from least time) and a second estimation block on EOQ
+  with a flat-minimum sensitivity argument.
+- §5.7: mastery box on the complex-step derivative as the escape
+  from the bias-variance V (closes part of expansion lane 2).
+- §5.9: transport archetype box (gradient as flux density) with
+  Fourier's and Fick's law worked examples, plus a
+  beam-deflection structural subsection (four derivatives =
+  slope/moment/shear/load). Closed expansion lane 4.
+- Three calculation exercise solutions promoted from sketch to full
+  worked solutions with checks.
+
+New figures (6, all standalone-compiled clean): fig-newton-iteration,
+fig-newton-divergence, fig-concavity, fig-mean-value,
+fig-nondifferentiable, fig-related-rates.
+New code (3, all run clean on stdlib): related_rates.py,
+newton_basins.py, complex_step.py.
+
+No new citations required; both existing keys
+(`acc:gao-patriot-1992`, `text:v2ch05-savitzky-golay-1964`) confirmed
+present in the bib. No new registry entries required.
 
 ## Status
 

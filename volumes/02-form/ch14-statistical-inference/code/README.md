@@ -30,6 +30,32 @@ close of section 14.6 requires.
 uv run kfold_ridge.py ../data/flexural-strength.csv
 ```
 
+## `regression_diagnostics.py`
+
+Closed-form ordinary-least-squares fit on `tensile-yield.csv`, the
+section 14.5 worked example. Reports the slope, intercept, residual
+standard deviation, the slope's 95% confidence interval, R^2, and
+the residuals against fitted values. Hand-rolls the normal
+equations and carries a short Student-t lookup table so the script
+has no dependencies.
+
+```
+uv run regression_diagnostics.py ../data/tensile-yield.csv
+```
+
+## `classical_tests.py`
+
+The four classical tests of section 14.2 worked from primitives:
+the one-sample t-test (machined shafts), the pooled-variance
+two-sample t-test (two ceramic batches), the Pearson chi-square
+goodness-of-fit (a die), and the one-way ANOVA F statistic (three
+catalysts). The script prints each statistic against its tabulated
+critical value; the numbers match the prose exactly.
+
+```
+uv run classical_tests.py
+```
+
 ## Conventions
 
 - The random-number generator is seeded explicitly in every script.

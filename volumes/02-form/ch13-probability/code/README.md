@@ -15,6 +15,7 @@ PEP 723 inline-script metadata so it can be run directly with
 | `bayes_table.py` | Computes the posterior probability for a diagnostic test with given sensitivity, specificity, and prior, displaying the full $2 \times 2$ contingency table. | The Bayes section worked example, the design and judgement exercises on screening tests. |
 | `correlated_bernoulli.py` | Simulates correlated Bernoulli sums via a hidden common-factor (Gaussian copula) model and compares the empirical variance to the independence prediction. | Simulation exercise on correlation effects in a sum of Bernoullis. |
 | `union_bound_check.py` | Numerical check that the union bound is loose by a known factor for independent events and tight under perfect positive dependence; tabulates the gap as a function of $p$ and $n$. | Estimation block, judgement exercise on independence-vs-union-bound. |
+| `error_propagation.py` | Propagates input uncertainty through $P = I^2 R$ by both the first-order delta method and Monte Carlo, showing where the linearisation holds and where it parts company with the simulation. | The section 13.3 worked example on error propagation. |
 
 ## Running
 

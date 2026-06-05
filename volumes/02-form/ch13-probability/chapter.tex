@@ -104,8 +104,35 @@ manipulation gives the rules an engineer uses every day:
 \end{itemize}
 
 Each of the six is a one-line derivation from the axioms; the
-exercises ask the reader to do them. The union bound deserves a
-flag. It is loose, often by orders of magnitude when the events
+exercises ask the reader to do them.
+
+\begin{mastery}
+\textbf{Inclusion-exclusion for $n$ events.} The two-event formula
+generalises. For events $A_{1}, \ldots, A_{n}$,
+\[
+\Pr\!\left(\bigcup_{i=1}^{n} A_{i}\right) =
+\sum_{i} \Pr(A_{i})
+- \sum_{i < j} \Pr(A_{i} \cap A_{j})
++ \sum_{i < j < k} \Pr(A_{i} \cap A_{j} \cap A_{k})
+- \cdots
++ (-1)^{n+1} \Pr\!\left(\bigcap_{i=1}^{n} A_{i}\right).
+\]
+The alternating partial sums bracket the truth: stopping after the
+positive single-event terms gives the union bound (an upper bound),
+stopping after the pairwise subtraction gives a lower bound, and so
+on. These are the \engterm{Bonferroni inequalities}. They let an
+engineer bound a joint probability from above and below using only
+the low-order joint terms, which are the ones a model can usually
+supply. A worked instance: the probability that at least one of
+three independent subsystems with failure probabilities $0.02$,
+$0.03$, $0.05$ fails is, exactly,
+$1 - (0.98)(0.97)(0.95) = 1 - 0.90307 = 0.09693$; the union bound
+gives $0.10$, and the two-term Bonferroni lower bound gives
+$0.10 - (0.0006 + 0.0010 + 0.0015) = 0.0969$, already correct to
+three figures because the pairwise terms are tiny.
+\end{mastery}
+
+The union bound deserves a flag. It is loose, often by orders of magnitude when the events
 overlap heavily, and it is the engineer's first reach when a
 correlated joint event is being upper-bounded by the sum of its
 marginals. A safety analysis that uses the union bound on highly
@@ -135,6 +162,67 @@ the counting exercises and for the contrast between sampling with
 and without replacement.
 
 \input{volumes/02-form/ch13-probability/figures/fig-urn-counting.tex}
+
+\paragraph{Worked example: the birthday coincidence.}
+A team of $23$ engineers shares a project room. What is the
+probability that two of them share a birthday? The estimate that
+most people carry into this problem is wrong by a wide margin, and
+the discrepancy is instructive. With $365$ possible birthdays and
+$23$ people, intuition reaches for a ratio like $23/365 \approx
+0.063$ and reports a small chance. The correct calculation counts
+the complementary event, all birthdays distinct. The first person
+fixes a birthday; the second avoids it with probability $364/365$;
+the third avoids the first two with probability $363/365$; and so
+on. The probability that all $23$ are distinct is
+\[
+\Pr(\text{all distinct}) = \prod_{k=0}^{22} \frac{365 - k}{365}
+= \frac{365!}{(365 - 23)! \, 365^{23}} \approx 0.4927,
+\]
+so the probability of at least one shared birthday is
+$1 - 0.4927 = 0.5073$, just above one half. The number of
+\emph{pairs} among $23$ people is $\binom{23}{2} = 253$, and each
+pair coincides with probability $1/365$; the expected number of
+coincident pairs is $253/365 \approx 0.69$, which by the Poisson
+approximation gives $\Pr(\text{at least one}) \approx 1 - e^{-0.69}
+\approx 0.498$, agreeing with the exact count to two figures. The
+engineering content is not the party trick. Hash-collision
+analysis, the load on a hash table, and the probability that two
+randomly generated identifiers collide in a distributed system all
+follow the same birthday arithmetic: a collision becomes likely
+once the number of items reaches the square root of the number of
+slots, not a fixed fraction of it. A $128$-bit identifier space
+reaches a $50\,\%$ collision probability at about $2^{64}$ issued
+identifiers, which is the design number a systems engineer needs and
+the linear intuition would miss by nineteen orders of magnitude.
+
+\paragraph{Worked example: sampling with and without replacement.}
+The urn of Figure~\ref{fig:vol02:ch13:urn-counting} holds $N = 50$
+components, of which $K = 5$ are defective. An inspector draws
+$n = 10$ without replacement. The number of defectives in the draw
+follows the \engterm{hypergeometric distribution},
+\[
+\Pr(X = k) = \frac{\binom{K}{k}\binom{N - K}{n - k}}
+{\binom{N}{n}},
+\qquad k = 0, 1, \ldots, \min(n, K).
+\]
+The probability of drawing no defective is
+$\binom{5}{0}\binom{45}{10}/\binom{50}{10} =
+\binom{45}{10}/\binom{50}{10}$. Evaluating the ratio,
+$\binom{45}{10}/\binom{50}{10} = \frac{45!\,40!}{35!\,50!} =
+\frac{40 \cdot 39 \cdot 38 \cdot 37 \cdot 36}
+{50 \cdot 49 \cdot 48 \cdot 47 \cdot 46} \approx 0.311$. If instead
+the inspector samples \emph{with} replacement, each draw is an
+independent $\mathrm{Bern}(5/50 = 0.1)$ trial and the count is
+$\mathrm{Bin}(10, 0.1)$, giving $\Pr(X = 0) = 0.9^{10} \approx
+0.349$. The two answers differ by about four percentage points at
+this sample fraction $n/N = 0.2$. The binomial overstates the
+chance of a clean sample because, without replacement, each
+defective drawn raises the defective fraction among the remainder.
+The hypergeometric collapses to the binomial as $N \to \infty$ with
+$K/N$ fixed; the finite-population correction factor on the variance
+is $(N - n)/(N - 1)$, which an auditor sampling a sizeable fraction
+of a finite lot must apply and a textbook example on an infinite
+population may ignore.
 
 \begin{archetype}[Uncertainty, formalised]
 Volume I Chapter 4 carried uncertainty as a single number $u(x)$
@@ -209,6 +297,25 @@ $\Pr(A_{1} \cap A_{2} \cap A_{3}) \neq \Pr(A_{1})\Pr(A_{2})\Pr(A_{3})$
 \cite[ch.~3]{text:ross-probability}. The exercises ask the reader to
 construct a counterexample on a fair-coin sample space.
 
+\paragraph{Worked example: conditioning changes the odds.} Two
+machines, $M_{1}$ and $M_{2}$, share a maintenance crew. On any
+day, $M_{1}$ is down with probability $0.1$ and $M_{2}$ is down with
+probability $0.1$. If the two were independent, both would be down
+on $0.1 \cdot 0.1 = 0.01$ of days. Suppose instead a shared power
+event, occurring on $0.05$ of days, takes both down at once, and
+absent that event each machine is independently down on $0.0526$ of
+days (so the marginals still come to $0.1$). Then
+$\Pr(\text{both down}) = 0.05 + (1 - 0.05)(0.0526)(0.0526)
+\approx 0.05 + 0.0026 = 0.0526$, more than five times the
+independence figure. The conditional probability that $M_{2}$ is
+down given $M_{1}$ is down is $\Pr(\text{both})/\Pr(M_{1}\text{
+down}) = 0.0526/0.1 = 0.526$, against the marginal $0.1$:
+observing one machine down raises the probability the other is down
+by a factor of five. The shared crew and shared power are the common
+cause that breaks independence, and the worked numbers show how
+badly the independence figure understates the joint downtime that a
+spares-and-staffing plan must cover.
+
 \subsection{The chain rule and the law of total probability}
 
 The definition rearranged is the \engterm{multiplication rule},
@@ -234,6 +341,32 @@ The total probability is a weighted average of the conditionals,
 with the weights given by the prior probability of each cell of the
 partition. In words: every uncertain outcome decomposes by cases.
 
+\paragraph{Worked example: defects from three production lines.}
+A plant runs three lines. Line $A$ produces $50\,\%$ of the
+output at a defect rate of $1\,\%$; line $B$ produces $30\,\%$ at
+$3\,\%$; line $C$ produces $20\,\%$ at $5\,\%$. A unit pulled at
+random from the combined output is defective. The marginal defect
+rate, by total probability, is
+\[
+\Pr(D) = 0.50 \cdot 0.01 + 0.30 \cdot 0.03 + 0.20 \cdot 0.05
+= 0.005 + 0.009 + 0.010 = 0.024,
+\]
+so $2.4\,\%$ of units shipped are defective. The follow-up question
+is the one Bayes answers: given that a returned unit is defective,
+which line most likely made it? The posteriors are
+\[
+\Pr(A \mid D) = \frac{0.005}{0.024} \approx 0.208, \quad
+\Pr(B \mid D) = \frac{0.009}{0.024} = 0.375, \quad
+\Pr(C \mid D) = \frac{0.010}{0.024} \approx 0.417.
+\]
+Line $C$, although it makes the smallest share of output, is the
+most likely source of any given defect, because its high defect
+rate outweighs its low volume. An engineer who allocates
+corrective-action effort by output share would target line $A$
+first and waste the budget; the posterior says start with line $C$.
+The same arithmetic underlies spam filtering, fault localisation,
+and supplier-quality scoring.
+
 \subsection{Bayes' rule}
 
 The \engterm{Bayes rule} follows from the multiplication rule
@@ -249,6 +382,44 @@ probability. The output is the \engterm{posterior} probability of
 $B_{i}$ after observing $A$. Volume I Chapter 8 §8.5 gave the
 worked diagnostic-test calculation; the reader who has not absorbed
 that example should revisit it now.
+
+\paragraph{Worked example: the diagnostic test and its base rate.}
+A non-destructive inspection flags microcracks in turbine blades.
+The method has \engterm{sensitivity} $\Pr(+ \mid \text{cracked}) =
+0.98$ and \engterm{specificity} $\Pr(- \mid \text{sound}) = 0.95$,
+so its false-positive rate is $0.05$. In the fleet under study, the
+true prevalence of a cracked blade is $\Pr(\text{cracked}) = 0.004$,
+four in a thousand. A blade flags positive. The probability it is
+actually cracked is
+\[
+\Pr(\text{cracked} \mid +)
+= \frac{0.98 \cdot 0.004}
+{0.98 \cdot 0.004 + 0.05 \cdot 0.996}
+= \frac{0.00392}{0.00392 + 0.0498}
+= \frac{0.00392}{0.05372} \approx 0.073.
+\]
+A test that is right $98\,\%$ of the time on cracked blades and
+$95\,\%$ of the time on sound ones yields a positive result that is
+correct only about $7\,\%$ of the time. The reason sits in the
+denominator: the sound population is $249$ times larger than the
+cracked population, so even a small false-positive rate generates
+far more false alarms than the rare true cracks generate true
+alarms. Of every $10\,000$ blades inspected, $40$ are cracked and
+about $39$ of those flag; $9960$ are sound and about $498$ of those
+flag falsely; the positive count is $537$, of which $39$, or
+$7.3\,\%$, are real. Figure~\ref{fig:vol02:ch13:bayes-tree} renders
+the same calculation as a tree, with the four leaf counts that
+populate the contingency table. The engineering response is not to
+abandon the test but to read the posterior correctly: a single
+positive on a rare defect warrants a second, mechanism-diverse test
+(the sequential design of the exercises), never an immediate
+scrap-or-replace decision. Raising the prevalence by pre-screening
+on age or duty cycle, so the test is applied to a population where
+$\Pr(\text{cracked})$ is $0.05$ rather than $0.004$, lifts the
+post-test probability from $7\,\%$ to about $51\,\%$ with no change
+to the instrument.
+
+\input{volumes/02-form/ch13-probability/figures/fig-bayes-tree.tex}
 
 \subsection{The base-rate fallacy}
 
@@ -275,7 +446,48 @@ combination of the reader's choice.
 
 \input{volumes/02-form/ch13-probability/figures/fig-bayes-schematic.tex}
 
-\subsection{Conditional independence}
+\begin{mastery}
+\textbf{Bayes in odds form.} Dividing the posterior for a
+hypothesis $H$ by the posterior for its complement removes the
+denominator and exposes the structure:
+\[
+\underbrace{\frac{\Pr(H \mid E)}{\Pr(H^{c} \mid E)}}
+_{\text{posterior odds}}
+=
+\underbrace{\frac{\Pr(E \mid H)}{\Pr(E \mid H^{c})}}
+_{\text{likelihood ratio}}
+\times
+\underbrace{\frac{\Pr(H)}{\Pr(H^{c})}}
+_{\text{prior odds}}.
+\]
+Each independent piece of evidence multiplies the odds by its own
+likelihood ratio, so on the log scale evidence adds. For the
+turbine-blade test, the likelihood ratio of a positive is
+$0.98/0.05 = 19.6$ and the prior odds are
+$0.004/0.996 \approx 0.00402$, giving posterior odds
+$19.6 \times 0.00402 \approx 0.0788$, a posterior probability of
+$0.0788/(1 + 0.0788) \approx 0.073$, matching the direct
+calculation. A second independent positive multiplies the odds by
+$19.6$ again, reaching $1.54$, a posterior of about $0.61$. The
+odds form is the natural home for sequential updating and the
+cleanest way to see that one strong test rarely overturns a very
+small prior, while two independent moderate tests can.
+\end{mastery}
+
+\paragraph{The prosecutor's fallacy.} The base-rate error has a
+twin that misreads the same two conditionals in the legal and
+forensic setting. A forensic match has a random-match probability
+$\Pr(\text{match} \mid \text{innocent}) = 10^{-6}$. The prosecutor
+states that the probability the defendant is innocent is therefore
+$10^{-6}$, conflating $\Pr(\text{match} \mid \text{innocent})$ with
+$\Pr(\text{innocent} \mid \text{match})$. In a city of $10^{6}$
+plausible suspects, the expected number of innocent matches is
+about $1$, so a lone match leaves the posterior probability of guilt
+near $1/2$, not $1 - 10^{-6}$. The engineering analogue arises
+whenever a rare diagnostic signature is read as near-certain
+identification of a fault across a large population of components.
+The discipline is identical to the base-rate discipline: write the
+two conditionals separately and let Bayes connect them.
 
 Events $A$ and $B$ are \engterm{conditionally independent given
 $C$} when $\Pr(A \cap B \mid C) = \Pr(A \mid C) \Pr(B \mid C)$.
@@ -373,6 +585,28 @@ Linearity holds without any independence assumption. It is the most
 useful single fact in probability theory and the cleanest tool the
 engineer has for computing means of complicated sums.
 
+\paragraph{Worked example: expected coupons.}
+A process delivers, on each cycle, one of $n$ distinct calibration
+constants uniformly at random. How many cycles, on average, until
+all $n$ have been seen at least once? Direct enumeration of the
+waiting time is hard; linearity makes it easy. Let $T_{i}$ be the
+number of additional cycles to collect a new constant once $i - 1$
+distinct ones are already in hand. The chance a given cycle is new
+is $(n - i + 1)/n$, so $T_{i} \sim \mathrm{Geom}((n - i + 1)/n)$
+with mean $n/(n - i + 1)$. The total wait is $T = \sum_{i=1}^{n}
+T_{i}$, and by linearity
+\[
+\E[T] = \sum_{i=1}^{n} \frac{n}{n - i + 1}
+= n \sum_{j=1}^{n} \frac{1}{j} = n H_{n}
+\approx n(\ln n + 0.577),
+\]
+where $H_{n}$ is the $n$th harmonic number. For $n = 50$ constants,
+$\E[T] \approx 50(\ln 50 + 0.577) \approx 50 \cdot 4.49 \approx 225$
+cycles. The last few constants dominate the wait: collecting the
+final one alone takes $n$ cycles on average. The coupon-collector
+result sets expectations for coverage testing, cache-warming, and
+any sampling scheme that must touch every category of a finite set.
+
 \subsection{Variance and standard deviation}
 
 The \engterm{variance} of a random variable with finite mean
@@ -391,6 +625,26 @@ Variance is not linear. For constants $a, b$,
 The constant $b$ shifts the distribution without changing its
 spread. The constant $a$ scales the spread by $|a|$, which appears
 squared in the variance because variance is in squared units.
+
+\paragraph{Worked example: variance of a discrete random variable.}
+A shipping container holds parts whose count of surface blemishes
+$X$ takes values $0, 1, 2, 3$ with probabilities $0.5, 0.3, 0.15,
+0.05$. The mean is
+\[
+\E[X] = 0(0.5) + 1(0.3) + 2(0.15) + 3(0.05) = 0.75.
+\]
+The second moment is
+\[
+\E[X^{2}] = 0(0.5) + 1(0.3) + 4(0.15) + 9(0.05) = 1.35,
+\]
+so the variance is $\Var(X) = 1.35 - 0.75^{2} = 1.35 - 0.5625 =
+0.7875$ and the standard deviation is $\sigma_{X} \approx 0.887$
+blemishes. A specification that allows at most one blemish accepts
+the event $\{X \leq 1\}$ with probability $0.8$; the engineer who
+reports only the mean of $0.75$ hides that one container in five
+fails the limit. The mean and the variance together, or better the
+full mass function, carry the acceptance information that the mean
+alone does not.
 
 For two random variables, the variance of a sum is
 \[
@@ -422,6 +676,28 @@ the $q$-quantile of $g(X)$ is $g(x_{q})$. The mean is not preserved
 under monotone transformations, which is one reason quantiles are
 the right tool for skewed engineering data.
 
+\begin{mastery}
+\textbf{Moment generating functions.} The \engterm{moment
+generating function} (MGF) of $X$ is $M_{X}(t) = \E[e^{tX}]$ where
+the expectation exists for $t$ in a neighbourhood of zero.
+Differentiating and setting $t = 0$ recovers the moments:
+$M_{X}'(0) = \E[X]$, $M_{X}''(0) = \E[X^{2}]$, and in general
+$M_{X}^{(k)}(0) = \E[X^{k}]$. The MGF of a sum of independent
+variables is the product of their MGFs, which turns convolution
+into multiplication and is the cleanest route to the distribution
+of a sum. For $X \sim \mathcal{N}(\mu, \sigma^{2})$,
+$M_{X}(t) = \exp(\mu t + \tfrac{1}{2}\sigma^{2} t^{2})$; the product
+of two such MGFs is again of this form with $\mu_{1} + \mu_{2}$ and
+$\sigma_{1}^{2} + \sigma_{2}^{2}$, which proves that independent
+Gaussians sum to a Gaussian. For $X \sim \mathrm{Pois}(\lambda)$,
+$M_{X}(t) = \exp(\lambda(e^{t} - 1))$, and the product form shows
+that independent Poissons sum to a Poisson with added rates. When
+the MGF fails to exist (heavy-tailed laws), the
+\engterm{characteristic function} $\E[e^{itX}]$, which always
+exists, replaces it; it is the tool behind the proof of the central
+limit theorem.
+\end{mastery}
+
 \subsection{Markov and Chebyshev inequalities}
 
 The \engterm{Markov inequality} says that for a non-negative random
@@ -447,6 +723,81 @@ Gaussian the true two-$\sigma$ probability is about $0.046$, against
 the Chebyshev bound of $0.25$. A working engineer reaches for
 Chebyshev when distributional assumptions are weak and for the
 relevant tabulated tail when the distribution is named.
+
+\subsection{Functions of random variables and error propagation}
+
+A measured quantity feeds a calculation, and the uncertainty in the
+input becomes uncertainty in the output. The probabilistic question
+is the distribution of $Y = g(X)$ given the distribution of $X$.
+For a monotone, differentiable $g$ with inverse $h = g^{-1}$, the
+density transforms by the \engterm{change-of-variables} formula,
+\[
+f_{Y}(y) = f_{X}(h(y)) \left| h'(y) \right|.
+\]
+The Jacobian factor $|h'(y)|$ accounts for the way $g$ stretches or
+compresses the probability mass. As a worked instance, if
+$X \sim \mathrm{Unif}(0, 1)$ and $Y = -\ln X / \lambda$, then
+$h(y) = e^{-\lambda y}$, $|h'(y)| = \lambda e^{-\lambda y}$, and
+$f_{Y}(y) = \lambda e^{-\lambda y}$ for $y \geq 0$: a uniform fed
+through a negative logarithm produces an exponential. This is the
+inverse-transform sampling identity that every random-number
+generator relies on, and the project's chain simulation uses it
+implicitly.
+
+When the full distribution of $Y$ is not needed, the first-order
+\engterm{delta method} propagates mean and variance through a
+smooth $g$. Expanding $g$ to first order around $\mu_{X} = \E[X]$,
+\[
+\E[g(X)] \approx g(\mu_{X}), \qquad
+\Var(g(X)) \approx \left[ g'(\mu_{X}) \right]^{2} \Var(X).
+\]
+For a function of several independent inputs $Y = g(X_{1}, \ldots,
+X_{m})$, the variances add through the partial derivatives,
+\[
+\Var(Y) \approx \sum_{i=1}^{m}
+\left( \frac{\partial g}{\partial x_{i}} \right)^{2}
+\Var(X_{i}),
+\]
+evaluated at the means. This is the \engterm{Gaussian error
+propagation} formula, the probabilistic statement of the
+combined-standard-uncertainty rule that Volume I Chapter 4
+introduced for measurement uncertainty. When the inputs are
+correlated, the cross terms $2 \sum_{i < j} (\partial g /
+\partial x_{i})(\partial g / \partial x_{j}) \Cov(X_{i}, X_{j})$
+return, and ignoring them repeats the independence error that
+section 13.8 names.
+Figure~\ref{fig:vol02:ch13:error-propagation} shows the geometry:
+the local slope of $g$ sets the amplification of the input spread.
+
+\input{volumes/02-form/ch13-probability/figures/fig-error-propagation.tex}
+
+\paragraph{Worked example: propagating uncertainty into power
+dissipation.} A resistor carries current $I = 2.0 \pm 0.05\,
+\text{A}$ (mean and standard deviation) and has resistance
+$R = 50 \pm 1\,\Omega$, the two measured independently. The
+dissipated power is $P = I^{2} R$. The mean power is approximately
+$\mu_{I}^{2} \mu_{R} = 4.0 \cdot 50 = 200\,\text{W}$. The partial
+derivatives at the means are $\partial P / \partial I = 2 I R =
+2 \cdot 2 \cdot 50 = 200$ and $\partial P / \partial R = I^{2} =
+4.0$. The propagated variance is
+\[
+\Var(P) \approx (200)^{2}(0.05)^{2} + (4.0)^{2}(1)^{2}
+= 100 + 16 = 116\,\text{W}^{2},
+\]
+so $\sigma_{P} \approx 10.8\,\text{W}$, a relative uncertainty of
+about $5.4\,\%$. The current term dominates because power depends on
+the square of current; halving the current uncertainty would cut
+the total uncertainty far more than halving the resistance
+uncertainty. The delta method tells the engineer where to spend the
+metrology budget without simulating anything. Its limitation is the
+linearisation: for strongly non-linear $g$ or large input
+uncertainty, the first-order formula understates the spread and a
+Monte Carlo propagation (sampling $I$ and $R$, computing $P$ for
+each draw) is the honest fallback. The companion script
+\repopath{volumes/02-form/ch13-probability/code/error_propagation.py}
+runs both the delta method and the Monte Carlo propagation for this
+example so the reader can see where the linearisation holds and where
+it parts company with the simulation.
 
 \section{Common distributions: discrete and continuous}\pathtag{core}
 
@@ -492,6 +843,24 @@ The geometric models the trial count to first failure of a
 constant-hazard system, the number of tries to first success in
 sampling, and the wait time in discrete-time queueing.
 
+\paragraph{Worked example: retransmissions on a lossy link.} A
+packet is sent over a link that drops each transmission
+independently with probability $q = 0.2$, and the sender retries
+until an acknowledgement returns. The number of transmissions $X$
+to first success is $\mathrm{Geom}(p)$ with $p = 1 - q = 0.8$. The
+expected number of transmissions is $\E[X] = 1/p = 1.25$, so on
+average one and a quarter sends deliver a packet. The probability
+that more than three transmissions are needed is $\Pr(X > 3) =
+(1 - p)^{3} = 0.2^{3} = 0.008$, eight in a thousand. If the link
+budget allows at most two retries (three total transmissions), the
+delivery probability per packet is $1 - 0.008 = 0.992$, and over a
+$1000$-packet flow the expected number of undelivered packets is
+about $8$. Doubling the retry budget to five total transmissions
+drops the loss to $0.2^{5} = 3.2 \times 10^{-4}$ per packet. The
+geometric tail is what a protocol designer trades against latency:
+each extra retry multiplies the residual loss by $q$, a fixed factor
+because the link is memoryless.
+
 A \engterm{Poisson random variable} $X \sim \mathrm{Pois}(\lambda)$
 takes values in $\{0, 1, 2, \ldots\}$ with
 \[
@@ -501,6 +870,45 @@ The mean and the variance both equal $\lambda$. The Poisson is the
 limit of $\mathrm{Bin}(n, \lambda/n)$ as $n \to \infty$ with
 $\lambda$ fixed; it models counts of rare independent events in a
 fixed interval. Volume I Chapter 8 §8.2 gave the working examples.
+
+\begin{mastery}
+\textbf{Poisson as the limit of the binomial.} Fix $\lambda$ and
+write $p = \lambda/n$ in the binomial mass function:
+\[
+\Pr(X = k) = \binom{n}{k}\left(\frac{\lambda}{n}\right)^{k}
+\left(1 - \frac{\lambda}{n}\right)^{n - k}
+= \frac{n!}{k!(n - k)! \, n^{k}} \lambda^{k}
+\left(1 - \frac{\lambda}{n}\right)^{n}
+\left(1 - \frac{\lambda}{n}\right)^{-k}.
+\]
+As $n \to \infty$, the falling factorial ratio
+$n!/[(n - k)! \, n^{k}] \to 1$, the term $(1 - \lambda/n)^{n} \to
+e^{-\lambda}$, and $(1 - \lambda/n)^{-k} \to 1$. What remains is
+$\lambda^{k} e^{-\lambda}/k!$, the Poisson mass. The derivation is
+the formal content of the rule of thumb that the binomial is well
+approximated by the Poisson when $n$ is large and $p$ is small,
+which is why counts of rare events (defects per wafer, calls per
+minute, decays per second) are Poisson regardless of the precise
+mechanism that generates them.
+\end{mastery}
+
+\paragraph{Worked example: acceptance sampling.} A lot is accepted
+if a sample of $n = 20$ units contains at most one defective. The
+true defect rate is $p = 0.05$. The number of defectives is
+$X \sim \mathrm{Bin}(20, 0.05)$, and the acceptance probability is
+\[
+\Pr(X \leq 1) = (0.95)^{20} + 20(0.05)(0.95)^{19}
+\approx 0.3585 + 0.3774 = 0.7358.
+\]
+A lot at the nominal $5\,\%$ defect rate is accepted about $74\,\%$
+of the time by this plan. If the rate doubles to $p = 0.10$, the
+acceptance probability falls to $(0.90)^{20} + 20(0.10)(0.90)^{19}
+\approx 0.1216 + 0.2702 = 0.3918$. The plan's \engterm{operating
+characteristic curve} is the acceptance probability as a function
+of the true rate; the steepness of that curve between $p = 0.05$ and
+$p = 0.10$ is the plan's discriminating power, and a buyer who wants
+tighter discrimination must raise $n$ or lower the acceptance
+number.
 
 \subsection{Continuous: uniform, exponential, normal, gamma, beta}
 
@@ -519,6 +927,30 @@ arises as the waiting time between events of a Poisson process with
 rate $\lambda$. Volume I Chapter 8 §8.2 named the engineering
 contexts.
 
+\begin{mastery}
+\textbf{Hazard rate and why constant hazard means exponential.} The
+\engterm{hazard rate} of a positive random variable with density
+$f$ and survival function $S(t) = \Pr(X > t)$ is
+\[
+h(t) = \frac{f(t)}{S(t)} = -\frac{\dd}{\dd t} \ln S(t),
+\]
+the instantaneous failure rate of a unit that has survived to time
+$t$. Integrating, $S(t) = \exp(-\int_{0}^{t} h(u) \dd u)$, so the
+survival function is determined by the hazard. A \emph{constant}
+hazard $h(t) = \lambda$ gives $S(t) = e^{-\lambda t}$, which is the
+exponential: constant hazard and the exponential law are the same
+statement. The Weibull law $S(t) = \exp(-(\lambda t)^{k})$ has
+hazard $h(t) = \lambda k (\lambda t)^{k-1}$, which rises with $t$
+for shape $k > 1$ (wear-out) and falls for $k < 1$ (infant
+mortality), and reduces to the exponential at $k = 1$. The bathtub
+curve of reliability engineering is three hazard regimes stitched
+together: a falling infant-mortality phase, a flat useful-life
+phase where the exponential applies, and a rising wear-out phase.
+Volume X develops the apparatus; the lesson here is that the
+exponential is the right model only in the flat middle of the
+bathtub.
+\end{mastery}
+
 A \engterm{normal random variable} $X \sim \mathcal{N}(\mu,
 \sigma^{2})$ has density
 \[
@@ -530,6 +962,29 @@ limit distribution in the central limit theorem (section 13.6) and
 the canonical model for measurement noise that aggregates many
 small independent contributions. The standard normal has $\mu = 0$
 and $\sigma = 1$, with CDF denoted $\Phi(z)$.
+
+\paragraph{Worked example: tolerance yield under a normal model.}
+A machined shaft has target diameter $25.000\,\text{mm}$ with a
+two-sided tolerance of $\pm 0.050\,\text{mm}$. The process is
+centred at $25.000\,\text{mm}$ with standard deviation $\sigma =
+0.020\,\text{mm}$. The fraction of parts within tolerance is
+\[
+\Pr(24.950 < X < 25.050)
+= \Phi\!\left(\frac{0.050}{0.020}\right)
+- \Phi\!\left(\frac{-0.050}{0.020}\right)
+= \Phi(2.5) - \Phi(-2.5) \approx 0.9876,
+\]
+so about $1.24\,\%$ of parts, or $12\,400$ per million, fall out of
+tolerance. If the process drifts so the mean shifts to
+$25.010\,\text{mm}$ while $\sigma$ holds, the upper limit is now
+$(25.050 - 25.010)/0.020 = 2.0$ standard deviations away and the
+lower limit is $(24.950 - 25.010)/0.020 = -3.0$, giving
+$\Phi(2.0) - \Phi(-3.0) \approx 0.9772 - 0.0013 = 0.9759$: the
+out-of-tolerance fraction more than doubles to about $2.4\,\%$ from
+a drift of one quarter of the tolerance band. The asymmetry of the
+loss under a centring error is the quantitative case for control
+charts, and the calculation is the normal-tail arithmetic behind
+the process-capability indices of Volume I Chapter 8.
 
 A \engterm{gamma random variable} $X \sim \mathrm{Gamma}(\alpha,
 \lambda)$ with shape $\alpha > 0$ and rate $\lambda > 0$ has
@@ -665,6 +1120,33 @@ Conditioning on a continuous random variable is delicate (the event
 $\{X = x\}$ has probability zero), but the formula above gives the
 working object.
 
+\paragraph{Worked example: a joint PMF for two quality grades.}
+A batch is graded by two inspectors, each assigning a unit to grade
+$1$, $2$, or $3$. The joint mass function of $(X, Y)$, the two
+grades for a random unit, is the table
+\[
+\begin{array}{c|ccc|c}
+ & Y=1 & Y=2 & Y=3 & p_X \\ \hline
+X=1 & 0.30 & 0.08 & 0.02 & 0.40 \\
+X=2 & 0.06 & 0.24 & 0.10 & 0.40 \\
+X=3 & 0.01 & 0.05 & 0.14 & 0.20 \\ \hline
+p_Y & 0.37 & 0.37 & 0.26 & 1.00
+\end{array}
+\]
+The right margin and bottom margin are the marginals, obtained by
+summing each row and each column. The conditional distribution of
+the second inspector's grade given the first assigned grade $2$ is
+the middle row renormalised by $p_{X}(2) = 0.40$:
+$\Pr(Y = 1 \mid X = 2) = 0.06/0.40 = 0.15$,
+$\Pr(Y = 2 \mid X = 2) = 0.24/0.40 = 0.60$,
+$\Pr(Y = 3 \mid X = 2) = 0.10/0.40 = 0.25$. The two inspectors
+agree ($X = Y$) with probability $0.30 + 0.24 + 0.14 = 0.68$. They
+are not independent: under independence $\Pr(X = 1, Y = 1)$ would be
+$p_{X}(1) p_{Y}(1) = 0.40 \cdot 0.37 = 0.148$, far below the
+observed $0.30$, which is the diagonal concentration that any
+agreement-between-raters statistic (Cohen's $\kappa$) is built to
+quantify.
+
 \subsection{Independence of random variables}
 
 Random variables $X, Y$ are \engterm{independent} when
@@ -705,6 +1187,32 @@ some orthogonal $Q$ and non-negative diagonal $\Lambda$, which is
 the basis of principal-component analysis as a dimensionality
 reduction tool.
 
+\paragraph{Worked example: the variance of a sum of correlated
+loads.} Two structural members each carry a random load with mean
+$\mu = 10\,\text{kN}$ and standard deviation $\sigma = 2\,\text{kN}$.
+The combined load on the shared support is $S = X_{1} + X_{2}$. The
+mean is $20\,\text{kN}$ regardless of dependence, by linearity. The
+standard deviation depends on the correlation $\rho$:
+\[
+\Var(S) = \sigma^{2} + \sigma^{2} + 2\rho \sigma^{2}
+= 2\sigma^{2}(1 + \rho),
+\qquad \sigma_{S} = \sigma\sqrt{2(1 + \rho)}.
+\]
+At $\rho = 0$ (independent loads), $\sigma_{S} = 2\sqrt{2} \approx
+2.83\,\text{kN}$. At $\rho = 1$ (perfectly correlated, the two loads
+rise and fall together), $\sigma_{S} = 2 \cdot 2 = 4\,\text{kN}$, a
+factor of $\sqrt{2}$ larger. At $\rho = -1$ (perfectly
+anti-correlated), $\sigma_{S} = 0$: the loads cancel and the support
+sees a deterministic $20\,\text{kN}$. A designer who assumes
+independent loads and sizes the support to a $3\sigma$ envelope of
+$20 + 3(2.83) = 28.5\,\text{kN}$ has under-budgeted the margin if the
+loads are in fact correlated through a common cause such as a shared
+gust or a shared occupancy pattern, where the true $3\sigma$ figure
+is $20 + 3(4) = 32\,\text{kN}$. The diversification benefit that
+makes a portfolio of independent risks safer than its components is
+the same identity read with $\rho < 1$, and its disappearance when
+$\rho \to 1$ is exactly the failure pattern of section 13.8.
+
 \subsection{Independence vs zero correlation}
 
 Two random variables that are independent are uncorrelated: the
@@ -744,6 +1252,31 @@ Gaussian, zero correlation implies independence. The reader who
 treats every elliptical scatter plot as Gaussian without checking
 gives up the converse direction the moment the data are heavy-tailed
 or asymmetric.
+
+\paragraph{Worked example: predicting one measurement from another.}
+Two co-located sensors measure the same temperature with jointly
+Gaussian readings: $X$ has mean $20\,\degC$ and standard deviation
+$\sigma_{X} = 0.5\,\degC$; $Y$ has mean $20\,\degC$ and standard
+deviation $\sigma_{Y} = 0.8\,\degC$; their correlation is
+$\rho = 0.9$. The first sensor reads $X = 21.0\,\degC$. The best
+prediction of the second sensor's reading is the conditional mean,
+\[
+\E[Y \mid X = 21.0] = \mu_{Y} + \rho \frac{\sigma_{Y}}{\sigma_{X}}
+(x - \mu_{X}) = 20 + 0.9 \cdot \frac{0.8}{0.5} \cdot (21.0 - 20)
+= 20 + 1.44 = 21.44\,\degC,
+\]
+and the residual uncertainty is the conditional standard deviation,
+\[
+\sigma_{Y \mid X} = \sigma_{Y}\sqrt{1 - \rho^{2}}
+= 0.8 \sqrt{1 - 0.81} = 0.8 \cdot 0.436 \approx 0.349\,\degC.
+\]
+Conditioning on the first sensor cuts the second sensor's
+uncertainty from $0.8$ to $0.35\,\degC$, a factor of
+$\sqrt{1 - \rho^{2}}$. The conditional mean as a function of $x$ is
+the regression line, and the conditional variance is the residual
+variance left after the linear prediction. This is the calculation a
+Kalman filter performs at every step, and the derivation behind it
+is the subject of the bivariate-Gaussian derivation exercise.
 
 \section{Limit theorems: LLN and CLT}\pathtag{core}
 
@@ -807,6 +1340,26 @@ satisfy a weaker mixing condition): heavily correlated samples have
 an effective sample size much smaller than $n$, and the convergence
 slows or fails entirely.
 
+\paragraph{Worked example: Monte Carlo integration and its rate.}
+The LLN licenses estimating an integral as a sample average. To
+compute $\theta = \int_{0}^{1} e^{-x^{2}} \dd x$, draw $U_{i} \sim
+\mathrm{Unif}(0, 1)$ and average $g(U_{i}) = e^{-U_{i}^{2}}$. The
+estimator $\hat\theta_{n} = (1/n) \sum_{i} e^{-U_{i}^{2}}$ converges
+to $\theta \approx 0.7468$ by the LLN. The variance of a single
+term is $\Var(g(U)) = \E[g^{2}] - \theta^{2} = \int_{0}^{1}
+e^{-2x^{2}} \dd x - 0.7468^{2} \approx 0.5981 - 0.5577 = 0.0404$,
+so the estimator's standard error is $\sqrt{0.0404/n} \approx
+0.201/\sqrt{n}$. Reaching three-digit accuracy (standard error
+$10^{-3}$) requires $n \approx (0.201/10^{-3})^{2} \approx
+40\,000$ samples. The defining feature is the $1/\sqrt{n}$ rate:
+each additional digit of accuracy costs a hundredfold increase in
+samples, independent of the dimension of the integral. That
+dimension-independence is why Monte Carlo beats grid quadrature for
+high-dimensional integrals, where a grid of $m$ points per axis in
+$d$ dimensions needs $m^{d}$ evaluations while Monte Carlo needs a
+number set only by the target accuracy and the integrand's
+variance.
+
 \subsection{The Central Limit Theorem}
 
 Let $X_{1}, X_{2}, \ldots$ be iid with finite mean $\mu$ and finite
@@ -854,6 +1407,51 @@ trial count of the reader's choice.
 
 \input{volumes/02-form/ch13-probability/figures/fig-clt-convergence.tex}
 
+\paragraph{Worked demonstration: the sum of dice.} A single fair
+die has mean $\mu = 3.5$ and variance $\sigma^{2} = 35/12 \approx
+2.917$. The sum of $n = 10$ independent dice has mean $35$ and
+variance $350/12 \approx 29.17$, standard deviation $\approx 5.40$.
+By the CLT the sum is approximately $\mathcal{N}(35, 29.17)$. The
+probability the sum exceeds $45$ is then
+\[
+\Pr(S_{10} > 45) \approx 1 - \Phi\!\left(\frac{45 - 35}{5.40}\right)
+= 1 - \Phi(1.85) \approx 0.032.
+\]
+Applying a continuity correction, $\Pr(S_{10} \geq 46) \approx 1 -
+\Phi((45.5 - 35)/5.40) = 1 - \Phi(1.94) \approx 0.026$, which
+matches the exact convolution result $0.0263$ to three figures even
+though the underlying single-die distribution is discrete and
+uniform, not Gaussian. Ten dice already deliver a Gaussian-quality
+approximation because the uniform is symmetric and light-tailed.
+The same arithmetic underwrites the rule that the sum of a dozen
+independent rounding errors, each uniform on a half-bit interval,
+is well modelled as Gaussian, which is why accumulated round-off in
+a long calculation is treated as Gaussian noise rather than tracked
+term by term.
+
+\begin{mastery}
+\textbf{Why the limit is Gaussian.} The characteristic function of
+the standardised sum $Z_{n} = \sqrt{n}(\bar X_{n} - \mu)/\sigma$
+factors over the independent terms. For a single standardised term
+$W = (X - \mu)/\sigma$ with $\E[W] = 0$ and $\E[W^{2}] = 1$, the
+characteristic function expands as $\E[e^{itW/\sqrt{n}}] = 1 -
+t^{2}/(2n) + o(1/n)$. The product over $n$ terms is
+\[
+\E[e^{itZ_{n}}] = \left(1 - \frac{t^{2}}{2n} + o(1/n)\right)^{n}
+\longrightarrow e^{-t^{2}/2},
+\]
+which is the characteristic function of $\mathcal{N}(0, 1)$. The
+Gaussian appears because it is the unique fixed point of the
+operation ``standardise and add'': the only finite-variance law
+whose shape survives repeated convolution-and-rescaling. The $t^{2}$
+term that drives the limit is the variance; the third-moment term,
+which the expansion discards at order $1/n$, controls the
+\emph{rate} of convergence and is the quantity the Berry-Esseen
+bound makes explicit. When the variance is infinite, the quadratic
+term diverges, the fixed point is a non-Gaussian stable law, and the
+classical CLT does not hold.
+\end{mastery}
+
 \begin{estimation}
 \textbf{Question.} A manufacturing process produces parts whose
 weight $X$ has mean $\mu = 100\,\text{g}$ and standard deviation
@@ -881,6 +1479,22 @@ calculations, and the CLT is what makes that information
 operationally available.
 \end{estimation}
 
+\begin{principle}[The square-root-of-$n$ wall]
+The standard error of a sample mean of $n$ independent observations
+shrinks as $\sigma/\sqrt{n}$. Halving the uncertainty requires
+quadrupling the sample. This $1/\sqrt{n}$ rate is the same wall met
+by Monte Carlo integration, by averaging to suppress measurement
+noise, and by the running occupancy of an ergodic Markov chain. It
+sets the price of precision across the book: precision is bought in
+units of $\sqrt{n}$, and the engineer who needs one more decimal
+digit pays a hundredfold in samples unless the variance itself can
+be reduced (by a better estimator, stratification, or control
+variates) or unless the rate can be beaten (by quasi-Monte Carlo,
+which trades randomness for low-discrepancy sequences). The wall is
+a property of independent averaging, not of the particular quantity
+being averaged.
+\end{principle}
+
 \section{Stochastic processes preview}\label{sec:vol02:ch13:processes}\pathtag{standard}
 
 A \engterm{stochastic process} is a collection $\{X_{t}\}_{t \in T}$
@@ -897,6 +1511,27 @@ treat one canonical example, the discrete-time Markov chain on a
 finite state space, and use it to ground the project of
 section~\ref{sec:vol02:ch13:project}
 \cite[ch.~6]{text:wasserman2004,text:v2ch13-norris-markov}.
+
+\begin{mastery}
+\textbf{The Poisson process and its calculus.} The continuous-time
+counterpart of the rare-event count is the \engterm{Poisson
+process} of rate $\lambda$: a counting process $\{N(t)\}_{t \geq 0}$
+with independent increments, $N(0) = 0$, and $N(t) - N(s) \sim
+\mathrm{Pois}(\lambda(t - s))$ for $s < t$. The inter-arrival times
+are iid $\mathrm{Exp}(\lambda)$, which is the bridge between the
+discrete Poisson count and the continuous exponential wait. Two
+operations recur in engineering. \emph{Superposition}: merging
+independent Poisson processes of rates $\lambda_{1}, \lambda_{2}$
+yields a Poisson process of rate $\lambda_{1} + \lambda_{2}$, so the
+aggregate arrival stream at a server fed by many independent sources
+is itself Poisson. \emph{Thinning}: keeping each arrival
+independently with probability $q$ yields a Poisson process of rate
+$q\lambda$, so a sampled or filtered arrival stream stays Poisson.
+These closure properties are why the Poisson process is the default
+model for arrivals in queueing, photon counts in detectors, and
+request streams in networked systems, and why the M/M/1 queue of the
+design exercises is analytically tractable.
+\end{mastery}
 
 \subsection{Markov chains: definition}
 
@@ -975,7 +1610,43 @@ boundaries at $0$ and $k$. The chain is irreducible and aperiodic;
 the stationary distribution is uniform. The mixing time grows like
 $k^{2}$, which the project of
 section~\ref{sec:vol02:ch13:project} asks the reader to verify
-empirically. Figure~\ref{fig:vol02:ch13:markov-chain} gives the
+empirically.
+
+\paragraph{Worked example: a three-state maintenance chain.}
+A machine cycles among three states each shift: running ($1$),
+degraded ($2$), and under repair ($3$), with transition matrix
+\[
+\mat{P} = \begin{pmatrix}
+0.90 & 0.08 & 0.02 \\
+0.00 & 0.70 & 0.30 \\
+0.60 & 0.00 & 0.40
+\end{pmatrix}.
+\]
+Each row sums to one. The stationary distribution solves
+$\vect{\pi}\mat{P} = \vect{\pi}$ with $\sum \pi_{i} = 1$. Writing
+the three balance equations,
+\[
+\pi_{1} = 0.90\pi_{1} + 0.60\pi_{3}, \quad
+\pi_{2} = 0.08\pi_{1} + 0.70\pi_{2}, \quad
+\pi_{3} = 0.02\pi_{1} + 0.30\pi_{2} + 0.40\pi_{3}.
+\]
+The first gives $0.10\pi_{1} = 0.60\pi_{3}$, so $\pi_{1} =
+6\pi_{3}$. The second gives $0.30\pi_{2} = 0.08\pi_{1}$, so
+$\pi_{2} = (0.08/0.30)\pi_{1} = 0.2667 \cdot 6\pi_{3} = 1.6\pi_{3}$.
+Normalising, $\pi_{1} + \pi_{2} + \pi_{3} = (6 + 1.6 + 1)\pi_{3} =
+8.6\pi_{3} = 1$, so $\pi_{3} = 0.1163$, $\pi_{2} = 0.1860$,
+$\pi_{1} = 0.6977$. In the long run the machine runs about
+$70\,\%$ of shifts, is degraded $19\,\%$, and is under repair
+$12\,\%$. The long-run availability is $\pi_{1} + \pi_{2} = 0.884$
+if degraded operation still produces output, or $\pi_{1} = 0.698$
+if only the running state counts. The same three numbers, multiplied
+by a per-shift repair cost and a per-shift lost-production cost,
+give the expected steady-state operating cost that a maintenance
+contract is priced against. The transition matrix and its stationary
+distribution are tabulated in
+\repopath{volumes/02-form/ch13-probability/data/maintenance_chain.csv}
+for the reader who wants a worked non-trivial chain to check a
+solver against. Figure~\ref{fig:vol02:ch13:markov-chain} gives the
 weather chain's transition graph and a stylised convergence trace
 of the running occupancy fraction toward the stationary value
 $\pi_{1} = 5/6$.
@@ -998,6 +1669,29 @@ right relative frequencies. Ergodicity is what licences the project
 of section 13.9: a long simulation of the chain produces an
 empirical distribution that, by the LLN, converges to the
 stationary distribution.
+
+\begin{mastery}
+\textbf{Detailed balance and reversibility.} A chain is
+\engterm{reversible} with respect to a distribution $\vect{\pi}$
+when it satisfies the \engterm{detailed-balance} condition
+$\pi_{i} P_{ij} = \pi_{j} P_{ji}$ for every pair $(i, j)$. Summing
+over $i$ recovers stationarity, $\sum_{i} \pi_{i} P_{ij} = \pi_{j}
+\sum_{i} P_{ji} = \pi_{j}$, so any $\vect{\pi}$ satisfying detailed
+balance is automatically stationary. The condition is far easier to
+check than the full eigenvector equation because it is local: it
+involves only the two states linked by each transition. Reversibility
+is the engine behind \engterm{Markov chain Monte Carlo}: the
+Metropolis-Hastings algorithm builds a chain whose detailed-balance
+distribution is a target the analyst wants to sample, then runs the
+chain long enough to draw from it. Volume VII's computational
+chapters use exactly this construction. Not every chain is
+reversible; the three-state maintenance chain above is not, because
+repair returns directly to running but running never returns
+directly from repair, so $\pi_{1} P_{13} \neq \pi_{3} P_{31}$ in
+general. Reversible chains have real eigenvalues and a clean spectral
+theory; non-reversible chains can mix faster but lose that
+guarantee.
+\end{mastery}
 
 \section{Failure: independence assumed where there was none}\pathtag{core}
 
@@ -1033,6 +1727,13 @@ cluster defaults, and the sociological mechanism by which a
 formula known internally to have correlation-sensitivity above some
 narrow regime was permitted to underwrite multi-trillion-dollar
 exposures.
+
+Figure~\ref{fig:vol02:ch13:fat-tail} renders the deeper companion
+error that runs alongside mismeasured correlation: fitting a thin
+Gaussian centre and extrapolating it into a tail that is in fact
+heavy.
+
+\input{volumes/02-form/ch13-probability/figures/fig-fat-tail.tex}
 
 The pattern is general. When a probability model assigns a small
 joint failure probability by appealing to independence, and the
@@ -1099,6 +1800,27 @@ $0.0$, $0.3$, $0.7$, $0.95$? If the answer is qualitatively
 different (a factor of ten or more between the extremes), the
 model is correlation-sensitive and the engineer who reports a
 single number is misleading the recipient.
+
+\paragraph{Worked example: how fast the joint risk moves with
+correlation.} Take ten nominally independent channels, each with
+failure probability $p = 0.05$, and ask for the probability that at
+least eight fail together, the kind of clustered event a redundancy
+budget is meant to make negligible. Model the dependence with a
+single common factor: each channel fails if a shared latent
+Gaussian $Z$ plus an idiosyncratic Gaussian crosses a threshold,
+with pairwise correlation $\rho$ between the latent triggers. Under
+independence ($\rho = 0$) the probability of eight or more failures
+is $\sum_{k=8}^{10} \binom{10}{k} 0.05^{k} 0.95^{10-k} \approx
+4 \times 10^{-9}$, comfortably below any sane threshold. At
+$\rho = 0.3$ the same eight-of-ten probability rises to roughly
+$10^{-5}$; at $\rho = 0.7$ to roughly $10^{-3}$; at $\rho = 0.95$
+to a few percent. The span from $\rho = 0$ to $\rho = 0.95$ is six
+orders of magnitude on the quantity the safety case turns on. A
+report that states $4 \times 10^{-9}$ without naming the
+independence assumption has hidden the only number that matters.
+The companion script
+\repopath{volumes/02-form/ch13-probability/code/correlated_bernoulli.py}
+reproduces this sweep for parameters of the reader's choice.
 
 Third, prefer the conservative bound when independence is in doubt.
 Section 13.1 gave the union bound, $\Pr(\bigcup A_{i}) \leq \sum
@@ -1319,12 +2041,17 @@ of the two rolls is exactly $7$. Compute the probability that the
 sum is at least $9$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-The $36$ equally likely outcomes are the ordered pairs $(i, j)$ with
-$i, j \in \{1, \ldots, 6\}$. Sum equal to $7$: $(1,6), (2,5), (3,4),
-(4,3), (5,2), (6,1)$, six outcomes, probability $6/36 = 1/6$. Sum
-at least $9$: outcomes with sum $9$ ($4$), $10$ ($3$), $11$ ($2$),
-$12$ ($1$); total $10$, probability $10/36 = 5/18 \approx 0.278$.
+\paragraph{Solution.}
+The sample space is the $36$ equally likely ordered pairs $(i, j)$
+with $i, j \in \{1, \ldots, 6\}$. For the sum equal to $7$ the
+favourable outcomes are $(1,6), (2,5), (3,4), (4,3), (5,2), (6,1)$,
+six in all, so $\Pr(\text{sum} = 7) = 6/36 = 1/6 \approx 0.167$.
+Seven is the most likely sum precisely because it has the most
+realisations. For the sum at least $9$, count by value: sum $9$ has
+$(3,6),(4,5),(5,4),(6,3)$, four outcomes; sum $10$ has
+$(4,6),(5,5),(6,4)$, three; sum $11$ has $(5,6),(6,5)$, two; sum
+$12$ has $(6,6)$, one. The total is $4 + 3 + 2 + 1 = 10$, so
+$\Pr(\text{sum} \geq 9) = 10/36 = 5/18 \approx 0.278$.
 
 \begin{exercise}
 A bag contains five red, three blue, and two green balls. Three
@@ -1347,11 +2074,21 @@ $X \sim \mathrm{Bin}(10, 0.3)$. Compute $\Pr(X = 4)$, $\E[X]$, and
 $\Var(X)$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-$\Pr(X = 4) = \binom{10}{4}(0.3)^{4}(0.7)^{6} = 210 \cdot 0.0081
-\cdot 0.117649 \approx 0.200$. $\E[X] = np = 3.0$.
-$\Var(X) = np(1-p) = 10 \cdot 0.3 \cdot 0.7 = 2.1$, so
-$\sigma \approx 1.45$.
+\paragraph{Solution.}
+The binomial coefficient is $\binom{10}{4} = 210$. The success
+factor is $(0.3)^{4} = 0.0081$ and the failure factor is
+$(0.7)^{6} = 0.117649$, so
+\[
+\Pr(X = 4) = 210 \cdot 0.0081 \cdot 0.117649
+= 210 \cdot 0.000953 \approx 0.2001.
+\]
+The mean is $\E[X] = np = 10 \cdot 0.3 = 3.0$, so the modal count
+sits just below the mean, as expected for a right-of-centre $k = 4$.
+The variance is $\Var(X) = np(1 - p) = 10 \cdot 0.3 \cdot 0.7 =
+2.1$, giving standard deviation $\sigma = \sqrt{2.1} \approx 1.449$.
+A useful cross-check: $k = 4$ is $(4 - 3.0)/1.449 \approx 0.69$
+standard deviations above the mean, consistent with a probability
+near the peak of the distribution.
 
 \begin{exercise}
 $X \sim \mathrm{Pois}(2.5)$. Compute $\Pr(X \geq 3)$. State whether
@@ -1374,22 +2111,40 @@ Compute the mean lifetime, the median lifetime, and the probability
 that the unit survives $200\,\text{h}$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-Mean $1/\lambda = 100\,\text{h}$. Median solves $1 - e^{-\lambda
-m} = 0.5$, giving $m = \ln 2 / \lambda \approx 69.3\,\text{h}$.
-Survival to $200\,\text{h}$: $\Pr(X > 200) = e^{-\lambda \cdot
-200} = e^{-2} \approx 0.135$.
+\paragraph{Solution.}
+The mean of an exponential is the reciprocal of the rate,
+$\E[X] = 1/\lambda = 1/0.01 = 100\,\text{h}$. The median solves
+$F(m) = 1 - e^{-\lambda m} = 0.5$, so $e^{-\lambda m} = 0.5$ and
+$m = \ln 2 / \lambda = 0.6931/0.01 \approx 69.3\,\text{h}$. The
+median is below the mean, the signature right skew of the
+exponential. Survival past $200\,\text{h}$ uses the complementary
+CDF directly: $\Pr(X > 200) = e^{-\lambda \cdot 200} = e^{-2}
+\approx 0.1353$. About one unit in seven survives two mean
+lifetimes, and by memorylessness a unit that has already reached
+$200\,\text{h}$ has the same residual-life distribution as a fresh
+one.
 
 \begin{exercise}
 $X \sim \mathcal{N}(50, 16)$. Compute $\Pr(X > 55)$, $\Pr(X < 42)$,
 and $\Pr(45 < X < 55)$ using the standard normal CDF $\Phi$.
 \end{exercise}
 
-\paragraph{Solution sketch.}
-$\sigma = 4$. $\Pr(X > 55) = 1 - \Phi((55 - 50)/4) = 1 - \Phi(1.25)
-\approx 1 - 0.8944 = 0.106$. $\Pr(X < 42) = \Phi((42 - 50)/4) =
-\Phi(-2.0) \approx 0.0228$.
-$\Pr(45 < X < 55) = \Phi(1.25) - \Phi(-1.25) \approx 0.789$.
+\paragraph{Solution.}
+The variance is $16$, so $\sigma = 4$. Standardise each query by
+$z = (x - \mu)/\sigma$ with $\mu = 50$, $\sigma = 4$.
+\begin{itemize}[leftmargin=*]
+  \item $\Pr(X > 55)$: $z = (55 - 50)/4 = 1.25$, so
+    $\Pr = 1 - \Phi(1.25) \approx 1 - 0.8944 = 0.1056$.
+  \item $\Pr(X < 42)$: $z = (42 - 50)/4 = -2.0$, so
+    $\Pr = \Phi(-2.0) \approx 0.0228$.
+  \item $\Pr(45 < X < 55)$: the limits are $z = -1.25$ and
+    $z = +1.25$, so $\Pr = \Phi(1.25) - \Phi(-1.25) = 0.8944 -
+    0.1056 = 0.7888$.
+\end{itemize}
+The third answer is the central interval $\mu \pm 1.25\sigma$, which
+captures about $79\,\%$ of the mass, consistent with the rule that
+$\mu \pm 1\sigma$ holds about $68\,\%$ and $\mu \pm 2\sigma$ about
+$95\,\%$.
 
 \begin{exercise}
 $(X, Y)$ has joint PMF given by the $3 \times 3$ table of the
@@ -1874,7 +2629,14 @@ The model is M/M/1. Utilisation $\rho = \lambda/\mu < 1$. The
 stationary distribution of the number in system $N$ is geometric:
 $\Pr(N = k) = (1 - \rho) \rho^{k}$ for $k = 0, 1, 2, \ldots$ Mean
 $\E[N] = \rho/(1 - \rho)$, which grows without bound as $\rho \to
-1$. Mean waiting time (Little's law) is $\E[N]/\lambda$. With a
+1$. Mean waiting time (Little's law) is $\E[N]/\lambda$. A numeric
+anchor: at $\lambda = 8$ per hour and $\mu = 10$ per hour,
+$\rho = 0.8$, so $\E[N] = 0.8/0.2 = 4$ customers in system and a
+mean time in system of $4/8 = 0.5\,\text{h}$. Pushing utilisation to
+$\rho = 0.9$ by raising $\lambda$ to $9$ gives $\E[N] = 9$ and a
+mean time of $1.0\,\text{h}$: a $12.5\,\%$ increase in load more than
+doubles the wait, the hallmark non-linearity of the
+$\rho/(1 - \rho)$ term near saturation. With a
 heavy-tailed (Pareto-like) service-time distribution, the
 Pollaczek-Khinchine formula applies for M/G/1 and the mean wait
 gains a $1 + C_{s}^{2}$ multiplier where $C_{s}$ is the coefficient

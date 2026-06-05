@@ -12,6 +12,8 @@ runs under `uv run`.
 | `cauchy_schwarz_mc.py` | Monte-Carlo verification of Cauchy-Schwarz over R^d; writes per-trial ratios; asserts the upper bound holds on every trial. | Simulation exercise (numerical Cauchy-Schwarz). |
 | `am_gm_check.py` | Empirical AM/GM ratio across several n and several non-negative distributions; logs per-n mean and standard deviation. | Simulation exercise (AM-GM in practice). |
 | `collatz_run.py` | Runs the Collatz iteration for 1 <= n <= n_max; logs (n, steps); reports the maximum step count and the starting value achieving it. | Simulation exercise (Collatz); chapter remark that demonstration is not proof. |
+| `horner_eval.py` | Evaluates a polynomial by Horner's nested form against the naive term-by-term sum; returns value and derivative in one synthetic-division sweep; spot-checks against (1+x)^6. | Section 1.1 polynomial-evaluation worked example; operation-count table `data/horner-vs-naive-ops.csv`. |
+| `quadratic_stability.py` | Computes quadratic roots by the naive formula and by the Vieta-companion stable recipe; reports residuals for the ill-conditioned coefficient set. | Section 1.1 cancellation discussion; calculation exercise on the ill-conditioned quadratic. |
 
 ## Running
 
@@ -20,10 +22,13 @@ uv run binomial_table.py 12 ../data/pascal_to_12.csv
 uv run cauchy_schwarz_mc.py 10 1000 ../data/cauchy_schwarz_d10.csv
 uv run am_gm_check.py 2,5,10,50 exp 10000 ../data/am_gm_exp.csv
 uv run collatz_run.py 100000 ../data/collatz_to_1e5.csv
+uv run horner_eval.py
+uv run quadratic_stability.py
 ```
 
-`binomial_table.py` and `collatz_run.py` use the standard library
-only. `cauchy_schwarz_mc.py` and `am_gm_check.py` require `numpy`.
+`binomial_table.py`, `collatz_run.py`, `horner_eval.py`, and
+`quadratic_stability.py` use the standard library only.
+`cauchy_schwarz_mc.py` and `am_gm_check.py` require `numpy`.
 Random seeds are fixed (`20260516`) for reproducibility.
 
 ## What these scripts are and are not

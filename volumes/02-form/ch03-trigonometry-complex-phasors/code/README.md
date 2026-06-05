@@ -11,14 +11,17 @@ exercises.
 | `rlc_response.py` | Series RLC steady-state response: computes $Z(\omega)$, $\tilde I$, and each element voltage by phasor algebra for a swept frequency range; also integrates the underlying ODE and compares to the phasor result. | Project; simulation exercise (RLC ODE); figure `fig-phasor-rlc`. |
 | `phase_unwrap.py` | Generates a wrapped phase signal and runs a simple first-order unwrap algorithm; demonstrates the silent failure when the sample spacing is too coarse. | Simulation exercise (wrap and unwrap); failure-analysis exercise (laser interferometer). |
 | `beat_demo.py` | Synthesises two sinusoids of nearby frequencies and plots their sum to display the beat envelope. | Section 3.1 (sum-to-product identity); figure `fig-beating`. |
+| `roots_of_unity.py` | Computes the $n$ complex $n$th roots of a number, verifies each cubes/powers back to the input, checks that the roots of unity sum to zero, and plots the sixth roots as a hexagon with the cube roots marked. | Section 3.3 (roots and powers); figure `fig-roots-unity`. |
+| `power_factor_correction.py` | Computes real, reactive, and apparent power and the parallel correction capacitance for a lagging load across a sweep of target power factors. | Section 3.4 (power, estimation block); data `power_factor_correction.csv`; figure `fig-power-triangle`. |
 
 ## Running
 
 Each file's docstring lists dependencies and the command to run.
 `phasor_add.py` and `phase_unwrap.py` require `numpy` and
 `matplotlib`. `rlc_response.py` additionally requires
-`scipy.integrate` for the ODE comparison. `beat_demo.py` requires
-`numpy` and `matplotlib`.
+`scipy.integrate` for the ODE comparison. `beat_demo.py` and
+`roots_of_unity.py` require `numpy` and `matplotlib`.
+`power_factor_correction.py` requires only the standard library.
 
 A representative invocation:
 

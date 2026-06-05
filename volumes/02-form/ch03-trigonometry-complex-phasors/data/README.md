@@ -8,6 +8,7 @@ Reference data for the chapter's worked examples and exercises.
 |---|---|---|
 | `rlc_impedance.csv` | Series RLC impedance magnitude and phase versus frequency for the worked example (R = 100 ohm, L = 100 mH, C = 10 uF), 200 points logarithmically spaced over 10 Hz to 10 kHz. | Computed by `code/rlc_response.py`. |
 | `canonical_angles.csv` | The five canonical first-quadrant angles (0, pi/6, pi/4, pi/3, pi/2) with exact and decimal values of sine, cosine, and tangent. | Computed from the unit-circle definitions of section 3.1. |
+| `power_factor_correction.csv` | Power-factor-correction sweep for a 30 kVA, 0.78 lagging load at 400 V line-to-line, 50 Hz: real power, reactive power, target reactive power, capacitor reactive power, delta-connected total capacitance, corrected apparent power, and supply-current reduction across a range of target power factors. | Computed by `code/power_factor_correction.py`. |
 
 ## Provenance
 

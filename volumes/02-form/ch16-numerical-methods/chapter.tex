@@ -14,7 +14,8 @@ Project track: simulation with analysis (reproduce one published
 numerical result, account for any drift, plus a 1500-word
 reflection). Hazard class: none. Reader path default: standard, with
 sections explicitly tagged. Named cases: Patriot missile system at
-Dhahran (1991); Ariane 5 Flight 501 (1996); Pentium FDIV bug (1994).}
+Dhahran (1991); Ariane 5 Flight 501 (1996); Pentium FDIV bug (1994);
+Vancouver Stock Exchange index drift (1982-1983).}
 
 \noindent
 A computation that returns a number is not the same thing as a
@@ -163,6 +164,58 @@ representables near $1$. Both quantities appear in algorithm
 analysis; the engineer should know both, and should know which one
 a given source uses without ambiguity.
 
+A short computation fixes the two constants in the reader's hands.
+The next representable double above $1.0$ is $1 + 2^{-52}$, because
+the mantissa of $1.0 = 1.\underbrace{00\cdots0}_{52}\times 2^{0}$
+increments in its last bit. The gap is $2^{-52} = \epsilon_{m}$. The
+worst-case relative error of rounding a real number in $[1, 2)$ to
+the nearest double is half that gap, $2^{-53} = u$, attained when the
+real number sits exactly midway between two representables. The
+relationship $\epsilon_{m} = 2u$ is then mechanical, and the reader
+who is handed a formula in $u$ and a colleague's formula in
+$\epsilon_{m}$ can reconcile the two without guessing which the
+author meant.
+
+\begin{example}
+\textbf{Spacing at a large exponent.} The spacing between adjacent
+doubles is not constant; it scales with the binade. Near $x = 2^{e}$
+the spacing is $\epsilon_{m} \cdot 2^{e} = 2^{e - 52}$. At
+$x = 2^{52} \approx 4.5 \times 10^{15}$ the spacing is exactly $1$:
+every integer up to $2^{53}$ is representable, but no half-integer
+above $2^{52}$ is. At $x = 2^{53}$ the spacing is $2$, and odd
+integers above $2^{53}$ are not representable. An accumulator that
+counts events past four quadrillion in a double silently stops
+incrementing when the increment falls below the local spacing. The
+working lesson: an integer counter that may exceed $2^{53}$ belongs
+in a 64-bit integer, not a double. The same arithmetic explains why
+$10^{16} + 1 = 10^{16}$ in double precision, a result that surprises
+the reader once and never again.
+\end{example}
+
+\begin{mastery}
+\textbf{Why subnormals exist.} Without subnormal numbers the smallest
+positive normal double is $2^{e_{\min}} = 2^{-1022}$, and the next
+representable below it is $0$. The gap from the smallest normal to
+zero would then be $2^{-1022}$, while the gap between the smallest
+normal and its successor is only $2^{-1022} \cdot \epsilon_{m} =
+2^{-1074}$, a jump of $2^{52}$ in the spacing as the value crosses
+into zero. Worse, the identity $x - y = 0 \iff x = y$ would fail:
+two distinct normals closer together than $2^{-1022}$ would subtract
+to a nonzero real that rounds to zero, so $x - y = 0$ with $x \neq
+y$. Subnormal numbers fill the gap $[0, 2^{-1022})$ with values of
+the form $0.f \times 2^{-1022}$, spaced uniformly at $2^{-1074}$,
+restoring the guarantee that $\operatorname{fl}(x - y) = 0$ implies
+$x = y$ (\engterm{gradual underflow}). The cost is that subnormals
+carry fewer significant bits as they approach zero, and on some
+hardware a subnormal operand triggers a microcode trap that runs an
+order of magnitude slower than a normal operation; performance-tuned
+numerical kernels sometimes enable a flush-to-zero mode that trades
+the gradual-underflow guarantee for uniform speed, a trade the
+engineer documents at the call site. Kahan, the principal architect
+of IEEE 754, argued the gradual-underflow guarantee on exactly the
+$x - y = 0 \iff x = y$ grounds \cite[ch.~2]{text:overton-ieee754}.
+\end{mastery}
+
 \subsection{Special values}
 
 IEEE 754 reserves several bit patterns for non-finite results.
@@ -283,6 +336,34 @@ patterns (Heron's formula at near-collinear triangles, the
 quadratic formula at small discriminant, the recursive variance
 computation) that share the structure and the remedy.
 
+\begin{example}
+\textbf{Kahan compensated summation.} Summing $n$ numbers in the
+naive sequential order accumulates a round-off error bounded by
+$(n - 1) u$ times the sum of magnitudes. \engterm{Kahan summation}
+carries a running compensation term that recaptures the low-order
+bits lost at each addition \cite{text:v2ch16-kahan-1965}: maintain a
+running sum $s$ and a compensation $c$, and at each step compute
+$y = x_{i} - c$, $t = s + y$, $c = (t - s) - y$, $s = t$. The
+quantity $(t - s) - y$ is, in exact arithmetic, zero; in
+floating-point it captures the part of $y$ that did not fit into
+$s$, and subtracting it from the next addend restores it. The
+worst-case error of Kahan summation is bounded by $2u$ plus a term
+of order $n u^{2}$, independent of $n$ to first order, against the
+naive $(n - 1) u$. The contrast is sharp on a stress test. Summing
+$1$ followed by $10^{8}$ copies of $10^{-8}$ in binary64: the exact
+sum is $2$, the naive left-to-right sum returns about $1.9999998$
+(the small addends fall below the spacing of $s$ once $s \approx 1$
+and are partly swallowed), and Kahan summation returns $2.0000000$
+to all visible digits. The
+\texttt{code/kahan\_summation.py} script reproduces both sums and
+prints the per-step compensation. Pairwise (cascade) summation,
+which adds in a balanced binary tree, achieves an $O(u \log n)$
+bound at no compensation-arithmetic cost and is what NumPy's
+\texttt{sum} uses by default; Kahan is the choice when the engineer
+needs the tighter $O(u)$ bound and can pay the four operations per
+element.
+\end{example}
+
 \subsection{Conditioning}
 
 \engterm{Conditioning} is a property of the problem, not of any
@@ -321,6 +402,28 @@ moves the intersection by a large amount, amplified by
 $\kappa(\mat{A})$. The Hilbert-matrix simulation exercise of section
 16.4 reproduces this picture at higher dimension and at numerically
 catastrophic conditioning ($\kappa \sim 10^{12}$ at $n = 10$).
+
+\begin{archetype}[Uncertainty]
+The condition number is the bridge between this chapter and the
+uncertainty apparatus of Volume I Chapter 4. There, the propagation
+of measurement uncertainty through a function $y = f(x)$ multiplied
+the input standard uncertainty by the sensitivity $\abs{f'(x)}$.
+Here, the relative condition number $\kappa_{f}(x) = \abs{x f'(x) /
+f(x)}$ multiplies the input relative perturbation by the same
+sensitivity, recast in relative terms. Finite-precision round-off is
+one source of input perturbation; measurement error is another;
+model error is a third. The condition number does not care which
+source supplied the perturbation. It states how much the problem
+amplifies whatever uncertainty the input carries, and it sets a
+floor on the output uncertainty that no algorithm, however stable,
+can beat. The engineer who has internalised the uncertainty budget
+of Volume I reads conditioning as the same accounting applied to the
+arithmetic: the input has a relative uncertainty (from measurement,
+from rounding, from the model), the problem has a condition number,
+and the product is the irreducible relative uncertainty of the
+output. Reporting more digits than that product allows is the
+numerical form of claiming an error bar the data do not support.
+\end{archetype}
 
 \begin{estimation}
 \textbf{Question.} An engineer evaluates
@@ -388,6 +491,79 @@ A backward-stable algorithm on an ill-conditioned problem still
 loses digits; the digits the engineer loses are bought by the
 problem, not by the algorithm. The discipline is to identify
 which buyer is responsible.
+
+\begin{example}
+\textbf{The same digits, two different buyers.} Consider evaluating
+$y = f(x) = \sqrt{x + 1} - \sqrt{x}$ at $x = 10^{12}$ in double
+precision. The naive evaluation subtracts two numbers that agree to
+about twelve digits, $\sqrt{x + 1} \approx \sqrt{x} \approx 10^{6}$,
+and the cancellation leaves an absolute error near $u \cdot 10^{6}
+\approx 10^{-10}$ in a result whose true magnitude is $1/(\sqrt{x+1}
++ \sqrt{x}) \approx 5 \times 10^{-7}$. The relative error of the
+naive computation is near $2 \times 10^{-4}$, about four correct
+digits. Is the loss the problem's fault or the algorithm's? The
+condition number is $\kappa_{f}(x) = \abs{x f'(x)/f(x)}$. With
+$f'(x) = \tfrac{1}{2}(x+1)^{-1/2} - \tfrac{1}{2}x^{-1/2}$ the
+algebra gives $\kappa_{f}(x) = \tfrac{1}{2} \cdot
+\frac{\sqrt{x+1} + \sqrt{x}}{\sqrt{x+1} - \sqrt{x}} \cdot
+\frac{x}{\sqrt{x(x+1)}} \approx \tfrac{1}{2}$ for large $x$. The
+problem is well conditioned. The algorithm is the buyer. Rewriting
+$f(x) = 1/(\sqrt{x + 1} + \sqrt{x})$ adds two like-signed numbers
+and divides, with no cancellation, and recovers all sixteen digits.
+The diagnostic is the same one the estimation block ran on $1 -
+\cos x$: compute $\kappa$, and if $\kappa$ is small while the answer
+is wrong, rewrite the algorithm rather than reaching for higher
+precision.
+\end{example}
+
+\begin{example}
+\textbf{When the problem is the buyer.} Evaluate the polynomial
+$p(x) = (x - 1)^{6}$ near $x = 1$ in its expanded monomial form
+$x^{6} - 6x^{5} + 15x^{4} - 20x^{3} + 15x^{2} - 6x + 1$. At
+$x = 1.01$ the exact value is $10^{-12}$, but the expanded
+evaluation sums seven terms each of magnitude near $1$ to $20$ whose
+true sum is $10^{-12}$; the result loses about twelve digits to
+cancellation among the partial sums. Here higher precision genuinely
+helps, because the conditioning of polynomial evaluation in the
+monomial basis near a high-multiplicity root is itself large: the
+condition number of evaluating $\sum a_k x^k$ is $\sum \abs{a_k}
+\abs{x}^k / \abs{p(x)}$, which at $x = 1.01$ is roughly $77 /
+10^{-12} \approx 8 \times 10^{13}$. The problem, as posed in the
+monomial basis, is ill conditioned; the algorithm cannot recover
+what the representation has lost. The remedy is to change the
+problem, not the precision: evaluate $(x - 1)^{6}$ in factored form,
+which is perfectly conditioned. The Wilkinson polynomial of the
+following box is the extreme case of this pathology.
+\end{example}
+
+\begin{mastery}
+\textbf{Wilkinson's polynomial.} Wilkinson's perturbation study of
+the polynomial $w(x) = \prod_{k=1}^{20}(x - k)$, with roots at the
+integers $1$ through $20$, is the historical demonstration that root
+conditioning can be catastrophic even when every root is real,
+simple, and well separated \cite[ch.~2]{text:v2ch16-wilkinson-1965}.
+The coefficient of $x^{19}$ in the expanded form is $-210$.
+Perturbing that single coefficient by $2^{-23} \approx 10^{-7}$ (one
+part in $10^{9}$ of its magnitude) splits several of the larger
+roots into complex-conjugate pairs displaced by order unity: the
+root near $x = 16$ moves by about $2.8$. The condition number of the
+root $x_j$ with respect to the coefficient $a_k$ is
+$\abs{a_k x_j^{k}} / \abs{x_j \, w'(x_j)}$, and for the clustered
+larger roots of $w$ this reaches $10^{10}$ and beyond. Wilkinson
+recorded that the discovery, that a polynomial with integer roots
+this benign-looking could be so violently ill conditioned in its
+coefficients, was the most traumatic experience of his career as a
+numerical analyst. The engineering lesson is durable past any
+language or library: the map from polynomial coefficients to roots
+is, for clustered or high-degree polynomials, an ill-conditioned
+problem, and a root-finder reported without its coefficient-to-root
+condition number is a result whose error the engineer cannot bound.
+The practical defence is to avoid forming the monomial coefficients
+at all when the application allows it (work with the factored form,
+or with an eigenvalue formulation of the companion matrix, whose
+conditioning is governed by the matrix rather than the
+coefficients).
+\end{mastery}
 
 \section{Root-finding: bisection, Newton, secant}\pathtag{core}
 
@@ -457,6 +633,29 @@ logic, fall back to bisection. The hybrid routine \texttt{brentq}
 in scientific Python and the \texttt{fzero} routine in MATLAB
 implement variants of this discipline.
 
+\begin{example}
+\textbf{Three ways Newton fails.} The fragility is concrete, not
+abstract. First, divergence from a poor start: for $f(x) =
+\arctan(x)$, the unique root is $x^{*} = 0$, but Newton from any
+$\abs{x_{0}} \gtrsim 1.39$ overshoots so far that successive iterates
+grow in magnitude and diverge, because the Newton step $x -
+\arctan(x)(1 + x^{2})$ exceeds $\abs{x}$ once $\abs{x}$ is large.
+Second, a two-cycle: for $f(x) = x^{3} - 2x + 2$, Newton from
+$x_{0} = 0$ produces $x_{1} = 1$, and from $x_{1} = 1$ produces
+$x_{2} = 0$, oscillating forever between $0$ and $1$ without
+approaching the real root near $-1.77$. Third, the multiple-root
+slowdown: for $f(x) = (x - 1)^{2}$, the root $x^{*} = 1$ has
+multiplicity $2$, $f'(x^{*}) = 0$, and Newton converges only
+linearly with ratio $1/2$ rather than quadratically, halving the
+error per step like bisection while paying for two evaluations. Each
+failure violates a precondition of the quadratic-convergence theorem
+(good initial guess, no cycling, simple root), and each is invisible
+to a Newton loop that lacks the bracket safeguard. The safeguarded
+hybrid of the design exercises detects all three: a step that leaves
+the bracket triggers a bisection fallback, and a stalled bracket
+width flags the multiple-root case.
+\end{example}
+
 \subsection{Secant method}
 
 The \engterm{secant method} replaces the analytic derivative
@@ -484,6 +683,73 @@ doubles the digit count per step. All three saturate near 16 digits
 at the binary64 precision ceiling. The cost per step is one function
 evaluation for bisection and secant; two (one $f$, one $f'$) for
 Newton.
+
+\subsection{Fixed-point iteration}
+
+Many root-finding problems arrive already in, or are easily
+rewritten into, \engterm{fixed-point} form $x = g(x)$, where a root
+of $f$ is a fixed point of $g$. The iteration $x_{k+1} = g(x_{k})$
+converges to a fixed point $x^{*}$ when $g$ is a contraction near
+$x^{*}$. The governing quantity is $\abs{g'(x^{*})}$: by the
+mean-value theorem $e_{k+1} = g(x_{k}) - g(x^{*}) = g'(\xi_{k})
+e_{k}$, so
+
+\[
+\abs{e_{k+1}} \approx \abs{g'(x^{*})} \, \abs{e_{k}}
+\]
+
+near the fixed point. The iteration converges linearly with
+asymptotic rate $\abs{g'(x^{*})}$ when $\abs{g'(x^{*})} < 1$, and
+diverges when $\abs{g'(x^{*})} > 1$. The case $g'(x^{*}) = 0$ is
+the source of Newton's quadratic rate: Newton is the fixed-point
+iteration with $g(x) = x - f(x)/f'(x)$, for which $g'(x^{*}) =
+f(x^{*}) f''(x^{*}) / f'(x^{*})^{2} = 0$ at a simple root (since
+$f(x^{*}) = 0$). The vanishing first derivative of the iteration map
+is the structural reason Newton converges quadratically and a
+generic fixed-point iteration converges only linearly.
+
+\begin{example}
+\textbf{Two rearrangements, two fates.} To solve $x^{3} - x - 2 =
+0$ near $x^{*} \approx 1.5214$, two natural rearrangements are
+$g_{1}(x) = x^{3} - 2$ (from $x = x^{3} - 2$) and $g_{2}(x) =
+(x + 2)^{1/3}$ (from $x^{3} = x + 2$). At the root, $g_{1}'(x) =
+3x^{2}$ gives $g_{1}'(x^{*}) \approx 6.94 > 1$: the iteration
+$x_{k+1} = x_{k}^{3} - 2$ diverges from any start near the root.
+The map $g_{2}'(x) = \tfrac{1}{3}(x + 2)^{-2/3}$ gives
+$g_{2}'(x^{*}) \approx 0.135 < 1$: the iteration $x_{k+1} =
+(x_{k} + 2)^{1/3}$ converges linearly, gaining about
+$-\log_{10}(0.135) \approx 0.87$ correct digits per step, roughly
+eighteen steps to machine precision. The same root, the same
+problem, two algebraically equivalent rearrangements, and one
+converges while the other flies apart. The discipline is to inspect
+$\abs{g'(x^{*})}$ before iterating, or to estimate it from the
+observed per-step error ratio in the first few iterations and to
+abandon the rearrangement when the ratio exceeds one.
+\end{example}
+
+\begin{mastery}
+\textbf{Aitken acceleration and Steffensen's method.} A linearly
+convergent sequence $x_{k} \to x^{*}$ with asymptotic ratio $r =
+g'(x^{*})$ satisfies $x_{k+1} - x^{*} \approx r(x_{k} - x^{*})$. Three
+consecutive iterates then determine $r$ and, by extrapolation,
+$x^{*}$ itself. \engterm{Aitken's $\Delta^{2}$ process} forms
+
+\[
+\hat{x}_{k} = x_{k} - \frac{(x_{k+1} - x_{k})^{2}}
+{x_{k+2} - 2x_{k+1} + x_{k}},
+\]
+
+which converges to $x^{*}$ faster than the original sequence. Folding
+Aitken extrapolation back into the iteration (apply $g$ twice, then
+extrapolate, then restart) is \engterm{Steffensen's method}, which
+recovers quadratic convergence from a linearly convergent fixed-point
+map without requiring the derivative $g'$. Steffensen is the
+working answer when the engineer has a contraction map but no cheap
+derivative and wants Newton-like speed. The cost is two function
+evaluations per accelerated step and a fragility near $x_{k+2} -
+2x_{k+1} + x_{k} = 0$, where the denominator cancels and the
+extrapolation must be guarded.
+\end{mastery}
 
 \subsection{Choosing among the three}
 
@@ -522,6 +788,221 @@ property the input may or may not satisfy; the engineer's job is
 to verify, not to assume.
 \end{archetype}
 
+\section{Interpolation and approximation}\pathtag{standard}
+
+A table of data points, or a function too expensive to evaluate
+everywhere, leaves the engineer needing a value between the samples.
+\engterm{Interpolation} builds a function that passes through the
+given points; \engterm{approximation} builds a function that stays
+close to the given points without necessarily passing through them.
+The distinction matters when the data carry noise: interpolating
+noisy data reproduces the noise, where a least-squares
+approximation of lower degree filters it. This section develops the
+interpolation apparatus, the way it fails (the Runge phenomenon),
+and the piecewise remedy (splines).
+
+\subsection{Polynomial interpolation exists and is unique}
+
+Given $n + 1$ distinct nodes $x_{0}, \ldots, x_{n}$ and values
+$y_{0}, \ldots, y_{n}$, there is exactly one polynomial of degree at
+most $n$ that passes through all $n + 1$ points. Existence and
+uniqueness follow from the Vandermonde system: writing the
+interpolant as $p(x) = \sum_{j=0}^{n} c_{j} x^{j}$ and imposing
+$p(x_{i}) = y_{i}$ gives a linear system whose matrix is the
+Vandermonde matrix $V_{ij} = x_{i}^{j}$, nonsingular when the nodes
+are distinct (its determinant is $\prod_{i < j}(x_{j} - x_{i})$).
+Solving the Vandermonde system directly is the wrong way to compute
+the interpolant: the Vandermonde matrix is notoriously ill
+conditioned, with $\kappa$ growing exponentially in $n$ for
+equispaced nodes. The Lagrange and Newton forms compute the same
+unique polynomial without forming or inverting the Vandermonde
+matrix.
+
+\subsection{The Lagrange form}
+
+The \engterm{Lagrange form} writes the interpolant as a weighted
+sum of \engterm{cardinal polynomials},
+
+\[
+p(x) = \sum_{j=0}^{n} y_{j} \, \ell_{j}(x), \qquad
+\ell_{j}(x) = \prod_{\substack{i=0 \\ i \neq j}}^{n}
+\frac{x - x_{i}}{x_{j} - x_{i}}.
+\]
+
+Each $\ell_{j}$ is the degree-$n$ polynomial equal to $1$ at
+$x_{j}$ and $0$ at every other node, so $p(x_{i}) = y_{i}$ by
+construction. The Lagrange form is the cleanest expression for
+theory and for proofs; it is poor for computation as written,
+because adding a new data point requires recomputing every cardinal
+polynomial. The \engterm{barycentric} rewrite of the Lagrange form
+fixes the computational cost and is numerically stable; it is the
+form a production interpolation routine actually uses.
+
+\subsection{Newton's divided differences}
+
+The \engterm{Newton divided-difference form} builds the interpolant
+incrementally, so that adding a data point costs one more term
+rather than a full recomputation. Define the divided differences
+recursively:
+
+\begin{align*}
+f[x_{i}] &= y_{i}, \\
+f[x_{i}, \ldots, x_{i+k}] &= \frac{f[x_{i+1}, \ldots, x_{i+k}]
+- f[x_{i}, \ldots, x_{i+k-1}]}{x_{i+k} - x_{i}}.
+\end{align*}
+
+The interpolant is then
+
+\[
+p(x) = f[x_{0}] + f[x_{0}, x_{1}](x - x_{0}) + \cdots
++ f[x_{0}, \ldots, x_{n}] \prod_{i=0}^{n-1}(x - x_{i}).
+\]
+
+The leading divided difference $f[x_{0}, \ldots, x_{n}]$ equals
+$f^{(n)}(\xi)/n!$ for some $\xi$ in the interval spanned by the
+nodes when $f \in C^{n}$, which connects the divided difference to
+the Taylor coefficient and underwrites the interpolation-error
+formula below.
+
+\begin{example}
+\textbf{A three-point interpolant computed two ways.} Interpolate
+$f(x) = \ln x$ at $x_{0} = 1, x_{1} = 2, x_{2} = 4$, where $y_{0} =
+0$, $y_{1} = \ln 2 = 0.6931$, $y_{2} = \ln 4 = 1.3863$. Divided
+differences: $f[x_{0}, x_{1}] = (0.6931 - 0)/(2 - 1) = 0.6931$;
+$f[x_{1}, x_{2}] = (1.3863 - 0.6931)/(4 - 2) = 0.3466$;
+$f[x_{0}, x_{1}, x_{2}] = (0.3466 - 0.6931)/(4 - 1) = -0.1155$. The
+Newton interpolant is $p(x) = 0 + 0.6931(x - 1) - 0.1155(x - 1)(x -
+2)$. Evaluating at $x = 3$: $p(3) = 0.6931 \cdot 2 - 0.1155 \cdot 2
+\cdot 1 = 1.3863 - 0.2310 = 1.1553$, against the true $\ln 3 =
+1.0986$, an error of $0.057$. The same value comes from the
+Lagrange form $p(3) = 0 \cdot \ell_{0}(3) + 0.6931 \cdot \ell_{1}(3)
++ 1.3863 \cdot \ell_{2}(3)$ with $\ell_{1}(3) = \frac{(3-1)(3-4)}
+{(2-1)(2-4)} = 1$ and $\ell_{2}(3) = \frac{(3-1)(3-2)}{(4-1)(4-2)} =
+\tfrac{1}{3}$, giving $0.6931 + 0.4621 = 1.1552$, the same
+polynomial to rounding. The $0.057$ error reflects the curvature of
+$\ln$ that a quadratic cannot capture across so wide an interval;
+the interpolation-error formula below predicts its size.
+\end{example}
+
+\subsection{The interpolation error formula}
+
+For $f \in C^{n+1}$ on an interval containing the nodes, the error
+of the degree-$n$ interpolant at any point $x$ is
+
+\[
+f(x) - p(x) = \frac{f^{(n+1)}(\xi)}{(n+1)!}
+\prod_{i=0}^{n}(x - x_{i})
+\]
+
+for some $\xi$ in the interval. Two factors govern the error. The
+derivative factor $f^{(n+1)}(\xi)/(n+1)!$ depends on the function:
+for an entire function whose high derivatives stay bounded, it
+shrinks with $n$. The \engterm{node polynomial} $\prod(x - x_{i})$
+depends only on the node placement, and its size between the nodes
+is the engineer's design variable. Equispaced nodes make the node
+polynomial large near the interval endpoints, which is the seed of
+the Runge phenomenon. Chebyshev nodes minimise the maximum of the
+node polynomial and tame the error.
+
+\subsection{The Runge phenomenon}
+
+Raising the degree of an equispaced polynomial interpolant does not
+in general improve the fit. For $f(x) = 1/(1 + 25 x^{2})$ on
+$[-1, 1]$, the classic example of Runge (1901), the equispaced
+interpolant develops oscillations near the endpoints whose amplitude
+grows with the degree; the maximum-norm error diverges as $n \to
+\infty$. The derivative factor $f^{(n+1)}$ grows fast enough, and
+the equispaced node polynomial grows large enough near the
+endpoints, that their product blows up.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-runge-phenomenon}
+
+Figure~\ref{fig:vol02:ch16:runge-phenomenon} shows the
+degree-$10$ equispaced interpolant overshooting near $x = \pm 1$.
+The cure is one of two changes. Cluster the nodes at the endpoints
+using the \engterm{Chebyshev nodes} $x_{k} = \cos(k\pi/n)$, whose
+node polynomial has the smallest possible maximum and whose
+interpolant converges for any function analytic on the interval.
+Abandon the single high-degree polynomial for a piecewise low-degree
+construction, the spline.
+
+\begin{estimation}
+\textbf{Question.} An engineer has $21$ tabulated values of a smooth
+calibration curve on a uniform grid and wants the value at a point
+between two table entries. Before computing, estimate whether a
+single degree-$20$ polynomial interpolant or a cubic spline through
+the same $21$ points will give the smaller worst-case error, and by
+roughly what factor.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The degree-$20$ equispaced interpolant sits squarely in the Runge
+regime: the node polynomial's maximum near the endpoints grows like
+$2^{n}$ with $n = 20$, so the endpoint overshoot is governed by a
+factor near $2^{20} \approx 10^{6}$ relative to the interior, and
+the maximum-norm error is dominated by that overshoot. The cubic
+spline has error $O(h^{4})$ with $h = 1/20$, giving a factor near
+$(1/20)^{4} \approx 6 \times 10^{-6}$ times a curvature constant of
+order the fourth derivative. The spline wins, and the rough ratio of
+the two worst-case errors is the product of the polynomial's
+endpoint blow-up and the spline's $h^{4}$ decay, plausibly five to
+ten orders of magnitude in the spline's favour for a curve with
+modest higher derivatives. The order-of-magnitude lesson governs the
+working choice: for interpolation on a fixed equispaced grid of more
+than a handful of points, reach for the spline, not the high-degree
+polynomial. The exact factor depends on the calibration curve's
+derivatives, but no realistic smooth curve reverses the ranking.
+\end{estimation}
+
+\subsection{Cubic splines}
+
+A \engterm{cubic spline} interpolant is a piecewise cubic
+polynomial, one cubic per subinterval $[x_{k}, x_{k+1}]$, joined so
+that the interpolant and its first two derivatives are continuous
+across every interior node. The continuity conditions plus the
+interpolation conditions leave two degrees of freedom, fixed by a
+boundary condition: the \engterm{natural} spline sets the second
+derivative to zero at both ends; the \engterm{clamped} spline sets
+the first derivative to specified values; the \engterm{not-a-knot}
+condition (the default in most libraries) requires the third
+derivative to be continuous across the first and last interior
+nodes. Assembling the continuity conditions produces a tridiagonal
+linear system in the interior second derivatives, solvable in
+$O(n)$ work.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-spline-vs-poly}
+
+Figure~\ref{fig:vol02:ch16:spline-vs-poly} contrasts the spline
+with the oscillating polynomial on the Runge data. The spline trades
+the polynomial's single analytic expression for local control: each
+cubic piece sees only its immediate neighbours, so a perturbation in
+one data value moves the interpolant only locally, and the
+maximum-norm error falls as the node spacing shrinks (as $O(h^{4})$
+for a clamped spline of a smooth function). The spline is the
+working default for interpolating tabulated engineering data, in CAD
+geometry, and in the smooth reconstruction of sampled signals.
+
+\begin{mastery}
+\textbf{Why Chebyshev nodes are optimal.} Among all choices of $n +
+1$ nodes on $[-1, 1]$, the Chebyshev nodes minimise the maximum
+over $[-1, 1]$ of the node polynomial $\prod(x - x_{i})$. The
+minimised maximum is $2^{-n}$, achieved when the node polynomial is
+the monic Chebyshev polynomial $T_{n+1}/2^{n}$, which equioscillates
+between $\pm 2^{-n}$ across the interval. The proof is a classic
+equioscillation argument: any monic degree-$(n+1)$ polynomial with a
+smaller maximum would have to cross the Chebyshev polynomial more
+than $n + 1$ times, which is impossible for two distinct monic
+polynomials of degree $n + 1$ whose difference has degree at most
+$n$. Equispaced nodes, by contrast, give a node polynomial whose
+maximum grows like $2^{n}/(e\, n \log n)$, exponentially worse. The
+factor between the two, $2^{2n}$ at the endpoints, is the
+quantitative seed of the Runge phenomenon, and the reason a
+spectral method or a Chebyshev-based quadrature places its nodes by
+the cosine rule rather than uniformly.
+\end{mastery}
+
 \section{Numerical linear algebra revisited}\pathtag{standard}
 
 Volume II Chapter 9 introduced linear systems, LU factorisation,
@@ -558,6 +1039,40 @@ algorithm whose stability the engineer cannot defend. The
 discipline of section 9.8's refusal list applies: a reported
 linear-system solve without partial pivoting (or full pivoting,
 or a stability argument) is incomplete.
+
+\begin{example}
+\textbf{Why the growth factor matters.} Partial pivoting bounds each
+multiplier by $1$ in magnitude, but it does not bound the
+\emph{growth} of the matrix entries during elimination; the
+worst-case growth factor $\rho = \max_{i,j,k}\abs{u_{ij}^{(k)}} /
+\max_{i,j}\abs{a_{ij}}$ can reach $2^{n-1}$. The standard worst-case
+matrix is
+
+\[
+\mat{A} = \begin{psmallmatrix}
+1 & 0 & 0 & 1 \\
+-1 & 1 & 0 & 1 \\
+-1 & -1 & 1 & 1 \\
+-1 & -1 & -1 & 1
+\end{psmallmatrix},
+\]
+
+whose last column doubles at each elimination step: the bottom-right
+entry grows from $1$ to $2$ to $4$ to $8 = 2^{3}$ for this $4 \times
+4$ case, and to $2^{n-1}$ for the $n \times n$ analogue. Partial
+pivoting does not swap any rows here, because every pivot is already
+the column maximum, so the growth proceeds unchecked. The backward
+error of the solve is bounded by $\rho \cdot n \cdot u$, so this
+matrix loses about $n - 1$ bits of accuracy that a benign matrix
+keeps. Such matrices are vanishingly rare in practice (the observed
+growth factor on random and on application matrices is $O(\sqrt{n})$
+to $O(n)$, never the exponential bound), which is why partial
+pivoting is the production default despite its non-bound on growth.
+The engineer who must guarantee the bound, rather than rely on the
+empirical typical case, uses complete pivoting (which bounds growth
+polynomially) at roughly double the cost, or monitors the computed
+growth factor and re-solves with higher precision when it is large.
+\end{example}
 
 \subsection{QR by Householder reflections}
 
@@ -670,6 +1185,38 @@ Volume IV Chapter 8 (computational continuum mechanics) and
 Volume IX develop the iterative apparatus at the level needed for
 PDE discretisations.
 
+\begin{mastery}
+\textbf{Conjugate gradients and the role of the condition number.}
+For a symmetric positive definite system $\mat{A}\vect{x} =
+\vect{b}$, the conjugate-gradient method's error in the
+$\mat{A}$-norm after $k$ iterations is bounded by
+
+\[
+\frac{\norm{\vect{x}_{k} - \vect{x}^{*}}_{\mat{A}}}
+{\norm{\vect{x}_{0} - \vect{x}^{*}}_{\mat{A}}}
+\leq 2 \left(\frac{\sqrt{\kappa} - 1}{\sqrt{\kappa} + 1}\right)^{k},
+\]
+
+where $\kappa = \kappa_{2}(\mat{A})$. The bound says the number of
+iterations to a fixed relative accuracy scales as $\sqrt{\kappa}$,
+where the stationary methods (Jacobi, Gauss-Seidel) scale as
+$\kappa$ itself. A problem with $\kappa = 10^{6}$ needs of order
+$10^{3}$ conjugate-gradient iterations and of order $10^{6}$
+Gauss-Seidel iterations to the same accuracy, the difference between
+a routine and an intractable solve. This is why \engterm{preconditioning},
+replacing $\mat{A}\vect{x} = \vect{b}$ with $\mat{M}^{-1}\mat{A}
+\vect{x} = \mat{M}^{-1}\vect{b}$ for an $\mat{M}$ that clusters the
+spectrum, dominates large-scale iterative practice: a good
+preconditioner brings the effective $\kappa$ down to a small
+constant and the iteration count down with it. The art of
+large-sparse-system solving is largely the art of choosing $\mat{M}$,
+and it is problem-specific: incomplete-LU, algebraic multigrid, and
+domain-decomposition preconditioners each suit a different class of
+$\mat{A}$. The condition number, introduced in section 16.2 as the
+amplifier of input error, reappears here as the governor of
+iteration count, the same quantity wearing a second hat.
+\end{mastery}
+
 \section{Numerical integration revisited}\pathtag{standard}
 
 Volume II Chapter 6 introduced the trapezoidal rule and Simpson's
@@ -733,6 +1280,53 @@ accurate than trapezoidal or Simpson with comparable cost. For
 integrands with discontinuities, weak singularities, or rapid
 oscillation, fixed-order Gaussian quadrature is no better than
 the lower-order rules and is often worse.
+
+\begin{example}
+\textbf{Three nodes against eight.} Evaluate $\int_{0}^{1} e^{x}\,
+\dd x = e - 1 = 1.718282$ by three-point Gauss-Legendre and compare
+to the composite Simpson rule. Mapping $[0, 1]$ to $[-1, 1]$ by
+$x = (t + 1)/2$, the three Gauss nodes $t_{i} = -\sqrt{3/5}, 0,
++\sqrt{3/5}$ map to $x_{i} = 0.1127, 0.5, 0.8873$ with weights
+$w_{i} = \tfrac{1}{2}(5/9, 8/9, 5/9) = 0.2778, 0.4444, 0.2778$ after
+the $(b-a)/2 = \tfrac{1}{2}$ scaling. The Gauss estimate is
+$0.2778\, e^{0.1127} + 0.4444\, e^{0.5} + 0.2778\, e^{0.8873} =
+0.3109 + 0.7328 + 0.6746 = 1.718281$, in error by about $7 \times
+10^{-7}$ with only three function evaluations. Composite Simpson
+matches that accuracy only near eight subintervals (nine
+evaluations). The three-point Gauss rule is exact for polynomials
+through degree $5$, where three-point Simpson is exact only through
+degree $3$, and the extra two degrees buy the two-decade accuracy
+gain at lower cost. The lesson is the one the section states: for
+smooth integrands, accuracy per evaluation favours Gauss heavily;
+the engineer reserves the equispaced rules for tabulated data whose
+abscissae are not free to choose.
+\end{example}
+
+\begin{mastery}
+\textbf{Romberg integration and Richardson extrapolation.} The
+composite trapezoidal rule has an error expansion in even powers of
+$h$ (the Euler-Maclaurin formula): $T(h) = I + c_{1} h^{2} +
+c_{2} h^{4} + c_{3} h^{6} + \cdots$ for a smooth integrand. Two
+trapezoidal estimates at $h$ and $h/2$ can then be combined to
+cancel the leading $h^{2}$ term:
+
+\[
+R(h) = \frac{4 T(h/2) - T(h)}{3} = I + O(h^{4}),
+\]
+
+which is exactly Simpson's rule. Repeating the cancellation on the
+$h^{4}$, $h^{6}$, terms builds the \engterm{Romberg table}, each
+column one Richardson-extrapolation step higher in order than the
+last, reaching $O(h^{2m})$ accuracy from $m$ levels of trapezoidal
+halving. Romberg is the cheapest route to high-order accuracy on a
+smooth integrand when the abscissae must be equispaced (so Gauss is
+unavailable), because it reuses every function evaluation across the
+columns. The method fails silently on integrands without the smooth
+even-power error expansion (those with endpoint singularities or
+interior corners), where the extrapolation amplifies rather than
+cancels the error; the adaptive Gauss-Kronrod routines of the next
+subsection handle those integrands where Romberg cannot.
+\end{mastery}
 
 \subsection{The round-off floor of a refined grid}
 
@@ -850,6 +1444,35 @@ difference as a local error estimate, and adjust $h$ to keep the
 local error within tolerance. The Dormand-Prince DOPRI5(4) is the
 default in MATLAB \texttt{ode45} and in \texttt{scipy.integrate.RK45}.
 
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-rk-stability}
+
+Figure~\ref{fig:vol02:ch16:rk-stability} draws the absolute-stability
+regions of forward Euler, RK4, and backward Euler in the complex
+$z = h\lambda$ plane. A one-step method applied to $\dot y = \lambda
+y$ advances by $y_{n+1} = R(z) y_{n}$ for a \engterm{stability
+function} $R(z)$; the method is absolutely stable where
+$\abs{R(z)} \leq 1$. Forward Euler has $R(z) = 1 + z$ (the unit disk
+at $-1$); RK4 has $R(z) = 1 + z + z^{2}/2 + z^{3}/6 + z^{4}/24$, the
+degree-$4$ Taylor truncation of $e^{z}$, whose stability region
+reaches $z \approx -2.78$ on the negative real axis; backward Euler
+has $R(z) = 1/(1 - z)$, stable across the entire left half-plane.
+
+\begin{example}
+\textbf{Reading a step-size cap off the stability region.} Integrate
+$\dot y = -50 y$ with RK4. The real-axis stability limit is
+$h\lambda \gtrsim -2.78$, so $h \lesssim 2.78/50 \approx 0.0556$. A
+step of $h = 0.05$ gives $z = -2.5$, $R(z) = 1 - 2.5 + 3.125 -
+2.604 + 1.628 = 0.649$, $\abs{R} < 1$, stable. A step of $h = 0.07$
+gives $z = -3.5$, $R(z) = 1 - 3.5 + 6.125 - 7.146 + 6.253 = 2.732$,
+$\abs{R} > 1$, and the numerical solution grows without bound while
+the true solution decays to zero, the unmistakable signature of a
+stability violation. The engineer who sees a decaying physical
+system produce an exponentially growing numerical solution reads the
+step size against the stability region before reaching for any other
+explanation; the cure is a smaller step for an explicit method, or
+an A-stable implicit method that removes the cap entirely.
+\end{example}
+
 \subsection{Stiffness}
 
 A system is \engterm{stiff} when the eigenvalues of its Jacobian
@@ -868,6 +1491,33 @@ working choices. \texttt{scipy.integrate.BDF} and MATLAB
 \texttt{ode15s} are the standard production routines for stiff
 systems. The cost of an implicit step is a Newton-style linear
 solve per step; the savings are the lifted step-size restriction.
+
+\begin{mastery}
+\textbf{Order barriers.} Two theorems of Dahlquist bound what an
+ODE solver can achieve, and the engineer who knows them stops
+hunting for a method that cannot exist. The \engterm{first Dahlquist
+barrier} states that a stable linear multistep method of $k$ steps
+has order at most $k + 1$ for odd $k$ and $k + 2$ for even $k$: there
+is no free lunch in which more past values buy unbounded order while
+keeping stability. The \engterm{second Dahlquist barrier} is the
+sharper constraint for stiff problems: no explicit method is
+$A$-stable, and no $A$-stable linear multistep method has order
+greater than $2$, with the trapezoidal rule the $A$-stable method of
+smallest error constant at order $2$. The barrier explains the
+architecture of every production stiff solver. The backward
+differentiation formulas BDF1 and BDF2 are $A$-stable; BDF3 through
+BDF6 are not $A$-stable but are $A(\alpha)$-stable (stable in a wedge
+around the negative real axis) and are used because real stiff
+systems have eigenvalues near the negative real axis where the wedge
+suffices; BDF7 and higher are unstable and do not exist as usable
+methods. When the engineer needs both high order and $A$-stability,
+the implicit Runge-Kutta family (which the barriers do not constrain,
+since it is not a linear multistep method) supplies methods such as
+the Radau and Gauss collocation schemes, at the cost of a larger
+nonlinear solve per step. The barriers are durable mathematics, not
+tooling: they will hold in 2050 exactly as in 1963
+\cite[ch.~10]{text:moler-numerical}.
+\end{mastery}
 
 \subsection{Finite differences and finite elements (preview)}
 
@@ -958,6 +1608,30 @@ across runs for several distinct reasons.
     with the floating-point sources above.
 \end{itemize}
 
+\begin{mastery}
+\textbf{Non-associativity quantified.} The root of every reordering
+effect is that floating-point addition is not associative. A
+concrete instance: let $a = 1$, $b = -1$, $c = 10^{-20}$ in
+binary64. Then $(a + b) + c = 0 + 10^{-20} = 10^{-20}$, but
+$a + (b + c) = a + \operatorname{fl}(-1 + 10^{-20})$, and since
+$10^{-20}$ is far below the spacing of $1$, $\operatorname{fl}(-1 +
+10^{-20}) = -1$ exactly, so $a + (b + c) = 0$. The two groupings
+differ by the entire value of $c$. A parallel reduction that splits
+the sum across threads chooses a grouping at run time, and the
+grouping depends on the thread count, which is why the same code
+gives different last bits on $2$ threads and on $8$. The cost of
+fixing the grouping (a deterministic reduction tree, fixed
+regardless of thread count) is a loss of the dynamic load balancing
+that makes the parallel sum fast in the first place, typically a
+$10$ to $30$ percent slowdown on a reduction-heavy kernel. The
+engineering decision is whether the application needs bit-identical
+output (regulatory audit, differential debugging, exact regression
+tests) or only statistically reproducible output (most scientific
+reporting). The first pays the determinism tax; the second documents
+the run-to-run variance and moves on. Stating which choice the
+report makes is the discipline; leaving it implicit is the defect.
+\end{mastery}
+
 \subsection{Practical reproducibility disciplines}
 
 The engineer's defences are concrete.
@@ -1037,9 +1711,70 @@ arithmetic used.
 
 \section{Failure: famous numerical failures}\pathtag{core}
 
-Two named cases ground the chapter's machinery in deployed
-engineering systems whose numerical decisions destroyed the
-mission.
+Four named cases ground the chapter's machinery in deployed systems
+whose numerical decisions destroyed the result. The Vancouver Stock
+Exchange index drift is the gentlest, an accumulating one-sided
+rounding bias with no casualties; the Patriot and Ariane cases are
+lethal and destructive at the scale of human life and a launch
+vehicle; the Pentium FDIV bug carries the lesson into hardware. The
+cases share one structure: a numerical decision whose error was
+small per operation, well defined, and trivially calculable, and an
+operating context that multiplied or exposed the error past the
+tolerance the deployment assumed.
+
+\subsection{Vancouver Stock Exchange index drift (1982-1983)}
+
+The Vancouver Stock Exchange introduced a composite index on
+25 January 1982 at a nominal value of $1000.000$. Twenty-two months
+later the recorded index closed near $525$, having drifted downward
+at roughly $25$ points per month while the underlying market was
+approximately flat \cite{paper:quinn-vse-1983}. No market event
+explained the drift; the cause was an arithmetic rule.
+
+\paragraph{Technical mechanism.}
+The index was recomputed on each trade, of which there were roughly
+$3000$ per trading day, and the running value was carried to three
+decimal places. The update stage truncated the in-memory value to
+three decimals rather than rounding it. Truncation of a value
+uniformly distributed in its last retained place removes on average
+half a unit in that place, a one-sided bias rather than the
+zero-mean error of round-to-nearest. With roughly $3000$ updates per
+day across about $250$ trading days, the index lost approximately
+$3000 \times 250 \times 0.0005 = 375$ index points per year to the
+cumulative truncation alone. Over twenty-two months the bias reached
+about $574$ points: the recorded index closed at $524.811$ where the
+value recomputed with round-half-to-even closed at $1098.892$, a
+difference of $574.081$ \cite{paper:quinn-vse-1983}. The correction,
+prompted by analyst attention to the persistent drift in a flat
+market, recomputed the index retroactively with round-half-to-even
+and republished the series \cite{web:cnn-vse-archive}.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-vse-drift}
+
+Figure~\ref{fig:vol02:ch16:vse-drift} plots the recorded and the
+corrected index. The single-update error was far below the index's
+display precision; the cumulative error over millions of updates was
+visible at index-level scale. The mechanism is the same one section
+16.2 names as accumulated round-off, and the same one the
+round-to-nearest-ties-to-even rule of section 16.1 was designed to
+defeat: a one-sided rounding rule applied a million times turns a
+sub-display-precision per-step error into a structural bias.
+
+\paragraph{Lesson for numerical computation.}
+The case is the cleanest demonstration in the chapter of why the
+choice of rounding mode is an engineering decision, not an
+implementation detail. Truncation (round-toward-zero) is biased;
+round-to-nearest-ties-to-even is unbiased, which is exactly why IEEE
+754 makes it the default. An engineer who replaces the default with
+truncation, for speed or for a misplaced sense that truncation is
+the conservative choice, has introduced a one-sided bias that
+accumulates with the number of operations. The defence is
+institutional as much as numerical: a parallel computation, an
+independent audit, or a comparison against a broader-market index
+would have caught the drift within months, and none was in place.
+The same accumulating-bias mechanism reappears, lethally, in the
+Patriot case below, where the accumulated quantity is a clock offset
+rather than an index value.
 
 \subsection{Patriot Dhahran (1991)}
 

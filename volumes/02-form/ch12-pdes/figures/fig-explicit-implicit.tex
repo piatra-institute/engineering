@@ -1,0 +1,85 @@
+% Figure: explicit vs implicit accuracy/cost trade-off for the heat
+% equation. Top panel: midpoint decay of sin(pi x) under FTCS,
+% BTCS, Crank-Nicolson and exact, on a coarse time step.
+% Bottom panel: stable time-step ceiling vs grid resolution for
+% explicit (quadratic) and implicit (accuracy-limited) schemes.
+\begin{figure}[htbp]
+\centering
+
+% --- Top panel: midpoint trajectory u(1/2, t) ---
+\begin{tikzpicture}
+\begin{axis}[
+  width=12cm, height=5cm,
+  title={\small (a) midpoint decay $u(1/2,t)$, coarse step $r = 5$},
+  xlabel={time $t$},
+  ylabel={$u(1/2,t)$},
+  xmin=0, xmax=0.25,
+  ymin=0, ymax=1.05,
+  grid=both,
+  major grid style={engblack!20},
+  legend pos=north east,
+  legend cell align=left,
+  font=\scriptsize,
+  samples=120, domain=0:0.25,
+]
+% Exact decay e^{-pi^2 t}.
+\addplot[engblack, very thick] {exp(-pi^2 * x)};
+\addlegendentry{exact $e^{-\pi^2 t}$}
+% BTCS one-step factor per step of size dt; with r=5 dx=1/20 dt=5/400=0.0125.
+% Approximate implicit-Euler decay (1/(1+pi^2 dt))^{t/dt}: over-damps slightly.
+\addplot[engred, very thick, mark=square*, mark size=1.2pt, samples=21, domain=0:0.25] {
+  (1/(1+pi^2*0.0125))^(x/0.0125)
+};
+\addlegendentry{BTCS (first order, over-damps)}
+% Crank-Nicolson factor ((1-pi^2 dt/2)/(1+pi^2 dt/2))^{t/dt}: closer.
+\addplot[engblue, very thick, mark=*, mark size=1.2pt, samples=21, domain=0:0.25] {
+  ((1-pi^2*0.0125/2)/(1+pi^2*0.0125/2))^(x/0.0125)
+};
+\addlegendentry{Crank-Nicolson (second order)}
+\end{axis}
+\end{tikzpicture}
+
+\vspace{1.5ex}
+
+% --- Bottom panel: stable dt ceiling vs N ---
+\begin{tikzpicture}
+\begin{loglogaxis}[
+  width=12cm, height=5cm,
+  title={\small (b) usable time step vs grid points $N$},
+  xlabel={grid points $N$ (with $\Delta x = 1/N$)},
+  ylabel={$\Delta t$},
+  xmin=10, xmax=1000,
+  grid=both,
+  major grid style={engblack!20},
+  legend pos=south west,
+  legend cell align=left,
+  font=\scriptsize,
+]
+% Explicit ceiling: dt = dx^2/(2 alpha), alpha=1 -> dt = 1/(2 N^2).
+\addplot[engred, very thick, domain=10:1000, samples=40] {1/(2*x^2)};
+\addlegendentry{explicit CFL ceiling $\Delta t = \Delta x^{2}/2$}
+% Implicit accuracy-limited: dt ~ const (say accuracy target dt=0.01).
+\addplot[engblue, very thick, domain=10:1000, samples=2] {0.01};
+\addlegendentry{implicit accuracy budget $\Delta t \approx$ const}
+\end{loglogaxis}
+\end{tikzpicture}
+
+\caption[Explicit versus implicit trade-off]{The working trade-off
+between explicit and implicit time-stepping for the heat equation
+$u_t = u_{xx}$. Panel (a): the midpoint decay of the fundamental
+mode $\sin(\pi x)$ under a deliberately coarse step ($r = 5$, far
+above the explicit CFL bound, so FTCS would diverge and is not
+shown). BTCS is stable but over-damps because its one-step factor
+$1/(1 + \pi^2 \Delta t)$ underestimates $e^{-\pi^2 \Delta t}$ at
+first order. Crank-Nicolson tracks the exact decay closely because
+its factor $(1 - \pi^2 \Delta t/2)/(1 + \pi^2 \Delta t/2)$ is the
+second-order Pad\'e approximant. Panel (b): the usable time step
+against grid resolution. The explicit CFL ceiling falls as $\Delta
+x^{2}$ (slope $-2$ on log-log axes), so doubling resolution quarters
+the step. The implicit step is limited only by accuracy and stays
+roughly constant, so on fine grids the implicit scheme takes orders
+of magnitude fewer steps. The crossover is where per-step cost of
+the tridiagonal solve no longer pays for the larger step it
+permits.}
+\label{fig:vol02:ch12:explicit-implicit}
+\end{figure}

@@ -10,6 +10,7 @@ Each file is a small reference table. CSV format; first row is the header.
 | `feasibility_frontier.csv` | Per-growth-class largest $n$ feasible on a single-machine and a $10^{3}$-node cluster, given a one-year budget of $\approx 10^{18}$ and $\approx 10^{20}$ operations respectively (current as of 2026). | Editorial computation, section 17.8. |
 | `worked_graph_edges.csv` | Edge list for the worked five-vertex graph of section 17.2 (also figure fig:vol02:ch17:worked-graph). | Editorial example. |
 | `dijkstra_exercise.csv` | Directed weighted edge list for exercise 17.4 (Dijkstra trace), also figure fig:vol02:ch17:dijkstra-trace. | Editorial example. |
+| `recurrence_growth.csv` | Tabulated Fibonacci, Catalan, Bell, and integer-partition counts at small $n$, showing the divergent growth rates of section 17.6. | Editorial computation. |
 
 ## Conventions
 

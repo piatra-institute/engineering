@@ -1,6 +1,6 @@
 # Code for Vol II Ch 8 (Vectors and vector calculus)
 
-Two `uv`-runnable scripts implement the chapter's working tools.
+Three `uv`-runnable scripts implement the chapter's working tools.
 
 ## Files
 
@@ -8,12 +8,14 @@ Two `uv`-runnable scripts implement the chapter's working tools.
 |---|---|
 | `mesh_volume.py` | Reads a minimal Wavefront `.obj` mesh and prints the divergence-theorem signed volume and the surface area. |
 | `triple_product_sweep.py` | Builds three reference meshes (unit cube, regular tetrahedron, geodesic icosphere at three refinements) and reports the relative error of the divergence-theorem volume against the analytical value. |
+| `verify_theorems.py` | Evaluates both sides of Green's, Gauss's, and Stokes's theorems for the three worked examples in the chapter and reports the discrepancy. Refining `--n` drives the discrepancy toward floating-point noise. |
 
 ## Usage
 
 ```
 uv run mesh_volume.py ../data/unit_cube.obj
 uv run triple_product_sweep.py
+uv run verify_theorems.py --n 400
 ```
 
 Both scripts carry PEP 723 inline metadata; `uv` resolves `numpy` automatically.

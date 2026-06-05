@@ -77,6 +77,36 @@ is bounded and monotone (each step makes the residual smaller, and the
 residuals do not run off to infinity), the iteration converges, even
 when we cannot compute the limit directly.
 
+\engterm{Cauchy}. A sequence is \engterm{Cauchy} if its terms become
+arbitrarily close to one another: for every $\varepsilon > 0$ there is
+an $N$ such that $\abs{a_{m} - a_{n}} < \varepsilon$ for all
+$m, n \geq N$. In $\R$, a sequence converges if and only if it is
+Cauchy. The distinction matters in practice because the Cauchy
+condition can be checked without knowing the limit. A numerical
+iteration whose successive iterates differ by less than the tolerance,
+and continue to do so, has met the Cauchy criterion and may be
+stopped. The stopping rule $\abs{a_{n+1} - a_{n}} < \varepsilon$ is the
+Cauchy criterion truncated to consecutive terms, and it can mislead
+when the gaps shrink while the running total still drifts, exactly the
+harmonic-series trap of section 4.6.
+
+A short worked check of the monotone convergence theorem fixes the
+machinery. Consider the iteration $a_{n+1} = \tfrac{1}{2}(a_{n} +
+2/a_{n})$ with $a_{0} = 2$, the Babylonian rule for $\sqrt{2}$. Each
+iterate is positive, and the arithmetic-geometric-mean inequality gives
+$a_{n+1} = \tfrac{1}{2}(a_{n} + 2/a_{n}) \geq \sqrt{a_{n} \cdot 2/a_{n}}
+= \sqrt{2}$, so every term from $a_{1}$ on is bounded below by
+$\sqrt{2}$. The sequence is also decreasing for $n \geq 1$: the
+difference $a_{n+1} - a_{n} = \tfrac{1}{2}(2/a_{n} - a_{n}) =
+(2 - a_{n}^{2})/(2 a_{n}) \leq 0$ once $a_{n} \geq \sqrt{2}$. A
+sequence that is decreasing and bounded below converges, by the
+monotone convergence theorem, and the limit $L$ satisfies $L =
+\tfrac{1}{2}(L + 2/L)$, that is $L = \sqrt{2}$. The argument certifies
+convergence and identifies the limit without ever computing the decimal
+expansion. The numerical run of this iteration is the subject of a
+simulation exercise; the present point is that boundedness and
+monotonicity, both provable by hand, settle the convergence question.
+
 \subsection{Standard sequences and their limits}
 
 A small inventory carries most engineering work.
@@ -105,6 +135,22 @@ $c > 1$. We use $\ll$ to mean that the ratio of left-hand to right-hand
 tends to zero. The hierarchy will reappear in algorithm analysis
 (Volume II Chapter 17) and in the asymptotic behaviour of physical
 expansions later in this chapter.
+
+The hierarchy is worth a worked confirmation, because the engineer who
+trusts it without seeing it justified once will misapply it under
+pressure. Take the claim $c^{n} \ll n!$ for $c = 10$. The ratio
+$10^{n}/n!$ is itself a sequence; its term-to-term ratio is
+$10^{n+1}/(n+1)! \div 10^{n}/n! = 10/(n+1)$. The ratio drops below $1$
+once $n \geq 10$, so the sequence $10^{n}/n!$ increases up to $n = 9$,
+peaks near $n = 9$ at about $2.8 \times 10^{3}$, and decreases
+thereafter, each step multiplying by a factor below $1$. Past the peak
+the sequence is geometric-like with a shrinking ratio, so it tends to
+zero. The factorial wins, but only after the exponential has had its
+run. An engineer who truncates an exponential-over-factorial series too
+early, before the peak, sees terms still growing and may wrongly
+conclude the series diverges. The ratio test reads the post-peak
+behaviour and returns the correct verdict; the eye, watching the
+pre-peak terms, does not.
 
 \input{volumes/02-form/ch04-sequences-series-limits/figures/fig-geometric-convergence}
 
@@ -146,6 +192,38 @@ fixed point $a^{*} = g(a^{*})$ when $\abs{g'(a^{*})} < 1$ and the
 starting value is close enough. The convergence is linear with rate
 $\abs{g'(a^{*})}$. Engineering iterations from heat-transfer
 relaxation to PageRank are fixed-point iterations in disguise.
+
+A worked fixed-point example shows the rate-prediction working. The
+Colebrook equation for the Darcy friction factor $f$ in a turbulent
+pipe is implicit, but a common engineering rearrangement solves the
+nearby problem $a_{n+1} = g(a_{n})$ with $g(a) = \cos a$, the iteration
+that locates the Dottie number, the unique real solution of $a =
+\cos a$. Starting from $a_{0} = 1$ (radian), the iterates run
+$1.0000$, $0.5403$, $0.8576$, $0.6543$, $0.7935$, $0.7014$, $0.7639$,
+$0.7221$, and settle toward $a^{*} = 0.739085$. The fixed point
+satisfies $g'(a^{*}) = -\sin(0.739085) = -0.6736$, and $\abs{g'} =
+0.6736 < 1$, so the iteration converges, linearly, with each error
+multiplied by about $0.674$ per step. The number of iterations to
+shrink the error by a factor of $10^{6}$ is therefore $6 /
+\log_{10}(1/0.674) \approx 35$. The alternating overshoot in the
+iterate list is the signature of a negative $g'$: successive iterates
+straddle the fixed point, a cobweb that spirals inward. The figure
+shows the cobweb for this case.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-cobweb}
+
+The cobweb diagram of \autoref{fig:vol02:ch04:cobweb} reads the
+convergence geometrically. The iteration steps vertically to the curve
+$y = g(a)$, then horizontally to the line $y = a$, and repeats. A slope
+of magnitude below $1$ at the fixed point pulls the cobweb inward; a
+slope of magnitude above $1$ pushes it out, and the iteration diverges
+no matter how close the start. The visual criterion ($\abs{\text{slope}}
+< 1$ at the crossing) is the same $\abs{g'(a^{*})} < 1$ condition stated
+above, made legible. The script
+\texttt{code/fixed\_point\_cobweb.py} runs the iteration and prints the
+empirical contraction ratio $e_{n+1}/e_{n}$, which settles to $-0.674$
+as predicted; the run is tabulated in
+\texttt{data/fixed\_point\_cobweb.csv}.
 
 \subsection{The big-O and little-o notations}
 
@@ -242,6 +320,73 @@ This formula handles cases where the engineer wants the cumulative
 effect after $N$ steps, regardless of whether the series ultimately
 converges.
 
+A worked engineering use makes the geometric series concrete. A
+relay sends a packet that may echo: the receiver sees the direct
+arrival at unit amplitude, then a reflected copy at amplitude $\rho$,
+then a copy of the copy at $\rho^{2}$, and so on, where $\rho$ is the
+reflection coefficient of a mismatched termination. The total received
+energy, normalised to the direct arrival, is $\sum_{n=0}^{\infty}
+\rho^{2n} = 1/(1 - \rho^{2})$. For a $20\%$ reflection ($\rho = 0.2$),
+the multipath energy is $1/(1 - 0.04) = 1.0417$, a $4.2\%$ excess over
+the direct path. For a badly matched $\rho = 0.5$, the excess is
+$1/(1 - 0.25) = 1.333$, a third more energy than the direct arrival,
+spread across echoes that the receiver must equalise. The same closed
+form gives the steady-state output of a first-order recursive
+(leaky-integrator) filter $y_{n} = x_{n} + \rho y_{n-1}$ driven by a
+unit step: the steady-state gain is $1/(1 - \rho)$, the geometric sum
+of the impulse response. The reflection problem and the filter problem
+are the same geometric series wearing different clothes.
+
+A second worked use settles a present-value question. An engineering
+project promises a fixed annual saving $C$ for $T$ years, and the
+analyst discounts future money at rate $i$ per year, so a saving $C$
+realised $n$ years out is worth $C/(1 + i)^{n}$ today. The present
+value of the stream is a finite geometric sum with ratio $r = 1/(1 +
+i)$:
+\[
+\text{PV} = \sum_{n=1}^{T} \frac{C}{(1 + i)^{n}} = C \, r
+\frac{1 - r^{T}}{1 - r} = C \, \frac{1 - (1 + i)^{-T}}{i}.
+\]
+For $C = \$10{,}000$ per year, $i = 0.05$, and $T = 20$ years, the
+factor $(1 - 1.05^{-20})/0.05 = (1 - 0.3769)/0.05 = 12.46$, so the
+present value is about $\$124{,}600$, well below the undiscounted
+$\$200{,}000$. Letting $T \to \infty$ gives the perpetuity value $C/i =
+\$200{,}000$, the limit of the partial sums. The same closed form
+prices a maintenance contract, a bond coupon stream, and the
+lifetime-cost term in a total-cost-of-ownership comparison. The
+geometric series is the engineer's discounting engine, and the
+distinction between the finite sum and its infinite limit is the
+distinction between a fixed-term and a perpetual obligation.
+
+\subsection{Telescoping series}
+
+A \engterm{telescoping series} has terms that cancel in consecutive
+pairs. If $a_{n} = b_{n} - b_{n+1}$, the partial sum collapses:
+\[
+S_{N} = \sum_{n=1}^{N} (b_{n} - b_{n+1}) = b_{1} - b_{N+1},
+\]
+and the infinite sum is $b_{1} - \lim_{n} b_{n+1}$ when the limit
+exists. The recognition skill is to spot a partial-fraction
+decomposition that produces the cancelling form. The canonical case is
+\[
+\sum_{n=1}^{\infty} \frac{1}{n(n+1)} = \sum_{n=1}^{\infty}
+\left(\frac{1}{n} - \frac{1}{n+1}\right) = 1 - \lim_{N \to \infty}
+\frac{1}{N+1} = 1.
+\]
+A less obvious case rewards the same trick. To sum $\sum 1/(n(n+2))$,
+decompose $1/(n(n+2)) = \tfrac{1}{2}(1/n - 1/(n+2))$. The cancellation
+now skips a term, leaving the first two unmatched:
+\[
+\sum_{n=1}^{\infty} \frac{1}{n(n+2)} = \frac{1}{2}\left(1 + \frac{1}{2}
+- \lim_{N}\left(\frac{1}{N+1} + \frac{1}{N+2}\right)\right) = \frac{3}{4}.
+\]
+Telescoping is the one method in the chapter that returns an exact
+closed-form sum rather than a convergence verdict, which is why it is
+worth the recognition effort. Many sums that look intractable reduce to
+telescoping after a partial-fraction step, including the variance of a
+discrete-uniform distribution and several lattice-sum identities in
+later volumes.
+
 \subsection{The harmonic series}
 
 For all the simplicity of its terms, the series
@@ -289,6 +434,22 @@ the true sum, then $\abs{S - S_{N}} \leq b_{N+1}$: the truncation error
 is at most the magnitude of the first omitted term. This is the
 simplest worked-bound formula in the chapter.
 
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-alternating-envelope}
+
+The envelope picture in \autoref{fig:vol02:ch04:alternating-envelope}
+shows why the bound holds. The partial sums of a convergent alternating
+series straddle the limit: the odd partial sums approach from above, the
+even partial sums from below, and the true sum is trapped in the
+shrinking interval $[S_{2k}, S_{2k+1}]$. The width of the trapping
+interval is exactly $b_{2k+1}$, the next term, so the distance from any
+partial sum to the limit cannot exceed the next term. The bound is not
+merely an inequality the engineer must trust; it is the visible width of
+a nested-interval cage. A worked instance: for $\log 2 = 1 - 1/2 + 1/3 -
+\cdots$, after the term $1/3$ the partial sum is $S_{3} = 0.8333$ and the
+bound on the residual is $b_{4} = 1/4 = 0.25$. The true residual is
+$\abs{0.6931 - 0.8333} = 0.1402$, within the bound, and on the upper
+side as the odd-index rule predicts.
+
 \subsection{Absolute and conditional convergence}
 
 A series $\sum a_{n}$ \engterm{converges absolutely} if
@@ -303,6 +464,37 @@ content is: when manipulating a series (reordering, regrouping,
 multiplying by another series), check that the operations preserve the
 sum. Absolute convergence preserves sum under reordering; conditional
 convergence does not.
+
+The Riemann rearrangement theorem is not an abstraction without bite.
+The alternating harmonic series sums to $\log 2 \approx 0.693$ in its
+natural order. Take two positive terms for every one negative term,
+$1 + 1/3 - 1/2 + 1/5 + 1/7 - 1/4 + \cdots$, and the same terms, every
+one of them used exactly once, sum to $\tfrac{3}{2}\log 2 \approx
+1.040$. A numerical routine that accumulates a conditionally convergent
+series in an order set by cache locality or by parallel reduction rather
+than by the mathematical index can land on a different total, and the
+difference is not round-off. The defensive habit is to sum in magnitude
+order, or to confirm absolute convergence before reordering for speed.
+
+\begin{mastery}
+\engterm{Summability of divergent series}. A divergent series can
+still be assigned a finite value by a \engterm{summation method} that
+agrees with ordinary summation on convergent series. \engterm{Ces\`{a}ro
+summation} averages the partial sums: $\sigma_{N} = (S_{1} + \cdots +
+S_{N})/N$, and a series is Ces\`{a}ro-summable to $\sigma$ if
+$\sigma_{N} \to \sigma$. The series $1 - 1 + 1 - 1 + \cdots$ has
+partial sums $1, 0, 1, 0, \ldots$ that do not converge, but the
+Ces\`{a}ro averages converge to $1/2$. \engterm{Abel summation} assigns
+$\lim_{x \to 1^{-}} \sum a_{n} x^{n}$ when the limit exists. These
+methods are not mathematical curiosities for the engineer; Ces\`{a}ro
+and Abel means appear in the convergence analysis of Fourier series
+(where the Ces\`{a}ro mean of a Fourier series, the Fej\'{e}r kernel,
+converges uniformly for a continuous function while the raw series may
+not) and in signal-processing windowing. The hazard is to read a
+summation method's finite answer as the value of the divergent series in
+the ordinary sense; the regularised value is a different object, valid
+only for the operations the method preserves.
+\end{mastery}
 
 \input{volumes/02-form/ch04-sequences-series-limits/figures/fig-partial-sums}
 
@@ -404,6 +596,24 @@ For $p = 1$, $\int_{1}^{N} 1/x \, \dd x = \log N$. The harmonic
 partial sums grow as $\log N + \gamma + O(1/N)$, the integral test's
 verdict in concrete form.
 
+The integral test also delivers a truncation bound the engineer can use
+directly. For a convergent $p$-series $\sum 1/n^{p}$ with $p > 1$, the
+tail after $N$ terms is bounded by the corresponding integral:
+\[
+\sum_{n=N+1}^{\infty} \frac{1}{n^{p}} \leq \int_{N}^{\infty}
+\frac{\dd x}{x^{p}} = \frac{N^{1-p}}{p - 1}.
+\]
+For $p = 2$, the tail after $N$ terms is at most $1/N$, so summing
+$\sum 1/n^{2} = \pi^{2}/6 \approx 1.6449$ to within $10^{-3}$ takes
+about $N = 1000$ terms by the crude bound, and the sharper midpoint
+bound $\sum_{n > N} 1/n^{2} \approx 1/N - 1/(2N^{2})$ confirms the
+order. The slow $1/N$ tail decay is why direct summation of $\sum
+1/n^{2}$ is a poor way to compute $\pi^{2}/6$; an engineer who needs
+the constant uses an accelerated form rather than the naive series. The
+integral test thus does double duty: it settles convergence and it
+bounds the truncation tail, the two questions the engineer actually
+asks of any series.
+
 \subsection{Picking a test}
 
 A working order:
@@ -472,6 +682,51 @@ The catalog above covers approximately ninety percent of the series
 the engineer meets in this volume. The remaining ten percent are
 handled by the ladder.
 
+\subsection{Five worked convergence verdicts}
+
+The tests earn their place by application. We settle five series, each
+chosen to exercise a different rung of the ladder, and state the test
+that does the work.
+
+\engterm{Series 1}: $\displaystyle \sum_{n=1}^{\infty}
+\frac{n^{2} + 3}{2 n^{4} - n + 1}$. The term behaves like $n^{2}/(2
+n^{4}) = 1/(2 n^{2})$ for large $n$. Limit comparison with $b_{n} =
+1/n^{2}$: the ratio $a_{n}/b_{n} = n^{2}(n^{2} + 3)/(2 n^{4} - n + 1)
+\to 1/2$, a finite positive constant. Since $\sum 1/n^{2}$ converges
+(a $p$-series with $p = 2 > 1$), the series converges.
+
+\engterm{Series 2}: $\displaystyle \sum_{n=1}^{\infty}
+\frac{1}{\sqrt{n^{2} + 1}}$. The term behaves like $1/n$. Limit
+comparison with $b_{n} = 1/n$: the ratio $n/\sqrt{n^{2} + 1} \to 1$.
+Since $\sum 1/n$ diverges, the series diverges. The deceptive
+square-root masks a $p = 1$ tail.
+
+\engterm{Series 3}: $\displaystyle \sum_{n=1}^{\infty}
+\frac{3^{n}}{n!}$. Factorial in the denominator points to the ratio
+test: $a_{n+1}/a_{n} = 3^{n+1}/(n+1)! \cdot n!/3^{n} = 3/(n+1) \to 0 <
+1$. The series converges absolutely, and quickly. The sum is $e^{3} - 1
+\approx 19.09$, by the exponential series.
+
+\engterm{Series 4}: $\displaystyle \sum_{n=1}^{\infty}
+\left(\frac{2n + 1}{3n + 2}\right)^{n}$. The $n$-th power points to the
+root test: $\sqrt[n]{a_{n}} = (2n + 1)/(3n + 2) \to 2/3 < 1$. The
+series converges. The ratio test here is awkward because the ratio of
+consecutive terms does not simplify cleanly; the root test reads the
+$n$-th-power structure directly.
+
+\engterm{Series 5}: $\displaystyle \sum_{n=2}^{\infty}
+\frac{1}{n (\log n)^{2}}$. The terms shrink slightly faster than
+$1/n$, the borderline. The integral test settles it: with $u = \log
+x$, $\int_{2}^{\infty} \dd x/(x (\log x)^{2}) = \int_{\log 2}^{\infty}
+\dd u/u^{2} = 1/\log 2$, finite. The series converges. The neighbouring
+series $\sum 1/(n \log n)$, with a single power of $\log$, diverges by
+the same substitution producing $\int \dd u/u$. The exponent on the
+logarithm is the whole story at this boundary.
+
+The five verdicts share a method: identify the dominant large-$n$
+behaviour, choose the cheapest test that reads that behaviour, and
+apply it. The decision tree below automates the choice.
+
 \section{Power series and Taylor series}\pathtag{core}
 
 A \engterm{power series} centred at $x_{0}$ is
@@ -506,6 +761,41 @@ $1/(1 + x^{2})$ at $x_{0} = 0$ and use the expansion at $x = 2$
 will discover that no number of terms gives a finite answer; the
 series diverges term by term. The fix is to expand at a different
 working point, where the nearest singularity is farther away.
+
+\subsection{Four worked radii of convergence}
+
+The radius formula $1/R = \limsup \sqrt[n]{\abs{c_{n}}}$ is rarely the
+fastest route; the ratio of coefficients usually settles the question
+with less work. Four cases cover the patterns.
+
+\engterm{Constant coefficients}: $\sum x^{n}$. The ratio
+$\abs{c_{n+1}/c_{n}} = 1$, so $R = 1$. The geometric series converges
+on $(-1, 1)$ and diverges at both endpoints.
+
+\engterm{Factorial in the denominator}: $\sum x^{n}/n!$. The ratio
+$\abs{c_{n+1}/c_{n}} = n!/(n+1)! = 1/(n+1) \to 0$, so $1/R = 0$ and
+$R = \infty$. The exponential series converges on all of $\R$, the
+reason the exponential is so well-behaved as a building block.
+
+\engterm{Factorial in the numerator}: $\sum n! \, x^{n}$. The ratio
+$\abs{c_{n+1}/c_{n}} = (n+1)!/n! = n+1 \to \infty$, so $R = 0$. The
+series converges only at $x = 0$. A power series with $R = 0$ is useless
+as a function representation, and it is the formal signature of an
+asymptotic (divergent) series of the kind the failure section treats.
+
+\engterm{Polynomial coefficients}: $\sum x^{n}/n^{2}$. The ratio
+$n^{2}/(n+1)^{2} \to 1$, so $R = 1$. At the endpoints the series
+becomes $\sum (\pm 1)^{n}/n^{2}$, which converges absolutely (a
+$p$-series with $p = 2$), so this series converges on the closed
+interval $[-1, 1]$. The endpoint behaviour is independent of the
+radius and must be checked term by term, as here.
+
+The pattern across the four: the factorial controls the radius. A
+factorial in the denominator gives infinite radius; a factorial in the
+numerator gives zero radius; polynomial or constant coefficients give a
+finite nonzero radius set by the nearest singularity. The endpoints are
+a separate question, settled by the $p$-series and alternating-series
+tests of section 4.2 and 4.3.
 
 \subsection{Taylor series}
 
@@ -544,6 +834,23 @@ on $\abs{R_{n}(x)}$:
 \]
 where $M_{n+1} = \sup_{\xi} \abs{f^{(n+1)}(\xi)}$ on the interval. This
 inequality is the chapter's main quantitative tool.
+
+\begin{archetype}[Uncertainty, formalised as truncation error]
+Volume I introduced uncertainty as the engineer's accounting for what
+is not known about a measured quantity. The Lagrange remainder gives
+that accounting a closed form for the special case of approximation by
+truncated series. When the engineer replaces a function by its
+$n$-term Taylor polynomial, the discarded tail is an uncertainty in the
+computed value, and the remainder bound $M_{n+1} \abs{x - x_{0}}^{n+1}/
+(n+1)!$ is its worst-case magnitude. The bound has the same role a
+calibration uncertainty plays in Volume I: it converts an approximation
+from a hopeful gesture into a quantity carried through the rest of the
+calculation with a known error bar. Two levers control the bound, the
+distance $\abs{x - x_{0}}$ from the working point and the number of
+terms kept, and the engineer trades them against a stated budget. Every
+worked example in this chapter that ends with an explicit error figure
+is an instance of this archetype.
+\end{archetype}
 
 \subsection{The canonical engineering Taylor series}
 
@@ -605,6 +912,37 @@ These five series, together with the manipulations of section 4.4.5,
 cover most of the smooth functions an engineer evaluates near a
 working point.
 
+A worked truncation-budget calculation puts the Lagrange bound to work.
+Suppose the engineer must evaluate $\cos x$ for $x \in [-0.5, 0.5]$ rad
+to an absolute accuracy of $10^{-8}$, using the fewest terms. The
+remainder after keeping terms through degree $2m$ is bounded by
+$\abs{R} \leq \abs{x}^{2m+2}/(2m+2)!$, since every derivative of
+$\cos$ has magnitude at most $1$. The worst case is $\abs{x} = 0.5$.
+Test orders: at $2m = 4$ (keeping $1 - x^{2}/2 + x^{4}/24$), the bound
+is $0.5^{6}/6! = 0.015625/720 \approx 2.2 \times 10^{-5}$, too large;
+at $2m = 6$, the bound is $0.5^{8}/8! \approx 3.9 \times
+10^{-3}/40320 \approx 9.7 \times 10^{-8}$, still above budget; at
+$2m = 8$, the bound is $0.5^{10}/10! \approx 9.8 \times
+10^{-4}/3.63 \times 10^{6} \approx 2.7 \times 10^{-10}$, comfortably
+below $10^{-8}$. Five nonzero terms (degrees $0, 2, 4, 6, 8$) meet the
+budget across the whole interval. The calculation is the entire
+engineering content of "how many terms": pick the worst-case point,
+write the Lagrange bound, and step the order until the bound clears the
+budget. The figure on convergence rate makes the per-term gain visible.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-factorial-decay}
+
+The factorial-decay figure
+(\autoref{fig:vol02:ch04:factorial-decay}) plots the term magnitudes
+$\abs{x}^{n}/n!$ against $n$ for several fixed $x$. Each curve rises
+while $n < \abs{x}$, peaks near $n \approx \abs{x}$, and then falls
+faster than any geometric sequence because the ratio of consecutive
+terms, $\abs{x}/(n+1)$, keeps shrinking. The shape is why the
+exponential, sine, and cosine series converge everywhere and why a
+fixed-budget truncation needs only a handful of terms once $\abs{x}$ is
+modest. The post-peak collapse is the factorial winning the growth
+hierarchy of section 4.1.
+
 A sixth series, the \engterm{tangent}, is worth listing because the
 project block uses it:
 \[
@@ -657,6 +995,52 @@ Maclaurin series of $e^{\sin x}$ to the order kept. The same
 manipulations underwrite the standard small-angle composites
 (amplitude responses, frequency-shifted oscillations, perturbed
 expansions) that appear later in the chapter.
+
+Division of power series is the manipulation engineers most often get
+wrong, so a worked case is warranted. To find the series of $\tan x =
+\sin x / \cos x$ near $0$ without quoting the Bernoulli-number formula,
+divide the sine series by the cosine series:
+\[
+\tan x = \frac{x - x^{3}/6 + x^{5}/120 - \cdots}{1 - x^{2}/2 +
+x^{4}/24 - \cdots}.
+\]
+Write $\tan x = c_{1} x + c_{3} x^{3} + c_{5} x^{5} + \cdots$ (only odd
+powers, by the odd symmetry of $\tan$) and multiply through by the
+cosine series:
+\[
+\left(c_{1} x + c_{3} x^{3} + c_{5} x^{5} + \cdots\right)
+\left(1 - \frac{x^{2}}{2} + \frac{x^{4}}{24} - \cdots\right) = x -
+\frac{x^{3}}{6} + \frac{x^{5}}{120} - \cdots.
+\]
+Match coefficients. The $x^{1}$ term gives $c_{1} = 1$. The $x^{3}$
+term gives $c_{3} - c_{1}/2 = -1/6$, so $c_{3} = -1/6 + 1/2 = 1/3$. The
+$x^{5}$ term gives $c_{5} - c_{3}/2 + c_{1}/24 = 1/120$, so $c_{5} =
+1/120 + (1/3)/2 - 1/24 = 1/120 + 1/6 - 1/24 = 2/15$. The result
+$\tan x = x + x^{3}/3 + 2 x^{5}/15 + \cdots$ matches the listed
+tangent series, derived now by division rather than by quoting. The
+method generalises to any quotient whose denominator has a nonzero
+constant term, and it is the safe route when no closed form for the
+coefficients is at hand.
+
+\begin{mastery}
+\engterm{Power series as ODE solutions}. A power series can solve a
+differential equation by undetermined coefficients, the technique
+formalised in Chapter 7. The preview: to solve $y' = y$ with $y(0) =
+1$, write $y = \sum_{n=0}^{\infty} c_{n} x^{n}$, differentiate term by
+term to get $y' = \sum_{n=1}^{\infty} n c_{n} x^{n-1} =
+\sum_{m=0}^{\infty} (m+1) c_{m+1} x^{m}$, and match against $y =
+\sum c_{m} x^{m}$. Coefficient matching gives the recursion $(m+1)
+c_{m+1} = c_{m}$, that is $c_{m+1} = c_{m}/(m+1)$, with $c_{0} = 1$ from
+the initial condition. The recursion unwinds to $c_{m} = 1/m!$, and the
+series is $\sum x^{m}/m! = e^{x}$, the known solution. The same machine
+solves equations with no elementary closed-form solution, including the
+Airy equation $y'' = x y$ whose series solution defines the Airy
+functions used in optics and quantum tunnelling. The power-series method
+turns a differential equation into an algebraic recursion on the
+coefficients, and the radius of convergence of the resulting series is
+set by the nearest singularity of the equation's coefficients in the
+complex plane.
+\end{mastery}
 
 \subsection{Euler's identity}
 
@@ -733,6 +1117,56 @@ has a precise meaning, and that statements like "the function tends to
 $L$" are decidable rather than aesthetic. An engineer who has internalised
 this discipline reads "the system reaches steady state" as a claim with a
 specific epsilon-delta content.
+
+\subsection{Worked limits and the indeterminate forms}
+
+Five worked limits exercise the standard tools and name the traps.
+
+\engterm{The standard small-angle limit}. $\lim_{x \to 0} \sin x / x =
+1$. The Taylor expansion gives $\sin x / x = 1 - x^{2}/6 + \cdots$,
+whose limit at $x = 0$ is $1$ by inspection. This limit is the reason
+the small-angle approximation has unit slope, and it underwrites the
+derivative of $\sin$ in Chapter 5.
+
+\engterm{A removable singularity}. $\lim_{x \to 0} (1 - \cos x)/x^{2}$.
+The numerator and denominator both vanish, a $0/0$ indeterminate form.
+Expand: $1 - \cos x = x^{2}/2 - x^{4}/24 + \cdots$, so $(1 - \cos
+x)/x^{2} = 1/2 - x^{2}/24 + \cdots \to 1/2$. The series turns the
+indeterminate form into a clean leading coefficient. This limit sets
+the curvature of the cosine at the origin and appears in the
+second-order small-deflection formula.
+
+\engterm{The exponential definition}. $\lim_{n \to \infty} (1 + x/n)^{n}
+= e^{x}$. Take the logarithm: $n \log(1 + x/n) = n (x/n - x^{2}/(2
+n^{2}) + \cdots) = x - x^{2}/(2n) + \cdots \to x$, so the limit of the
+logarithm is $x$ and the limit of the expression is $e^{x}$. This is the
+continuous-compounding limit and the bridge between discrete and
+continuous growth in Chapter 7.
+
+\engterm{A limit at infinity}. $\lim_{x \to \infty} x (\sqrt{x^{2} + 1}
+- x)$. The form is $\infty \cdot 0$. Rationalise: $\sqrt{x^{2} + 1} - x
+= 1/(\sqrt{x^{2} + 1} + x)$, so $x (\sqrt{x^{2} + 1} - x) = x/(\sqrt{x^{2}
++ 1} + x) \to 1/2$ as $x \to \infty$. The same rationalisation appears
+whenever an engineer subtracts two nearly equal large quantities, and it
+is the symbolic cousin of the catastrophic-cancellation fix in the
+failure section.
+
+\engterm{A one-sided limit that fails}. $\lim_{x \to 0} \sin(1/x)$ does
+not exist. As $x \to 0$ the argument $1/x$ runs through all of its
+period infinitely often, so $\sin(1/x)$ oscillates between $-1$ and $1$
+without settling. No epsilon-delta $\delta$ can confine the output to a
+small interval, because every neighbourhood of $0$ contains inputs
+giving outputs at both extremes. The example is the standard warning
+that "the input approaches a target" does not by itself guarantee the
+output approaches anything.
+
+\engterm{The squeeze theorem}, used once: $\lim_{x \to 0} x^{2}
+\sin(1/x) = 0$. The oscillating factor is bounded, $\abs{\sin(1/x)}
+\leq 1$, so $-x^{2} \leq x^{2} \sin(1/x) \leq x^{2}$. Both bounding
+sequences tend to $0$, so the trapped quantity does too. The squeeze
+theorem is the formal tool for limits where a bounded but
+non-convergent factor multiplies a vanishing one, a pattern common in
+windowed signals and damped oscillations.
 
 \subsection{One-sided limits, infinite limits, limits at infinity}
 
@@ -823,6 +1257,21 @@ vanishes (the extrema may sit at the boundary). The theorem fails on
 open intervals; an engineer who optimises on $(0, 1]$ instead of
 $[0, 1]$ may find the supremum is not attained.
 
+A worked bisection run shows the intermediate value theorem doing
+engineering work. To locate the root of $f(x) = x^{3} - x - 2$ on
+$[1, 2]$, note $f(1) = -2 < 0$ and $f(2) = 4 > 0$, so by the
+intermediate value theorem a root sits in $[1, 2]$. Bisect: $f(1.5) =
+-0.125 < 0$, so the root is in $[1.5, 2]$; $f(1.75) = 1.61 > 0$, so the
+root is in $[1.5, 1.75]$; $f(1.625) = 0.666 > 0$, root in $[1.5,
+1.625]$; $f(1.5625) = 0.252 > 0$, root in $[1.5, 1.5625]$. Each step
+halves the bracket, so the interval width after $n$ steps is
+$2^{-n}$ times the original. To reach an absolute tolerance of
+$10^{-6}$ on a unit bracket takes $\lceil \log_{2}(10^{6}) \rceil = 20$
+bisections, a sequence of nested intervals whose common limit is the
+root. The convergence is geometric with ratio $1/2$, the slowest of the
+root finders but the only one that needs nothing beyond a sign change
+and continuity. The root here is $x \approx 1.5214$.
+
 These three results compose into a working toolkit. The bisection
 root finder uses the intermediate value theorem to certify the
 existence of a root and the continuity of $f$ to guarantee that
@@ -832,6 +1281,26 @@ $f$ (a strictly stronger condition than continuity, treated in
 Chapter 5) to achieve quadratic convergence. The two algorithms
 share the same epsilon-delta truth condition; the difference is what
 they cost per step.
+
+The cost difference is worth tabulating, because it drives the
+engineer's choice of method. To reach an error of $10^{-12}$ from a
+starting error of $1$, bisection needs $40$ steps (each halving the
+bracket, $2^{-40} \approx 9 \times 10^{-13}$); a fixed-point iteration
+with rate $0.5$ needs the same $40$ steps; a fixed-point iteration with
+rate $0.1$ needs $12$ steps; the secant method, with order $\phi
+\approx 1.618$, needs about $7$ steps; Newton's method, with order $2$,
+needs about $5$ steps ($1, 10^{-1}, 10^{-2}, 10^{-4}, 10^{-8},
+10^{-16}$, the correct-digit count doubling each step once it is in the
+quadratic regime). The ordering is the convergence-rate hierarchy of
+the chapter, and the comparator script
+\texttt{code/convergence\_comparator.py} prints the full table. The
+engineering judgment is that Newton's five steps cost a derivative
+evaluation each, the secant's seven steps cost only a function
+evaluation each, and bisection's forty steps cost the least per step
+but the most in total, so the right method depends on the relative cost
+of a function evaluation, a derivative evaluation, and a guaranteed
+bracket. Quadratic convergence is fastest in iteration count and is not
+always cheapest in wall-clock time.
 
 \begin{estimation}
 \textbf{Question.} An iterative scheme has linear convergence with
@@ -913,6 +1382,56 @@ algorithms. For working engineers, the take-away is procedural: a
 series whose terms shrink as $1/n$ or slower is suspect, and the
 engineer should switch to a comparison or integral-test argument
 before assuming convergence.
+
+\subsection{The asymptotic-series trap: divergence that helps, then hurts}
+
+The harmonic series diverges and looks convergent. The complementary
+trap is a series that diverges yet gives an excellent answer if
+truncated at the right place, and a worse answer if pushed further. The
+asymptotic expansion of the exponential integral,
+\[
+E_{1}(x) = \int_{x}^{\infty} \frac{e^{-t}}{t} \, \dd t \sim
+\frac{e^{-x}}{x}\left(1 - \frac{1}{x} + \frac{2!}{x^{2}} -
+\frac{3!}{x^{3}} + \cdots\right),
+\]
+has terms of magnitude $n!/x^{n}$ that shrink while $n < x$ and grow
+once $n > x$, because the ratio of consecutive terms is $(n+1)/x$. For
+$x = 5$, the term magnitudes (times $e^{-x}/x$) run $1, 0.2, 0.08,
+0.048, 0.0384, 0.0384, 0.046, \ldots$: they fall to a minimum near
+$n = 5$ and then climb. The best truncation stops at the smallest term,
+near $n \approx x$, and the achievable error is roughly that smallest
+term, about $e^{-x}\sqrt{2\pi/x}$ by Stirling, which for $x = 10$ is at
+the $10^{-5}$ level. Adding more terms past the minimum makes the
+answer worse, then catastrophically wrong. An engineer who treats the
+asymptotic series like a convergent one, summing as many terms as
+patience allows, computes a number that diverges from the truth. The
+rule, stated in the mastery box of section 4.4, is to stop at the
+smallest term. The detailed analysis of optimal truncation and
+superasymptotics is in \cite{text:v2ch04-bender-orszag-1999}.
+
+\subsection{Catastrophic cancellation in series evaluation}
+
+A convergent series, summed in the wrong order or with the wrong sign
+structure, can lose all precision to round-off even though the
+mathematics is sound. The example is $e^{-x}$ for large positive $x$
+evaluated by its Maclaurin series $\sum (-x)^{n}/n!$ directly. At $x =
+20$, the largest terms reach magnitude $20^{20}/20! \approx 4.3 \times
+10^{7}$, while the true value $e^{-20} \approx 2.06 \times 10^{-9}$ is
+seventeen orders of magnitude smaller. The sum is a tower of large
+terms of alternating sign that must cancel to sixteen digits to leave
+the tiny result, and double precision carries only about sixteen
+significant digits in total. The cancellation consumes every available
+digit, and the computed answer is dominated by round-off, often wrong in
+the first significant figure or returning a negative number where the
+true value is positive. The fix is algebraic: compute $e^{+20}$ by the
+all-positive series, where no cancellation occurs, and take the
+reciprocal. Series convergence is necessary for a correct sum and is not
+sufficient for a correct \emph{computed} sum; the floating-point
+arithmetic between the terms is the other half of the engineering. The
+script \texttt{code/cancellation\_exp.py} tabulates both routes
+(\texttt{data/cancellation\_exp.csv}): at $x = 20$ the direct series
+returns a relative error near $200\%$ while the reciprocal route is
+correct to machine precision.
 
 \subsection{The principle}
 
@@ -1062,6 +1581,49 @@ solving the quadratic at every value of $\varepsilon$. This pattern
 generalises across nonlinear equations, ODEs, and PDEs, and underwrites
 much of the asymptotic-methods machinery later in the volume
 \cite{text:mahajan2014}.
+
+\subsection{The pendulum period as a worked series expansion}
+
+The third worked example produces the amplitude correction the project
+asks the reader to verify. The exact period of a simple pendulum at
+amplitude $\theta_{0}$ involves the complete elliptic integral of the
+first kind,
+\[
+T(\theta_{0}) = 4 \sqrt{\frac{L}{g}} \int_{0}^{\pi/2}
+\frac{\dd \phi}{\sqrt{1 - k^{2} \sin^{2} \phi}}, \qquad k =
+\sin\frac{\theta_{0}}{2}.
+\]
+Expand the integrand by the binomial series $(1 - u)^{-1/2} = 1 +
+\tfrac{1}{2} u + \tfrac{3}{8} u^{2} + \cdots$ with $u = k^{2} \sin^{2}
+\phi$:
+\[
+\frac{1}{\sqrt{1 - k^{2}\sin^{2}\phi}} = 1 + \frac{1}{2} k^{2}
+\sin^{2}\phi + \frac{3}{8} k^{4} \sin^{4}\phi + \cdots.
+\]
+Integrate term by term over $[0, \pi/2]$, using the Wallis integrals
+$\int_{0}^{\pi/2} \sin^{2}\phi \, \dd\phi = \pi/4$ and
+$\int_{0}^{\pi/2} \sin^{4}\phi \, \dd\phi = 3\pi/16$:
+\[
+\int_{0}^{\pi/2} \frac{\dd\phi}{\sqrt{1 - k^{2}\sin^{2}\phi}} =
+\frac{\pi}{2}\left(1 + \frac{1}{4} k^{2} + \frac{9}{64} k^{4} +
+\cdots\right).
+\]
+Therefore $T = 2\pi\sqrt{L/g}\,(1 + \tfrac{1}{4} k^{2} + \tfrac{9}{64}
+k^{4} + \cdots)$. Now expand $k = \sin(\theta_{0}/2) = \theta_{0}/2 -
+\theta_{0}^{3}/48 + \cdots$, so $k^{2} = \theta_{0}^{2}/4 -
+\theta_{0}^{4}/48 + \cdots$ and $k^{4} = \theta_{0}^{4}/16 + \cdots$.
+Substituting and collecting by power of $\theta_{0}$:
+\[
+T(\theta_{0}) = 2\pi\sqrt{\frac{L}{g}}\left(1 + \frac{\theta_{0}^{2}}{16}
++ \frac{11\,\theta_{0}^{4}}{3072} + \cdots\right),
+\]
+matching the formula quoted in the project. The leading correction
+$\theta_{0}^{2}/16$ says a pendulum released from $23^{\circ}$ runs
+about $1\%$ slow relative to the small-amplitude period, the kind of
+systematic error a pendulum-clock designer compensates with the escape
+mechanism. The worked expansion combines three of the chapter's tools:
+the binomial series, term-by-term integration inside the radius of
+convergence, and composition of one series into another.
 
 \section{Project}\pathtag{core}
 

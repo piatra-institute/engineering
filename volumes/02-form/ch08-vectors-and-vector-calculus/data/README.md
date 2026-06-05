@@ -9,6 +9,7 @@ Reference meshes and a precomputed sweep output for the divergence-theorem volum
 | `unit_cube.obj` | Unit cube, 8 vertices and 12 triangles, with consistent outward orientation. |
 | `tetrahedron.obj` | Regular tetrahedron inscribed in the unit cube, volume $1/3$. |
 | `sweep_reference.csv` | Output of `../code/triple_product_sweep.py` showing the second-order convergence of the divergence-theorem volume on a geodesic icosphere as the mesh is refined. |
+| `theorem_verification.csv` | Output of `../code/verify_theorems.py` for Green's and Stokes' theorems on the unit disc at five grid resolutions, showing the boundary integral and the interior integral converging to the same value as the discretisation refines. |
 
 ## Provenance
 

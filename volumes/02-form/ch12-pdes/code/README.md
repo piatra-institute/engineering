@@ -1,6 +1,6 @@
 # Volume II Chapter 12: PDEs, supporting code
 
-Three reference implementations for the chapter's worked examples
+Four reference implementations for the chapter's worked examples
 and project. Written for the project's working environment
 (Python 3, NumPy, SciPy, matplotlib). Each script is self-contained
 and runnable directly (`python3 <name>.py`); each writes a CSV
@@ -9,6 +9,7 @@ under `../data/` and a PNG plot beside it.
 | Script                       | Purpose                                                     | Output                                            |
 | ---------------------------- | ----------------------------------------------------------- | ------------------------------------------------- |
 | `heat_ftcs.py`               | FTCS explicit solver for the 1D heat equation               | `../data/heat_ftcs.csv`, `../data/heat_ftcs.png`  |
+| `heat_implicit.py`           | BTCS and Crank-Nicolson implicit solvers (tridiagonal)      | `../data/heat_implicit.csv`                        |
 | `wave_explicit.py`           | Centred-time-centred-space solver for the 1D wave equation  | `../data/wave_pulse.csv`, `../data/wave_pulse.png` |
 | `laplace_jacobi.py`          | Jacobi relaxation for Laplace's equation on the unit square | `../data/laplace_jacobi.csv`, `../data/laplace.png`|
 

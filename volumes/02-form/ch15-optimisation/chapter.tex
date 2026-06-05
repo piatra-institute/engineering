@@ -197,6 +197,85 @@ strict inequality, used as the regularity condition for duality.
 problem can have many optima but only one optimal value, by
 construction.
 
+\subsection{Structural taxonomy: what determines tractability}
+
+The structural class of an optimisation problem, fixed by the
+form of the objective and the constraints, settles in advance
+what the engineer can hope to compute. The taxonomy is the first
+thing to read off a problem statement, because it selects the
+solver, the convergence guarantee, and the runtime scaling
+before any number is computed.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Linear program} (LP): linear objective, linear
+    constraints. Polynomial-time solvable; global optimum at a
+    vertex; the workhorse of resource allocation.
+  \item \engterm{Quadratic program} (QP): quadratic objective,
+    linear constraints. Polynomial-time solvable when the
+    objective is convex; least squares, portfolio choice, and
+    model predictive control live here.
+  \item \engterm{Second-order cone program} (SOCP) and
+    \engterm{semidefinite program} (SDP): convex objective over
+    cone constraints. Polynomial-time solvable by interior-point
+    methods; robust least squares, beamforming, and relaxations
+    of hard combinatorial problems live here.
+  \item \engterm{General convex program}: convex objective,
+    convex feasible set. Polynomial-time solvable to any fixed
+    accuracy; every local optimum is global.
+  \item \engterm{Smooth nonconvex program}: differentiable but
+    not convex. Local optima are computable; the global optimum
+    has no efficient guarantee. Neural-network training lives
+    here.
+  \item \engterm{Integer and combinatorial program}: discrete
+    decision variables. NP-hard in general; solved by relaxation,
+    branch-and-bound, or approximation. Scheduling, routing, and
+    facility location live here.
+\end{itemize}
+
+The dividing line that matters most is not linear-versus-nonlinear
+but convex-versus-nonconvex. A convex nonlinear problem (a convex
+QP, an SOCP, an SDP) is tractable; a nonconvex problem, even one
+with a simple-looking objective, is generally not. The chapter
+develops the convex case in full because it is the case with a
+working theory, and treats the nonconvex case with the honesty
+its difficulty demands.
+
+\subsection{Scaling: how cost grows with problem size}
+
+The optimisation archetype carries a scaling archetype inside it.
+The engineer who chooses a method must read its per-iteration cost
+and its iteration count as functions of the dimension $n$, the
+number of constraints $m$, and the data count $N$.
+
+\begin{archetype}[Scaling of optimisation cost]
+The total cost of an iterative optimiser is the product of two
+factors: the per-iteration cost and the number of iterations.
+The per-iteration cost is set by the linear algebra: a
+gradient evaluation is $O(n)$ to $O(n^{2})$, a Hessian solve is
+$O(n^{3})$ in dense form, a single LP-relaxation solve inside a
+branch-and-bound node is polynomial in $(n, m)$. The iteration
+count is set by the convergence rate: geometric (gradient descent,
+rate governed by the condition number $\kappa$), superlinear
+(quasi-Newton), quadratic (Newton near the optimum), or
+sublinear $O(1/\sqrt{K})$ (stochastic gradient). The two factors
+trade against each other. Newton's method needs few iterations
+but pays $O(n^{3})$ per step; gradient descent needs many
+iterations but pays $O(n)$ per step. The break-even moves with
+$n$: second-order methods dominate at small $n$, first-order
+methods dominate at large $n$, and the crossover is the
+engineer's working judgment. Every method-selection decision in
+this chapter is an instance of this scaling archetype.
+\end{archetype}
+
+The scaling archetype recurs in the estimation block of
+Section 15.5 (gradient descent versus Newton at $n = 10^{4}$ and
+$n = 10^{5}$), in the SGD treatment of Section 15.6 (full gradient
+versus minibatch at $N = 10^{6}$), and in the branch-and-bound
+estimate of Section 15.7 ($2^{30}$ nodes pruned to $10^{7}$). The
+single habit it installs: before running an optimiser, multiply
+the per-iteration cost by the expected iteration count, and check
+that the product fits the compute budget.
+
 \section{Convex optimisation}\pathtag{core}
 
 The single most important structural distinction in optimisation
@@ -231,6 +310,45 @@ xy = 1, x > 0}$ (the segment between $(1, 1)$ and $(2, 1/2)$ does
 not stay on the curve); the integer lattice (the segment between
 two integer points contains non-integer points). The third
 non-example is the entire reason Section 15.7 exists.
+
+The convex sets an engineer meets most often are built from a few
+primitives. A \engterm{hyperplane} $\set{\vect{x} :
+\vect{a}^{\transpose} \vect{x} = b}$ and the two \engterm{half-
+spaces} it bounds are convex. A \engterm{norm ball}
+$\set{\vect{x} : \norm{\vect{x} - \vect{c}} \leq r}$ is convex in
+any norm. An \engterm{ellipsoid} $\set{\vect{x} :
+(\vect{x} - \vect{c})^{\transpose} P^{-1} (\vect{x} - \vect{c})
+\leq 1}$ with $P \succ 0$ is convex; it is the image of a ball
+under an affine map, and the principal axes are the eigenvectors
+of $P$ scaled by the square roots of its eigenvalues. The
+\engterm{probability simplex} $\set{\vect{x} : \vect{x} \geq
+\vect{0}, \vect{1}^{\transpose} \vect{x} = 1}$ is the intersection
+of the nonnegative orthant with an affine hyperplane, hence convex,
+and it is the feasible set of every problem whose decision variable
+is a distribution. The \engterm{positive semidefinite cone}, the
+set of symmetric matrices with nonnegative eigenvalues, is convex
+and is the feasible set of a semidefinite program. Each is closed
+under intersection with the others, and the engineer assembles a
+feasible set by intersecting the primitives the constraints
+provide.
+
+\paragraph{The separating-hyperplane theorem.}
+The structural fact that makes convex sets tractable is that two
+disjoint convex sets can always be separated by a hyperplane. If
+$C$ and $D$ are nonempty disjoint convex sets, there exist
+$\vect{a} \neq \vect{0}$ and $b$ with $\vect{a}^{\transpose}
+\vect{x} \leq b$ for all $\vect{x} \in C$ and $\vect{a}^{\transpose}
+\vect{x} \geq b$ for all $\vect{x} \in D$. The separating
+hyperplane is the geometric content behind duality: the dual
+variables are the normal vector of a hyperplane that separates the
+feasible set from the sublevel set of the objective at the optimal
+value. A supporting hyperplane at a boundary point of a convex set
+is the limiting case where $D$ shrinks to that single point, and
+it is the geometric content behind the tangent characterisation of
+convex functions. Failure of separation is the signature of
+nonconvexity: two interleaved nonconvex sets admit no separating
+hyperplane, and the duality theory built on separation loses its
+guarantee.
 
 \subsection{Convex functions}
 
@@ -296,6 +414,70 @@ compositions with affine maps, perspective. Boyd and
 Vandenberghe's Chapter 3 treats this calculus; the working point
 is that an engineer who has learned the library can recognise a
 convex objective from inspection without computing the Hessian.
+
+\paragraph{Worked example: convexity by Hessian.}
+Consider $f(x, y) = e^{x} + e^{y} + (x - y)^{2}$ on $\R^{2}$. The
+gradient is $\grad f = (e^{x} + 2(x - y), \; e^{y} - 2(x - y))$.
+The Hessian is
+\[
+\nabla^{2} f =
+\begin{pmatrix}
+e^{x} + 2 & -2 \\
+-2 & e^{y} + 2
+\end{pmatrix}.
+\]
+The diagonal entries are positive. The determinant is
+$(e^{x} + 2)(e^{y} + 2) - 4 = e^{x + y} + 2 e^{x} + 2 e^{y} + 4 -
+4 = e^{x+y} + 2 e^{x} + 2 e^{y} > 0$ everywhere. A symmetric
+$2 \times 2$ matrix with positive diagonal and positive
+determinant is positive definite (its leading principal minors
+are positive, the Sylvester criterion of Volume II Chapter 9).
+The function is strictly convex on all of $\R^{2}$, so the unique
+critical point, wherever the gradient vanishes, is the global
+minimum. The recognition route reaches the same conclusion
+without arithmetic: $e^{x}$ and $e^{y}$ are convex from the
+library, $(x - y)^{2}$ is a convex quadratic (it is
+$\norm{A \vect{x}}^{2}$ with $A = (1, -1)$), and a nonnegative sum
+of convex functions is convex. The Hessian computation confirms
+strictness.
+
+\paragraph{Worked example: a function that fails convexity.}
+Consider $g(x, y) = x^{2} - y^{2}$, the standard saddle. The
+Hessian is $\diag(2, -2)$, with eigenvalues $2$ and $-2$. The
+mixed sign of the eigenvalues means the Hessian is indefinite:
+positive curvature along $x$, negative along $y$. The function is
+neither convex nor concave. Its single critical point $(0, 0)$ is
+a saddle, not an extremum; gradient descent initialised off the
+$y = 0$ axis runs away to $-\infty$ along $y$. Saddle points are
+the characteristic obstruction in nonconvex optimisation, and
+high-dimensional nonconvex objectives have far more saddle points
+than local minima, a fact that shapes how first- and second-order
+methods behave on deep-learning losses.
+
+\begin{mastery}
+\textbf{Jensen's inequality and the probabilistic reading of
+convexity.} The defining inequality of a convex function extends
+from two points to any finite convex combination by induction,
+and then to any probability distribution by a limiting argument:
+for a convex $f$ and a random variable $X$ with finite mean,
+\[
+f(\E[X]) \leq \E[f(X)].
+\]
+This is \engterm{Jensen's inequality}. It is the engine behind a
+remarkable number of estimates. The arithmetic-mean / geometric-
+mean inequality is Jensen applied to $f = -\log$: $-\log(\E[X])
+\leq \E[-\log X]$, i.e.\ $\E[\log X] \leq \log \E[X]$, which
+rearranges to the AM-GM bound. The variance is nonnegative because
+$x \mapsto x^{2}$ is convex: $(\E[X])^{2} \leq \E[X^{2}]$. The
+log-likelihood lower bound used in the expectation-maximisation
+algorithm and the evidence lower bound used in variational
+inference are both Jensen applied to $\log$. An engineer who reads
+convexity probabilistically gains a single tool that produces
+order-of-magnitude bounds across estimation, information theory,
+and machine learning. The cost is one habit: notice when a
+quantity of interest is the expectation of a convex (or concave)
+function of a random input, and read off the inequality.
+\end{mastery}
 
 \subsection{Convex optimisation problems}
 
@@ -385,6 +567,54 @@ the convex-function library above and the convexity-preserving
 operations, the problem is convex; otherwise the engineer
 should suspect nonconvexity and apply Section 15.8's diagnostics.
 
+\subsection{Least squares as optimisation}
+
+The most-solved optimisation problem in all of engineering is
+least squares, and it is worth seeing it as an optimisation
+problem rather than as a linear-algebra recipe. Given $A \in
+\R^{m \times n}$ with $m \geq n$ and $\vect{b} \in \R^{m}$, the
+problem
+\[
+\min_{\vect{x} \in \R^{n}} f(\vect{x}) = \tfrac{1}{2}
+\norm{A \vect{x} - \vect{b}}_{2}^{2}
+\]
+fits an overdetermined linear system in the sense that minimises
+the sum of squared residuals. The objective is a convex quadratic:
+expanding, $f(\vect{x}) = \tfrac{1}{2} \vect{x}^{\transpose}
+(A^{\transpose} A) \vect{x} - (A^{\transpose} \vect{b})^{\transpose}
+\vect{x} + \tfrac{1}{2} \norm{\vect{b}}^{2}$, with Hessian
+$A^{\transpose} A \succeq 0$. The gradient is $\grad f =
+A^{\transpose}(A \vect{x} - \vect{b})$, and setting it to zero
+gives the \engterm{normal equations}
+\[
+A^{\transpose} A \vect{x} = A^{\transpose} \vect{b}.
+\]
+When $A$ has full column rank, $A^{\transpose} A$ is positive
+definite, $f$ is strictly convex, and the solution $\vect{x}^{*}
+= (A^{\transpose} A)^{-1} A^{\transpose} \vect{b}$ is the unique
+global minimum. The optimisation reading and the geometric reading
+of Volume II Chapter 9 are the same fact: the residual $A
+\vect{x}^{*} - \vect{b}$ is orthogonal to the column space of $A$,
+which is exactly the stationarity condition $A^{\transpose}(A
+\vect{x}^{*} - \vect{b}) = \vect{0}$.
+
+The conditioning of least squares is the conditioning of
+optimisation. The condition number of the Hessian $A^{\transpose}
+A$ is $\kappa(A^{\transpose} A) = \kappa(A)^{2}$, the square of the
+condition number of $A$. Forming the normal equations squares the
+conditioning and can destroy accuracy in finite precision; the
+numerically careful route solves the least-squares problem through
+the QR factorisation or the singular value decomposition of $A$
+directly, never forming $A^{\transpose} A$. The same conditioning
+$\kappa(A)^{2}$ governs how slowly gradient descent converges on
+the least-squares objective, which is why the estimation block in
+Section 15.5 and the ill-conditioned least-squares estimation
+exercise both turn on this square.
+\Cref{fig:vol02:ch15:contour-descent} draws the gradient-descent
+path on a least-squares contour.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-contour-descent.tex}
+
 \section{Linear and quadratic programming}\pathtag{standard}
 
 Two structural classes deserve named treatment. They cover most
@@ -457,6 +687,92 @@ same LP is implemented as
 running it prints the optimal diet, the binding constraints, and
 the shadow prices on each nutrient.
 
+\subsection{Worked LP: a two-variable production problem, graphical
+and simplex}
+
+A small two-variable LP is solvable by hand in two ways, and
+seeing both fixes the geometry that the simplex method automates.
+A workshop makes two products. Product 1 yields a profit of
+$\$3$ per unit, product 2 a profit of $\$5$ per unit. Three
+resources bind: machine A supplies $4$ hours, machine B supplies
+$12$ hours, and machine C supplies $18$ hours per shift. Product 1
+uses $1$ hour of A per unit; product 2 uses $2$ hours of B and $3$
+hours of C per unit. Writing $x_{1}, x_{2} \geq 0$ for the
+production quantities, the problem is to maximise $3 x_{1} + 5
+x_{2}$ subject to
+\[
+x_{1} \leq 4, \qquad 2 x_{2} \leq 12, \qquad
+3 x_{1} + 2 x_{2} \leq 18, \qquad x_{1}, x_{2} \geq 0.
+\]
+This is the classic instance from \textcite{text:v2ch15-dantzig1947}'s
+successors, sized for hand work.
+
+\paragraph{Graphical solution.}
+The feasible set is the polygon bounded by the three resource
+lines and the two axes. Its vertices, found by intersecting pairs
+of boundary lines, are $(0, 0)$, $(4, 0)$, $(4, 3)$, $(2, 6)$, and
+$(0, 6)$. The objective is constant on the parallel lines
+$3 x_{1} + 5 x_{2} = \text{const}$; pushing the line outward in
+the direction of increasing objective until it last touches the
+polygon locates the optimum at a vertex. Evaluating the objective
+at each vertex: $(0,0) \mapsto 0$, $(4, 0) \mapsto 12$, $(4, 3)
+\mapsto 27$, $(2, 6) \mapsto 36$, $(0, 6) \mapsto 30$. The optimum
+is $(x_{1}^{*}, x_{2}^{*}) = (2, 6)$ with profit $p^{*} = 36$. At
+this vertex the machine-B constraint ($2 x_{2} = 12$) and the
+machine-C constraint ($3 x_{1} + 2 x_{2} = 18$) are both active;
+the machine-A constraint ($x_{1} = 2 < 4$) is slack.
+
+\paragraph{Simplex solution.}
+The simplex method reaches the same vertex algebraically. Convert
+to standard form with slack variables $s_{1}, s_{2}, s_{3} \geq 0$:
+\[
+x_{1} + s_{1} = 4, \quad 2 x_{2} + s_{2} = 12, \quad
+3 x_{1} + 2 x_{2} + s_{3} = 18,
+\]
+maximise $z = 3 x_{1} + 5 x_{2}$. Start at the origin
+$(x_{1}, x_{2}) = (0, 0)$, where the basic variables are the
+slacks $(s_{1}, s_{2}, s_{3}) = (4, 12, 18)$ and $z = 0$. The
+objective row $z - 3 x_{1} - 5 x_{2} = 0$ has negative reduced
+costs on both $x_{1}$ and $x_{2}$; the most negative is $x_{2}$
+(coefficient $-5$), so $x_{2}$ enters the basis. The ratio test
+$\min(12/2, 18/2) = \min(6, 9) = 6$ selects $s_{2}$ to leave; pivot
+on the machine-B row, raising $x_{2}$ to $6$. After the pivot
+$z = 30$ and the only remaining negative reduced cost is on $x_{1}$.
+The ratio test for $x_{1}$ entering, $\min(4/1, 6/3) = \min(4, 2) =
+2$, selects the machine-C slack to leave; pivot, raising $x_{1}$ to
+$2$. Now all reduced costs are nonnegative, the optimality test is
+met, and the simplex halts at $(x_{1}, x_{2}) = (2, 6)$, $z = 36$.
+The two pivots walked the vertex graph $(0,0) \to (0, 6) \to (2,
+6)$, each edge strictly increasing the objective, which is the
+simplex method in miniature. \Cref{fig:vol02:ch15:lp-graphical}
+draws the feasible polygon, the active constraints at the optimum,
+and the objective level line.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-lp-graphical.tex}
+
+\paragraph{The dual and the shadow prices.}
+The dual of this maximisation LP assigns a price $y_{1}, y_{2},
+y_{3} \geq 0$ to each resource and minimises the total imputed
+resource value $4 y_{1} + 12 y_{2} + 18 y_{3}$ subject to the
+requirement that no product is underpriced: $y_{1} + 3 y_{3} \geq
+3$ (product 1) and $2 y_{2} + 2 y_{3} \geq 5$ (product 2). At the
+optimum, complementary slackness fixes the prices. Machine A is
+slack, so $y_{1}^{*} = 0$. Products 1 and 2 are both produced, so
+their dual constraints are tight: $3 y_{3}^{*} = 3$ gives
+$y_{3}^{*} = 1$, and $2 y_{2}^{*} + 2 \cdot 1 = 5$ gives
+$y_{2}^{*} = 3/2$. The dual objective $4 \cdot 0 + 12 \cdot 3/2 +
+18 \cdot 1 = 18 + 18 = 36$ equals the primal optimum, confirming
+strong duality. The shadow prices read directly: one extra hour
+of machine B is worth $\$1.50$ of profit, one extra hour of
+machine C is worth $\$1.00$, and one extra hour of machine A is
+worth nothing because machine A is not the bottleneck. The
+engineer should pay up to $\$1.50$ for an additional machine-B
+hour and nothing for additional machine-A capacity, a managerial
+conclusion that falls out of the dual with no further computation.
+The full primal-and-dual solve, including the shadow-price table,
+is in
+\repopath{volumes/02-form/ch15-optimisation/code/lp_production_simplex.py}.
+
 \subsection{Quadratic programming}
 
 \begin{definition}[Quadratic program]
@@ -503,6 +819,41 @@ Engineering instances of QPs:
 The QP class extends to second-order cone programs (SOCPs) and
 semidefinite programs (SDPs); see Boyd and Vandenberghe Chapters
 4 and 5.
+
+\begin{mastery}
+\textbf{Interior-point methods and the barrier.} The simplex
+method walks the boundary of the feasible polyhedron from vertex
+to vertex. Interior-point methods take the opposite route, moving
+through the interior toward the optimum, and they are the engine
+behind every modern convex solver for LP, QP, SOCP, and SDP. The
+construction replaces the inequality constraints $f_{i}(\vect{x})
+\leq 0$ with a \engterm{logarithmic barrier} added to the
+objective:
+\[
+\min_{\vect{x}} \; t f_{0}(\vect{x}) - \sum_{i=1}^{m} \log(-f_{i}
+(\vect{x})),
+\]
+where the barrier term $-\log(-f_{i})$ rises to $+\infty$ as
+$\vect{x}$ approaches the boundary of the $i$-th constraint,
+keeping the iterate strictly feasible. The parameter $t > 0$ sets
+the trade-off: for small $t$ the barrier dominates and the
+minimiser sits near the analytic centre of the feasible set; as
+$t \to \infty$ the original objective dominates and the minimiser
+approaches the true optimum. The \engterm{central path} is the
+curve of barrier minimisers traced as $t$ increases. The method
+solves a sequence of smooth unconstrained problems by Newton's
+method, raising $t$ by a constant factor at each outer step, and
+reaches an $\epsilon$-accurate optimum in $O(\sqrt{m} \log(1/
+\epsilon))$ Newton steps for self-concordant barriers, the result
+that made convex optimisation polynomial-time across the LP, QP,
+SOCP, and SDP classes (Nesterov and Nemirovski 1994). The
+engineer's working knowledge: the barrier converts a constrained
+problem into a sequence of unconstrained Newton solves, the
+duality gap at each $t$ is $m/t$ (which gives the solver a
+principled stopping rule), and the off-the-shelf solver doing
+this is the reason a hundred-thousand-variable LP solves in
+seconds.
+\end{mastery}
 
 \subsection{Primal and dual: the LP case}
 
@@ -718,10 +1069,89 @@ multiplier $\lambda^{*} = b / \norm{\vect{a}}_{2}^{2}$. The
 multiplier reports the rate at which $p^{*}$ decreases per unit
 relaxation of $b$: $\dv{p^{*}}{b} = b / \norm{\vect{a}}_{2}^{2} =
 \lambda^{*}$, in agreement with the shadow-price reading.
-\Cref{fig:vol02:ch15:lagrange-geometry} draws the equality-constraint
-version of the same picture.
+\Cref{fig:vol02:ch15:kkt-geometry} draws this inequality-constraint
+projection, with the active and inactive cases side by side;
+\cref{fig:vol02:ch15:lagrange-geometry} draws the
+equality-constraint version of the same picture.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-kkt-geometry.tex}
 
 \input{volumes/02-form/ch15-optimisation/figures/fig-lagrange-geometry.tex}
+
+\subsection{Worked example: the dual function of a simple problem}
+
+To see the dual function as an explicit object, take the
+one-variable problem $\min_{x} x^{2}$ subject to $x \geq 1$, i.e.\
+$f_{1}(x) = 1 - x \leq 0$. The Lagrangian is $\mathcal{L}(x,
+\lambda) = x^{2} + \lambda(1 - x)$. The dual function is the
+unconstrained infimum over $x$:
+\[
+g(\lambda) = \inf_{x} \left( x^{2} - \lambda x + \lambda \right).
+\]
+The inner objective is a convex parabola in $x$; its minimiser is
+$x = \lambda/2$, and substituting gives $g(\lambda) = -\lambda^{2}/4
++ \lambda$. This is a concave parabola in $\lambda$, as the general
+theory promises. The dual problem maximises $g$ over $\lambda \geq
+0$: $g'(\lambda) = -\lambda/2 + 1 = 0$ at $\lambda^{*} = 2$, giving
+$d^{*} = g(2) = -1 + 2 = 1$. The primal optimum is $x^{*} = 1$
+(the constraint binds) with $p^{*} = 1$. The two values agree,
+$p^{*} = d^{*} = 1$, so the duality gap is zero, as Slater's
+condition guarantees for this convex problem with a strictly
+feasible point ($x = 2$ satisfies $1 - x < 0$). The multiplier
+$\lambda^{*} = 2$ is the shadow price: relaxing the constraint to
+$x \geq 1 - \epsilon$ lowers the optimum by approximately
+$2 \epsilon$, since $\dv{p^{*}}{b}$ at the binding right-hand side
+$b = 1$ is $\dv{}{b}(b^{2}) = 2b = 2$.
+
+\subsection{The min-max viewpoint and the saddle point}
+
+Strong duality has a geometric reading as a saddle point of the
+Lagrangian. Define the primal as $p^{*} = \min_{\vect{x}}
+\max_{\boldsymbol{\lambda} \geq \vect{0}, \boldsymbol{\nu}}
+\mathcal{L}(\vect{x}, \boldsymbol{\lambda}, \boldsymbol{\nu})$, the
+inner maximisation forcing feasibility (an infeasible $\vect{x}$
+sends the inner max to $+\infty$). The dual is $d^{*} =
+\max_{\boldsymbol{\lambda} \geq \vect{0}, \boldsymbol{\nu}}
+\min_{\vect{x}} \mathcal{L}$. Weak duality is the statement that
+swapping a max-min for a min-max can only lower the value:
+$\max \min \leq \min \max$, so $d^{*} \leq p^{*}$. Strong duality
+is the statement that, for a convex problem with Slater's
+condition, the order can be swapped without loss: the Lagrangian
+has a saddle point $(\vect{x}^{*}, \boldsymbol{\lambda}^{*},
+\boldsymbol{\nu}^{*})$ at which it is simultaneously minimised over
+$\vect{x}$ and maximised over the multipliers. The KKT conditions
+are exactly the stationarity statement at this saddle point. The
+min-max reading recurs throughout engineering: in game theory as
+the value of a zero-sum game, in robust optimisation as the
+worst-case design, and in the training of generative adversarial
+networks as the equilibrium of two competing objectives.
+
+\begin{mastery}
+\textbf{Sensitivity analysis: the multiplier as a derivative.} The
+shadow-price reading of a Lagrange multiplier can be made exact.
+Perturb the right-hand sides of the constraints: replace
+$f_{i}(\vect{x}) \leq 0$ with $f_{i}(\vect{x}) \leq u_{i}$ and
+$h_{j}(\vect{x}) = 0$ with $h_{j}(\vect{x}) = v_{j}$, and let
+$p^{*}(\vect{u}, \vect{v})$ denote the perturbed optimal value.
+For a convex problem with strong duality at the unperturbed point,
+the optimal multipliers are the gradients of the optimal value
+with respect to the perturbations:
+\[
+\pdv{p^{*}}{u_{i}}\bigg|_{\vect{u} = \vect{0}} = -\lambda_{i}^{*},
+\qquad
+\pdv{p^{*}}{v_{j}}\bigg|_{\vect{v} = \vect{0}} = -\nu_{j}^{*}.
+\]
+A large multiplier flags a constraint that is expensive to
+tighten and rewarding to relax; a zero multiplier flags a
+constraint that does not currently bind and whose small
+perturbation costs nothing. This is the quantitative core of every
+shadow-price argument: the LP resource prices of Section 15.3, the
+diet problem's nutrient prices, and the production LP's machine-
+hour prices are all instances of $\partial p^{*} / \partial u$.
+The engineer who reports an optimum without its multipliers has
+reported half the answer; the multipliers say which constraints to
+spend the next dollar relaxing.
+\end{mastery}
 
 \section{Gradient methods, Newton's method}\pathtag{core}
 
@@ -825,6 +1255,33 @@ end of this section) is the formal statement of this scaling
 analysis.
 \end{estimation}
 
+\paragraph{Worked example: gradient descent on a two-variable
+quadratic.}
+Take $f(x_{1}, x_{2}) = \tfrac{1}{2}(x_{1}^{2} + 9 x_{2}^{2})$,
+so $\grad f = (x_{1}, 9 x_{2})$ and the Hessian is $\diag(1, 9)$
+with $\mu = 1$, $L = 9$, $\kappa = 9$. The iteration with constant
+step $\eta$ is $x_{1}^{(k+1)} = (1 - \eta) x_{1}^{(k)}$ and
+$x_{2}^{(k+1)} = (1 - 9 \eta) x_{2}^{(k)}$, decoupled because the
+Hessian is diagonal. The $x_{1}$ coordinate contracts by $1 -
+\eta$ per step, the $x_{2}$ coordinate by $|1 - 9 \eta|$. With
+$\eta = 1/L = 1/9$ the rates are $1 - 1/9 = 8/9 \approx 0.889$ for
+$x_{1}$ and $|1 - 1| = 0$ for $x_{2}$; the $x_{2}$ coordinate
+collapses in one step and $x_{1}$ crawls. The optimal symmetric
+step (Exercise on the gradient-descent rate) is $\eta^{*} = 2/(\mu
++ L) = 2/10 = 0.2$, giving worst-case rate $(\kappa - 1)/(\kappa +
+1) = 8/10 = 0.8$ in both coordinates and the fastest plain-gradient
+convergence available. From $\vect{x}_{0} = (1, 1)$ at $\eta^{*} =
+0.2$: $x_{1}$ follows $1, 0.8, 0.64, 0.512, \ldots$ and $x_{2}$
+follows $1, -0.8, 0.64, -0.512, \ldots$, the alternating sign in
+$x_{2}$ being the overshoot that produces the zigzag of
+\cref{fig:vol02:ch15:gradient-zigzag} at higher $\kappa$. Reaching
+$\norm{\vect{x}_{k}} < 10^{-6}$ takes $\log(10^{-6})/\log(0.8)
+\approx 62$ iterations, exactly the $\kappa \log(1/\epsilon)$
+scaling the convergence theorem predicts. The example is the
+whole story of first-order convergence in two coordinates: the
+condition number sets the rate, and the best step balances the
+two extreme curvatures against each other.
+
 \subsection{Step-size selection}
 
 A constant step size requires knowledge of $L$, which the
@@ -883,6 +1340,44 @@ each step. The price is a Hessian solve at every iteration,
 costing $O(n^{3})$ in dense form, which is prohibitive for
 large $n$.
 
+Pure Newton has two failure modes that the working version
+repairs. Far from the optimum the full Newton step can overshoot
+or even increase the objective, because the quadratic model is a
+poor fit over a long step; the repair is \engterm{damped Newton},
+which inserts a line-search step length $\eta_{k} \in (0, 1]$ so
+that $\vect{x}_{k+1} = \vect{x}_{k} - \eta_{k} H_{k}^{-1} \grad
+f(\vect{x}_{k})$ and accepts only steps that satisfy the Armijo
+condition, switching to the undamped step ($\eta_{k} = 1$) once
+the iterate is close enough for quadratic convergence. The second
+failure mode is an indefinite Hessian at a nonconvex point, where
+$-H_{k}^{-1} \grad f$ need not be a descent direction at all; the
+repair is to modify the Hessian, replacing $H_{k}$ with $H_{k} +
+\tau I$ for $\tau > 0$ large enough to make the modified Hessian
+positive definite, which interpolates between the Newton step
+($\tau = 0$) and a scaled gradient step ($\tau \to \infty$). The
+modification is the same idea that appears in Levenberg-Marquardt
+and in trust-region subproblems, and it is the reason a robust
+Newton implementation does more than invert a Hessian.
+
+\paragraph{Worked example: two Newton steps on a non-quadratic
+objective.}
+Take $f(x) = x^{4} - 3 x^{2} + x$, with $f'(x) = 4 x^{3} - 6 x +
+1$ and $f''(x) = 12 x^{2} - 6$. From $x_{0} = 1.5$: $f'(1.5) =
+13.5 - 9 + 1 = 5.5$ and $f''(1.5) = 27 - 6 = 21$, so $x_{1} = 1.5
+- 5.5/21 \approx 1.2381$. At $x_{1}$: $f'(1.2381) \approx 4(1.898)
+- 7.429 + 1 \approx 1.163$ and $f''(1.2381) \approx 12(1.533) - 6
+\approx 12.39$, so $x_{2} \approx 1.2381 - 1.163/12.39 \approx
+1.1443$. The true root of $f'$ near here is $x^{*} \approx 1.1309$.
+The errors are $|x_{0} - x^{*}| \approx 0.369$, $|x_{1} - x^{*}|
+\approx 0.107$, $|x_{2} - x^{*}| \approx 0.0134$. The ratio of
+each error to the previous one shrinks ($0.29$ then $0.13$), the
+signature of better-than-linear convergence sharpening toward the
+quadratic rate as the iterate nears the root, and three or four
+steps suffice for machine precision. The same objective started
+from $x_{0} = 0$, where $f''(0) = -6 < 0$, would take an ascent
+step toward a local maximum, which is exactly the indefinite-
+Hessian failure the modification above guards against.
+
 \subsection{Quasi-Newton, recognition level}
 
 The Broyden-Fletcher-Goldfarb-Shanno method (BFGS) and its
@@ -896,6 +1391,58 @@ unconstrained smooth optimisation; the engineer uses it through
 \repopath{scipy.optimize.minimize} with \verb|method='L-BFGS-B'|
 or equivalent in another environment, knowing the cost model and
 the convergence regime without rederiving the update formula.
+
+\subsection{Line search and trust region}
+
+The two foundational strategies for turning a search direction
+into a step are line search and trust region. Both guard against
+the failure of a raw Newton or gradient step to decrease the
+objective, which happens whenever the local quadratic model is a
+poor fit over the length of the step.
+
+\engterm{Line search} fixes the direction $\vect{p}_{k}$ (the
+negative gradient, the Newton step, or a quasi-Newton step) and
+searches along it for an acceptable step length $\eta_{k} > 0$. A
+purely greedy exact line search, $\eta_{k} = \argmin_{\eta} f(
+\vect{x}_{k} + \eta \vect{p}_{k})$, is rarely worth its cost; the
+working practice accepts any step that decreases the objective by
+enough. The \engterm{Armijo} (sufficient-decrease) condition
+\[
+f(\vect{x}_{k} + \eta \vect{p}_{k}) \leq f(\vect{x}_{k}) + c_{1}
+\eta \, \grad f(\vect{x}_{k})^{\transpose} \vect{p}_{k},
+\qquad c_{1} \in (0, 1),
+\]
+demands that the realised decrease be at least a fraction $c_{1}$
+of the decrease the linear model predicts. The \engterm{curvature}
+(Wolfe) condition adds a lower bound on the step so the iteration
+does not stall with tiny steps. Backtracking from a generous
+initial step, multiplying by $\beta \in (0, 1)$ until Armijo holds,
+is the standard cheap line search and is the rule the gradient-
+descent estimation block earlier in this section implicitly
+assumed when it set $\eta = 1/L$.
+
+\engterm{Trust region} inverts the order: fix a radius $\Delta_{k}$
+within which the local quadratic model
+\[
+m_{k}(\vect{p}) = f(\vect{x}_{k}) + \grad f(\vect{x}_{k})^{\transpose}
+\vect{p} + \tfrac{1}{2} \vect{p}^{\transpose} H_{k} \vect{p}
+\]
+is trusted, and minimise $m_{k}$ over $\norm{\vect{p}} \leq
+\Delta_{k}$. The radius adapts: if the realised decrease matches
+the model's predicted decrease (a ratio near $1$), the model is
+trustworthy and $\Delta_{k}$ grows; if the realised decrease is
+much smaller than predicted, the model is locally wrong and
+$\Delta_{k}$ shrinks. Trust-region methods handle indefinite
+Hessians gracefully, which is why they are the method of choice
+for nonconvex smooth problems where a raw Newton step can point
+uphill. The Levenberg-Marquardt method for nonlinear least
+squares is a trust-region method in disguise: its damping
+parameter is the Lagrange multiplier of the trust-region
+constraint, interpolating between a Gauss-Newton step (small
+damping, large trust region) and a gradient step (large damping,
+small trust region). The engineer meets Levenberg-Marquardt in
+every curve-fitting library and now knows what its damping
+parameter controls.
 
 \begin{principle}[Method selection for smooth unconstrained
 optimisation]
@@ -987,6 +1534,30 @@ points, billions of parameters) the trade is overwhelmingly in
 SGD's favour: a single full-gradient evaluation costs more than
 thousands of SGD iterations, and the SGD iterations make
 non-trivial progress at every step.
+
+\paragraph{Worked example: the bias-variance budget of a
+minibatch.}
+A minibatch gradient is an unbiased estimate of the full gradient,
+so the question is entirely one of variance. Suppose the per-sample
+gradient at the current parameter has component-wise variance
+$\sigma^{2} = 4$ (in squared gradient units) across the $N = 10^{6}$
+training samples. A minibatch of size $b$ drawn without replacement
+has gradient variance $(\sigma^{2}/b)(1 - b/N) \approx \sigma^{2}/b$
+for $b \ll N$. At $b = 1$ the variance is $4$; at $b = 256$ it is
+$4/256 \approx 0.0156$, a factor-$256$ reduction; at $b = 10^{4}$
+it is $4 \times 10^{-4}$. The variance falls as $1/b$ while the
+per-iteration cost rises as $b$, so the variance reduction per unit
+of compute is constant: doubling the batch halves the variance and
+doubles the cost, a wash on the variance-per-flop ledger. The
+reason to use a moderate batch ($b = 32$ to $b = 512$ in 2026
+practice) is not the variance-per-flop ratio, which is flat, but
+hardware throughput: a single matrix multiply over a batch
+saturates a modern accelerator's arithmetic units far better than
+$b$ separate vector operations, so the wall-clock cost of a
+size-$b$ batch is sublinear in $b$ over the relevant range. The
+batch size is a hardware-utilisation decision wearing the costume
+of a statistics decision, and the engineer who tunes it should
+profile the throughput curve, not just the convergence curve.
 
 \subsection{Variance reduction, recognition level}
 
@@ -1093,6 +1664,52 @@ nonetheless solves integer problems daily; the working strategies
 are branch-and-bound, cutting planes, and approximation algorithms
 that trade an optimality gap for tractable runtime.
 
+\subsection{Worked branch-and-bound: a small knapsack}
+
+A four-item 0/1 knapsack makes the branch-and-bound mechanics
+concrete. Items have values $\vect{v} = (60, 100, 120, 40)$ and
+weights $\vect{w} = (10, 20, 30, 10)$; the capacity is $W = 50$.
+Maximise $\sum_{i} v_{i} x_{i}$ over $x_{i} \in \set{0, 1}$ subject
+to $\sum_{i} w_{i} x_{i} \leq 50$. The value-to-weight ratios are
+$6, 5, 4, 4$, so the LP relaxation (fractional knapsack) fills
+greedily by ratio: take item 1 ($w = 10$), item 2 ($w = 20$,
+running weight $30$), then $20/30$ of item 3 to fill the remaining
+$20$ of capacity, for a relaxed value $60 + 100 + (2/3)(120) = 240$.
+The relaxation gives the root upper bound $240$ and a fractional
+variable $x_{3} = 2/3$ to branch on.
+
+\emph{Branch $x_{3} = 0$.} Capacity $50$ over items $\set{1, 2, 4}$.
+Greedy by ratio takes items 1, 2, 4 (total weight $40 \leq 50$),
+all integer, value $60 + 100 + 40 = 200$. This is an integer-
+feasible solution; the incumbent becomes $200$.
+
+\emph{Branch $x_{3} = 1$.} Commit item 3 ($w = 30$, $v = 120$),
+remaining capacity $20$ over items $\set{1, 2, 4}$. The LP
+relaxation takes item 1 ($w = 10$), then $10/20$ of item 2, for a
+relaxed value $120 + 60 + (1/2)(100) = 230$. The bound $230$
+exceeds the incumbent $200$, so this subtree may contain a better
+solution; branch on the fractional $x_{2}$.
+
+\emph{Subbranch $x_{3} = 1, x_{2} = 0$.} Remaining capacity $20$
+over items $\set{1, 4}$: take both ($w = 20$), value $120 + 60 +
+40 = 220$, integer-feasible. The incumbent improves to $220$.
+
+\emph{Subbranch $x_{3} = 1, x_{2} = 1$.} Committed weight $30 + 20
+= 50 = W$ exactly, capacity exhausted, value $120 + 100 = 220$.
+Integer-feasible, value $220$, tying the incumbent.
+
+All open subtrees now have LP bounds at or below the incumbent
+$220$ and are pruned. The optimum is $220$, achieved by
+$\set{1, 3, 4}$ or $\set{2, 3}$. The tree explored a handful of nodes
+instead of the $2^{4} = 16$ leaves of brute force; the LP
+relaxation supplied the bound that pruned the rest. The pattern
+scales: the tighter the relaxation, the more aggressively the tree
+prunes, which is the practical lesson restated in the
+branch-and-bound estimate of the estimation exercise set. A
+runnable implementation that prints the visited-node count against
+the brute-force leaf count is in
+\repopath{volumes/02-form/ch15-optimisation/code/knapsack_branch_and_bound.py}.
+
 \subsection{Branch-and-bound, recognition level}
 
 \engterm{Branch-and-bound} explores the integer feasible set as a
@@ -1177,6 +1794,26 @@ objective is genuinely multimodal and the engineer must report
 the result with appropriate caveats. The diagnostic does not
 prove the global optimum has been found; it only reports what
 multiple restarts found.
+
+\paragraph{Worked example: a one-dimensional multimodal fit.}
+Fit a single Gaussian bump $g(x; a, c) = a \exp(-(x - c)^{2})$ to
+data generated by two well-separated bumps centred at $c = 2$ and
+$c = 8$. The least-squares objective $\sum_{i}(y_{i} - g(x_{i}; a,
+c))^{2}$, viewed as a function of the centre $c$, has two basins,
+one around $c = 2$ and one around $c = 8$, with a ridge between
+them where the single bump matches neither cluster. Gradient
+descent on $c$ initialised at $c_{0} = 1$ slides into the left
+basin and reports $c^{*} \approx 2$; initialised at $c_{0} = 9$ it
+slides into the right basin and reports $c^{*} \approx 8$. Both are
+local minima with zero gradient and positive second derivative;
+no local test distinguishes them. Ten restarts spread uniformly
+over $c_{0} \in [0, 10]$ recover both basins, and the engineer
+reports the better of the two residuals along with the observation
+that the objective is bimodal in $c$, which is itself a finding:
+the data are not described by one bump, and the right model has
+two. The multistart diagnostic did not just find the optimum, it
+diagnosed the model misspecification, which is the more valuable
+output.
 
 \subsection{Ill-posed objectives: the wrong objective is optimised
 exactly}
@@ -1284,6 +1921,53 @@ like in plain English? Is that what we want? What would a
 malicious optimiser exploit in the gap between the formulation
 and the intent? The questions do not eliminate Goodhart effects;
 they make the engineer responsible for them.
+
+\section{What to carry forward}\pathtag{core}
+
+The optimisation archetype reaches its formal home in this
+chapter, and the working engineer carries forward a short list of
+decisions that recur in every subsequent volume.
+
+The first question on any optimisation problem is the structural
+class, and the line that matters is convex versus nonconvex. A
+convex problem has a global theory: every local optimum is global,
+the KKT conditions characterise the optimum, duality supplies a
+certificate, and a catalogue of algorithms converges with stated
+rates. A nonconvex problem forfeits all of this; the engineer gets
+a local optimum, multiple restarts as a hedge, and a duty to
+report the guarantee actually earned. Recognising convexity from
+the convex-function library, without computing a Hessian, is the
+single most valuable diagnostic skill the chapter teaches.
+
+The second decision is method selection, and it is an instance of
+the scaling archetype: multiply the per-iteration cost by the
+expected iteration count and check the product against the compute
+budget. Small smooth problems take Newton or interior-point;
+medium ones take L-BFGS; large or stochastic ones take gradient
+methods with momentum or Adam; constrained ones take a constrained
+solver through a modelling layer. The condition number $\kappa$
+sets the first-order convergence rate, and the engineer who knows
+$\kappa$ knows in advance whether plain gradient descent will
+finish in this decade.
+
+The third habit is duality. Every constrained optimum comes with
+multipliers, and the multipliers are the derivatives of the
+optimal value with respect to the constraints. They say which
+constraint to spend the next dollar relaxing, they certify
+optimality through the duality gap, and they convert a raw number
+into an engineering recommendation. An optimum reported without its
+multipliers is half an answer.
+
+The fourth, and the one the failure section exists to install, is
+that a solved optimisation problem is not a solved engineering
+problem. The optimiser solves the problem written down. Goodhart's
+law guarantees that any gap between the stated objective and the
+real intent will be found and exploited by a sufficiently capable
+optimiser. The engineer's responsibility is to anticipate that gap
+before the optimiser does, by stating the objective in plain
+English and asking what its literal optimum rewards. This habit
+carries into Volume VII's machine learning, Volume IX's control,
+and every design decision that hides an optimisation inside it.
 
 \section{Project}\pathtag{core}
 

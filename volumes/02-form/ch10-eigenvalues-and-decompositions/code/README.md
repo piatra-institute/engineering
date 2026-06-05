@@ -13,6 +13,7 @@ listed in each file's header.
 | `svd_image_compression.py` | Truncated-SVD compression of a grayscale image with Eckart-Young error verification at several ranks. | Simulation exercise 3; section 10.8. |
 | `pca_three_routes.py` | PCA computed three ways (covariance eigendecomposition, power iteration with deflation, SVD of the centred data matrix) with conditioning report and library comparison. | Chapter project. |
 | `markov_stationary.py` | Stationary distribution of a finite-state Markov chain by both eigendecomposition and direct power iteration; reports the mixing time from the second-largest eigenvalue. | Simulation exercise 4; section 10.5. |
+| `pagerank_small.py` | PageRank on the four-page web of section 10.6 by power iteration on the Google matrix, with dangling-node and teleportation corrections and a spectral-gap check. | Section 10.6 worked example; PageRank diagnosis exercise. |
 
 ## Running
 
