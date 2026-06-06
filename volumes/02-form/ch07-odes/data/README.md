@@ -9,6 +9,7 @@ examples.
 |---|---|---|---|
 | `pendulum_periods_reference.csv` | Computed by the authors from $T = (4/\omega_{0}) K(\sin(\theta_{0}/2))$, where $K$ is the complete elliptic integral of the first kind; cross-checked against Abramowitz \& Stegun table 17.1. | 2026 | Chapter project (the pendulum at large amplitudes); `code/pendulum_period.py`; the pendulum-period figure. |
 | `stiffness_test_eigenvalues.csv` | Compiled by the authors from standard stiff-ODE benchmark literature (Hairer \& Wanner 1996) and the chapter's own demonstration system. | 2026 | Simulation exercise 5; the chapter's stiffness section. |
+| `resonance_response_reference.csv` | Computed by the authors from $A/(F_{0}/k) = [(1-r^{2})^{2} + (2\zeta r)^{2}]^{-1/2}$ with $r = \omega/\omega_{0}$, for four damping ratios. | 2026 | Section 7.5 (forced response); `code/forced_oscillator.py`; the resonance figure. |
 
 ## Provenance
 

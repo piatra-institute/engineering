@@ -61,6 +61,54 @@ viscosity. The rule of carrying domain alongside formula, in the
 same way Volume I asked the reader to carry units, will save the
 reader the same kind of error.
 
+The domain of an engineering function carries three kinds of
+constraint at once, and the working engineer keeps all three in view.
+The \emph{algebraic} constraint excludes inputs at which the formula
+is undefined: a denominator zero, a negative argument under a
+square root, a non-positive argument to a logarithm. The
+\emph{physical} constraint excludes inputs the quantity cannot take:
+a negative absolute temperature, a mass fraction above one, a
+probability outside $[0, 1]$. The \emph{validity} constraint, the one
+draft reports most often omit, excludes inputs outside the range over
+which the model was calibrated or derived, even when the formula
+returns a finite, physically plausible number there. The first two
+constraints announce themselves; the third is silent, and the silence
+is what makes extrapolation the most expensive of the three errors.
+
+\paragraph{Worked example: the three domain constraints on one rule.}
+The Antoine equation for the saturation vapour pressure of a liquid
+is $\log_{10} p^{*} = A - B/(C + T)$, with $T$ a temperature in
+$\si{\degreeCelsius}$ and $A$, $B$, $C$ tabulated constants. For
+water with $A = 8.07131$, $B = 1730.63$, $C = 233.426$, three
+domains apply. The algebraic domain excludes $T = -C =
+-233.426\,\si{\degreeCelsius}$, where the denominator vanishes; that
+point is far outside any liquid range, so the algebraic constraint
+never binds in practice. The physical domain runs from the freezing
+point to the critical point of water, since the liquid does not exist
+outside that band. The validity domain is the narrowest and the one
+that matters: this Antoine constant set is fitted to data over
+$1\,\si{\degreeCelsius}$ to $100\,\si{\degreeCelsius}$, and a second
+constant set covers $99\,\si{\degreeCelsius}$ to
+$374\,\si{\degreeCelsius}$. An engineer who applies the low-range
+constants at $150\,\si{\degreeCelsius}$ gets a number that is finite,
+positive, and wrong by several percent, with no symptom in the
+arithmetic. Carrying the validity domain alongside the formula is the
+only defence, because the formula will not complain.
+
+\paragraph{Worked example: domain of a composed expression.}
+Consider $f(x) = \ln(4 - x^{2})$. The natural logarithm requires a
+positive argument, so the domain is the set of $x$ for which
+$4 - x^{2} > 0$, that is, $x^{2} < 4$, that is, $-2 < x < 2$. The
+domain is the open interval $(-2, 2)$; the endpoints are excluded
+because the argument reaches zero there and the logarithm diverges to
+$-\infty$. The image runs from $-\infty$ (at the endpoints) up to
+$\ln 4 \approx 1.386$ (at $x = 0$, where the argument is largest), so
+the image is $(-\infty, \ln 4]$. Reading the domain off the inner
+expression before evaluating the outer one is the habit that prevents
+a program from calling $\ln$ on a negative number and returning a
+not-a-number value that then propagates silently through the rest of
+a calculation.
+
 \paragraph{Worked example: domain and image of a real-world rule.}
 A throttle position sensor reports its angle as a voltage $V$
 proportional to $\sin\theta$ over the range $\theta \in [10^{\circ},
@@ -198,6 +246,74 @@ integration work for any symmetric or antisymmetric quantity (a
 mean, a moment, a kinetic energy, an overlap integral, an
 autocorrelation lag).
 
+\subsection{Transformations: shifts, scalings, reflections}
+
+The elementary functions arrive as a small base set, and most of the
+functions an engineer meets are those base functions shifted, scaled,
+and reflected. Four operations generate the family from a base curve
+$y = f(x)$, and reading them correctly is the difference between
+sketching a transformed curve in seconds and grinding through a table
+of points.
+
+A \engterm{vertical shift} replaces $f(x)$ by $f(x) + c$, moving the
+whole graph up by $c$ (down when $c < 0$). A \engterm{horizontal
+shift} replaces $f(x)$ by $f(x - a)$, moving the graph right by $a$.
+The horizontal case carries the trap: the inside operation moves the
+graph the opposite way to the sign it appears to carry, because
+$f(x - a)$ reaches at $x = a$ the value the base reached at the
+origin. A \engterm{vertical scaling} replaces $f(x)$ by $k f(x)$,
+stretching the graph away from the horizontal axis by the factor $k$
+(compressing when $|k| < 1$, reflecting across the horizontal axis
+when $k < 0$). A \engterm{horizontal scaling} replaces $f(x)$ by
+$f(bx)$, compressing the graph toward the vertical axis by the factor
+$b$ (the inside trap again: $b > 1$ compresses, $b < 1$ stretches).
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-transformations.tex}
+
+\Cref{fig:vol02:ch02:transformations} draws one base parabola and
+three transforms. The general second-degree curve $y = a(x - h)^{2}
++ k$ is the base $y = x^{2}$ scaled vertically by $a$ and shifted to
+the vertex $(h, k)$; the engineer who reads $h$, $k$, and the sign of
+$a$ off the equation knows the vertex, the opening direction, and the
+width without plotting. The same parsing applies across the function
+families. The sinusoid $A \sin(\omega t + \varphi) + D$ is the base
+$\sin t$ scaled vertically by the amplitude $A$, scaled horizontally
+by the angular frequency $\omega$, shifted horizontally by the phase
+$\varphi$, and shifted vertically by the offset $D$. The exponential
+$A e^{k(t - t_{0})}$ is the base $e^{t}$ scaled and shifted. Reading
+a transformed curve is reading the four parameters off its standard
+form.
+
+The order of operations matters when scaling and shifting combine,
+because the operations do not commute. The form $f(b(x - a))$ shifts
+then scales, while $f(bx - c)$ with $c = ab$ describes the same curve
+parsed as scale then shift. The reliable habit is to write the
+transformed argument in the factored form $b(x - a)$, so the shift
+$a$ and the scale $b$ read off directly and the order ambiguity does
+not arise. A controller that applies a gain and an offset to a sensor
+signal is performing exactly this transformation chain, and reading
+the chain in the wrong order swaps the calibration offset with the
+gain, an error that scales every reading rather than biasing it.
+
+\paragraph{Worked example: parsing a damped sinusoid.}
+A vibration sensor returns $y(t) = 3 + 2 e^{-t/4} \sin(6t - \pi/3)$
+in millimetres, with $t$ in seconds. Parsing the transformations
+reads the physics off the algebra. The constant $3$ is a vertical
+offset: the signal oscillates about a mean of $3\,\si{\milli\meter}$,
+which is the static deflection the structure carries under its own
+weight. The factor $2 e^{-t/4}$ is a time-varying amplitude that
+starts at $2\,\si{\milli\meter}$ and decays with time constant
+$4\,\si{\second}$, so the oscillation has fallen to $1/e$ of its
+initial size after $4\,\si{\second}$ and has fallen to about $5\,\%$
+of it after $12\,\si{\second}$ (three time constants). The argument $6t - \pi/3 = 6(t - \pi/18)$ shows
+angular frequency $\omega = 6\,\si{\radian\per\second}$, hence
+ordinary frequency $f = 6/(2\pi) \approx 0.95\,\si{\hertz}$ and
+period $T \approx 1.05\,\si{\second}$, with a phase shift of
+$\pi/18 \approx 0.17\,\si{\second}$ in time. The engineer reads
+mean, decay rate, frequency, and phase off the standard form without
+plotting a single point, which is the working payoff of carrying the
+transformation vocabulary.
+
 \section{Polynomials and rational functions}\pathtag{core}
 
 A \engterm{polynomial} of degree $n$ is a finite sum of integer-power
@@ -247,6 +363,36 @@ polynomials, closed-form root expressions exist up to degree four
 (due to Cardano and Ferrari) but are rarely used in engineering;
 numerical root-finders treated in Volume II Chapter 16 are the
 working tool.
+
+\paragraph{Worked example: sketching a cubic from its roots.}
+A cubic $p(x) = x^{3} - 7x + 6$ is to be sketched without a plotting
+tool. The integer-root candidates are the divisors of the constant
+term $6$: $\pm 1, \pm 2, \pm 3, \pm 6$. Testing, $p(1) = 1 - 7 + 6 =
+0$, so $x = 1$ is a root and $(x - 1)$ divides $p$. Synthetic
+division gives $p(x) = (x - 1)(x^{2} + x - 6) = (x - 1)(x + 3)
+(x - 2)$. The three roots are $x = -3, 1, 2$. The leading coefficient
+is positive, so the curve runs from $-\infty$ at the far left to
+$+\infty$ at the far right. Between the roots the sign alternates: $p
+< 0$ on $(-\infty, -3)$, $p > 0$ on $(-3, 1)$, $p < 0$ on $(1, 2)$,
+$p > 0$ on $(2, \infty)$. The curve crosses upward at $x = -3$, peaks
+in $(-3, 1)$, crosses downward at $x = 1$, troughs in $(1, 2)$, and
+crosses upward at $x = 2$. Three roots, one sign pattern, and the
+leading-coefficient rule produce a usable sketch with no derivative
+calculation and no plotted points.
+
+\paragraph{Worked example: a repeated root changes the crossing.}
+Compare $p(x) = (x - 2)^{2}(x + 1)$ with the previous example. The
+root at $x = 2$ has multiplicity two, the root at $x = -1$
+multiplicity one. At a root of even multiplicity the curve touches
+the axis and turns back without crossing; at a root of odd
+multiplicity it crosses. So this cubic crosses upward through
+$x = -1$, rises, and at $x = 2$ comes down to touch the axis and
+bounces back up rather than passing through. The multiplicity of a
+root is the local-shape information the bare root list omits, and it
+is what distinguishes a contact point (a double root, a tangency, a
+critically damped response) from a transversal crossing (a simple
+root, a sign change, an underdamped overshoot). Reading multiplicity
+is reading the local behaviour of the system the polynomial models.
 
 \begin{estimation}
 \textbf{Drag on a thrown object.}
@@ -311,11 +457,56 @@ sketches a rational function as a sequence of asymptotes, sign
 changes, and pole behaviours can produce a usable picture without
 plotting a single point.
 
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-rational-asymptotes.tex}
+
+\Cref{fig:vol02:ch02:rational-asymptotes} draws a rational function
+from its features alone. The pole sets the vertical asymptote, the
+leading-coefficient ratio sets the horizontal asymptote, the
+numerator zero sets the axis crossing, and the sign behaviour across
+the simple pole completes the sketch. An engineer who has read those
+four features has the curve; the plotted points add nothing the
+features did not already fix.
+
+\paragraph{Worked example: enzyme kinetics as a rational function.}
+The Michaelis--Menten rate law for an enzyme-catalysed reaction is
+$v(S) = V_{\max} S/(K_{m} + S)$, a rational function of the substrate
+concentration $S$. Its three behaviours read off the algebra. At
+$S \ll K_{m}$ the denominator is approximately $K_{m}$ and $v \approx
+(V_{\max}/K_{m}) S$, linear in $S$: the enzyme is far from saturation
+and the rate rises in proportion to substrate. At $S = K_{m}$ the
+rate is exactly $V_{\max}/2$, which is the operational definition of
+the Michaelis constant $K_{m}$ as the substrate concentration at
+half-maximal rate. At $S \gg K_{m}$ the rate approaches the
+horizontal asymptote $v \to V_{\max}$, the saturation plateau where
+every enzyme site is occupied and adding substrate buys nothing. The
+function has no real pole in the physical domain $S \geq 0$ because
+$K_{m} > 0$, so the curve is the smooth rising-then-saturating shape
+that the engineer recognises as a binding curve. The same rational
+form, under different names, describes a Langmuir adsorption
+isotherm, a saturating sensor, and a first-order receptor binding
+curve; recognising the shape is recognising the saturation mechanism.
+
 Rational functions are the transfer functions of linear time-invariant
 systems, the response curves of resonant circuits, the gain curves of
 filters, the kinetic equations of enzyme reactions. We will return to
 their phasor and Laplace analyses in Volume II Chapter 3 and to their
 control-system interpretation in Volume IX.
+
+\begin{mastery}
+A rational function $r = p/q$ with $\deg p < \deg q$ and distinct
+poles decomposes into partial fractions, a sum of simple terms
+$A_{i}/(x - x_{i})$ one per pole. The decomposition is the algebraic
+engine behind the inverse Laplace transform (Volume II Chapter 3),
+because each simple term inverts to a single exponential mode. The
+poles $x_{i}$ are the system's natural frequencies; a pole with
+positive real part is an unstable mode, one with negative real part a
+decaying mode, one on the imaginary axis a sustained oscillation. The
+whole stability theory of linear systems reads off the location of
+the poles of a rational transfer function, which is why the engineer
+who can find the poles of a rational function on sight has the first
+tool of control engineering already in hand. Volume IX develops the
+pole-placement and root-locus methods that this observation seeds.
+\end{mastery}
 
 \paragraph{Worked example: a low-pass filter's magnitude response.}
 The first-order low-pass filter has the transfer function
@@ -460,6 +651,46 @@ astronomical magnitude scale is base $10$ raised to a fractional
 power. Wherever an engineering quantity ranges over orders of
 magnitude, the engineer's first move is to take the base-$10$
 logarithm and look at the exponent.
+
+\paragraph{Worked example: a doubling cadence as an exponential.}
+A class of integrated circuits has been observed to double its
+transistor count roughly every two years. Treating the count as a
+continuous exponential $N(t) = N_{0} \cdot 2^{t/T_{2}}$ with doubling
+time $T_{2} = 2\,\text{yr}$, the engineer converts to base $e$ and
+base $10$ as needed. The continuous rate constant is $k = \ln 2/T_{2}
+= 0.693/2 = 0.347\,\text{yr}^{-1}$, so $N(t) = N_{0} e^{0.347 t}$. On
+a base-$10$ semilog plot the slope is $k \log_{10} e = 0.347 \cdot
+0.4343 = 0.151$ decades per year, which says the count crosses a
+factor of ten every $1/0.151 \approx 6.6\,\text{yr}$, consistent
+with the rule that ten doublings ($2^{10} \approx 10^{3}$) is three
+decades and therefore $3 \times 6.6 \approx 20\,\text{yr}$ for three
+decades, or one decade every $6.6\,\text{yr}$. The estimate doubles
+as a sanity check: a quantity that doubles every two years multiplies
+by about $32$ in a decade, and $\log_{10} 32 \approx 1.5$ decades in
+ten years matches the $0.151 \times 10$ the slope predicts. The
+exponential model holds only while the underlying mechanism persists;
+the historical doubling cadence in semiconductor scaling, current as
+of the mid-2020s, has slowed as device dimensions approach atomic
+limits, which is the validity-domain caveat the failure section will
+generalise.
+
+\paragraph{Worked example: combining quantities across decades.}
+A logarithm turns a product into a sum, which is what makes
+order-of-magnitude arithmetic fast. To estimate the energy released
+by a magnitude-7 earthquake relative to a magnitude-5, the engineer
+uses that each unit of moment magnitude corresponds to a factor of
+$10^{1.5} \approx 31.6$ in radiated energy. Two units of magnitude is
+$10^{3} = 1000$ times the energy, computed by adding exponents
+($1.5 + 1.5 = 3$) rather than multiplying the factors ($31.6 \times
+31.6 \approx 1000$). The same addition rule converts a chain of gains
+in a signal path: a $+20\,\si{\deci\bel}$ amplifier followed by a
+$-6\,\si{\deci\bel}$ attenuator and a $+14\,\si{\deci\bel}$ stage
+gives a total of $20 - 6 + 14 = 28\,\si{\deci\bel}$ by addition,
+where the linear-scale calculation would multiply $10 \times 0.5
+\times 5 = 25$ in power ratio. Adding logarithms is the working form
+of multiplying magnitudes, and it is why engineers reach for the
+decibel and the decade whenever quantities span ranges the eye cannot
+hold linearly.
 
 \subsection{Semilog and log-log axes}
 
@@ -658,6 +889,42 @@ in front (the principal branch loses the sign of the horizontal
 distance), and $\mathrm{atan2}(\Delta y, \Delta x)$ is the
 disambiguating function.
 
+\subsection{Combining sinusoids of the same frequency}
+
+Two sinusoids of the same frequency add to a single sinusoid of that
+frequency. The identity is the workhorse of phasor analysis, and it
+deserves to be stated and used before Chapter 3 builds the complex
+machinery around it. For $a \cos(\omega t) + b \sin(\omega t)$, the
+sum is
+\[
+  a \cos(\omega t) + b \sin(\omega t)
+  = R \cos(\omega t - \varphi),
+\]
+with amplitude $R = \sqrt{a^{2} + b^{2}}$ and phase $\varphi =
+\mathrm{atan2}(b, a)$. The amplitude is the Pythagorean combination
+of the two components, and the phase is the angle whose tangent is
+$b/a$ with the quadrant resolved by the signs of $a$ and $b$. The
+result says that the in-phase and quadrature parts of a signal
+combine like the legs of a right triangle, with $R$ the hypotenuse.
+
+\paragraph{Worked example: two-source interference.}
+Two loudspeakers driven at the same frequency reach a listener with
+pressures $p_{1}(t) = 3 \cos(\omega t)$ and $p_{2}(t) = 4
+\sin(\omega t)$ in pascals. The combined pressure is $p(t) = 3
+\cos(\omega t) + 4 \sin(\omega t) = R \cos(\omega t - \varphi)$ with
+$R = \sqrt{3^{2} + 4^{2}} = 5\,\si{\pascal}$ and $\varphi =
+\mathrm{atan2}(4, 3) \approx 0.927\,\si{\radian} \approx
+53.1^{\circ}$. The two sources combine to a single tone of amplitude
+$5\,\si{\pascal}$, larger than either alone because the
+quarter-period phase offset between a cosine and a sine puts them
+partly in step. Had the second source been $-4 \sin(\omega t)$
+instead, the amplitude would still be $5\,\si{\pascal}$ but the phase
+would flip sign, which is the algebra of constructive and destructive
+interference that Volume IV develops for waves. The amplitude never
+exceeds $|3| + |4| = 7\,\si{\pascal}$ (full constructive) nor falls
+below $|4| - |3| = 1\,\si{\pascal}$ for these magnitudes; the actual
+$5\,\si{\pascal}$ sits between, set by the phase relationship.
+
 \section{Inverse functions}\pathtag{standard}
 
 A function $f: A \to B$ has an \engterm{inverse} $f^{-1}: B \to A$
@@ -665,6 +932,16 @@ if and only if $f$ is bijective. The defining property is
 $f^{-1}(f(x)) = x$ for $x \in A$ and $f(f^{-1}(y)) = y$ for $y \in B$.
 On a graph, the curves of $f$ and $f^{-1}$ are mirror images across
 the line $y = x$.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-inverse-mirror.tex}
+
+\Cref{fig:vol02:ch02:inverse-mirror} shows the exponential and the
+logarithm as mirror images across the diagonal. The reflection makes
+the domain/range swap visible: the part of the plane the exponential
+reaches becomes the part the logarithm departs from. Reading the
+mirror picture is a fast check on whether a proposed inverse is
+right; a curve and its claimed inverse that are not reflections of
+each other across $y = x$ are not an inverse pair.
 
 The standard pairings the reader must know on sight:
 
@@ -704,6 +981,40 @@ amplifier, ADC, software calibration) requires reversing each step
 and reversing the order of reversal. Volume I Chapter 3's calibration
 chain is the same idea seen through metrology eyes.
 
+\paragraph{Worked example: inverting a calibration curve.}
+A flow meter's calibration is $Q = a \sqrt{\Delta p} + b$, with flow
+$Q$ in $\si{\liter\per\minute}$, differential pressure $\Delta p$ in
+$\si{\kilo\pascal}$, slope $a = 12.0\,\si{\liter\per\minute}/\sqrt{
+\si{\kilo\pascal}}$, and offset $b = 2.0\,\si{\liter\per\minute}$.
+The forward function maps pressure to flow; the field engineer needs
+the inverse, mapping a measured flow back to the pressure the
+transmitter reports. Solving $Q = a \sqrt{\Delta p} + b$ for $\Delta
+p$: subtract $b$, divide by $a$, square. The inverse is $\Delta p =
+((Q - b)/a)^{2}$, valid for $Q \geq b$ because the square root in the
+forward map returns only non-negative values. The domain restriction
+$Q \geq b$ is the engineering content of the inverse: a reported flow
+below the offset $b$ cannot have come from this calibration and
+signals a fault, a zero-drift, or operation outside the characterised
+range. The inverse exists only on the image of the forward map, and
+the boundary of that image is a diagnostic.
+
+\begin{mastery}
+Not every useful function has a closed-form inverse. The map $y = x
+e^{x}$ has an inverse, the Lambert $W$ function, with no expression in
+elementary functions; it arises in delay-differential equations, in
+the solution of $x = a^{x}$, and in the kinetics of certain
+saturating processes. When a closed-form inverse is unavailable the
+engineer inverts numerically: a bisection or Newton solve on
+$f(x) - y = 0$ recovers $x$ from $y$ to any required precision,
+provided $f$ is monotone on the relevant interval so the inverse is
+single-valued. The script \texttt{code/bisection\_root.py} is the
+general tool, and the monotonicity check is the precondition that
+makes the numerical inverse well-defined. The existence of an inverse
+is a property of the function (bijectivity on the domain of
+interest); the means of computing it (formula or numerical solve) is
+a separate, practical question.
+\end{mastery}
+
 \section{Reading a graph: shape, slope, asymptote, scale}\pathtag{core}
 
 A graph is a compressed claim about a function. The engineer's
@@ -731,11 +1042,36 @@ runs from $0$ to $10^{6}$ in five equal divisions is linear; the same
 range labelled $1, 10, 100, 1000, 10\,000, 100\,000, 10^{6}$ at equal
 divisions is logarithmic.
 
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-log-axis-reading.tex}
+
+\Cref{fig:vol02:ch02:log-axis-reading} draws the signature of a log
+axis and shows the same three data values on a linear and a log
+scale. The crowded minor gridlines within each decade are the visual
+tell that distinguishes a log axis from a linear one at a glance.
+
 The mistake the engineer must not make is treating one as the other.
 A linear extrapolation off a log axis is a power-law extrapolation in
 the underlying quantity; the slope of a straight line on a log-log
 plot is an exponent, not a rate. The discipline is to translate
 between the two before reading.
+
+\paragraph{Worked example: reading a value off a log axis.}
+A datasheet plots leakage current on a vertical log axis with major
+gridlines labelled $1\,\si{\nano\ampere}$, $10\,\si{\nano\ampere}$,
+$100\,\si{\nano\ampere}$, and a data point sitting two-fifths of the
+way up the decade between $10$ and $100\,\si{\nano\ampere}$. The
+linear-axis instinct reads ``two-fifths of the way from $10$ to
+$100$'' as $10 + 0.4 \cdot 90 = 46\,\si{\nano\ampere}$, and it is
+wrong. On a log axis, two-fifths of the way up a decade is
+$10^{0.4} \approx 2.5$ times the bottom of the decade, so the value
+is $10 \cdot 2.5 = 25\,\si{\nano\ampere}$. The error is nearly a
+factor of two and grows with position in the decade: a point
+four-fifths of the way up reads as $10^{0.8} \approx 6.3$ times the
+decade bottom, that is, $63\,\si{\nano\ampere}$, not the
+$82\,\si{\nano\ampere}$ a linear instinct would assign. The rule is
+to convert the fractional height to a power of ten before reading,
+because position on a log axis is the logarithm of the value, not the
+value.
 
 A handful of less common axis types do appear. A \engterm{probability
 axis} (used on Q-Q and probability plots) compresses the central
@@ -966,6 +1302,48 @@ is the actual exponential and a straight-line extrapolation is the
 correct one. The engineer who prepares an exponential plot on linear
 axes is asking the reader to be fooled.
 
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-extrapolation-trap.tex}
+
+\Cref{fig:vol02:ch02:extrapolation-trap} draws the trap. Inside the
+fitted window the exponential and a linear fit through it are
+visually indistinguishable; outside the window they diverge without
+bound. The seduction is the closeness inside the window, and the cost
+is paid outside it.
+
+\begin{estimation}
+\textbf{The cost of linear extrapolation of an epidemic.}
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+An outbreak doubles every three days. On day $0$ there are $100$
+cases; over the first week the case count is plotted on linear axes
+and a planner fits a straight line through the early points,
+projecting the load on a hospital with $4000$ beds. Estimate the day
+on which the linear projection says the beds fill, and the day on
+which the true exponential says they fill.
+
+The true count is $N(t) = 100 \cdot 2^{t/3}$. A linear fit through
+the first week catches the average slope over $t \in [0, 7]$:
+$N(7) = 100 \cdot 2^{7/3} \approx 100 \cdot 5.04 = 504$, so the
+fitted slope is about $(504 - 100)/7 \approx 58$ cases per day. The
+linear projection reaches $4000$ beds at $t \approx (4000 - 100)/58
+\approx 67\,\si{\day}$. The true exponential reaches $4000$ when
+$2^{t/3} = 40$, that is, $t = 3 \log_{2}(40) = 3 \cdot 5.32 =
+16\,\si{\day}$. The linear extrapolation is off by a factor of four
+in the time to crisis, predicting two months of headroom where the
+true process gives a little over two weeks. The error is not a small
+miscalibration; it is the difference between an orderly response and
+an overrun, and it comes entirely from extrapolating an exponential
+process with a linear rule. The corrective is the semilog plot, on
+which the doubling reads as a constant slope and the fill date reads
+off the straight line without the factor-of-four error. The estimate
+ignores the eventual saturation of the epidemic curve (the logistic
+turnover Volume II Chapter 7 treats), which bounds the true count but
+only after the beds have already filled.
+\end{estimation}
+
 \subsection{Power-law extrapolation off the log-log line}
 
 A power law $y = A x^{n}$ on log-log axes is a straight line of slope
@@ -1155,6 +1533,58 @@ The principle has the same status as the unit-carrying principle
 from Volume I Chapter 2: it is a habit the reader will use in every
 chapter that follows, and the rate of plot-induced engineering error
 drops sharply when it becomes automatic.
+
+\section{Functions as input-output: the bridge forward}\pathtag{standard}
+
+A function read as input-output is the central object of the rest of
+the volume and of much of engineering. A system takes an input
+signal, applies a rule, and produces an output signal; the rule is a
+function, and the engineer's whole working description of the system
+is the description of that function. The vocabulary of this chapter,
+domain, range, composition, asymptote, scaling, is the vocabulary in
+which input-output behaviour is written.
+
+The simplest input-output function is a constant gain, $y = K x$:
+double the input, double the output. A gain is a linear function
+through the origin, and its graph is a line of slope $K$. Most real
+systems are not pure gains. A sensor saturates (the piecewise
+saturator of Section~2.2), so its input-output function is linear
+near the origin and flat at the rails. An amplifier has a frequency
+response (the rational transfer function of the low-pass worked
+example), so its gain is a function of the input frequency, read off
+the Bode plot. A control loop composes the plant function with the
+controller function (the composition of Section~2.1), so its overall
+behaviour is the composed map.
+
+\engterm{Transfer function} is the name for the input-output rule of
+a linear time-invariant system, written as a rational function
+$H(s) = N(s)/D(s)$ in a complex frequency variable $s$. The chapter
+has already met its parts: the zeros of $N$ are the input frequencies
+the system rejects, the poles (the roots of $D$) are the input
+frequencies at which the system resonates or goes unstable, and the
+ratio of leading coefficients sets the high-frequency gain. Chapter 3
+builds the complex-exponential machinery that makes the transfer
+function computable; Volume IX uses it to design controllers. The
+function-and-graph reading discipline of this chapter is the
+foundation both rest on.
+
+\paragraph{Worked example: an input-output map read three ways.}
+A loudspeaker driver has, over its working band, an input-output
+relation that an engineer can describe as a function of three
+different variables, and each description answers a different
+question. As a function of input voltage at a fixed frequency, the
+cone displacement is approximately linear at small signal and
+compresses at large signal, a saturating piecewise function whose
+flat region warns of clipping. As a function of frequency at fixed
+voltage, the displacement is the driver's frequency response, a
+rational function with a resonance peak (a pole pair) at the driver's
+natural frequency and a roll-off above it. As a function of time at a
+fixed input tone, the displacement is a sinusoid whose amplitude and
+phase are read off the frequency-response function at that tone. One
+physical device, three input-output functions, three reading
+disciplines, all drawn from this chapter. The engineer chooses the
+description that answers the question at hand, and reads the chosen
+function with the frame-check habit the chapter trains.
 
 \section{Project}\pathtag{core}
 

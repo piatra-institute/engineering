@@ -12,6 +12,7 @@ metadata and runs under `uv run`.
 | `semilog_fit.py` | Fits an exponential decay two ways - on linear axes and on log-transformed data - and reports the recovered time constant. Demonstrates the linear-fit-on-log-data trap from the Simulation exercises. | Simulation exercise (noisy exponential fit); Section 2.3 worked example. |
 | `thermistor_calibration.py` | Reads thermistor R-vs-T data from CSV, transforms to Arrhenius axes (ln R vs 1/T), fits a straight line, and reports the B-constant. Writes both the raw and transformed data for plotting. | Thermistor-fit figure cross-check; Design exercise. |
 | `bisection_root.py` | Pure-Python bisection root finder; demonstrates the elementary root-finding loop the chapter cites for higher-degree polynomials. | Calculation exercises on polynomial roots; Volume II Chapter 16 forward reference. |
+| `extrapolation_trap.py` | Fits a straight line through an early window of a doubling process and compares the linear-projected threshold-crossing time against the true exponential crossing. Quantifies the failure-section trap. | Failure-section estimation block; extrapolation-trap figure. |
 
 ## Running
 
@@ -20,6 +21,7 @@ uv run function_zoo.py 0 6 200 ../data/function_zoo.csv
 uv run semilog_fit.py 50 0.5 1.0 0.10 ../data/exponential_decay_noisy.csv
 uv run thermistor_calibration.py ../data/thermistor_calibration.csv
 uv run bisection_root.py
+uv run extrapolation_trap.py 100 3 7 4000
 ```
 
 All scripts use the standard library only except where noted in the

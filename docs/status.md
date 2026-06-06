@@ -9,7 +9,7 @@ Last updated: 2026-06-05.
 Per-volume state:
 
 - **Volume I (Quantity)** — 9 of 9 chapters at **Stage 5**, carried to a **Tier 3 second pass** (2026-05-31 / 06-02). All carry Codex reviews at `docs/reviews/vol01-chNN-review.md` resolved with G fixes applied. The most advanced volume in the book; ~674 pp against a ~720 pp target.
-- **Volume II (Form)** — 18 of 18 chapters at **Stage 4** awaiting Codex review. Tier 3 density pass in progress (2026-06-05): Ch 1, 3, 4, 5 deepened in Wave 1 and Ch 6, 8, 9, 10 in Wave 2 (each via a parallel own-folder subagent: added worked examples, figures, code/data, estimation and failure sections, mastery boxes, full exercise solutions). Ch 2, 7, 11 carry the earlier Tier 1+2 baseline. Remaining: Ch 12-18. Each deepened chapter is one solid pass (~50-65% of its dossier page target), not yet at full target. Vol II compiles with zero errors in the build.
+- **Volume II (Form)** — 18 of 18 chapters at **Stage 4** awaiting Codex review. **Tier 3 first pass complete** (2026-06-05): Ch 1, 3, 4, 5 (Wave 1), Ch 6, 8, 9, 10 (Wave 2), Ch 12, 13, 14 (Wave 3), and Ch 15, 16, 17, 18 (Wave 4) deepened, each via a parallel own-folder subagent (added worked examples, ~50 new figures, code/data, estimation and failure sections, archetype/mastery boxes, full exercise solutions). Ch 2, 7, 11 carry the earlier Tier 1+2 baseline. Every deepened chapter is one solid pass (~55-65% of its dossier page target); a second pass would be needed to reach full target density. Vol II compiles with zero errors in the build. Exercise counts held exactly; no new bibliography entries required (all citations reuse existing keys); Ch 16 wired in the Vancouver Stock Exchange case using the existing registry entry.
 - **Volume III (Force)** — 13 of 13 chapters at **Stage 4** awaiting Codex review.
 - **Volume IV (Energy)** — 14 of 14 chapters at **Stage 4** awaiting Codex review.
 - **Volume V (Matter)** — 12 of 12 chapters at **Stage 4** awaiting Codex review.
@@ -57,14 +57,14 @@ Run `make stats` for live numbers. Snapshot (2026-06-05):
 | Vol I chapters at Stage 5 | 9 of 9 |
 | Vols II-XII chapters at Stage 4 | 165 awaiting review |
 | Chapters at Stage 1 | 0 |
-| `main.pdf` page count (last build) | 4205 |
+| `main.pdf` page count (last build) | 4309 |
 
 Per-volume page spans against target (figures approximate; from the per-chapter ledger in `CLAUDE.md`):
 
 | Volume | Approx. pp | Target | % | Stage |
 | --- | --- | --- | --- | --- |
 | I Quantity | ~674 | ~720 | ~94% | 5 (Tier 3 2nd pass) |
-| II Form | ~920 | ~1830 | ~50% | 4 (Tier 3 pass: 8 of 18 ch deepened) |
+| II Form | ~1040 | ~1830 | ~57% | 4 (Tier 3 first pass: 15 of 18 ch deepened) |
 | III Force | ~274 | ~1300 | ~21% | 4 |
 | IV Energy | ~234 | ~1400 | ~17% | 4 |
 | V Matter | ~238 | ~1200 | ~20% | 4 |
@@ -144,7 +144,7 @@ The diagnostic identified three top risks (`docs/diagnostic.md`).
 make distclean && make
 ```
 
-Produces `main.pdf` at 4205 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
+Produces `main.pdf` at 4309 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
 
 Always build with `make distclean && make` (a fresh build). Incremental `latexmk` runs intermittently corrupt `main.bbl` (biber emits a runaway-argument bbl, symptom: "Paragraph ended before \name was complete" / "Loading a class or package in a group" at `\begin{document}`, no PDF). A `make distclean` clears the bad `.bbl`/`.bcf` (and any `*-SAVE-ERROR` files) and regenerates the bibliography cleanly.
 

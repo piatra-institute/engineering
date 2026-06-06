@@ -13,6 +13,8 @@ header.
 | `stiff_demo.py` | Two-variable stiff system; compares explicit Euler at three step sizes against implicit Euler at $100\times$ larger steps. Prints the stiffness ratio of the Jacobian. | Simulation exercise 5; the chapter's stiffness section. |
 | `phase_plane.py` | Phase-plane plotter for three 2D autonomous systems (damped oscillator, predator-prey, van der Pol). RK4 integration with optional Matplotlib output. | Simulation exercise 4; the phase-plane analysis section. |
 | `pendulum_period.py` | Pendulum period extraction across an amplitude grid, by zero-crossing detection on $\dot{\theta}$. Compares numerical period against the small-angle and first-correction predictions. | The chapter project (the pendulum at large amplitudes); Simulation exercise 6. |
+| `forced_oscillator.py` | Analytical frequency-response amplitude and phase of the forced second-order oscillator across a frequency sweep, with optional RK4 verification at resonance. | Section 7.5 (forced response, resonance); the driven-oscillator worked example. |
+| `first_order_models.py` | First-order linear step responses across domains (mixing tank, Newton cooling, RC/RL), plus the forensic time-of-death inversion. | Section 7.2 (first-order linear ODEs); the mixing-tank, Newton-cooling, and forensic worked examples. |
 
 ## Running
 
