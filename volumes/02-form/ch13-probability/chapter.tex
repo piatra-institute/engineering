@@ -15,7 +15,7 @@ state-occupancy compared against the analytical stationary
 distribution, plus a 1500-word reflection). Hazard class: none.
 Reader path default: standard, with sections explicitly tagged.
 Named cases: none in this chapter. The 2008 financial-crisis
-correlation pattern in section 13.8 is treated at recognition level
+correlation pattern in section 13.9 is treated at recognition level
 as a generic failure of the independence assumption, without a
 named-case registry entry.}
 
@@ -765,7 +765,7 @@ introduced for measurement uncertainty. When the inputs are
 correlated, the cross terms $2 \sum_{i < j} (\partial g /
 \partial x_{i})(\partial g / \partial x_{j}) \Cov(X_{i}, X_{j})$
 return, and ignoring them repeats the independence error that
-section 13.8 names.
+section 13.9 names.
 Figure~\ref{fig:vol02:ch13:error-propagation} shows the geometry:
 the local slope of $g$ sets the amplification of the input spread.
 
@@ -798,6 +798,138 @@ each draw) is the honest fallback. The companion script
 runs both the delta method and the Monte Carlo propagation for this
 example so the reader can see where the linearisation holds and where
 it parts company with the simulation.
+
+\subsection{Non-monotone transformations and the two-branch Jacobian}
+
+The change-of-variables formula above assumed $g$ monotone. When $g$
+folds the line, several input values map to one output value, and the
+density of $Y = g(X)$ collects a Jacobian term from each preimage
+branch. For a piecewise-monotone $g$ with branches $h_{1}, \ldots,
+h_{m}$ inverting $g$ on the disjoint pieces that map onto $y$,
+\[
+f_{Y}(y) = \sum_{j=1}^{m} f_{X}(h_{j}(y)) \left| h_{j}'(y) \right|.
+\]
+The square map is the working case. Let $X \sim \mathcal{N}(0, 1)$
+and $Y = X^{2}$. For $y > 0$ the two preimages are $h_{\pm}(y) =
+\pm\sqrt{y}$, each with $|h_{\pm}'(y)| = 1/(2\sqrt{y})$. The standard
+normal density is even, so the two branches contribute equally,
+\[
+f_{Y}(y) = 2 \cdot \frac{1}{\sqrt{2\pi}} e^{-y/2}
+\cdot \frac{1}{2\sqrt{y}}
+= \frac{1}{\sqrt{2\pi y}} e^{-y/2}, \qquad y > 0.
+\]
+This is the chi-square density with one degree of freedom, which is
+also $\mathrm{Gamma}(\tfrac12, \tfrac12)$ in the shape-rate parameters
+of the distribution catalogue. The derivation earns its place beyond
+the algebra: it shows where the sum of squared standardised residuals
+in a least-squares fit gets its distribution, and it is the reason a
+sum of $k$ squared independent standard normals is $\chi^{2}_{k}$, the
+reference law for the variance estimates of Volume II Chapter 14. An
+engineer who applies the single-branch formula to a folding transform
+loses a factor of two and reports a density that does not integrate to
+one, a mistake the normalisation check catches immediately.
+
+\paragraph{Worked example: the ratio of two normals and a heavy
+tail.} Transformations can manufacture pathology. Let $X, Y$ be
+independent $\mathcal{N}(0, 1)$ and $W = X/Y$. The standard
+change-of-variables in two dimensions (introduce $V = Y$, invert,
+compute the $2 \times 2$ Jacobian, integrate out $V$) gives the
+standard Cauchy density $f_{W}(w) = 1/(\pi(1 + w^{2}))$. Two
+well-behaved finite-variance inputs produce an output with no mean
+and no variance. The engineering warning is direct: a ratio estimator
+formed from a noisy denominator that can approach zero, a gain
+computed as output over input near a null, a calibration slope read
+off a near-flat response, all inherit the Cauchy tail and defeat the
+sample average. The fix is to bound the denominator away from zero by
+design or to report a location estimate that resists heavy tails (a
+trimmed mean or a median) for which the Cauchy still has a
+well-defined centre.
+
+\subsection{Order statistics}
+
+Sorting a sample turns the largest, the smallest, and the median into
+random variables in their own right, and reliability, extreme-load,
+and acceptance problems live on these. For an iid sample $X_{1},
+\ldots, X_{n}$ with common CDF $F$ and density $f$, the
+\engterm{order statistics} are the sorted values $X_{(1)} \leq X_{(2)}
+\leq \cdots \leq X_{(n)}$. The extremes have the cleanest CDFs,
+because $X_{(n)} \leq x$ exactly when every sample point is at most
+$x$, and $X_{(1)} > x$ exactly when every point exceeds $x$:
+\[
+F_{X_{(n)}}(x) = F(x)^{n}, \qquad
+F_{X_{(1)}}(x) = 1 - (1 - F(x))^{n}.
+\]
+Differentiating, the maximum has density $n F(x)^{n-1} f(x)$ and the
+minimum has density $n(1 - F(x))^{n-1} f(x)$. The general $k$th order
+statistic has density
+\[
+f_{X_{(k)}}(x) = \frac{n!}{(k-1)!\,(n-k)!}
+F(x)^{k-1} (1 - F(x))^{n-k} f(x),
+\]
+read as a multinomial bookkeeping: one point lands at $x$ (the factor
+$f(x)$), $k-1$ fall below, $n-k$ fall above, and the factorial counts
+the labelings.
+
+\paragraph{Worked example: the weakest link in a chain.} A chain of
+$n = 20$ links each has tensile strength $X_{i} \sim
+\mathrm{Exp}(\lambda)$ with $\lambda = 1/50\,\text{kN}^{-1}$, so the
+mean link strength is $50\,\text{kN}$. The chain breaks at the
+strength of its weakest link, $X_{(1)}$. The minimum of $n$ iid
+exponentials is itself exponential with the rates added:
+$X_{(1)} \sim \mathrm{Exp}(n\lambda)$, with mean
+$1/(n\lambda) = 50/20 = 2.5\,\text{kN}$. The chain is twenty times
+weaker on average than a single link, and the weakest-link logic is
+why a series system of nominally identical components fails far sooner
+than any one component would. The median link strength is $50 \ln 2
+\approx 34.7\,\text{kN}$, yet the chain's median strength is
+$2.5 \ln 2 \approx 1.7\,\text{kN}$. The same minimum-of-many structure
+drives the size effect in brittle materials, where larger specimens
+contain more candidate flaws and fail at lower nominal stress, the
+phenomenon the Weibull distribution was built to describe.
+
+\paragraph{Worked example: the expected range of a uniform sample.}
+Five sensors report a reading uniformly distributed on $[0, 1]$
+(after rescaling). The spread between the highest and lowest reading,
+the \engterm{sample range} $R = X_{(5)} - X_{(1)}$, is a one-number
+summary of disagreement. For $n$ iid $\mathrm{Unif}(0, 1)$ variables
+the minimum has mean $1/(n+1)$ and the maximum has mean $n/(n+1)$, so
+$\E[R] = (n-1)/(n+1)$. For $n = 5$, $\E[R] = 4/6 \approx 0.667$: five
+uniform readings span on average two thirds of the available interval.
+The result calibrates the intuition that a handful of samples rarely
+covers the full range, and it is the analytic backbone of
+range-based control charts, where the average range of small subgroups
+estimates the process standard deviation through a tabulated constant
+$d_{2}$ that is exactly $\E[R]$ for the standard normal.
+
+\input{volumes/02-form/ch13-probability/figures/fig-order-statistics.tex}
+
+\begin{mastery}
+\textbf{Deriving a distribution with the moment generating function.}
+The MGF turns a question about a sum into a question about a product,
+and the cleanest demonstration derives the gamma from the
+exponential. The MGF of $X \sim \mathrm{Exp}(\lambda)$ is
+\[
+M_{X}(t) = \int_{0}^{\infty} e^{tx} \lambda e^{-\lambda x} \dd x
+= \frac{\lambda}{\lambda - t}, \qquad t < \lambda.
+\]
+For a sum $S = \sum_{i=1}^{\alpha} X_{i}$ of $\alpha$ independent
+$\mathrm{Exp}(\lambda)$ variables, the MGF of the sum is the product
+of the MGFs,
+\[
+M_{S}(t) = \left( \frac{\lambda}{\lambda - t} \right)^{\alpha},
+\]
+which is exactly the MGF of $\mathrm{Gamma}(\alpha, \lambda)$. The
+uniqueness theorem for moment generating functions (when the MGF
+exists in a neighbourhood of zero, it determines the distribution)
+finishes the argument: the sum of $\alpha$ memoryless waits is gamma,
+which is why the time to the $\alpha$th arrival of a Poisson process
+is gamma and why an $\alpha$-stage service in a queue has a gamma
+service time. Differentiating $M_{S}$ at $t = 0$ recovers the moments
+without integrating the gamma density: $M_{S}'(0) = \alpha/\lambda$
+gives the mean and $M_{S}''(0) = \alpha(\alpha+1)/\lambda^{2}$ gives
+$\E[S^{2}]$, so $\Var(S) = \alpha/\lambda^{2}$, matching the catalogue
+entry.
+\end{mastery}
 
 \section{Common distributions: discrete and continuous}\pathtag{core}
 
@@ -1026,7 +1158,7 @@ The reader is expected to recognise each of these on sight and to
 match it to a generative mechanism. Recognition is the working test:
 when an engineer reads a problem statement, the distribution should
 arrive without conscious selection. The exercises drill recognition;
-the failure section in section 13.8 names the cost of fitting the
+the failure section in section 13.9 names the cost of fitting the
 wrong family. Figure~\ref{fig:vol02:ch13:distribution-menagerie}
 gives all nine on a single page. The accompanying
 \repopath{volumes/02-form/ch13-probability/data/distributions_reference.csv}
@@ -1211,7 +1343,7 @@ gust or a shared occupancy pattern, where the true $3\sigma$ figure
 is $20 + 3(4) = 32\,\text{kN}$. The diversification benefit that
 makes a portfolio of independent risks safer than its components is
 the same identity read with $\rho < 1$, and its disappearance when
-$\rho \to 1$ is exactly the failure pattern of section 13.8.
+$\rho \to 1$ is exactly the failure pattern of section 13.9.
 
 \subsection{Independence vs zero correlation}
 
@@ -1277,6 +1409,119 @@ the regression line, and the conditional variance is the residual
 variance left after the linear prediction. This is the calculation a
 Kalman filter performs at every step, and the derivation behind it
 is the subject of the bivariate-Gaussian derivation exercise.
+
+\subsection{A continuous joint density, end to end}
+
+The discrete table above kept the bookkeeping visible. The continuous
+case replaces sums by integrals and asks the engineer to track the
+support, which is where most errors enter. Take the joint density
+\[
+f_{X, Y}(x, y) = c\,(x + y), \qquad 0 \leq x \leq 1,\ 0 \leq y \leq 1,
+\]
+and zero elsewhere, a stylised model for two wear indices that both
+rise toward end of life. The normalising constant comes from the
+requirement that the density integrate to one:
+\[
+\int_{0}^{1}\!\!\int_{0}^{1} c(x + y)\,\dd x\,\dd y
+= c \int_{0}^{1}\left( \tfrac12 + y \right)\dd y
+= c \left( \tfrac12 + \tfrac12 \right) = c,
+\]
+so $c = 1$. The marginal of $X$ integrates out $y$,
+\[
+f_{X}(x) = \int_{0}^{1} (x + y)\,\dd y = x + \tfrac12,
+\qquad 0 \leq x \leq 1,
+\]
+which is not uniform: larger $x$ is more likely because the joint
+mass leans toward the upper-right corner. By symmetry $f_{Y}(y) = y +
+\tfrac12$. The product of the marginals is $(x + \tfrac12)(y +
+\tfrac12) = xy + \tfrac12 x + \tfrac12 y + \tfrac14$, which does not
+equal the joint $x + y$, so $X$ and $Y$ are dependent. The conditional
+density of $Y$ given $X = x$ is the joint over the marginal,
+\[
+f_{Y \mid X}(y \mid x) = \frac{x + y}{x + \tfrac12},
+\qquad 0 \leq y \leq 1,
+\]
+a density on $[0, 1]$ that tilts more steeply toward large $y$ when
+$x$ is small. The conditional expectation follows by integration,
+\[
+\E[Y \mid X = x] = \int_{0}^{1} y\,\frac{x + y}{x + \tfrac12}\,\dd y
+= \frac{\tfrac12 x + \tfrac13}{x + \tfrac12}
+= \frac{3x + 2}{6x + 3},
+\]
+which decreases from $\tfrac23$ at $x = 0$ to $\tfrac59$ at $x = 1$:
+observing a high first index lowers the expected second index slightly,
+the negative-dependence signature of this density. A probability over
+a region integrates the joint directly; for the event that both
+indices stay below one half,
+\[
+\Pr\!\left(X \leq \tfrac12,\, Y \leq \tfrac12\right)
+= \int_{0}^{1/2}\!\!\int_{0}^{1/2} (x + y)\,\dd x\,\dd y
+= 2 \cdot \tfrac12 \cdot \tfrac18 = \tfrac18,
+\]
+against the $\tfrac14 \cdot \tfrac14 = \tfrac1{16}$ an engineer would
+get by multiplying the two marginal probabilities $\Pr(X \leq
+\tfrac12) = \int_{0}^{1/2}(x + \tfrac12)\dd x = \tfrac38$. The point
+of the worked integral is the discipline it forces: every continuous
+joint problem is a careful integral over the correct support, and the
+independence shortcut is available only after the product check above
+has passed.
+
+\begin{mastery}
+\textbf{The multivariate normal.} The bivariate Gaussian generalises
+to $n$ dimensions. A random vector $\vect{X} = (X_{1}, \ldots,
+X_{n})\transpose$ is \engterm{multivariate normal} with mean
+$\vect{\mu}$ and covariance $\Sigma$ (symmetric positive definite)
+when its density is
+\[
+f_{\vect{X}}(\vect{x}) = \frac{1}{(2\pi)^{n/2} |\Sigma|^{1/2}}
+\exp\!\left( -\tfrac12 (\vect{x} - \vect{\mu})\transpose
+\Sigma^{-1} (\vect{x} - \vect{\mu}) \right).
+\]
+Three properties make it the workhorse of estimation and control.
+\emph{Closure under linear maps}: if $\vect{X}$ is multivariate
+normal then $\mat{A}\vect{X} + \vect{b}$ is multivariate normal with
+mean $\mat{A}\vect{\mu} + \vect{b}$ and covariance $\mat{A}\Sigma
+\mat{A}\transpose$, which is why a Kalman filter stays Gaussian
+through every linear update. \emph{Marginals and conditionals are
+Gaussian}: partition $\vect{X} = (\vect{X}_{1}, \vect{X}_{2})$ with
+the matching block covariance; the conditional $\vect{X}_{1} \mid
+\vect{X}_{2} = \vect{x}_{2}$ is Gaussian with mean $\vect{\mu}_{1} +
+\Sigma_{12}\Sigma_{22}^{-1}(\vect{x}_{2} - \vect{\mu}_{2})$ and
+covariance $\Sigma_{11} - \Sigma_{12}\Sigma_{22}^{-1}\Sigma_{21}$,
+the Schur complement that is the engine of Gaussian-process
+regression. \emph{Zero covariance is independence}: for the
+multivariate normal, and only here in general, a block-diagonal
+$\Sigma$ means the blocks are independent. The eigendecomposition
+$\Sigma = Q\Lambda Q\transpose$ rotates the correlated coordinates
+into independent ones, the whitening transform that underlies
+principal-component analysis and the Mahalanobis distance
+$(\vect{x} - \vect{\mu})\transpose\Sigma^{-1}(\vect{x} - \vect{\mu})$,
+which is the squared distance in standard-deviation units and is
+$\chi^{2}_{n}$-distributed under the model.
+\end{mastery}
+
+\begin{mastery}
+\textbf{Copulas: separating margins from dependence.} Sklar's theorem
+states that every joint CDF $F_{X, Y}$ factors as $F_{X, Y}(x, y) =
+C(F_{X}(x), F_{Y}(y))$ for a \engterm{copula} $C$, a joint CDF on the
+unit square with uniform margins, and $C$ is unique where the margins
+are continuous. The decomposition separates two modelling decisions
+the marginals and the dependence structure, which an engineer can
+calibrate from different data. The independence copula is $C(u, v) =
+uv$; the comonotone (perfect-dependence) copula is $\min(u, v)$. The
+Gaussian copula, $C(u, v) = \Phi_{\rho}(\Phi^{-1}(u), \Phi^{-1}(v))$,
+takes its dependence from a bivariate normal but accepts arbitrary
+margins. Its defining limitation is asymptotic tail independence: for
+$\rho < 1$ the probability that both variables are jointly extreme
+decays faster than either margin alone, so the Gaussian copula assigns
+near-zero probability to simultaneous tail events. That property is
+exactly what made the Gaussian-copula default model of section 13.9
+understate joint default in the 2008 crisis; a $t$-copula or a
+Clayton copula, which carry positive lower-tail dependence, would have
+priced the cluster risk the Gaussian copula erased. The copula is the
+formal home of the lesson that identical marginals can hide radically
+different joint-tail behaviour.
+\end{mastery}
 
 \section{Limit theorems: LLN and CLT}\pathtag{core}
 
@@ -1396,7 +1641,7 @@ parameter below $2$ has infinite variance, and the sample mean has a
 non-Gaussian limit law. Engineers who fit a Gaussian to a
 heavy-tailed quantity and then estimate confidence intervals via
 $\sigma/\sqrt{n}$ understate the tail risk by an amount that
-depends on the distribution; section 13.8 returns to this pattern.
+depends on the distribution; section 13.9 returns to this pattern.
 Figure~\ref{fig:vol02:ch13:clt-convergence} shows the CLT for the
 $\mathrm{Exp}(1)$ underlying distribution, where the standardised
 sample mean is visibly Gaussian by $n = 30$ and indistinguishable
@@ -1495,6 +1740,38 @@ a property of independent averaging, not of the particular quantity
 being averaged.
 \end{principle}
 
+\begin{mastery}
+\textbf{Concentration: exponential tails for bounded averages.}
+Chebyshev gives a $1/k^{2}$ tail from the variance alone. When the
+summands are bounded and independent, far stronger
+\engterm{concentration inequalities} give tails that shrink
+exponentially in $n$. \engterm{Hoeffding's inequality} states that for
+independent $X_{i} \in [a_{i}, b_{i}]$ with sample mean $\bar X_{n}$,
+\[
+\Pr\!\left( |\bar X_{n} - \E[\bar X_{n}]| \geq \varepsilon \right)
+\leq 2 \exp\!\left( -\frac{2 n^{2} \varepsilon^{2}}
+{\sum_{i=1}^{n} (b_{i} - a_{i})^{2}} \right).
+\]
+For Bernoulli summands on $[0, 1]$ the bound reads $2 e^{-2 n
+\varepsilon^{2}}$, which is the engineering tool for sample-size
+planning when the only structural fact is boundedness. The proof is
+the \engterm{Chernoff method}: apply Markov to $e^{t S_{n}}$, bound
+each factor's MGF, and optimise over $t > 0$. The Chernoff bound on a
+$\mathrm{Bin}(n, p)$ count, $\Pr(X \geq (1 + \delta) np) \leq
+[e^{\delta}/(1 + \delta)^{1 + \delta}]^{np}$, is the workhorse of
+randomised-algorithm analysis and of load-balancing arguments, where
+it certifies that the busiest server of $m$ servers fed $m$ jobs
+carries $O(\log m / \log\log m)$ jobs with high probability. The
+practical lesson is the gap between the bounds: to certify that an
+empirical defect rate is within $0.01$ of the truth with probability
+$0.99$, Chebyshev demands $n$ of order $10^{6}$, while Hoeffding,
+using boundedness, demands $n \approx \ln(2/0.01)/(2 \cdot 0.01^{2})
+\approx 2.6 \times 10^{4}$, two orders of magnitude fewer samples.
+Concentration is what makes finite-sample guarantees, as opposed to
+asymptotic CLT statements, available to the engineer who needs a
+number before the limit.
+\end{mastery}
+
 \section{Stochastic processes preview}\label{sec:vol02:ch13:processes}\pathtag{standard}
 
 A \engterm{stochastic process} is a collection $\{X_{t}\}_{t \in T}$
@@ -1532,6 +1809,31 @@ model for arrivals in queueing, photon counts in detectors, and
 request streams in networked systems, and why the M/M/1 queue of the
 design exercises is analytically tractable.
 \end{mastery}
+
+\paragraph{Worked example: a Poisson process from arrivals to risk.}
+A maintenance depot logs equipment alarms as a Poisson process of
+rate $\lambda = 3$ per day. Four questions exercise the standard
+toolkit. First, the count in a fixed window: the number of alarms in
+a five-day stretch is $\mathrm{Pois}(15)$, with mean $15$ and standard
+deviation $\sqrt{15} \approx 3.9$, and the probability of a quiet
+five-day window with no alarm is $e^{-15} \approx 3 \times 10^{-7}$.
+Second, the wait to the next alarm: inter-arrivals are
+$\mathrm{Exp}(3\,\text{day}^{-1})$, so the probability of no alarm for
+a full day is $e^{-3} \approx 0.050$, and the median gap is
+$\ln 2 / 3 \approx 0.23\,\text{day}$, about five and a half hours.
+Third, the wait to the third alarm: the sum of three independent
+exponential gaps is $\mathrm{Gamma}(3, 3)$, with mean $3/3 = 1\,
+\text{day}$ and variance $3/9 = 0.33\,\text{day}^{2}$, the result the
+moment-generating-function derivation above supplies directly. Fourth,
+thinning by severity: if each alarm is independently critical with
+probability $q = 0.1$, the critical alarms form a Poisson process of
+rate $q\lambda = 0.3$ per day, so critical alarms arrive on average
+once every $3.3$ days and the count of critical alarms in a $30$-day
+month is $\mathrm{Pois}(9)$. The four answers come from one model and
+four of its closure properties, which is the reason the Poisson
+process is the first reach for any stream of rare independent events
+and the analytic backbone of the queueing models in the design
+exercises and in Volume IX.
 
 \subsection{Markov chains: definition}
 
@@ -1666,7 +1968,7 @@ average of $g$ under the stationary distribution. The chain is
 \engterm{ergodic}, which is the technical name for the property
 that a single long sample path explores the state space with the
 right relative frequencies. Ergodicity is what licences the project
-of section 13.9: a long simulation of the chain produces an
+of section 13.10: a long simulation of the chain produces an
 empirical distribution that, by the LLN, converges to the
 stationary distribution.
 
@@ -1692,6 +1994,179 @@ general. Reversible chains have real eigenvalues and a clean spectral
 theory; non-reversible chains can mix faster but lose that
 guarantee.
 \end{mastery}
+
+\section{Case study: load-strength interference}\label{sec:vol02:ch13:case-study}\pathtag{standard}
+
+The apparatus of this chapter, distributions, transformations,
+expectation, the normal tail, and the propagation of uncertainty,
+converges on one of the oldest quantitative questions in engineering:
+will the part hold the load? The probabilistic answer is the
+\engterm{load-strength interference} model, also called the
+stress-strength model, and working it end to end ties the chapter
+together on a problem an engineer actually ships against
+\cite[ch.~5]{text:ross-probability}.
+
+\subsection{The model}
+
+A component has a random strength $S$ and is subjected to a random
+load $L$, both in the same units (a stress, a force, a pressure). The
+component survives the mission when $S > L$ and fails when $L \geq S$.
+The \engterm{probability of failure} is
+\[
+p_{f} = \Pr(L \geq S) = \Pr(S - L \leq 0),
+\]
+and the \engterm{reliability} is $R = 1 - p_{f}$. The deterministic
+design tradition replaces the two distributions by single numbers, a
+rated strength and a rated load, and inserts a \engterm{safety factor}
+$\mathrm{SF} = \bar S / \bar L$ to cover the gap. The probabilistic
+model exposes what the safety factor hides: two designs with the same
+nominal safety factor can have failure probabilities that differ by
+orders of magnitude, because the safety factor says nothing about the
+spread of either distribution. The interference is the overlap of the
+two densities, drawn in
+Figure~\ref{fig:vol02:ch13:load-strength}, and the failure probability
+is the probability mass in that overlap region, not the distance
+between the means.
+
+\input{volumes/02-form/ch13-probability/figures/fig-load-strength.tex}
+
+\subsection{The Gaussian case, in full}
+
+Take both load and strength Gaussian and independent:
+$L \sim \mathcal{N}(\mu_{L}, \sigma_{L}^{2})$ and $S \sim
+\mathcal{N}(\mu_{S}, \sigma_{S}^{2})$. The \engterm{margin}
+$M = S - L$ is a linear combination of independent Gaussians, so by
+the closure property it is itself Gaussian,
+\[
+M \sim \mathcal{N}\!\left( \mu_{S} - \mu_{L},\
+\sigma_{S}^{2} + \sigma_{L}^{2} \right).
+\]
+Failure is the event $M \leq 0$. Standardising,
+\[
+p_{f} = \Pr(M \leq 0) = \Phi\!\left(
+\frac{0 - (\mu_{S} - \mu_{L})}
+{\sqrt{\sigma_{S}^{2} + \sigma_{L}^{2}}} \right)
+= \Phi(-\beta), \qquad
+\beta = \frac{\mu_{S} - \mu_{L}}
+{\sqrt{\sigma_{S}^{2} + \sigma_{L}^{2}}}.
+\]
+The dimensionless quantity $\beta$ is the \engterm{reliability index}:
+the number of standard deviations of the margin by which the mean
+strength exceeds the mean load. It is the single number that sets the
+failure probability in the Gaussian model, and it is the quantity the
+load-and-resistance-factor design codes are calibrated against. The
+mapping from $\beta$ to $p_{f}$ is the standard-normal tail: $\beta =
+3$ gives $p_{f} = \Phi(-3) \approx 1.35 \times 10^{-3}$, $\beta = 4$
+gives $\approx 3.17 \times 10^{-5}$, and $\beta = 5$ gives $\approx
+2.87 \times 10^{-7}$. Each extra unit of $\beta$ buys roughly a factor
+of thirty in reliability across this range.
+
+\subsection{Worked numbers}
+
+A pressure vessel wall has burst strength with mean $\mu_{S} = 600\,
+\text{bar}$ and standard deviation $\sigma_{S} = 40\,\text{bar}$,
+reflecting material and weld-quality scatter. The operating load has
+mean $\mu_{L} = 400\,\text{bar}$ and standard deviation $\sigma_{L} =
+30\,\text{bar}$, reflecting pressure-cycle variation. The nominal
+safety factor is $\mathrm{SF} = 600/400 = 1.5$. The reliability index
+is
+\[
+\beta = \frac{600 - 400}{\sqrt{40^{2} + 30^{2}}}
+= \frac{200}{\sqrt{1600 + 900}}
+= \frac{200}{50} = 4.0,
+\]
+so the failure probability is $p_{f} = \Phi(-4.0) \approx 3.2 \times
+10^{-5}$, about three failures per hundred thousand vessels. Now hold
+the safety factor fixed at $1.5$ but suppose the weld process degrades
+and $\sigma_{S}$ rises to $80\,\text{bar}$. The means are unchanged,
+so the deterministic safety factor still reads $1.5$ and a
+factor-of-safety acceptance test passes. The reliability index falls
+to
+\[
+\beta = \frac{200}{\sqrt{80^{2} + 30^{2}}}
+= \frac{200}{\sqrt{6400 + 900}}
+= \frac{200}{85.4} = 2.34,
+\]
+and the failure probability climbs to $\Phi(-2.34) \approx 9.6 \times
+10^{-3}$, a factor of three hundred worse than the original design at
+the same safety factor. The lesson the deterministic number cannot
+carry is that scatter in strength is as load-bearing as the mean: a
+process-control lapse that doubles the strength standard deviation
+costs three hundredfold in reliability while leaving every nominal
+margin intact.
+
+\subsection{The lognormal case and why it is often the right one}
+
+Strength and load are non-negative and frequently right-skewed, which
+makes the lognormal a better model than the normal for many
+materials. When $S$ and $L$ are lognormal, $\ln S$ and $\ln L$ are
+normal, and the failure event $S > L$ is the same as $\ln S > \ln L$,
+so the margin in log space, $\ln S - \ln L$, is normal. The reliability
+index becomes
+\[
+\beta = \frac{\mu_{\ln S} - \mu_{\ln L}}
+{\sqrt{\sigma_{\ln S}^{2} + \sigma_{\ln L}^{2}}},
+\]
+with the log-space parameters obtained from the means and coefficients
+of variation by $\sigma_{\ln}^{2} = \ln(1 + \mathrm{CV}^{2})$ and
+$\mu_{\ln} = \ln \mu - \tfrac12 \sigma_{\ln}^{2}$. The lognormal model
+changes the answer most in the tail, which is exactly where the failure
+probability lives. For the original vessel numbers, treating the
+coefficients of variation $\mathrm{CV}_{S} = 40/600 = 0.067$ and
+$\mathrm{CV}_{L} = 30/400 = 0.075$ as lognormal gives $\sigma_{\ln S}
+\approx 0.0666$, $\sigma_{\ln L} \approx 0.0748$, and $\beta =
+(\ln 600 - \tfrac12 \cdot 0.0666^{2}) - (\ln 400 - \tfrac12 \cdot
+0.0748^{2})$ over $\sqrt{0.0666^{2} + 0.0748^{2}} = 0.4035/0.1001
+\approx 4.03$, close to the Gaussian $\beta = 4.0$ at these small
+coefficients of variation but diverging from it as the scatter grows.
+For coefficients of variation above about $0.2$ the two models give
+materially different failure probabilities, and the choice between
+them is an engineering judgement about the physical skewness of the
+strength data, made by the family-selection checklist of section 13.4,
+not a matter of convenience.
+
+\subsection{When the inputs are correlated}
+
+The independence of $S$ and $L$ is an assumption, and the failure
+section that follows names what happens when it is false. If a common
+factor, a temperature excursion that both weakens the material and
+raises the internal pressure, couples strength and load with
+correlation $\rho$, the margin variance picks up a cross term,
+\[
+\Var(M) = \sigma_{S}^{2} + \sigma_{L}^{2} - 2\rho\,\sigma_{S}\sigma_{L},
+\]
+the minus sign appearing because $M = S - L$. Positive correlation
+between strength and load (high load coincides with high strength)
+shrinks the margin variance and raises $\beta$, improving reliability;
+negative correlation (high load coincides with low strength, the
+adverse common cause) inflates the margin variance and cuts $\beta$.
+For the original vessel at $\rho = -0.5$, $\Var(M) = 1600 + 900 -
+2(-0.5)(40)(30) = 2500 + 1200 = 3700$, so $\beta = 200/60.8 = 3.29$
+and $p_{f} = \Phi(-3.29) \approx 5 \times 10^{-4}$, fifteen times the
+independent figure. An interference analysis that assumes independent
+load and strength when a shared driver couples them adversely reports
+a reliability the structure does not have, which is the chapter's
+governing failure mode read in the language of the case study.
+
+\subsection{Reading the result}
+
+The case study delivers four transferable habits. The failure
+probability lives in the overlap of two distributions, not in the gap
+between two means, so the spread of each input is a first-class design
+variable. A single dimensionless index $\beta$ summarises a Gaussian
+interference problem and maps to $p_{f}$ through the normal tail. The
+choice of distribution family changes the answer in the tail, which is
+the part that matters, so the family-selection discipline of section
+13.4 is not academic. And the independence of load and strength is a
+claim to be justified, not a default, because an adverse common cause
+moves the failure probability by more than a typical design margin. The
+companion script
+\repopath{volumes/02-form/ch13-probability/code/load_strength.py}
+computes $\beta$ and $p_{f}$ for the Gaussian, lognormal, and
+correlated cases and runs a Monte Carlo cross-check against the
+closed-form tail, so the reader can confirm the interference integral
+on an arbitrary pair of input distributions where no closed form
+exists.
 
 \section{Failure: independence assumed where there was none}\pathtag{core}
 
@@ -2719,7 +3194,7 @@ likely than the Gaussian predicts). All three violations make the
 true tail thicker than the Gaussian extrapolation; the procedure
 \emph{understates} tail risk, often by an order of magnitude at
 the $99\,\%$ quantile and by more at the $99.9\,\%$ quantile. The
-2008 crisis case in section 13.8 is one episode in a long history
+2008 crisis case in section 13.9 is one episode in a long history
 of this pattern.
 
 \begin{exercise}
@@ -2748,7 +3223,7 @@ so the estimate carries a $95\,\%$ confidence interval of roughly
 $[0.001, 0.012]$, an order of magnitude wide.
 
 \begin{exercise}
-Read section 13.8's claim that the union bound is a conservative
+Read section 13.9's claim that the union bound is a conservative
 substitute for an independence-based joint failure calculation.
 Identify the regime in which the two are nearly equal and the
 regime in which they differ by orders of magnitude. State the

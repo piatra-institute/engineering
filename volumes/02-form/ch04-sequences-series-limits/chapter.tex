@@ -510,6 +510,97 @@ and the engineer who trusts the visual without checking the analytic
 bound truncates at a finite $N$ believing the tail is negligible. It
 is not, and the chapter's failure section returns to this case.
 
+\subsection{A worked Fourier-series partial sum}
+
+The series engineers meet most often is not a series of numbers but a
+series of functions: a Fourier series, in which the partial sum is a
+trigonometric polynomial that approximates a periodic signal. The
+convergence question for such a series is richer than for a number
+series, because the partial sum can converge at one point at one rate
+and at a neighbouring point at another, and because a discontinuity in
+the target produces a permanent overshoot that no number of terms
+removes. The square wave is the canonical worked case, and it pays the
+chapter's machinery back in a single figure.
+
+The square wave of unit amplitude and period $2\pi$, odd about the
+origin, has the Fourier series
+\[
+s(x) = \frac{4}{\pi} \sum_{k=0}^{\infty} \frac{\sin\bigl((2k+1) x\bigr)}
+{2k+1} = \frac{4}{\pi}\left(\sin x + \frac{\sin 3x}{3} +
+\frac{\sin 5x}{5} + \cdots\right).
+\]
+The coefficients decay as $1/(2k+1)$, the harmonic rate, so the series
+of coefficients on its own diverges. Convergence of the function series
+is rescued by the cancellation between the oscillating sines, exactly
+the mechanism that made the alternating harmonic series converge. At a
+point of continuity the partial sum $S_{N}(x)$, keeping harmonics
+through order $2N-1$, converges to $s(x)$, but the convergence is slow:
+the pointwise error at a fixed interior point decays as $O(1/N)$,
+inherited from the coefficient tail $\sum_{k > N} 1/(2k+1)$, which the
+integral test bounds by $\tfrac{1}{2}\log(N/(N+1))^{-1} \approx
+1/(4N)$.
+
+The interesting failure is at the jump. The square wave steps from
+$-1$ to $+1$ at $x = 0$. Near the jump the partial sum overshoots, and
+the overshoot does not shrink as $N$ grows. It moves closer to the jump
+and narrows, but its height settles at a fixed fraction above the true
+value. The overshoot peaks at $x_{N} \approx \pi/(2N)$, the first
+maximum of $S_{N}$ to the right of the jump, and its limiting height is
+\[
+\lim_{N \to \infty} S_{N}(x_{N}) = \frac{2}{\pi} \int_{0}^{\pi}
+\frac{\sin t}{t} \, \dd t = \frac{2}{\pi}\,\mathrm{Si}(\pi) \approx
+1.1790,
+\]
+an overshoot of about $9\%$ of the unit jump, where $\mathrm{Si}$ is
+the sine integral. This is the \engterm{Gibbs phenomenon}. The
+$9\%$ figure is independent of $N$ and of the particular signal; every
+jump discontinuity reconstructed by a truncated Fourier series carries
+the same proportional overshoot. The integral arises because the sum
+$\sum \sin((2k+1)x_{N})/(2k+1)$ at the overshoot point is a Riemann sum
+for $\int_{0}^{\pi} (\sin t)/t \, \dd t$, and $\mathrm{Si}(\pi) =
+1.8519$ exceeds the value $\pi/2 = 1.5708$ that the converged series
+would give.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-gibbs}
+
+The Gibbs picture in \autoref{fig:vol02:ch04:gibbs} is the engineering
+warning made visible. A truncated Fourier reconstruction of a signal
+with a step (a digital edge, a switching transient, a control setpoint
+change) rings near the edge with a fixed-height overshoot, and an
+engineer who tightens the reconstruction by adding harmonics narrows
+the ringing without lowering its peak. The defensive habits are to
+window the series (a Fej\'{e}r or Lanczos sigma factor multiplies the
+coefficients by a taper that suppresses the overshoot at the cost of a
+gentler edge), to accept the $9\%$ as a hard floor when sharp edges
+must be preserved, or to represent the discontinuity with a basis that
+admits jumps. The convergence here is uniform on any closed interval
+that excludes the jump and is never uniform across the jump, the
+distinction the next mastery box sharpens. The classical analysis of
+the phenomenon and of the windowing remedies is in
+\cite{hist:fourier1822,text:v2ch03-stein-shakarchi-complex}.
+
+\begin{mastery}
+\engterm{Uniform versus pointwise convergence}. A sequence of functions
+$f_{N}$ converges \engterm{pointwise} to $f$ if $f_{N}(x) \to f(x)$ for
+each fixed $x$. It converges \engterm{uniformly} if the worst-case error
+$\sup_{x} \abs{f_{N}(x) - f(x)}$ tends to zero, so a single $N$ serves
+every $x$ at once. The distinction is the difference between "for each
+$x$, eventually close" and "eventually close everywhere at once." The
+Gibbs overshoot is precisely a failure of uniform convergence: the
+partial sums of the square wave converge pointwise to $s(x)$ at every
+$x \neq 0$, yet $\sup_{x} \abs{S_{N}(x) - s(x)} \approx 0.18$ for all
+$N$, because the overshoot near the jump never shrinks. Uniform
+convergence is the property the engineer needs to interchange limit
+with integral or with derivative, to bound a function-series tail by a
+single number, and to guarantee that the limit of continuous partial
+sums is itself continuous. Pointwise convergence guarantees none of
+these. The Weierstrass $M$-test certifies uniform convergence of a
+function series $\sum g_{n}(x)$ when $\abs{g_{n}(x)} \leq M_{n}$ for all
+$x$ and the number series $\sum M_{n}$ converges. The square wave fails
+the $M$-test because its $M_{n} = 4/(\pi(2n-1))$ sum to the divergent
+harmonic series, which is the analytic signature of the Gibbs trouble.
+\end{mastery}
+
 \section{Convergence tests engineers actually use}\pathtag{standard}
 
 The following tests are the working tools. We state each in its
@@ -726,6 +817,83 @@ logarithm is the whole story at this boundary.
 The five verdicts share a method: identify the dominant large-$n$
 behaviour, choose the cheapest test that reads that behaviour, and
 apply it. The decision tree below automates the choice.
+
+\subsection{Accelerating a slowly convergent series}
+
+A convergent series settles the convergence question and then leaves the
+engineer with a second problem: a series that converges at $O(1/N)$ or
+$O(1/N^{2})$ needs an impractical number of terms for engineering
+accuracy. The tail bounds of the integral test quantified the trouble,
+$\sum 1/n^{2}$ needs a thousand terms for three decimals. Two classical
+transforms extract the limit from a handful of partial sums by modelling
+the tail rather than summing it.
+
+\engterm{Aitken's $\Delta^{2}$ process}. Suppose the partial sums
+approach their limit geometrically, $S_{n} \approx S + A r^{n}$ for some
+ratio $r$, the behaviour of any linearly convergent sequence. Three
+consecutive partial sums then determine all three unknowns. Eliminating
+$A$ and $r$ gives the accelerated estimate
+\[
+\widehat{S}_{n} = S_{n} - \frac{(S_{n+1} - S_{n})^{2}}{S_{n+2} - 2
+S_{n+1} + S_{n}} = S_{n} - \frac{(\Delta S_{n})^{2}}{\Delta^{2} S_{n}},
+\]
+where $\Delta S_{n} = S_{n+1} - S_{n}$ and $\Delta^{2} S_{n} = S_{n+2}
+- 2 S_{n+1} + S_{n}$. The transformed sequence $\widehat{S}_{n}$
+converges to the same limit, and faster whenever the geometric model is
+a good fit. A worked case settles the gain. The alternating series for
+$\pi/4 = 1 - 1/3 + 1/5 - 1/7 + \cdots$ converges at $O(1/N)$: the raw
+partial sums give $S_{4} = 0.8349$, off the true $\pi/4 = 0.7854$ by
+$0.050$. Apply Aitken to $S_{2}, S_{3}, S_{4} = 0.8667, 0.7238, 0.8349$:
+the first difference is $\Delta S_{2} = 0.7238 - 0.8667 = -0.1429$ and
+the second is $\Delta^{2} S_{2} = 0.8349 - 2(0.7238) + 0.8667 = 0.2540$,
+so the accelerated estimate is $0.8667 - (-0.1429)^{2}/0.2540 = 0.8667 -
+0.0804 = 0.7863$, off by only $9 \times 10^{-4}$, about fifty times
+closer than the raw $S_{4}$ from the same three partial sums. Iterating
+Aitken on its own output, the $\Delta^{2}$-of-$\Delta^{2}$ chain,
+reaches six-decimal accuracy from the first eight raw terms, a task that
+costs the raw series tens of thousands of terms. The transform fails when the convergence is not
+asymptotically geometric, and it amplifies round-off through the
+second-difference denominator, which can vanish near the limit. The
+defensive rule is to stop accelerating once $\abs{\Delta^{2} S_{n}}$
+drops to the round-off floor.
+
+\engterm{Euler's transform}. For an alternating series $\sum (-1)^{n}
+a_{n}$ with $a_{n} > 0$ slowly decreasing, Euler's transform rewrites
+the sum in terms of the forward differences of the $a_{n}$:
+\[
+\sum_{n=0}^{\infty} (-1)^{n} a_{n} = \sum_{k=0}^{\infty}
+\frac{(-1)^{k}}{2^{k+1}} \Delta^{k} a_{0}, \qquad \Delta^{k} a_{0} =
+\sum_{j=0}^{k} (-1)^{j} \binom{k}{j} a_{j}.
+\]
+When the $a_{n}$ are smooth, their high differences $\Delta^{k} a_{0}$
+shrink rapidly, and the transformed series, with its extra $2^{-(k+1)}$
+factor, converges geometrically even though the original converged at
+$O(1/N)$. For $\log 2 = \sum (-1)^{n}/(n+1)$, the forward differences of
+$a_{n} = 1/(n+1)$ shrink steadily, and twelve Euler terms recover $\log
+2$ to better than five decimals where the raw alternating series needs
+about $10^{5}$ terms for the same accuracy; the higher-order Levin and
+Weniger transforms push the same dozen terms to full double precision.
+The two transforms together are the reason an engineer almost never sums
+a slowly convergent series directly. The convergence test certifies the
+limit exists; the acceleration transform delivers it cheaply. The
+script \texttt{code/aitken\_euler.py} runs both transforms on
+$\pi/4$ and $\log 2$ and tabulates the term count each route needs for
+six-decimal accuracy (\texttt{data/acceleration\_compare.csv}); the
+detailed theory of these and the higher Shanks and Levin transforms is
+in \cite{text:v2ch04-bender-orszag-1999}.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-acceleration}
+
+The acceleration figure (\autoref{fig:vol02:ch04:acceleration}) plots
+the error of the raw partial sums of $\pi/4$ against the error of the
+Aitken-accelerated and Euler-transformed estimates, on a log scale
+versus term count. The raw series barely improves, tracing the slow
+$O(1/N)$ harmonic rate; the accelerated estimates fall two to three
+decades below it at the same term count. The gap is the engineering
+payoff: the same information, a handful of partial sums, yields four or
+more correct digits after a single transform where the raw sum has one
+or two, and iterating the transform reaches six digits from the first
+eight raw terms.
 
 \section{Power series and Taylor series}\pathtag{core}
 
@@ -1042,6 +1210,126 @@ set by the nearest singularity of the equation's coefficients in the
 complex plane.
 \end{mastery}
 
+\subsection{Pad\'{e} approximants: a rational alternative to truncation}
+
+A truncated Taylor series is a polynomial, and a polynomial diverges to
+$\pm\infty$ as its argument grows. When the function being approximated
+levels off, has a pole, or must be evaluated near the edge of the
+Taylor radius, a ratio of two polynomials does far better with the same
+number of coefficients. The \engterm{Pad\'{e} approximant} of order
+$[m/n]$ is the rational function
+\[
+R_{m/n}(x) = \frac{p_{0} + p_{1} x + \cdots + p_{m} x^{m}}{1 + q_{1} x
++ \cdots + q_{n} x^{n}}
+\]
+whose Taylor expansion at $x = 0$ matches the function's Taylor series
+through order $m + n$. The coefficients are fixed by that matching
+condition: cross-multiply, equate the series of $R_{m/n}$ with the
+target series term by term up to $x^{m+n}$, and solve the resulting
+linear system for the $q_{j}$ first, then the $p_{i}$.
+
+A worked $[2/2]$ approximant of the exponential shows the gain. The
+Taylor series is $e^{x} = 1 + x + x^{2}/2 + x^{3}/6 + x^{4}/24 +
+\cdots$. Write $R_{2/2}(x) = (p_{0} + p_{1} x + p_{2} x^{2})/(1 + q_{1}
+x + q_{2} x^{2})$ and require $(1 + q_{1} x + q_{2} x^{2}) e^{x} = p_{0}
++ p_{1} x + p_{2} x^{2} + O(x^{5})$. Matching coefficients of $x^{0}$
+through $x^{4}$:
+\begin{align*}
+x^{0}&: \; p_{0} = 1, & x^{3}&: \; 0 = \tfrac{1}{6} +
+\tfrac{1}{2} q_{1} + q_{2}, \\
+x^{1}&: \; p_{1} = 1 + q_{1}, & x^{4}&: \; 0 = \tfrac{1}{24} +
+\tfrac{1}{6} q_{1} + \tfrac{1}{2} q_{2}. \\
+x^{2}&: \; p_{2} = \tfrac{1}{2} + q_{1} + q_{2},
+\end{align*}
+The last two equations give $q_{1} = -1/2$, $q_{2} = 1/12$, and then
+$p_{1} = 1/2$, $p_{2} = 1/12$. The approximant is
+\[
+e^{x} \approx \frac{1 + x/2 + x^{2}/12}{1 - x/2 + x^{2}/12},
+\]
+which is the diagonal Pad\'{e} that underlies the implicit-midpoint and
+Crank-Nicolson time integrators of Chapter 7. Its Taylor expansion
+matches $e^{x}$ through $x^{4}$ (the first discrepancy is at $x^{5}$,
+where the approximant gives $x^{5}/144$ against the true $x^{5}/120$),
+the same matching order as the degree-four Taylor polynomial, from the
+same five coefficients. At $x = 1$ the Pad\'{e} returns $2.71429$
+against $e = 2.71828$, a relative error of $1.5 \times 10^{-3}$, while
+the degree-four Taylor polynomial $1 + 1 + 1/2 + 1/6 + 1/24 = 2.70833$
+is off by $3.7 \times 10^{-3}$, about two and a half times worse. The
+rational form's real advantage shows on functions that level off or
+have poles: for $f(x) = \log(1 + x)/x$, which the Taylor series
+represents only on $\abs{x} < 1$, the $[1/1]$ Pad\'{e} stays accurate
+well past the Taylor radius, because the rational form spends its
+coefficients on the shape of the function rather than on a single
+polynomial trend, and it can place a pole where the function has one.
+The diagonal $e^{x}$ Pad\'{e} above is prized in time integration not
+for large-$x$ accuracy (where its denominator's complex roots make it
+mediocre on the real axis) but because $\abs{R_{2/2}(i\omega)} = 1$
+exactly, so the Crank-Nicolson scheme it generates neither grows nor
+damps a pure oscillation, the stability property an integrator needs. The hazard is the spurious pole: the
+denominator of a Pad\'{e} approximant can vanish at a point where the
+true function is finite, producing a \engterm{Froissart doublet}, a
+near-cancelling pole-zero pair that a careless evaluation reads as a
+singularity. The treatment of Pad\'{e} theory and its convergence is in
+\cite{text:v2ch04-bender-orszag-1999}.
+
+\subsection{A worked power-series ODE solution: the Airy equation}
+
+The mastery box above previewed the power-series method on $y' = y$,
+whose answer was already known. The method earns its place on an
+equation with no elementary solution. The \engterm{Airy equation}
+\[
+y'' = x y
+\]
+governs the transition between oscillatory and exponential behaviour at
+a turning point, and it appears in optics (the intensity near a caustic),
+in quantum mechanics (a particle near a linear potential barrier), and
+in the asymptotics of the WKB approximation. Its solutions, the Airy
+functions, are defined by their power series.
+
+Write $y = \sum_{n=0}^{\infty} c_{n} x^{n}$. Differentiating twice,
+$y'' = \sum_{n=2}^{\infty} n(n-1) c_{n} x^{n-2} = \sum_{m=0}^{\infty}
+(m+2)(m+1) c_{m+2} x^{m}$, while $x y = \sum_{m=1}^{\infty} c_{m-1}
+x^{m}$. Matching coefficients of $x^{m}$:
+\[
+(m+2)(m+1) c_{m+2} = c_{m-1} \quad (m \geq 1), \qquad
+2 c_{2} = 0.
+\]
+The recursion $c_{m+2} = c_{m-1}/((m+2)(m+1))$ links coefficients three
+indices apart, so the series splits into three families seeded by
+$c_{0}$, $c_{1}$, and $c_{2}$. The condition $c_{2} = 0$ kills the
+third family, leaving two independent solutions, one even-dominated
+(seeded by $c_{0}$) and one odd-dominated (seeded by $c_{1}$). Unwinding
+the recursion from $c_{0} = 1, c_{1} = 0$:
+\[
+c_{3} = \frac{c_{0}}{3 \cdot 2} = \frac{1}{6}, \quad c_{6} =
+\frac{c_{3}}{6 \cdot 5} = \frac{1}{180}, \quad c_{9} = \frac{c_{6}}
+{9 \cdot 8} = \frac{1}{12960}, \ldots
+\]
+giving the first solution
+\[
+y_{1}(x) = 1 + \frac{x^{3}}{6} + \frac{x^{6}}{180} + \frac{x^{9}}
+{12960} + \cdots = \sum_{k=0}^{\infty} \frac{x^{3k}}{(3k)!}
+\prod_{j=1}^{k} (3j - 2),
+\]
+and from $c_{0} = 0, c_{1} = 1$ the second solution $y_{2}(x) = x +
+x^{4}/12 + x^{7}/504 + \cdots$. The ratio test on the first series:
+the term ratio is $x^{3}/((3k+3)(3k+2)) \to 0$ for every fixed $x$, so
+the radius of convergence is infinite. Every coefficient is computed by
+a single division, and the series converges everywhere, which is what
+makes the power-series method the practical route to the Airy functions
+for moderate $\abs{x}$. For large $\abs{x}$ the convergent series loses
+to catastrophic cancellation (the terms grow before they decay, exactly
+the $e^{-20}$ trap of the failure section), and the engineer switches to
+the asymptotic expansion, the complementary tool the mastery box on
+asymptotic series named. The standard Airy functions $\mathrm{Ai}$ and
+$\mathrm{Bi}$ are the particular linear combinations of $y_{1}$ and
+$y_{2}$ fixed by their behaviour at infinity; the coefficients and the
+connection formulae are tabulated in
+\cite{text:v2ch04-abramowitz-stegun-1972}. The power-series method
+turned a differential equation with no elementary solution into a
+three-term recursion that a calculator can run, and the radius of
+convergence came for free from the ratio test on that recursion.
+
 \subsection{Euler's identity}
 
 A clean payoff. Substitute $x = i\theta$ into the exponential series:
@@ -1302,6 +1590,88 @@ of a function evaluation, a derivative evaluation, and a guaranteed
 bracket. Quadratic convergence is fastest in iteration count and is not
 always cheapest in wall-clock time.
 
+\subsection{A worked convergence-rate analysis: when Newton slows down}
+
+Newton's iteration converges quadratically at a simple root and only
+linearly at a multiple root, and the engineer who does not know which
+case is in hand will misread the iteration's residuals. The analysis
+that distinguishes the two is worth a full worked pass, because it is
+the prototype for reading any iteration's convergence rate from its
+residual sequence.
+
+Take $f(x) = (x - 2)^{2}$, which has a double root at $x = 2$. Newton's
+iteration is $x_{n+1} = x_{n} - f(x_{n})/f'(x_{n}) = x_{n} - (x_{n} -
+2)^{2}/(2(x_{n} - 2)) = x_{n} - (x_{n} - 2)/2 = (x_{n} + 2)/2$. The
+error $e_{n} = x_{n} - 2$ then satisfies $e_{n+1} = e_{n}/2$ exactly:
+linear convergence with rate $1/2$, not quadratic. Starting from $x_{0}
+= 3$, the errors run $1, 0.5, 0.25, 0.125, \ldots$, halving each step,
+and reaching $10^{-12}$ takes about forty iterations rather than the
+five that a simple root would need. The general result is that at a root
+of multiplicity $m$, Newton converges linearly with rate $1 - 1/m$, so
+the double root gives rate $1/2$, a triple root rate $2/3$, and so on,
+each higher multiplicity slower.
+
+The diagnostic the engineer reads is the ratio $e_{n+1}/e_{n}$. For a
+simple root this ratio tends to zero (the next error is a vanishing
+fraction of the current one, the signature of superlinear convergence);
+for a multiplicity-$m$ root it tends to the constant $1 - 1/m$. A
+residual sequence whose successive ratios settle to a constant near
+$0.5$ rather than collapsing to zero is the fingerprint of a double
+root, and the eye that expected quadratic convergence reads it as a
+broken solver when the solver is working correctly on a harder problem.
+
+Two fixes restore fast convergence. The \engterm{modified Newton}
+iteration $x_{n+1} = x_{n} - m \, f(x_{n})/f'(x_{n})$, with the known
+multiplicity $m$ folded in, recovers quadratic convergence: for the
+double root, the factor $m = 2$ turns the update into $x_{n+1} = x_{n}
+- (x_{n} - 2)$, which lands on the root in one step. When the
+multiplicity is unknown, \engterm{Steffensen's method} accelerates a
+linearly convergent fixed-point iteration $a_{n+1} = g(a_{n})$ to
+quadratic order without derivatives, by applying Aitken's $\Delta^{2}$
+transform of section 4.3 to each triple of iterates:
+\[
+a_{n+1} = a_{n} - \frac{(g(a_{n}) - a_{n})^{2}}{g(g(a_{n})) - 2 g(a_{n})
++ a_{n}}.
+\]
+The same $\Delta^{2}$ that accelerated a slowly convergent series
+accelerates a slowly convergent iteration, because both are sequences
+approaching a limit geometrically. Applied to the Dottie-number
+iteration $g(a) = \cos a$ of section 4.1, which converged linearly at
+rate $0.674$, Steffensen reaches the fixed point $0.739085$ to
+machine precision in four iterations rather than the thirty-five the
+raw iteration needed. The convergence-rate ladder, the diagnostic
+ratios, and the acceleration fixes are one connected body of technique:
+read the rate from the residual ratios, identify the obstacle (multiple
+root, slow contraction), and apply the matching accelerator. The
+analysis is treated alongside the stiff-ODE convergence theory in
+\cite{text:v2ch04-hairer-wanner-2008}.
+
+\begin{mastery}
+\engterm{Interval arithmetic for rigorous tails}. The truncation bounds
+of this chapter are inequalities the engineer trusts; interval
+arithmetic makes them machine-checkable certificates. In interval
+arithmetic every quantity is a pair $[\underline{x}, \overline{x}]$
+bracketing the true value, and every operation is rounded outward so
+that the computed interval provably contains the exact result.
+Evaluating a truncated series in interval arithmetic, and adding an
+interval $[-B, B]$ for the rigorously bounded tail $B$, returns an
+interval guaranteed to contain the true sum, round-off included. The
+method converts the Lagrange remainder bound from a hand inequality
+into a verified enclosure: a Taylor model carries a polynomial plus an
+interval remainder through a whole computation, and the final interval
+width is a proof of accuracy rather than an estimate of it. Engineers
+use interval and Taylor-model arithmetic where a wrong answer is
+catastrophic and a verified one is mandatory, in spacecraft trajectory
+validation, in computer-assisted proofs (the proof of the Kepler
+conjecture and the verified bounds on the Lorenz attractor both rest on
+interval enclosures), and in safety-critical control certification. The
+cost is that intervals widen pessimistically under repeated operations,
+the \engterm{dependency problem}, so naive interval evaluation of a long
+expression can return a uselessly wide bracket; Taylor models and affine
+arithmetic are the engineering remedies that track correlations and keep
+the enclosure tight.
+\end{mastery}
+
 \begin{estimation}
 \textbf{Question.} An iterative scheme has linear convergence with
 rate $r = 0.7$ per iteration. The starting error is $e_{0} = 1$.
@@ -1449,6 +1819,162 @@ The same principle reappears later in the volume in the contexts of
 Fourier series convergence, asymptotic expansions, perturbation
 theory, and improper integrals. The harmonic-series trap is the
 chapter's first encounter with a pattern the engineer will meet again.
+
+\section{Case study: computing a constant to a guaranteed accuracy}\pathtag{standard}
+
+The chapter's machinery, convergence verdicts, truncation bounds,
+acceleration, and round-off discipline, comes together when an engineer
+must compute a transcendental constant to a stated accuracy with a
+defensible error budget. We take the concrete task of computing $\pi$ to
+ten correct decimal places and carry it from the choice of series
+through the final certified digits, treating every error source the way
+a measurement engineer treats an uncertainty budget in Volume I. The
+constant is chosen because the answer is known, so every claimed bound
+can be checked, and because the same discipline transfers verbatim to
+constants whose values are not known in advance: a material property
+defined by an infinite series, a special-function value in a control
+law, a normalisation integral in a probability model.
+
+\subsection{Step one: reject the naive series}
+
+The first arctangent series a reader reaches for is the Leibniz series
+$\pi/4 = \arctan 1 = 1 - 1/3 + 1/5 - 1/7 + \cdots$, evaluated at $x =
+1$. It converges, by the alternating series test, and its truncation
+error after $N$ terms is bounded by the first omitted term $1/(2N+1)$.
+To reach ten decimals the engineer needs $1/(2N+1) \leq 5 \times
+10^{-11}$, that is $N \geq 10^{10}$ terms. Ten billion terms for ten
+digits is the harmonic-rate trap wearing a respectable coefficient: the
+series converges, but at $O(1/N)$, and the cost is prohibitive. The
+term test and the alternating-series bound together deliver the verdict
+in one line, and the verdict is to find a faster series before writing
+any code.
+
+\subsection{Step two: choose a fast-converging representation}
+
+The arctangent series $\arctan x = x - x^{3}/3 + x^{5}/5 - \cdots$
+converges geometrically at rate $x^{2}$ for $\abs{x} < 1$, so a small
+argument converges fast. The classical device is a \engterm{Machin-like
+formula} that writes $\pi/4$ as a combination of arctangents of small
+rational arguments. Machin's 1706 identity is
+\[
+\frac{\pi}{4} = 4 \arctan\frac{1}{5} - \arctan\frac{1}{239}.
+\]
+The identity is verified by the tangent addition formula: $\tan(4
+\arctan\tfrac{1}{5})$ works out to $120/119$, and $\tan(4
+\arctan\tfrac{1}{5} - \arctan\tfrac{1}{239}) = 1$, so the combination
+equals $\pi/4$. The two arguments $1/5$ and $1/239$ are small, so each
+arctangent series converges at geometric rate $1/25$ and $1/57121$
+respectively. The choice of representation, not the choice of
+programming language, is what turns a $10^{10}$-term computation into a
+fifteen-term one.
+
+\subsection{Step three: the truncation budget, term by term}
+
+The error budget allots the total tolerance across the two series. We
+demand each arctangent be computed to an absolute error below $2 \times
+10^{-11}$, so the combined error in $\pi/4$ stays under $5 \times
+10^{-11}$ even after the factor of four on the first term, and $\pi$
+itself lands within $2 \times 10^{-10}$, comfortably inside the
+ten-decimal target with margin for the round-off allotment of step four.
+
+For $\arctan(1/5)$, the alternating series has $k$-th term magnitude
+$(1/5)^{2k+1}/(2k+1)$. The first omitted term after keeping terms
+through $k = K$ is $(1/5)^{2K+3}/(2K+3)$. Requiring this below $2 \times
+10^{-11}/4 = 5 \times 10^{-12}$ (the factor of four because this
+arctangent is multiplied by four): at $K = 7$ the next term is
+$(1/5)^{17}/17 = 1/(7.6 \times 10^{11} \cdot 17) \approx 7.7 \times
+10^{-14}$, comfortably below budget; at $K = 6$ it is $(1/5)^{15}/15
+\approx 2.2 \times 10^{-12}$, marginal. Eight terms ($k = 0$ through
+$7$) settle $\arctan(1/5)$ within budget.
+
+For $\arctan(1/239)$, the geometric rate $1/239^{2} \approx 1.75 \times
+10^{-5}$ is so fast that the first term $1/239 \approx 4.18 \times
+10^{-3}$ is already most of the answer. The next term is
+$(1/239)^{3}/3 \approx 2.4 \times 10^{-8}$, and the term after that is
+$(1/239)^{5}/5 \approx 8.6 \times 10^{-14}$, below budget. Two terms
+($k = 0, 1$) settle $\arctan(1/239)$, because the bound on the first
+omitted term at $k = 2$ already clears the allotment. The asymmetry in
+term counts, eight against two, is the geometric rate at work: the
+smaller argument buys a much faster series.
+
+\input{volumes/02-form/ch04-sequences-series-limits/figures/fig-machin-budget}
+
+The budget figure (\autoref{fig:vol02:ch04:machin-budget}) plots the
+term magnitudes of the two arctangent series on a log scale against term
+index, with the per-series tolerance drawn as a horizontal line. The
+term where each curve crosses below the line is the truncation point,
+read directly off the figure: term seven for the $1/5$ series, term two
+for the $1/239$ series. The figure is the case study's error budget made
+visual, the same way a Volume I uncertainty bar chart shows which
+component dominates.
+
+\subsection{Step four: the round-off budget}
+
+Truncation is half the budget; floating-point round-off is the other
+half, and a computation that controls only the truncation error fails
+the moment the arithmetic between the terms loses digits. Two features of
+the Machin computation keep round-off small. First, the terms are all the
+same sign within each arctangent series after factoring out the
+alternation (the series is summed as a difference of grouped positive
+quantities, with no catastrophic cancellation of the kind that wrecked
+the $e^{-20}$ computation of the failure section). Second, the terms are
+summed smallest-first, so the running sum accumulates the tiny tail terms
+before they are swamped by the leading term, which preserves the
+low-order bits that smallest-last summation discards.
+
+In IEEE double precision, about sixteen significant decimals are
+available, and the dominant round-off in summing fifteen terms is at
+the level of the largest term times the unit round-off $2^{-53} \approx
+1.1 \times 10^{-16}$, accumulated over the term count, so on the order
+of $15 \times 4 \times 10^{-3} \times 1.1 \times 10^{-16} \approx 7
+\times 10^{-18}$. The round-off contribution is six decades below the
+truncation budget, so double precision is more than adequate for ten
+decimals; the truncation error dominates the budget, which is the
+healthy regime. An engineer chasing thirty decimals would exhaust double
+precision and would switch to an extended-precision arithmetic, at which
+point the round-off allotment would have to be re-budgeted against the
+new unit round-off.
+
+\subsection{Step five: assemble and certify}
+
+Summing the budgeted terms:
+\begin{align*}
+\arctan\tfrac{1}{5} &= 0.197395559849\ldots, \\
+\arctan\tfrac{1}{239} &= 0.004184076002\ldots, \\
+\tfrac{\pi}{4} &= 4(0.197395559849) - 0.004184076002 =
+0.785398163397\ldots, \\
+\pi &= 3.141592653590\ldots
+\end{align*}
+The computed value agrees with the reference $\pi =
+3.1415926535897932\ldots$ to twelve decimals, two better than the
+ten-decimal target, the margin the budget reserved. The certificate is
+the budget itself: truncation bounded below $2 \times 10^{-10}$ by the
+alternating-series bounds of step three, round-off bounded below $10^{-17}$
+by the analysis of step four, and the two summed to a total error bound
+of $2 \times 10^{-10}$, inside the target. The script
+\texttt{code/machin\_pi.py} runs the computation, prints each term, the
+running partial sums, and the empirical error against a high-precision
+reference, and writes the budget table to
+\texttt{data/machin\_pi\_budget.csv}.
+
+\begin{principle}[A computed constant carries two error budgets]
+The accuracy of a constant computed from an infinite series is governed
+by two independent budgets that must both be controlled: the truncation
+error, set by where the series is cut and bounded by a convergence-test
+tail bound, and the round-off error, set by the arithmetic precision and
+the summation order. A computation that controls only one budget can fail
+the other silently. The engineer states both bounds, sums them, and
+checks the total against the target before trusting a single digit.
+\end{principle}
+
+The case study rehearses the whole chapter on one task. The naive series
+was rejected by the term test and the alternating-series bound. The fast
+series was chosen for its geometric rate. The truncation point was set by
+the per-term bound against an allotted budget. The round-off was bounded
+by the summation-order discipline of the failure section. The final
+digits were certified by the sum of the two budgets, not by comparison
+with a known answer, which is the only certificate available when the
+constant's value is not known in advance.
 
 \section{Worked examples: small-angle approximations and perturbation expansions}\pathtag{core}
 

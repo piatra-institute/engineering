@@ -9,7 +9,7 @@ Last updated: 2026-06-05.
 Per-volume state:
 
 - **Volume I (Quantity)** — 9 of 9 chapters at **Stage 5**, carried to a **Tier 3 second pass** (2026-05-31 / 06-02). All carry Codex reviews at `docs/reviews/vol01-chNN-review.md` resolved with G fixes applied. The most advanced volume in the book; ~674 pp against a ~720 pp target.
-- **Volume II (Form)** — 18 of 18 chapters at **Stage 4** awaiting Codex review. **Tier 3 first pass complete** (2026-06-05): Ch 1, 3, 4, 5 (Wave 1), Ch 6, 8, 9, 10 (Wave 2), Ch 12, 13, 14 (Wave 3), and Ch 15, 16, 17, 18 (Wave 4) deepened, each via a parallel own-folder subagent (added worked examples, ~50 new figures, code/data, estimation and failure sections, archetype/mastery boxes, full exercise solutions). Ch 2, 7, 11 carry the earlier Tier 1+2 baseline. Every deepened chapter is one solid pass (~55-65% of its dossier page target); a second pass would be needed to reach full target density. Vol II compiles with zero errors in the build. Exercise counts held exactly; no new bibliography entries required (all citations reuse existing keys); Ch 16 wired in the Vancouver Stock Exchange case using the existing registry entry.
+- **Volume II (Form)** — 18 of 18 chapters at **Stage 4** awaiting Codex review. **Tier 3 first AND second pass complete across ALL 18 chapters** (2026-06-05/06). First pass (Waves 1-5) deepened every chapter to ~55-65% of target; the second pass (Waves A-E, gap-prioritized) added a multi-page end-to-end CASE STUDY to most chapters plus more worked examples, figures, and mastery boxes. Representative case studies: geodetic levelling-network adjustment (Ch 9), machine-availability Markov chain (Ch 10), steel-plate quench (Ch 12), battery Coulomb-counting (Ch 6), Markowitz portfolio + truss sizing (Ch 15), error-budget cantilever (Ch 16), fatigue S-N inference (Ch 14), RLC + van der Pol + shooting method (Ch 7), load-strength reliability (Ch 13), M/M/c staffing under random demand (Ch 18), Hamming(7,4) codes (Ch 17), Machin's-formula pi to 10 digits (Ch 4), Welford running variance (Ch 1), machined-plate inertia (Ch 11), coaxial-cable field/capacitance (Ch 8), single-phase AC power-factor network (Ch 3), load-cell characterisation (Ch 2). Vol II now ~70% of dossier target (~1290 of ~1830 pp) and compiles with **zero errors in the build**. Exercise counts held exactly throughout; no new bibliography entries required (all citations reuse existing keys); Ch 16 wired in the Vancouver Stock Exchange case using the existing registry entry. A third pass would be needed to reach Vol I's ~94% density.
 - **Volume III (Force)** — 13 of 13 chapters at **Stage 4** awaiting Codex review.
 - **Volume IV (Energy)** — 14 of 14 chapters at **Stage 4** awaiting Codex review.
 - **Volume V (Matter)** — 12 of 12 chapters at **Stage 4** awaiting Codex review.
@@ -57,14 +57,14 @@ Run `make stats` for live numbers. Snapshot (2026-06-05):
 | Vol I chapters at Stage 5 | 9 of 9 |
 | Vols II-XII chapters at Stage 4 | 165 awaiting review |
 | Chapters at Stage 1 | 0 |
-| `main.pdf` page count (last build) | 4309 |
+| `main.pdf` page count (last build) | 4537 |
 
 Per-volume page spans against target (figures approximate; from the per-chapter ledger in `CLAUDE.md`):
 
 | Volume | Approx. pp | Target | % | Stage |
 | --- | --- | --- | --- | --- |
 | I Quantity | ~674 | ~720 | ~94% | 5 (Tier 3 2nd pass) |
-| II Form | ~1040 | ~1830 | ~57% | 4 (Tier 3 first pass: 15 of 18 ch deepened) |
+| II Form | ~1290 | ~1830 | ~70% | 4 (Tier 3 second pass: all 18 ch) |
 | III Force | ~274 | ~1300 | ~21% | 4 |
 | IV Energy | ~234 | ~1400 | ~17% | 4 |
 | V Matter | ~238 | ~1200 | ~20% | 4 |
@@ -144,7 +144,7 @@ The diagnostic identified three top risks (`docs/diagnostic.md`).
 make distclean && make
 ```
 
-Produces `main.pdf` at 4309 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
+Produces `main.pdf` at 4537 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
 
 Always build with `make distclean && make` (a fresh build). Incremental `latexmk` runs intermittently corrupt `main.bbl` (biber emits a runaway-argument bbl, symptom: "Paragraph ended before \name was complete" / "Loading a class or package in a group" at `\begin{document}`, no PDF). A `make distclean` clears the bad `.bbl`/`.bcf` (and any `*-SAVE-ERROR` files) and regenerates the bibliography cleanly.
 

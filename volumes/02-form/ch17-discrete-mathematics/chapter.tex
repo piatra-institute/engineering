@@ -537,6 +537,35 @@ $37\%$ for all but the smallest $n$. The constant is why a
 naive ``random reassignment'' of $n$ items to $n$ slots leaves about
 $37\%$ of items moved off every original slot regardless of scale.
 
+\begin{mastery}
+Counting and probability join in the \engterm{probabilistic method},
+a non-constructive proof technique that establishes the existence of
+an object with a desired property by showing a randomly chosen object
+has it with positive probability. If a random structure satisfies a
+property with probability greater than zero, at least one structure
+satisfying it must exist, even when no construction is in hand. The
+classical instance is a lower bound on Ramsey numbers: colour the
+edges of the complete graph $K_{n}$ red or blue independently at
+random. A fixed set of $k$ vertices is monochromatic with
+probability $2 \cdot 2^{-\binom{k}{2}}$, and the expected number of
+monochromatic $k$-cliques is $\binom{n}{k} 2^{1 - \binom{k}{2}}$. If
+this expectation is below $1$, some colouring has no monochromatic
+$k$-clique, which gives $R(k, k) > n$ for every $n$ with $\binom{n}{k}
+2^{1 - \binom{k}{2}} < 1$, roughly $n \approx 2^{k/2}$. Erd\H{o}s
+proved this in 1947 with no explicit colouring, and after seventy
+years the best constructive lower bounds still trail the
+probabilistic one. The engineer's working uses are concrete:
+randomised rounding of a linear-programming relaxation gives
+approximation algorithms with provable guarantees, random hashing
+spreads load with high probability, randomised routing avoids
+adversarial congestion, and a random code achieves the channel
+capacity Shannon's theorem promises (Volume VII) while explicit
+capacity-achieving codes took half a century to construct. The
+method's discipline is to compute an expectation or a union bound,
+not to build the object; the existence proof and the algorithm that
+finds the object are then separate, and often unequal, tasks.
+\end{mastery}
+
 \subsection{Estimation before calculation}
 
 \begin{estimation}
@@ -774,6 +803,38 @@ heavy tail is what makes a small set of high-degree \engterm{hubs}
 the engineer's first concern when reasoning about robustness:
 removing a random vertex barely affects connectivity, removing a
 hub fragments the graph.
+
+\begin{mastery}
+The structure of a graph is encoded in the eigenvalues of a matrix
+built from it, the subject of \engterm{spectral graph theory}. The
+\engterm{Laplacian} is $L = D - A$, where $A$ is the adjacency
+matrix and $D$ is the diagonal matrix of degrees. The Laplacian is
+symmetric and positive-semidefinite, so its eigenvalues are real and
+non-negative, $0 = \lambda_{1} \leq \lambda_{2} \leq \cdots \leq
+\lambda_{n}$. The smallest eigenvalue is always $0$ with the
+all-ones eigenvector; the multiplicity of the eigenvalue $0$ equals
+the number of connected components, so a graph is connected exactly
+when $\lambda_{2} > 0$. The second eigenvalue $\lambda_{2}$, the
+\engterm{algebraic connectivity} or Fiedler value, measures how well
+connected the graph is, and its eigenvector (the Fiedler vector)
+gives a near-optimal split of the graph into two balanced pieces by
+the sign of its entries, the foundation of spectral clustering and
+of mesh partitioning for parallel finite-element solvers (Volume
+VIII). Cheeger's inequality bounds the graph's sparsest cut between
+$\lambda_{2}/2$ and $\sqrt{2 \lambda_{2}}$, turning a combinatorial
+bottleneck question into an eigenvalue computation that standard
+numerical linear algebra (Chapter 16) answers in $\Theta(n^{3})$ for
+a dense graph or far faster for a sparse one. The same spectrum sets
+the mixing time of a random walk on the graph, the convergence rate
+of iterative solvers on its Laplacian system, and the spectral gap
+that governs whether a network is a good \engterm{expander}, the
+property behind error-correcting codes, derandomisation, and
+fault-tolerant communication topologies. The engineer's
+recognition-level takeaway:
+when a graph question resists combinatorial attack, its matrix
+spectrum is the standard alternative, and a connectivity or
+partitioning question often has a clean eigenvalue answer.
+\end{mastery}
 
 \subsection{Representations}
 
@@ -1237,6 +1298,88 @@ the warning of the failure section in miniature: a greedy matching
 is not a maximum matching, and only the augmenting-path search
 certifies optimality.
 
+\subsection{Network flow and the max-flow min-cut theorem}\pathtag{standard}
+
+A \engterm{flow network} is a directed graph $G = (V, E)$ with a
+distinguished \engterm{source} $s$ and \engterm{sink} $t$, in which
+each edge $(u, v)$ carries a non-negative \engterm{capacity} $c(u,
+v)$. A \engterm{flow} is a function $f(u, v)$ with $0 \leq f(u, v)
+\leq c(u, v)$ on every edge and \engterm{conservation} at every
+vertex other than $s$ and $t$: the flow into a vertex equals the
+flow out. The \engterm{value} of a flow is the net flow leaving the
+source, and the \engterm{maximum-flow problem} asks for a flow of
+greatest value. The problem is the canonical model of throughput
+under bottleneck: water through a pipe network, packets through a
+communication network, current through a resistive ladder, and units
+through a logistics network are all max-flow instances once the
+capacities are written down.
+
+An $s$--$t$ \engterm{cut} is a partition of $V$ into a set $S$
+containing $s$ and a set $T = V \setminus S$ containing $t$. The
+\engterm{capacity} of the cut is the sum of capacities of edges that
+run from $S$ to $T$. Every $s$--$t$ flow must cross every $s$--$t$
+cut, so the value of any flow is at most the capacity of any cut.
+The two quantities meet exactly.
+
+\begin{principle}[Max-flow min-cut theorem]
+In any flow network with non-negative capacities, the maximum value
+of an $s$--$t$ flow equals the minimum capacity of an $s$--$t$ cut.
+A flow is maximum if and only if its \engterm{residual network}
+contains no augmenting path from $s$ to $t$; the vertices reachable
+from $s$ in that residual network then form the source side of a
+minimum cut.
+\end{principle}
+
+The theorem is the dual of the matching result of the previous
+subsection: the augmenting-path search that grows a matching is the
+same search, run in the residual network, that grows a flow. The
+\engterm{Ford-Fulkerson method} iterates it directly. Find a path
+from $s$ to $t$ along edges with spare capacity, push the largest
+flow the path's tightest edge allows, update the residual capacities
+(forward edges lose capacity, reverse edges gain it so the algorithm
+can later undo a commitment), and repeat until no augmenting path
+remains. With breadth-first augmenting-path selection (the
+Edmonds-Karp refinement) the method runs in $O(n m^{2})$; the
+modern push-relabel and Dinic algorithms reach $O(n^{2} m)$ and
+$O(n^{2} \sqrt{m})$ on unit-capacity graphs. CLRS
+\cite{text:cormen-clrs} and Kleinberg-Tardos
+\cite{text:kleinberg-tardos} give the analysis.
+
+A worked instance fixes the mechanics. Figure
+\ref{fig:vol02:ch17:max-flow} shows a six-vertex network with source
+$s$, sink $t$, and the capacities marked. Run Ford-Fulkerson.
+The path $s \to 1 \to 3 \to t$ admits $\min(10, 8, 10) = 8$ units;
+push $8$. The path $s \to 2 \to 4 \to t$ admits $\min(10, 9, 10) =
+9$ units; push $9$. The total so far is $17$. Search for a third
+augmenting path: from $s$ the only spare source capacity runs to $1$
+(it has $10 - 8 = 2$ left) and to $2$ (it has $10 - 9 = 1$ left).
+From vertex $1$ the edge to $3$ is saturated and the edge $1 \to 2$
+leads to vertex $2$, whose only unsaturated outgoing edge $2 \to 3$
+reaches vertex $3$, whose outgoing edge $3 \to t$ is saturated at
+$8$. No spare-capacity path reaches $t$. The flow of value $17$ is
+maximum. The certificate is the cut $S = \set{s, 1, 2}$: its two
+forward edges $1 \to 3$ and $2 \to 4$ have capacity $8 + 9 = 17$,
+equal to the flow, so the max-flow min-cut theorem certifies
+optimality without any further search. The saturated cut is the
+network's bottleneck, the set of edges an engineer would upgrade
+first to raise throughput.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-max-flow.tex}
+
+The recognition-level payoff is that many problems with no flow in
+their statement are max-flow in disguise. Bipartite matching is the
+unit-capacity flow from a super-source through the $A$ side, across
+the bipartite edges, through the $B$ side to a super-sink; the
+maximum matching equals the maximum flow, and K\"{o}nig's theorem
+(in a bipartite graph the size of a maximum matching equals the size
+of a minimum vertex cover) is max-flow min-cut specialised to that
+network. Image segmentation, project selection with
+prerequisite-and-profit structure, baseball-elimination feasibility,
+and the assignment of redundant sensors to coverage regions all
+reduce to a flow computation. The engineer who recognises the
+reduction reaches for a library max-flow solver rather than a custom
+search.
+
 \begin{archetype}[Optimisation]
 A graph algorithm is an optimisation procedure on a discrete
 feasible set. The shortest-path problem optimises over walks
@@ -1429,7 +1572,7 @@ The pattern is general: the worst case is intractable, but the
 instances arising from real engineering structure are tractable in
 practice. We return to the theme in section 17.8.
 
-Random 3-SAT instances exhibit a striking \engterm{phase
+Random 3-SAT instances exhibit a sharp \engterm{phase
 transition} around clause-to-variable ratio $m/n \approx 4.27$
 \cite{paper:v2ch17-cheeseman-sat-1991}. For $m/n$ well below this
 threshold, almost all instances are easily satisfiable; well above
@@ -1439,6 +1582,34 @@ instances are hard. The reference
 generates instances at the threshold density and measures the
 running time of a brute-force solver, the working baseline for the
 simulation exercise.
+
+\begin{mastery}
+SAT is not merely one hard problem; it is the \engterm{complete}
+problem against which hardness is measured. The class $\mathrm{NP}$
+contains the decision problems whose ``yes'' instances carry a
+certificate checkable in polynomial time: a satisfying assignment
+for SAT, a Hamilton cycle for the Hamilton-cycle problem, a tour
+under budget for the travelling salesman. A problem is
+\engterm{NP-hard} if every problem in $\mathrm{NP}$ reduces to it by
+a polynomial-time transformation, and \engterm{NP-complete} if it is
+both NP-hard and in $\mathrm{NP}$. Cook's theorem (1971) established
+SAT as the first NP-complete problem; Karp's 1972 list added
+twenty-one more, and the catalogue now runs to thousands. The
+working tool is the \engterm{reduction}. To show a new problem $X$
+is NP-hard, transform a known NP-hard problem (often 3-SAT) into $X$
+in polynomial time so that a solver for $X$ would solve the known
+problem. The reduction $\textsc{3-SAT} \leq_{p} \textsc{Independent
+Set}$ builds, from a formula, a graph with a triangle per clause and
+a conflict edge between contradictory literals; the graph has an
+independent set of size equal to the clause count exactly when the
+formula is satisfiable. The payoff is diagnostic: a proof that a
+problem is NP-hard is a licence to stop searching for a polynomial
+algorithm and to reach instead for the three responses of section
+17.8. Whether $\mathrm{P} = \mathrm{NP}$, current as of 2026, is the
+discipline's central unsettled question; the working assumption, on
+which deployed cryptography rests, is that the two classes differ.
+\cite{text:sipser} gives the reductions in full.
+\end{mastery}
 
 \subsection{Circuit minimisation}
 
@@ -1735,6 +1906,91 @@ partitions) are tabulated in
 \repopath{volumes/02-form/ch17-discrete-mathematics/data/recurrence_growth.csv},
 where the divergent growth rates are visible by column.
 
+\subsection{From recurrence to dynamic program}\pathtag{standard}
+
+A recurrence is a specification; a \engterm{dynamic program} is the
+algorithm that evaluates it efficiently by storing each subproblem's
+answer once and reusing it. The naive recursive evaluation of the
+Fibonacci recurrence recomputes $F_{n-2}$ inside both $F_{n-1}$ and
+$F_{n}$, and the duplicated work compounds: the recursion tree has
+$\Theta(\phi^{n})$ leaves, so the naive evaluation of $F_{50}$
+performs on the order of $10^{10}$ additions. \engterm{Memoisation}
+stores each $F_{k}$ the first time it is computed and returns the
+stored value thereafter, collapsing the exponential tree to a linear
+chain of $n$ additions. The two ingredients that make the collapse
+possible are \engterm{overlapping subproblems} (the same subproblem
+recurs many times) and \engterm{optimal substructure} (the optimal
+solution is built from optimal solutions of subproblems). When both
+hold, an exponential recursion becomes a polynomial table fill.
+
+The canonical optimisation instance is the \engterm{$0/1$ knapsack
+problem}: given $N$ items with weights $w_{i}$ and values $v_{i}$
+and a capacity $W$, choose a subset of maximum total value whose
+total weight does not exceed $W$. Brute force enumerates $2^{N}$
+subsets, infeasible past $N \approx 50$ by the scaling of section
+17.5. The dynamic program reads off a recurrence. Let $V[i, w]$ be
+the best value achievable using the first $i$ items within capacity
+$w$. Item $i$ is either left out (value $V[i-1, w]$) or taken when
+it fits (value $v_{i} + V[i-1, w - w_{i}]$):
+\[
+V[i, w] = \begin{cases}
+  V[i-1, w] & \text{if } w_{i} > w, \\[2pt]
+  \max\!\big(V[i-1, w],\; v_{i} + V[i-1, w - w_{i}]\big)
+    & \text{otherwise,}
+\end{cases}
+\]
+with the base row $V[0, w] = 0$. The table has $(N+1)(W+1)$ entries,
+each filled in constant time, so the running time is $\Theta(N W)$.
+
+A worked instance fixes the table fill. Take items $(w, v) = (2, 3),
+(3, 4), (4, 5), (5, 6)$ and capacity $W = 5$. Figure
+\ref{fig:vol02:ch17:dp-table} shows the completed table. Row $i = 1$
+records the best value using only item $1$: nothing fits below
+capacity $2$, and item $1$ contributes value $3$ from capacity $2$
+on. Row $i = 2$ adds item $2$: at capacity $5$ both items fit
+($2 + 3 = 5$), giving $V[2, 5] = 3 + 4 = 7$, the entry that beats
+either item alone. Rows $i = 3$ and $i = 4$ add the heavier items,
+neither of which improves $V[\cdot, 5]$, because the
+weight-five and weight-four items crowd out the cheaper combination.
+The optimum $V[4, 5] = 7$ takes items $1$ and $2$. Reading the
+chosen set back is a \engterm{traceback}: at each entry, compare
+$V[i, w]$ with $V[i-1, w]$; if they differ, item $i$ was taken, so
+record it and step to $V[i-1, w - w_{i}]$, otherwise step to
+$V[i-1, w]$. The traceback recovers the witnessing subset that the
+value alone does not name.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-dp-table.tex}
+
+The knapsack running time $\Theta(N W)$ carries a warning that
+recurs whenever an engineer calls a dynamic program ``polynomial.''
+The capacity $W$ is a numeric value, not an input count, and a
+capacity written with $b$ bits is of size up to $2^{b}$. The running
+time is polynomial in the magnitude $W$ but exponential in the
+number of bits used to write $W$, the property called
+\engterm{pseudo-polynomial}. The $0/1$ knapsack problem is
+NP-complete; the dynamic program does not refute that, because for a
+capacity with hundreds of bits the table is astronomically large.
+The pseudo-polynomial trap is the dynamic-programming form of the
+section 17.8 failure, and the engineer who reports a knapsack solver
+as ``polynomial-time'' without naming the dependence on $W$ has
+mislabelled the algorithm.
+
+Three more dynamic programs recur often enough to recognise on
+sight. The \engterm{longest common subsequence} of two strings of
+lengths $p$ and $q$ fills a $p \times q$ table in $\Theta(pq)$ and
+is the engine of file-difference tools and of the sequence-alignment
+methods of Volume VI. \engterm{Edit distance} (the minimum number of
+insertions, deletions, and substitutions to turn one string into
+another) is the same table with a different recurrence and powers
+spell-checking and approximate search. \engterm{Weighted interval
+scheduling} (choose a maximum-weight set of non-overlapping
+intervals) sorts the intervals by finish time and fills a
+one-dimensional table in $\Theta(n \log n)$, the model for resource
+booking and for register-lifetime allocation. Each is a recurrence
+made efficient by a table; the recognition skill is to see the
+overlapping subproblems and write the recurrence before reaching for
+a solver.
+
 \subsection{Generating functions}
 
 A \engterm{generating function} encodes a sequence $(a_{0}, a_{1},
@@ -1756,6 +2012,35 @@ delivers the closed form
 F_{n} = \frac{1}{\sqrt{5}} \left( \phi^{n} - \psi^{n} \right),
 \quad \phi = \frac{1 + \sqrt{5}}{2}, \psi = \frac{1 - \sqrt{5}}{2}.
 \]
+
+Generating functions also count directly, and a worked coin-change
+problem shows the method earning its keep where a recurrence is
+awkward to write. How many ways can a value of $n$ cents be made
+from pennies, nickels, and dimes (coins of $1$, $5$, and $10$
+cents), order disregarded? Each coin type contributes a geometric
+factor that records how many of that coin are used:
+\[
+G(x) = \underbrace{\frac{1}{1 - x}}_{\text{pennies}}
+\cdot
+\underbrace{\frac{1}{1 - x^{5}}}_{\text{nickels}}
+\cdot
+\underbrace{\frac{1}{1 - x^{10}}}_{\text{dimes}},
+\]
+because $1/(1 - x^{k}) = 1 + x^{k} + x^{2k} + \cdots$ enumerates the
+choices $0, 1, 2, \ldots$ coins of denomination $k$, and the product
+of the three series convolves the choices so that the coefficient of
+$x^{n}$ counts every combination summing to $n$. The number of ways
+to make $n$ cents is therefore $[x^{n}] G(x)$, the coefficient
+extraction. For $n = 25$, expanding the product (or running the
+convolution by hand) gives $[x^{25}] G(x) = 12$ ways. The same
+product structure scales: adding a quarter introduces a factor
+$1/(1 - x^{25})$, and the partition-counting problem of the next
+mastery box is the limit in which every positive integer is an
+allowed ``denomination.'' The coefficient extraction is exactly the
+table fill of a dynamic program, the coin-change recurrence of the
+previous subsection seen through the generating-function lens, which
+is why the two methods agree on the count and a symbolic package can
+deliver either.
 
 The engineer's working level for generating functions is
 recognition. When a recurrence resists substitution and master
@@ -2045,6 +2330,136 @@ catching a single-character corruption. The recognition-level
 lesson: a checksum that ``mostly works'' is one whose error class
 was never characterised, and the modulus is where the
 characterisation lives.
+
+\subsection{Case study: the Hamming(7,4) error-correcting code}\pathtag{standard}
+
+A checksum detects corruption; an \engterm{error-correcting code}
+repairs it without a retransmission. The two tasks differ by the
+arithmetic of the residue space, and the cleanest entry point is
+Richard Hamming's $(7, 4)$ code of 1950, designed when a single
+parity error on the Bell Labs relay computer halted a weekend run
+and Hamming asked why the machine could detect a fault but not fix
+it. The code is the worked case that ties the chapter's threads
+together: finite-field arithmetic, the pigeonhole bound, linear
+algebra over $\mathrm{GF}(2)$, and the failure theme of a guarantee
+that holds only inside a characterised error class. We carry one
+message from setup to corrected output.
+
+\paragraph{Setup: the field $\mathrm{GF}(2)$ and the code's geometry.}
+The arithmetic is the two-element field $\mathrm{GF}(2) =
+\set{0, 1}$ with addition modulo $2$ (the exclusive-or $\oplus$) and
+ordinary multiplication. Addition is its own inverse: $a \oplus a =
+0$. A \engterm{codeword} is a length-$7$ vector over this field, and
+the code is the set of $2^{4} = 16$ codewords carrying $4$ data bits
+$d_{1} d_{2} d_{3} d_{4}$ and $3$ parity bits $p_{1} p_{2} p_{3}$.
+The geometry is the three overlapping circles of figure
+\ref{fig:vol02:ch17:hamming}: each parity bit guards the data bits
+in its circle, set so that the circle holds an even number of ones.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-hamming.tex}
+
+\paragraph{Encoding: the generator and the parity equations.}
+Order the seven positions as $(p_{1}, p_{2}, d_{1}, p_{3}, d_{2},
+d_{3}, d_{4})$, the arrangement that makes the syndrome read out the
+error position as a binary number. The three parity bits satisfy
+\[
+p_{1} = d_{1} \oplus d_{2} \oplus d_{4}, \quad
+p_{2} = d_{1} \oplus d_{3} \oplus d_{4}, \quad
+p_{3} = d_{2} \oplus d_{3} \oplus d_{4}.
+\]
+Encoding is multiplication of the data vector by a
+\engterm{generator matrix} $G$ over $\mathrm{GF}(2)$, and checking
+is multiplication of the received vector by a \engterm{parity-check
+matrix} $H$ whose columns are the binary numbers $1$ through $7$:
+\[
+H = \begin{pmatrix}
+0 & 0 & 0 & 1 & 1 & 1 & 1 \\
+0 & 1 & 1 & 0 & 0 & 1 & 1 \\
+1 & 0 & 1 & 0 & 1 & 0 & 1
+\end{pmatrix}.
+\]
+Column $j$ of $H$ is the binary representation of $j$, so column $5$
+is $(1, 0, 1)^{\!\top}$, the number $5$. A codeword $\vec{c}$ is
+exactly a vector with $H \vec{c} = \vec{0}$ over $\mathrm{GF}(2)$;
+the parity equations above are these three dot products set to zero.
+
+Carry the message $d_{1} d_{2} d_{3} d_{4} = 1011$. The parity bits
+compute as $p_{1} = 1 \oplus 0 \oplus 1 = 0$, $p_{2} = 1 \oplus 1
+\oplus 1 = 1$, $p_{3} = 0 \oplus 1 \oplus 1 = 0$. In position order
+$(p_{1}, p_{2}, d_{1}, p_{3}, d_{2}, d_{3}, d_{4})$ the transmitted
+codeword is $\vec{c} = 0\,1\,1\,0\,0\,1\,1$. A check confirms
+$H \vec{c} = \vec{0}$: the top row sums positions $4,5,6,7$, namely
+$0 \oplus 0 \oplus 1 \oplus 1 = 0$; the middle row sums positions
+$2,3,6,7$, namely $1 \oplus 1 \oplus 1 \oplus 1 = 0$; the bottom row
+sums positions $1,3,5,7$, namely $0 \oplus 1 \oplus 0 \oplus 1 = 0$.
+The vector is a legal codeword.
+
+\paragraph{Transmission and a single-bit error.}
+Suppose position $5$ flips in transit, so the receiver sees
+$\vec{r} = 0\,1\,1\,0\,1\,1\,1$ (the fifth bit changed from $0$ to
+$1$). The receiver does not know an error occurred; it computes the
+\engterm{syndrome} $\vec{s} = H \vec{r}$ over $\mathrm{GF}(2)$. Top
+row, positions $4,5,6,7$: $0 \oplus 1 \oplus 1 \oplus 1 = 1$. Middle
+row, positions $2,3,6,7$: $1 \oplus 1 \oplus 1 \oplus 1 = 0$. Bottom
+row, positions $1,3,5,7$: $0 \oplus 1 \oplus 1 \oplus 1 = 1$. The
+syndrome is $\vec{s} = (1, 0, 1)^{\!\top}$, which read as a binary
+number (top bit most significant) is $101_{2} = 5$. The syndrome
+\emph{is} the address of the corrupted bit. The receiver flips
+position $5$ back, recovers $\vec{c} = 0\,1\,1\,0\,0\,1\,1$, reads
+off the data bits $d_{1} d_{2} d_{3} d_{4} = 1011$, and the original
+message survives a single-bit error with no retransmission.
+
+The mechanism is linear-algebra over $\mathrm{GF}(2)$ working as
+designed: a single error in position $j$ adds the unit vector
+$\vec{e}_{j}$ to the codeword, so the syndrome is $H(\vec{c} \oplus
+\vec{e}_{j}) = H\vec{c} \oplus H\vec{e}_{j} = \vec{0} \oplus H
+\vec{e}_{j}$, which is column $j$ of $H$, which by construction is
+the binary number $j$. A zero syndrome means no single-bit error;
+any non-zero syndrome names the position to flip.
+
+\paragraph{Why one error and not two: the Hamming distance.}
+The \engterm{Hamming distance} between two vectors is the number of
+positions in which they differ, and the code's
+\engterm{minimum distance} is the smallest distance between any two
+distinct codewords. For Hamming$(7, 4)$ the minimum distance is $3$.
+A code of minimum distance $d$ corrects up to $\lfloor (d - 1)/2
+\rfloor$ errors and detects up to $d - 1$, so distance $3$ corrects
+one and detects two. The pigeonhole bound (section 17.1) makes the
+budget exact: with $7$ bits there are $2^{7} = 128$ vectors, the
+$16$ codewords each ``own'' themselves plus their $7$ single-bit
+neighbours, and $16 \times (1 + 7) = 128$ fills the space with no
+slack. The Hamming$(7, 4)$ code is \engterm{perfect}: every one of
+the $128$ vectors lies within distance $1$ of exactly one codeword,
+so single-error correction wastes not a single vector. The price is
+the rate: $4$ data bits per $7$ transmitted, an overhead of $75\%$
+of the payload, the trade an engineer accepts to avoid a round trip.
+
+\paragraph{Failure: the two-error case.}
+The guarantee holds inside the characterised error class of
+\emph{one} flip. Push past it and the code fails silently, the
+failure mode that matters. Suppose positions $5$ and $6$ both flip,
+so the receiver sees $\vec{r}' = 0\,1\,1\,0\,1\,0\,1$. The syndrome
+is the exclusive-or of columns $5$ and $6$ of $H$: column $5$ is
+$(1, 0, 1)^{\!\top}$, column $6$ is $(1, 1, 0)^{\!\top}$, and their
+sum over $\mathrm{GF}(2)$ is $(0, 1, 1)^{\!\top} = 011_{2} = 3$. The
+decoder reads this as ``error in position $3$,'' flips position $3$,
+and produces a third codeword that matches neither the sent message
+nor the received vector. A double error is decoded as a single error
+in the wrong place, and the result is a confident wrong answer with
+no flag raised. The lesson is the chapter's recurring one: a code's
+guarantee is a statement about a named error class, and the engineer
+who deploys single-error correction on a channel that produces burst
+errors has stepped outside the class the distance-$3$ code can
+police. Real systems answer this by interleaving (to break bursts
+into isolated errors across many codewords), by stronger codes
+(Reed-Solomon for storage and deep-space links, low-density
+parity-check and turbo codes for modern wireless), and by an outer
+detection layer that catches what the inner correction layer
+mis-corrects. The same syndrome arithmetic carries through; the
+distance budget is what changes. The reference implementation in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/checksums.py}
+encodes, corrupts, and decodes a Hamming$(7, 4)$ word and asserts
+both the single-error recovery and the double-error mis-correction.
 
 \begin{estimation}
 \textbf{Question.} A system assigns each of $N$ items a random

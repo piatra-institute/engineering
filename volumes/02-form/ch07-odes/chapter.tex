@@ -167,6 +167,39 @@ so. The model is correct on its working interval and wrong about
 the singularity; the engineer's job is to know the working
 interval.
 
+\begin{mastery}
+The proof of Picard-Lindel\"of is constructive, and the
+construction is worth seeing once because it is also a numerical
+method and the source of the Lipschitz condition. Rewrite the IVP
+$\dot{y} = f(t, y)$, $y(t_{0}) = y_{0}$ as the equivalent integral
+equation $y(t) = y_{0} + \int_{t_{0}}^{t} f(s, y(s))\,ds$, and define
+the \engterm{Picard iteration}
+\[
+y_{0}(t) = y_{0}, \qquad y_{k+1}(t) = y_{0} + \int_{t_{0}}^{t}
+f\bigl(s, y_{k}(s)\bigr)\,ds.
+\]
+Each iterate is a function; the map sending $y_{k}$ to $y_{k+1}$ is
+the operator $T$. On an interval $|t - t_{0}| \leq a$ small enough
+and with $f$ Lipschitz in $y$ with constant $L$, the operator $T$
+is a contraction in the supremum norm: $\|T y - T z\| \leq L a
+\|y - z\|$, and $L a < 1$ makes the contraction-mapping theorem
+apply. The unique fixed point is the solution, and the iterates
+converge to it geometrically. Worked on the linear test problem
+$\dot{y} = y$, $y(0) = 1$: the iterates are $y_{0} = 1$,
+$y_{1} = 1 + t$, $y_{2} = 1 + t + t^{2}/2$, and in general
+$y_{k} = \sum_{j=0}^{k} t^{j}/j!$, the partial sums of $e^{t}$. The
+Picard iteration reconstructs the Taylor series of the exponential
+one integration at a time. The Lipschitz hypothesis is exactly what
+makes $T$ a contraction; when it fails, as for $\dot{y} = \sqrt{y}$
+at the origin, the contraction estimate fails and uniqueness with
+it. The engineer takes two working facts from the construction:
+smooth right-hand sides give unique solutions, and the size of the
+guaranteed-existence interval shrinks as the Lipschitz constant
+grows, which foreshadows why a fast (large-$|\lambda|$) mode forces
+a small step in any explicit integrator. See
+\textcite{text:boyce-diprima} for the full proof.
+\end{mastery}
+
 \begin{estimation}
 \textbf{Question.} An RC circuit with $R = 10\,\si{\kilo\ohm}$ and
 $C = 100\,\si{\micro\farad}$ is charged to $5\,\si{\volt}$ and
@@ -1108,6 +1141,44 @@ inverse transform is the impulse response that convolves with any
 input. The reader who has solved one ODE by Laplace has met the
 transfer function in its native habitat.
 
+\textbf{Worked example with an impulse input.} The impulse response
+is the response to a unit Dirac delta forcing from rest, and it is
+the single most useful response a linear system has, because the
+response to any other input is the convolution of that input with
+the impulse response. Solve $\ddot{x} + 4\dot{x} + 3x = \delta(t)$
+with $x(0^{-}) = 0$, $\dot{x}(0^{-}) = 0$, the same system as the
+step example but kicked rather than pushed. Transform, using
+$\mathcal{L}\{\delta(t)\} = 1$:
+\[
+(s^{2} + 4s + 3) X(s) = 1, \qquad X(s) = \frac{1}{(s+1)(s+3)} =
+\frac{1/2}{s+1} - \frac{1/2}{s+3}.
+\]
+The partial fractions, by cover-up at $s = -1$ and $s = -3$, give
+the residues $\tfrac{1}{2}$ and $-\tfrac{1}{2}$. Inverting,
+\[
+x(t) = h(t) = \tfrac{1}{2}\bigl(e^{-t} - e^{-3t}\bigr), \qquad t > 0.
+\]
+This $h(t)$ is the impulse response, and it equals the inverse
+Laplace transform of the transfer function $H(s) = 1/(s^{2} + 4s +
+3)$ directly, with no forcing transform to divide out, because the
+impulse's transform is $1$. The impulse response starts at zero,
+because a finite mass cannot move instantaneously, rises to a peak
+when $\dot{h} = 0$ at $-e^{-t} + 3e^{-3t} = 0$, i.e.\ $e^{2t} = 3$,
+$t = \tfrac{1}{2}\ln 3 \approx 0.55$, and decays along the slow mode
+$e^{-t}$ thereafter. The step response of the previous example is the
+running integral of this impulse response, $\int_{0}^{t} h(\sigma)\,
+d\sigma$ scaled by the forcing magnitude $6$, a relation the reader
+can verify term by term: $6\int_{0}^{t} \tfrac{1}{2}(e^{-\sigma} -
+e^{-3\sigma})\,d\sigma = 3[(1 - e^{-t}) - \tfrac{1}{3}(1 - e^{-3t})]
+= 2 - 3e^{-t} + e^{-3t}$, exactly the step response found above. The
+impulse response, the step response, and the transfer function are
+three views of one object, and the Laplace method delivers all
+three from the same algebra. The convolution theorem
+$\mathcal{L}\{(h \ast g)(t)\} = H(s)G(s)$ is the statement that
+multiplying transfer functions in the $s$-domain corresponds to
+cascading systems in the time domain, the working content of
+Volume VIII.
+
 \section{Systems of ODEs}\pathtag{standard}
 
 A \engterm{system} of $n$ first-order ODEs has the form $\dot{\mathbf{y}}
@@ -1375,6 +1446,124 @@ without damping. The lesson on second reading is that the centre
 is fragile: small modelling additions push the equilibrium toward
 a stable spiral (typical) or an unstable spiral.
 
+\subsection{Worked example: nonlinear stability of the damped pendulum}
+
+The predator-prey centre is the fragile case; the damped pendulum is
+the robust one, and working both shows the engineer when
+linearisation settles the question and when it does not. The damped
+pendulum $\ddot{\theta} + 2\beta\dot{\theta} + \omega_{0}^{2}
+\sin\theta = 0$ becomes the first-order system
+\[
+\dot{\theta} = v, \qquad \dot{v} = -2\beta v - \omega_{0}^{2}
+\sin\theta,
+\]
+with state $(\theta, v)$. The equilibria solve $v = 0$ and
+$\sin\theta = 0$, so $\theta = 0$ (pendulum hanging down) and
+$\theta = \pi$ (pendulum balanced inverted), repeated by every
+$2\pi$. These two are physically distinct and the linearisation
+tells them apart. The Jacobian is
+\[
+J(\theta, v) = \begin{pmatrix} 0 & 1 \\ -\omega_{0}^{2}\cos\theta &
+-2\beta \end{pmatrix}.
+\]
+At the downward equilibrium $\theta = 0$, $\cos\theta = 1$:
+\[
+J(0, 0) = \begin{pmatrix} 0 & 1 \\ -\omega_{0}^{2} & -2\beta
+\end{pmatrix}, \quad T = -2\beta < 0, \quad D = \omega_{0}^{2} > 0.
+\]
+The trace is negative and the determinant positive, so both
+eigenvalues have negative real part: the downward equilibrium is
+asymptotically stable. The discriminant $T^{2} - 4D = 4\beta^{2} -
+4\omega_{0}^{2}$ decides spiral versus node, recovering exactly the
+underdamped, critically damped, and overdamped trichotomy of \S7.4
+with $\beta = \zeta\omega_{0}$. A lightly damped pendulum spirals
+into the bottom; a heavily damped one creeps in without overshoot.
+At the inverted equilibrium $\theta = \pi$, $\cos\theta = -1$:
+\[
+J(\pi, 0) = \begin{pmatrix} 0 & 1 \\ \omega_{0}^{2} & -2\beta
+\end{pmatrix}, \quad T = -2\beta, \quad D = -\omega_{0}^{2} < 0.
+\]
+The determinant is negative, so the eigenvalues are real with
+opposite sign: the inverted equilibrium is a saddle, unstable for
+any damping. The Hartman-Grobman theorem applies at both points
+because neither Jacobian has an eigenvalue on the imaginary axis,
+so the nonlinear flow is topologically a stable spiral (or node) at
+the bottom and a saddle at the top. The saddle's stable manifold is
+the set of initial conditions launched with exactly the right energy
+to coast to the inverted balance and stop; any deviation falls away
+to one side. The whole qualitative picture, two equilibria of
+opposite stability with the saddle separatrix dividing which way the
+pendulum eventually settles, follows from the sign of one
+determinant at each fixed point. This is the routine an engineer
+runs on any nonlinear autonomous system: find the equilibria,
+evaluate the Jacobian at each, read off stability from trace and
+determinant, and check that no eigenvalue sits on the imaginary axis
+before trusting the linear verdict.
+
+\subsection{Worked example: the van der Pol limit cycle}
+
+A centre and a saddle are equilibrium phenomena. The third
+qualitative behaviour a two-dimensional system can settle into is a
+\engterm{limit cycle}: an isolated closed orbit that neighbouring
+trajectories approach. The van der Pol oscillator is the canonical
+example and the prototype of every self-sustaining oscillation in
+engineering, from a vacuum-tube or transistor relaxation oscillator
+to the firing of a pacemaker cell. Its equation is
+\[
+\ddot{x} - \mu(1 - x^{2})\dot{x} + x = 0, \qquad \mu > 0,
+\]
+which differs from the linear oscillator in the damping term: the
+coefficient $-\mu(1 - x^{2})$ of $\dot{x}$ is negative for $|x| < 1$
+(the system pumps energy in, anti-damping) and positive for $|x| >
+1$ (the system removes energy, damping). As a first-order system
+with $v = \dot{x}$,
+\[
+\dot{x} = v, \qquad \dot{v} = \mu(1 - x^{2})v - x.
+\]
+The only equilibrium is the origin. Its Jacobian is
+\[
+J(0, 0) = \begin{pmatrix} 0 & 1 \\ -1 & \mu \end{pmatrix}, \quad
+T = \mu > 0, \quad D = 1 > 0.
+\]
+The positive trace and positive determinant put the origin in the
+unstable category: for $0 < \mu < 2$ the discriminant $\mu^{2} - 4 <
+0$ gives an unstable spiral, and small perturbations grow outward in
+a widening spiral. Growth cannot continue, because once $|x|$
+exceeds $1$ the damping turns positive and drains energy. The two
+mechanisms balance on a single closed curve, the limit cycle, which
+every trajectory approaches: those starting near the origin spiral
+out onto it, those starting far away spiral in onto it.
+\Cref{fig:vol02:ch07:van-der-pol} shows both.
+
+\input{volumes/02-form/ch07-odes/figures/fig-van-der-pol.tex}
+
+The limit cycle's amplitude is set by the dynamics, not by the
+initial condition, and this is the working distinction from the
+predator-prey centre. The conservative centre carries a whole
+one-parameter family of closed orbits, one through each initial
+point, and a perturbation moves the system permanently to a
+neighbouring orbit. The limit cycle is a single orbit, and a
+perturbation decays back to it; the oscillation has a definite
+amplitude that the system restores after a disturbance. For small
+$\mu$ the cycle is nearly the circle $x^{2} + v^{2} = 4$ (amplitude
+$2$, a result obtainable by averaging or by the Lindstedt-Poincar\'e
+method of \S7.10's exercise), traversed at a frequency close to the
+linear $\omega_{0} = 1$. For large $\mu$ the cycle becomes a
+\engterm{relaxation oscillation}: long slow crawls along the slow
+manifold punctuated by fast jumps, with two widely separated time
+scales, which is exactly the stiffness signature of \S7.8 arising
+inside the dynamics rather than from a poorly chosen step. The
+existence of the cycle is guaranteed rigorously by the
+Poincar\'e-Bendixson theorem, which states that a trajectory of a
+two-dimensional system confined to a closed bounded region with no
+equilibrium inside must approach a closed orbit; the working
+treatment is in \textcite{text:v2ch07-strogatz-nonlinear}. Limit
+cycles do not occur in linear systems, and they are the reason an
+engineer cannot certify a nonlinear oscillator's behaviour from its
+linearisation alone: the origin's instability tells the reader the
+system will not sit still, but only the global nonlinear structure
+tells the reader where it ends up.
+
 \subsection{Lyapunov stability, previewed}
 
 A direct certificate of stability, when one is available, comes
@@ -1390,6 +1579,38 @@ circuit. The full Lyapunov apparatus, including the construction
 of $V$ for systems where physical energy is not the right
 candidate, is in Volume X; we mention it here so the reader can
 see the picture.
+
+\begin{mastery}
+The phase portrait of a system depends on its parameters, and the
+qualitative picture can change abruptly as a parameter crosses a
+critical value. Such a change is a \engterm{bifurcation}, and three
+patterns recur often enough that the engineer should recognise them.
+The \engterm{saddle-node} bifurcation is the creation or destruction
+of a pair of equilibria: the scalar system $\dot{x} = r + x^{2}$ has
+two equilibria $x = \pm\sqrt{-r}$ for $r < 0$, one degenerate
+equilibrium at $r = 0$, and none for $r > 0$. Physically, an
+operating point and the unstable threshold next to it merge and
+annihilate; a heated reactor that loses its stable low-temperature
+state to a saddle-node and jumps to the high-temperature branch is
+the canonical safety case. The \engterm{transcritical} bifurcation,
+$\dot{x} = r x - x^{2}$, exchanges the stability of two equilibria
+that cross at $r = 0$; the logistic model with harvesting sits here.
+The \engterm{Hopf} bifurcation is the birth of a limit cycle from an
+equilibrium as a complex-conjugate eigenvalue pair crosses the
+imaginary axis: the system $\dot{r} = r(\mu - r^{2})$, $\dot{\phi} =
+\omega$ in polar form has a stable spiral for $\mu < 0$ and a stable
+limit cycle of radius $\sqrt{\mu}$ for $\mu > 0$. The flutter onset
+of \S7.5 is a Hopf bifurcation in the wind speed; the van der Pol
+oscillator's cycle is born in a Hopf bifurcation as $\mu$ passes
+through zero. The engineering weight is that a system can be stable
+across its entire tested operating range and lose stability the
+moment a parameter (temperature, flow rate, wind speed, gain)
+crosses a value never tested, and the loss is not gradual. The
+working defence is to locate the bifurcation parameters, compute the
+critical values, and keep the operating envelope bounded away from
+them with margin. The bifurcation catalogue is developed in
+\textcite{text:v2ch07-strogatz-nonlinear} and returns in Volume X.
+\end{mastery}
 
 \section{Numerical ODE solvers: Euler, RK4, stiffness}\pathtag{core}
 
@@ -1561,6 +1782,155 @@ reduces the error by a factor of $16$ (fourth-order), well below
 single-precision representation. For most non-stiff problems at
 working engineering tolerances, RK4 is the default; the step size
 chosen by accuracy lies far above the stability bound.
+
+\begin{mastery}
+The stability of a one-step method is read off a single function.
+Apply the method to the scalar test equation $\dot{y} = \lambda y$
+and the update reduces to $y_{n+1} = R(z)\, y_{n}$ with $z = h\lambda$;
+$R(z)$ is the \engterm{stability function}, and the iterates stay
+bounded exactly where $|R(z)| \leq 1$, the \engterm{stability
+region}. Forward Euler has $R(z) = 1 + z$, a disc of radius one
+centred at $-1$; RK4 has $R(z) = 1 + z + z^{2}/2 + z^{3}/6 +
+z^{4}/24$, the fourth-order truncation of $e^{z}$, with a stability
+region that reaches to about $z = -2.78$ on the negative real axis
+and bulges into the complex plane. Both are bounded regions, which
+is the defining limitation of explicit methods: a fast mode
+($|\lambda|$ large) forces $h$ small enough to keep $z = h\lambda$
+inside that bounded region, regardless of accuracy. A method is
+\engterm{A-stable} when its stability region contains the entire
+left half-plane, so every decaying mode is integrated stably at any
+step size. Implicit Euler, $R(z) = 1/(1 - z)$, is A-stable: the
+exterior of the unit disc centred at $+1$ covers the left
+half-plane. The trapezoidal rule, $R(z) = (1 + z/2)/(1 - z/2)$, is
+A-stable too and is second-order, sitting at the Dahlquist barrier:
+no $A$-stable linear multistep method has order above two
+\cite{hist:v2c07-dahlquist-1956}. The exact solution decays as
+$e^{z}$, and a good stiff integrator should mimic $|e^{z}| \to 0$ as
+$\operatorname{Re}(z) \to -\infty$; implicit Euler does, with
+$R(z) \to 0$, which makes it \engterm{L-stable} and damps the
+stiffest modes hard, while the trapezoidal rule has $R(z) \to -1$
+and leaves a lightly damped ringing on very stiff modes. The choice
+between them, and the BDF and Rosenbrock families that extend
+$A$-stable behaviour to higher order at the cost of giving up the
+full half-plane, is the working content of stiff integration; see
+\textcite{text:v2ch07-hairer-wanner-stiff}.
+\end{mastery}
+
+\section{Boundary-value problems and the shooting method}\pathtag{standard}
+
+Every problem so far has been an initial-value problem: all the side
+conditions are imposed at one point, and the solution marches forward
+from there. A boundary-value problem distributes the conditions
+across two points, and that single change removes the marching
+structure and forces a different solution strategy. BVPs are the
+native form of steady-state spatial problems: the temperature along
+a heated rod with both ends held fixed, the deflection of a beam
+clamped at both supports, the concentration profile in a catalyst
+pellet with a specified surface value. The independent variable is
+usually position, written $x$ here to match the spatial reading.
+
+\subsection{What changes when the conditions move to the boundary}
+
+The model BVP is
+\[
+y'' = f(x, y, y'), \qquad y(0) = \alpha, \quad y(L) = \beta,
+\]
+a second-order equation with one condition at each end. An IVP would
+fix $y(0)$ and $y'(0)$ together and march; the BVP fixes $y$ at both
+ends and leaves $y'(0)$ unknown. Existence and uniqueness are more
+delicate than for IVPs. The linear BVP $y'' + \omega^{2} y = 0$ with
+$y(0) = 0$, $y(L) = 0$ has only the trivial solution $y \equiv 0$
+unless $\omega L$ is an integer multiple of $\pi$, in which case it
+has infinitely many (the eigenfunctions $\sin(n\pi x/L)$). The same
+operator that gives a unique IVP solution for every initial slope
+gives no solution, or a whole family, for the BVP, depending on
+whether $\omega$ lands on an eigenvalue. This eigenvalue structure
+is the seed of the separation-of-variables method for PDEs in
+Chapter 12; for now the working point is that a BVP can fail to have
+a unique solution where the corresponding IVP never does.
+
+\subsection{The shooting method, worked}
+
+The \engterm{shooting method} turns a BVP back into a root-finding
+problem wrapped around an IVP solver, which is the most direct way to
+reuse the IVP machinery already built. Guess the missing initial
+slope $s = y'(0)$, integrate the IVP forward from $(y(0), y'(0)) =
+(\alpha, s)$ to $x = L$, and read off the value $y(L; s)$ that the
+guess produced. Define the residual
+\[
+\phi(s) = y(L; s) - \beta,
+\]
+the amount by which the shot misses the target boundary value. The
+BVP is solved when $\phi(s^{\ast}) = 0$, a single scalar equation in
+the single unknown $s$, attacked with bisection or Newton's method.
+\Cref{fig:vol02:ch07:shooting} shows the geometry: low slopes
+undershoot, high slopes overshoot, and the root lands on the target.
+
+\input{volumes/02-form/ch07-odes/figures/fig-shooting.tex}
+
+Work a concrete linear case: $y'' = y$ on $[0, 1]$ with $y(0) = 0$
+and $y(1) = 1$. The exact solution is $y(x) = \sinh x/\sinh 1$,
+useful as a check. Shoot with slope $s$: the IVP $y'' = y$,
+$y(0) = 0$, $y'(0) = s$ has solution $y(x; s) = s\sinh x$, so
+$y(1; s) = s\sinh 1$ and the residual is $\phi(s) = s\sinh 1 - 1$.
+Because the BVP is linear, $\phi$ is affine in $s$, and one root
+solves it exactly: $s^{\ast} = 1/\sinh 1 \approx 0.8509$. A single
+Newton step from any starting guess lands on it, since the residual
+is a straight line. This is the general rule for linear BVPs: shoot
+twice with two trial slopes $s_{1}$ and $s_{2}$, and because the
+residual is affine, linear interpolation $s^{\ast} = s_{1} -
+\phi(s_{1})(s_{2} - s_{1})/(\phi(s_{2}) - \phi(s_{1}))$ gives the
+exact answer in one step. For a nonlinear BVP the residual is curved,
+and shooting iterates a one-dimensional Newton or bisection loop to
+convergence, each iteration costing one forward IVP integration.
+
+The shooting method inherits the conditioning of the underlying IVP,
+and that is its main failure mode. If the IVP has a fast-growing
+mode (the equation $y'' = y$ has the growing solution $e^{x}$
+alongside the decaying $e^{-x}$), a small change in the initial slope
+produces an exponentially large change in $y(L)$, the residual
+$\phi(s)$ becomes badly scaled, and the root-find loses precision.
+For long intervals or stiff equations the cure is \engterm{multiple
+shooting}: partition $[0, L]$ into segments, shoot on each, and
+impose continuity at the interior joints as additional equations,
+which keeps each sub-integration short enough that the growing mode
+cannot blow up. The alternative family of methods discretises the
+whole interval at once (finite differences or collocation), turning
+the BVP into a banded linear or nonlinear algebraic system; that
+route is the bridge to the finite-element and finite-difference
+machinery of Chapter 16 and the PDE solvers of Chapter 12.
+
+\begin{mastery}
+A linear BVP has a closed-form solution operator, the
+\engterm{Green's function}, that plays the role the matrix exponential
+plays for IVPs. For the operator $L[y] = y''$ on $[0, 1]$ with
+homogeneous boundary conditions $y(0) = y(1) = 0$, the solution of
+$y'' = g(x)$ is the integral
+\[
+y(x) = \int_{0}^{1} G(x, \xi)\, g(\xi)\, d\xi,
+\]
+where $G(x, \xi)$ is the Green's function: the response at $x$ to a
+unit point source at $\xi$. It is built from the two homogeneous
+solutions that satisfy the left and right boundary conditions
+separately, $y_{L}(x) = x$ (vanishing at $0$) and $y_{R}(x) = 1 - x$
+(vanishing at $1$), spliced at $\xi$ with a jump in slope set by the
+source strength:
+\[
+G(x, \xi) = \begin{cases} -x(1 - \xi), & 0 \leq x \leq \xi, \\
+-\xi(1 - x), & \xi \leq x \leq 1. \end{cases}
+\]
+The Green's function is continuous at $x = \xi$, has a unit jump in
+$\partial G/\partial x$ across $x = \xi$ (the integral of the delta
+source), and satisfies the boundary conditions in $x$ for every
+$\xi$. It is the spatial analogue of the impulse response of \S7.5:
+the impulse response convolves with a forcing in time, the Green's
+function convolves with a source in space, and both are the inverse
+of a differential operator written as an integral kernel. The
+Green's-function construction is the analytic backbone of
+boundary-value theory and returns for the PDE operators of Chapter
+12; see \textcite{text:boyce-diprima} for the systematic
+construction across operators and boundary conditions.
+\end{mastery}
 
 \section{Failure: numerical instability and the stiffness trap}\pathtag{core}
 
@@ -1785,10 +2155,170 @@ working theory is in Chapter 16.
 
 \section{Worked examples}\pathtag{standard}
 
-We close with four worked applications across domains, each
+We close with a series of worked applications across domains, each
 following the same pattern: dimensional analysis, model setup,
 solution (analytical, numerical, or both), and a note on what
-fails or accumulates.
+fails or accumulates. The first is a full end-to-end case study
+that exercises every tool in the chapter on one physical system;
+the rest are shorter single-method illustrations.
+
+\subsection{End-to-end case study: the series RLC circuit}
+
+The series RLC circuit is the second-order linear system the chapter
+keeps invoking, and working it from the physics through every
+solution method to the numerical check and the failure note shows
+the apparatus operating as a whole rather than as a list of tricks.
+A resistor $R$, inductor $L$, and capacitor $C$ sit in series across
+a source $V_{\text{in}}(t)$, and a switch closes at $t = 0$. The
+circuit is the electrical mass-spring-dashpot, and it is the heart
+of every analogue filter, oscillator, and power-supply snubber.
+
+\paragraph{Dimensions and model.} Kirchhoff's voltage law sums the
+drops around the loop to the source: $V_{L} + V_{R} + V_{C} =
+V_{\text{in}}$. With current $i = \dot{q}$, charge $q$ on the
+capacitor, and the constitutive laws $V_{L} = L\dot{i} = L\ddot{q}$,
+$V_{R} = Ri = R\dot{q}$, and $V_{C} = q/C$,
+\[
+L\ddot{q} + R\dot{q} + \frac{1}{C}q = V_{\text{in}}(t).
+\]
+Every term carries volts: $L\ddot{q}$ reads
+$\si{\henry}\cdot\si{\coulomb\per\second\squared} = \si{\volt}$,
+$R\dot{q}$ reads $\si{\ohm}\cdot\si{\ampere} = \si{\volt}$, and
+$q/C$ reads $\si{\coulomb\per\farad} = \si{\volt}$. Matching the
+canonical $m\ddot{x} + c\dot{x} + kx = F$, the inductance plays
+mass, the resistance plays damping, and the inverse capacitance
+plays stiffness, so the natural frequency and damping ratio are
+\[
+\omega_{0} = \frac{1}{\sqrt{LC}}, \qquad \zeta = \frac{R}{2}
+\sqrt{\frac{C}{L}} = \frac{R}{2L}\cdot\frac{1}{\omega_{0}}.
+\]
+Take working values $L = 10\,\si{\milli\henry}$, $C =
+1\,\si{\micro\farad}$, and a source step $V_{\text{in}} =
+5\,\si{\volt}$ switched on at $t = 0$ into a de-energised circuit,
+$q(0) = 0$, $\dot{q}(0) = i(0) = 0$. Then $\omega_{0} =
+1/\sqrt{10^{-2}\times 10^{-6}} = 10^{4}\,\si{\radian\per\second}$,
+a natural frequency near $1.6\,\si{\kilo\hertz}$. The damping ratio
+depends on $R$, the one free parameter, and the choice of $R$
+selects the regime.
+
+\paragraph{Estimation before solving.} Before any formula, estimate
+the resistance that critically damps the circuit. Critical damping
+is $\zeta = 1$, i.e.\ $R_{\text{crit}} = 2\sqrt{L/C} = 2\sqrt{10^{-2}
+/10^{-6}} = 2\times 100 = 200\,\si{\ohm}$. So a series resistance
+well below $200\,\si{\ohm}$ rings, and well above it crawls. The
+settling time is a few time constants of the slow decay, of order
+$1/(\zeta\omega_{0})$; at light damping that is many cycles of the
+$1.6\,\si{\kilo\hertz}$ ring, so a lightly damped step response
+should ring visibly for a fraction of a millisecond. These two
+numbers, $200\,\si{\ohm}$ and a sub-millisecond ring, are what an
+engineer carries to the oscilloscope.
+
+\paragraph{Homogeneous regimes.} Write the response in terms of the
+capacitor voltage $v_{C} = q/C$, whose steady state is the full
+source voltage $5\,\si{\volt}$. The characteristic polynomial is
+$L\lambda^{2} + R\lambda + 1/C = 0$, with roots $\lambda_{\pm} =
+-\zeta\omega_{0} \pm \omega_{0}\sqrt{\zeta^{2} - 1}$. Three values of
+$R$ exercise the three regimes.
+
+With $R = 20\,\si{\ohm}$: $\zeta = (20/2)\sqrt{10^{-6}/10^{-2}} =
+10\times 0.01 = 0.1$, underdamped. The damped frequency is
+$\omega_{d} = \omega_{0}\sqrt{1 - 0.01} \approx
+9950\,\si{\radian\per\second}$, and the step response is
+\[
+v_{C}(t) = 5\Bigl[1 - e^{-\zeta\omega_{0} t}\bigl(\cos\omega_{d} t +
+\tfrac{\zeta}{\sqrt{1-\zeta^{2}}}\sin\omega_{d} t\bigr)\Bigr],
+\]
+with decay rate $\zeta\omega_{0} = 10^{3}\,\si{\per\second}$ and
+$1/e$ envelope time $1\,\si{\milli\second}$. The first overshoot
+above the $5\,\si{\volt}$ final value is $\exp(-\pi\zeta/
+\sqrt{1-\zeta^{2}}) = \exp(-\pi\times 0.1/0.995) \approx 0.73$, so
+the capacitor voltage peaks near $5(1 + 0.73) = 8.6\,\si{\volt}$, a
+$73\,\%$ overshoot. A designer who specified a $1\,\si{\micro\farad}$
+capacitor rated at $6.3\,\si{\volt}$ for a $5\,\si{\volt}$ rail would
+destroy it on the first switching transient, a failure that the
+steady-state analysis never shows.
+
+With $R = 200\,\si{\ohm}$: $\zeta = 1$, critically damped, the
+fastest monotone rise, $v_{C}(t) = 5[1 - (1 + \omega_{0} t)
+e^{-\omega_{0} t}]$, reaching $99\,\%$ near $\omega_{0} t = 7$, i.e.\
+$t = 0.7\,\si{\milli\second}$. With $R = 2\,\si{\kilo\ohm}$: $\zeta
+= 10$, overdamped, two real roots $\lambda_{\pm} = \omega_{0}(-10
+\pm\sqrt{99}) \approx -0.50\times 10^{3}$ and $-199\times 10^{3}\,
+\si{\per\second}$, a fast transient riding a slow approach whose
+time constant $1/|\lambda_{+}| \approx 2\,\si{\milli\second}$ makes
+the heavily damped circuit the slowest of the three to settle.
+\Cref{fig:vol02:ch07:rlc-response} plots all three.
+
+\input{volumes/02-form/ch07-odes/figures/fig-rlc-response.tex}
+
+\paragraph{Laplace solution and the transfer function.} The Laplace
+method delivers the same step response with the initial conditions
+folded in and exposes the transfer function the circuit presents to
+any input. Transforming $L\ddot{q} + R\dot{q} + q/C = V_{\text{in}}$
+from rest and writing the output as $V_{C}(s) = Q(s)/C$,
+\[
+\frac{V_{C}(s)}{V_{\text{in}}(s)} = H(s) = \frac{1/(LC)}{s^{2} +
+(R/L)s + 1/(LC)} = \frac{\omega_{0}^{2}}{s^{2} + 2\zeta\omega_{0} s
++ \omega_{0}^{2}}.
+\]
+This is the canonical second-order low-pass transfer function. Its
+poles are the characteristic roots $\lambda_{\pm}$; its value at
+$s = i\omega$ is the frequency response $H(i\omega) =
+\omega_{0}^{2}/[(\omega_{0}^{2} - \omega^{2}) + 2i\zeta\omega_{0}
+\omega]$, whose magnitude peaks near $\omega_{0}$ exactly as the
+forced-oscillator amplitude of \S7.5 does, with peak gain $Q =
+1/(2\zeta)$. For the underdamped $R = 20\,\si{\ohm}$ case, $Q = 5$:
+a sinusoid at $1.6\,\si{\kilo\hertz}$ appears across the capacitor
+five times larger than across the input. For a step input
+$V_{\text{in}}(s) = 5/s$, partial fractions of $5H(s)/s$ invert to
+the time-domain step response already written, and the reader who
+carries out the inversion recovers the cosine-plus-sine envelope
+term by term.
+
+\paragraph{Numerical check.} Reduce to first order with state
+$\mathbf{y} = (q, i)^{T} = (q, \dot{q})^{T}$:
+\[
+\dot{\mathbf{y}} = \begin{pmatrix} 0 & 1 \\ -1/(LC) & -R/L
+\end{pmatrix}\mathbf{y} + \begin{pmatrix} 0 \\ V_{\text{in}}/L
+\end{pmatrix}.
+\]
+For the underdamped case the Jacobian eigenvalues are
+$-10^{3} \pm 9950 i\,\si{\per\second}$; the fastest time scale is
+the $\sim 10^{-4}\,\si{\second}$ oscillation period, so RK4 with
+$h = 10^{-6}\,\si{\second}$ (about $600$ steps per ring period)
+resolves the transient comfortably and the step response matches the
+closed form to better than $10^{-4}$ over the first millisecond. The
+spectral radius is $\sim 10^{4}\,\si{\per\second}$ and the stability
+bound for forward Euler is $h < 2/10^{4} = 2\times
+10^{-4}\,\si{\second}$, far above the accuracy-driven step, so the
+underdamped circuit is not stiff: accuracy, not stability, sets the
+step. The overdamped $R = 2\,\si{\kilo\ohm}$ case is the opposite.
+Its eigenvalues span $-0.5\times 10^{3}$ to $-199\times 10^{3}\,
+\si{\per\second}$, a stiffness ratio near $400$; forward Euler is
+pinned to $h < 2/(199\times 10^{3}) \approx 10^{-5}\,\si{\second}$ by
+the fast mode even though the engineer cares about the
+$2\,\si{\milli\second}$ slow settling, and an implicit method
+integrates the slow approach in a hundredth of the steps. The same
+physical circuit is non-stiff or stiff depending only on the
+resistance, which is the cleanest illustration in the chapter that
+stiffness is a property of the spectrum, not of the difficulty of
+the physics.
+
+\paragraph{What fails.} The lumped RLC model assumes ideal,
+constant, frequency-independent components. Real inductors carry
+series resistance and inter-winding capacitance that add a
+self-resonance above which the inductor behaves capacitively; real
+capacitors carry equivalent series resistance and inductance that
+limit their high-frequency performance; the resistor's value drifts
+with temperature. The model holds below the components'
+self-resonant frequencies and within their rated ranges; near or
+beyond those frequencies the two-element idealisation is replaced by
+a multi-element equivalent circuit, and the second-order ODE becomes
+a higher-order system. The overshoot warning above is the
+load-bearing engineering result: a step transient on a lightly
+damped RLC circuit drives the capacitor voltage well above the
+supply rail, and the component rating must be chosen against the
+transient peak, not the steady-state value.
 
 \subsection{The RC discharge in detail}
 

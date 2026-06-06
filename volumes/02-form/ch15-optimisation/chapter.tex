@@ -820,6 +820,102 @@ The QP class extends to second-order cone programs (SOCPs) and
 semidefinite programs (SDPs); see Boyd and Vandenberghe Chapters
 4 and 5.
 
+\subsection{Worked QP: the Markowitz portfolio}
+
+The Markowitz mean-variance portfolio is the QP an engineer is
+most likely to meet outside least squares, and it rewards being
+worked end to end. An investor allocates a unit of capital across
+$n$ assets. The allocation is a weight vector $\vect{w} \in \R^{n}$
+with $\vect{1}^{\transpose} \vect{w} = 1$; each $w_{i}$ is the
+fraction of capital in asset $i$. The asset returns have mean
+vector $\boldsymbol{\mu} \in \R^{n}$ (expected return per unit
+capital) and covariance matrix $\Sigma \in \R^{n \times n}$,
+positive semidefinite by construction. The portfolio return is
+$\boldsymbol{\mu}^{\transpose} \vect{w}$ and the portfolio variance
+is $\vect{w}^{\transpose} \Sigma \vect{w}$. The investor wants high
+return and low variance, two objectives that pull against each
+other. The standard scalarisation trades them with a risk-aversion
+parameter $\gamma > 0$:
+\[
+\min_{\vect{w}} \;\; -\boldsymbol{\mu}^{\transpose} \vect{w}
++ \gamma \, \vect{w}^{\transpose} \Sigma \vect{w}
+\quad \text{subject to} \quad
+\vect{1}^{\transpose} \vect{w} = 1.
+\]
+The objective is a convex quadratic (its Hessian is $2 \gamma
+\Sigma \succeq 0$), the single constraint is affine, and the
+problem is a convex QP. Large $\gamma$ punishes variance and
+produces a cautious portfolio; small $\gamma$ chases return and
+produces an aggressive one.
+
+\paragraph{Closed form for the equality-only case.}
+With only the budget constraint (short sales allowed, so no
+$\vect{w} \geq \vect{0}$), the QP has a closed-form solution by the
+Lagrange apparatus of Volume II Chapter 11. The Lagrangian is
+$\mathcal{L} = -\boldsymbol{\mu}^{\transpose} \vect{w} + \gamma
+\vect{w}^{\transpose} \Sigma \vect{w} + \nu (\vect{1}^{\transpose}
+\vect{w} - 1)$. Stationarity in $\vect{w}$ gives $-\boldsymbol{\mu}
++ 2 \gamma \Sigma \vect{w} + \nu \vect{1} = \vect{0}$, so
+\[
+\vect{w}(\nu) = \frac{1}{2 \gamma} \Sigma^{-1}
+(\boldsymbol{\mu} - \nu \vect{1}),
+\]
+and the budget constraint $\vect{1}^{\transpose} \vect{w} = 1$
+fixes the multiplier:
+\[
+\nu^{*} = \frac{\vect{1}^{\transpose} \Sigma^{-1} \boldsymbol{\mu}
+- 2 \gamma}{\vect{1}^{\transpose} \Sigma^{-1} \vect{1}}.
+\]
+The optimal portfolio is the sum of two fixed vectors, one
+independent of $\gamma$ and one scaling as $1/\gamma$: a
+\engterm{minimum-variance} component $\Sigma^{-1} \vect{1} /
+(\vect{1}^{\transpose} \Sigma^{-1} \vect{1})$ that every solution
+shares, plus a \engterm{return-tilt} component proportional to
+$\Sigma^{-1} \boldsymbol{\mu}$ whose weight grows as the investor
+becomes less risk-averse. This two-fund structure is the
+mathematical content of the mutual-fund separation theorem: every
+mean-variance-optimal portfolio is a blend of the same two funds,
+and the investor's risk aversion sets only the blend ratio.
+
+\paragraph{A three-asset instance.}
+Take three assets with annual returns $\boldsymbol{\mu} = (0.10,
+0.12, 0.15)$ and covariance (in squared-return units)
+\[
+\Sigma = \begin{pmatrix}
+0.040 & 0.006 & 0.000 \\
+0.006 & 0.090 & 0.010 \\
+0.000 & 0.010 & 0.160
+\end{pmatrix},
+\]
+so asset 1 is low-return and low-variance, asset 3 is high-return
+and high-variance, and asset 2 sits between. At a moderate
+$\gamma = 5$ the closed form returns weights near $\vect{w}^{*}
+\approx (0.60, 0.27, 0.13)$: the cautious investor parks most
+capital in the low-variance asset and tilts modestly toward the
+two higher-return assets. Lowering $\gamma$ to $1$ shifts weight
+toward asset 3 (the return tilt grows by a factor of five),
+raising both the expected return and the variance. The locus of
+optima as $\gamma$ ranges over $(0, \infty)$ is the
+\engterm{efficient frontier} of \cref{fig:vol02:ch15:efficient-frontier},
+the upper-left boundary of the achievable risk-return region; every
+portfolio strictly inside the region is dominated by a frontier
+portfolio that offers more return at the same risk or the same
+return at less risk.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-efficient-frontier.tex}
+
+The realistic version adds a no-short-selling constraint
+$\vect{w} \geq \vect{0}$, which turns the equality-only QP into an
+inequality-constrained QP with no closed form; the solution is the
+projection of the unconstrained optimum onto the simplex, computed
+by a QP solver in microseconds. The structure survives: the
+frontier is still convex, the two-fund intuition still guides the
+qualitative reading, and the active set at the optimum tells the
+investor which assets the no-short constraint has forced to zero.
+The runnable solve over a grid of $\gamma$ values, producing the
+frontier and the active-set table, is in
+\repopath{volumes/02-form/ch15-optimisation/code/markowitz_portfolio.py}.
+
 \begin{mastery}
 \textbf{Interior-point methods and the barrier.} The simplex
 method walks the boundary of the feasible polyhedron from vertex
@@ -852,8 +948,11 @@ problem into a sequence of unconstrained Newton solves, the
 duality gap at each $t$ is $m/t$ (which gives the solver a
 principled stopping rule), and the off-the-shelf solver doing
 this is the reason a hundred-thousand-variable LP solves in
-seconds.
+seconds. \Cref{fig:vol02:ch15:central-path} draws the central path
+on a polyhedral feasible region.
 \end{mastery}
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-central-path.tex}
 
 \subsection{Primal and dual: the LP case}
 
@@ -1153,6 +1252,138 @@ reported half the answer; the multipliers say which constraints to
 spend the next dollar relaxing.
 \end{mastery}
 
+\begin{mastery}
+\textbf{Constraint qualifications: when KKT actually holds.} The
+KKT theorem as stated requires zero duality gap, which a convex
+problem with Slater's condition supplies. For a nonconvex problem
+the KKT conditions are necessary at a local optimum only under a
+\engterm{constraint qualification}, a regularity condition on the
+constraint geometry at the candidate point. The weakest commonly
+checked version is the \engterm{linear independence constraint
+qualification} (LICQ): the gradients of the active constraints
+(the $\grad f_{i}(\vect{x}^{*})$ for active $i$ together with all
+$\grad h_{j}(\vect{x}^{*})$) are linearly independent. Under LICQ
+the multipliers exist and are unique. A weaker condition, the
+\engterm{Mangasarian-Fromovitz constraint qualification} (MFCQ),
+asks only that the equality-constraint gradients be independent and
+that a direction exist that strictly decreases every active
+inequality while staying tangent to the equalities; MFCQ gives
+existence of multipliers but not uniqueness, and it is equivalent
+to the boundedness of the multiplier set. The failure mode the
+qualifications guard against is concrete. Minimise $x$ subject to
+$x^{2} \leq 0$: the only feasible point is $x = 0$, the optimum,
+but the active-constraint gradient $\dv{}{x}(x^{2}) = 2x$ vanishes
+there, LICQ fails, and the stationarity equation $1 + \lambda \cdot
+0 = 0$ has no solution in $\lambda$. No multiplier exists; the KKT
+stationarity condition is simply false at the optimum. The
+engineering lesson: a solver that returns a point with no valid
+multipliers has not necessarily failed, and the first diagnostic is
+to check whether a constraint qualification holds, because a
+tangent or degenerate constraint can break the optimality
+certificate without breaking the optimum.
+\end{mastery}
+
+\begin{mastery}
+\textbf{The duality gap and certificates of suboptimality.} Weak
+duality gives more than a theorem; it gives the working engineer a
+running certificate of how close an iterate sits to the optimum.
+At any iteration of a primal-dual method the engineer holds a
+primal-feasible $\vect{x}$ and a dual-feasible $(\boldsymbol{\lambda},
+\boldsymbol{\nu})$, and the difference $f_{0}(\vect{x}) -
+g(\boldsymbol{\lambda}, \boldsymbol{\nu}) \geq 0$ is the
+\engterm{surrogate duality gap}. Because $g(\boldsymbol{\lambda},
+\boldsymbol{\nu}) \leq p^{*} \leq f_{0}(\vect{x})$, the true
+optimum is trapped in the interval $[g, f_{0}]$, and the surrogate
+gap is an upper bound on the suboptimality of the current primal
+point with no knowledge of $p^{*}$ required. This is the basis of
+every principled stopping rule in convex optimisation: iterate
+until the surrogate gap falls below a tolerance, and report the
+gap alongside the answer so the downstream user knows the certified
+accuracy. For an interior-point method the gap is exactly $m/t$ at
+barrier weight $t$, so the solver knows its own accuracy at every
+step. For a nonconvex problem strong duality fails and the gap does
+not close, but the dual value $g$ is still a valid lower bound,
+which is exactly what branch-and-bound uses to prune: a subtree
+whose dual bound exceeds the incumbent cannot contain a better
+solution. The duality gap is the single object that unifies
+stopping rules, optimality certificates, and combinatorial pruning.
+\end{mastery}
+
+\subsection{Augmented Lagrangian and a worked SQP step}
+
+Two methods turn the duality apparatus into a constrained solver
+the engineer actually runs, and both deserve to be seen in motion
+rather than only named.
+
+The \engterm{augmented Lagrangian} (method of multipliers) repairs
+a defect of the plain quadratic penalty. To solve $\min f_{0}
+(\vect{x})$ subject to $h(\vect{x}) = 0$, the penalty method
+minimises $f_{0}(\vect{x}) + \tfrac{\rho}{2} h(\vect{x})^{2}$ and
+drives $\rho \to \infty$; the trouble is that the Hessian
+conditioning degrades as $\rho$ grows, and the unconstrained
+subproblems become numerically vicious. The augmented Lagrangian
+adds an explicit multiplier estimate to the penalty:
+\[
+\mathcal{L}_{\rho}(\vect{x}, \nu) = f_{0}(\vect{x}) + \nu \,
+h(\vect{x}) + \tfrac{\rho}{2} h(\vect{x})^{2}.
+\]
+The algorithm alternates a minimisation over $\vect{x}$ at fixed
+$(\nu, \rho)$ with a multiplier update $\nu \leftarrow \nu + \rho \,
+h(\vect{x})$, which is a gradient ascent step on the dual. The
+multiplier update lets the constraint be satisfied at a finite,
+moderate $\rho$, sidestepping the ill-conditioning of pure penalty.
+A one-step illustration: minimise $f_{0}(x) = \tfrac{1}{2} x^{2}$
+subject to $h(x) = x - 1 = 0$, whose answer is $x^{*} = 1$, $\nu^{*}
+= -1$. Start with $\nu_{0} = 0$, $\rho = 1$. The $\vect{x}$-step
+minimises $\tfrac{1}{2} x^{2} + 0 \cdot (x - 1) + \tfrac{1}{2}(x -
+1)^{2}$; setting the derivative to zero, $x + (x - 1) = 0$, gives
+$x_{1} = 1/2$. The multiplier update gives $\nu_{1} = 0 + 1 \cdot
+(1/2 - 1) = -1/2$. The next $\vect{x}$-step minimises $\tfrac{1}{2}
+x^{2} - \tfrac{1}{2}(x - 1) + \tfrac{1}{2}(x - 1)^{2}$; the
+derivative $x - 1/2 + (x - 1) = 0$ gives $x_{2} = 3/4$. The
+multiplier update gives $\nu_{2} = -1/2 + (3/4 - 1) = -3/4$. The
+iterates $x_{k} = 1 - 2^{-k}$ and $\nu_{k} = -(1 - 2^{-k})$ march
+geometrically to the optimum at a fixed $\rho = 1$, where a pure
+penalty would need $\rho \to \infty$ to reach the same accuracy.
+The same construction with vector constraints and inequalities is
+the workhorse behind the alternating-direction method of
+multipliers (ADMM) that scales convex problems across many machines.
+
+\engterm{Sequential quadratic programming} (SQP) is the constrained
+analogue of Newton's method. At the current iterate $(\vect{x}_{k},
+\boldsymbol{\nu}_{k})$ it forms a quadratic model of the Lagrangian
+and a linear model of the constraints, and solves the resulting
+equality-constrained QP for a step. For the problem $\min f_{0}
+(\vect{x})$ subject to $h(\vect{x}) = 0$, the QP subproblem is
+\[
+\min_{\vect{p}} \;\; \grad f_{0}(\vect{x}_{k})^{\transpose} \vect{p}
++ \tfrac{1}{2} \vect{p}^{\transpose} W_{k} \vect{p}
+\quad \text{subject to} \quad
+\grad h(\vect{x}_{k})^{\transpose} \vect{p} + h(\vect{x}_{k}) = 0,
+\]
+where $W_{k} = \nabla^{2}_{\vect{x}\vect{x}} \mathcal{L}(\vect{x}_{k},
+\boldsymbol{\nu}_{k})$ is the Hessian of the Lagrangian. The KKT
+system of this QP is a single linear solve, and its solution
+$(\vect{p}, \boldsymbol{\nu}_{k+1})$ supplies both the step and the
+new multiplier. A worked step: minimise $f_{0}(x_{1}, x_{2}) =
+x_{1}^{2} + x_{2}^{2}$ subject to $h = x_{1} + x_{2} - 2 = 0$, with
+optimum $(1, 1)$. From $\vect{x}_{0} = (2, 0)$, the gradient is
+$\grad f_{0} = (4, 0)$, the Lagrangian Hessian is $W_{0} = 2 I$ (the
+constraint is linear, so it contributes nothing), and the constraint
+gradient is $(1, 1)$ with residual $h(\vect{x}_{0}) = 0$. The QP
+subproblem $\min_{\vect{p}} (4, 0)^{\transpose} \vect{p} +
+\vect{p}^{\transpose} \vect{p}$ subject to $p_{1} + p_{2} = 0$ has
+KKT stationarity $2 p_{1} + 4 + \nu = 0$, $2 p_{2} + \nu = 0$, and
+$p_{1} + p_{2} = 0$; solving, $p_{1} = -1$, $p_{2} = 1$, $\nu = -2$.
+The step takes $\vect{x}_{1} = (2, 0) + (-1, 1) = (1, 1)$, the exact
+optimum in one move, because the objective is quadratic and the
+constraint linear, exactly the case where SQP inherits Newton's
+one-step finish. On a nonlinear constraint SQP converges
+quadratically near the optimum, and the working solvers (SNOPT,
+filterSQP, IPOPT in its SQP mode) wrap this step in a line search
+or trust region and a quasi-Newton approximation to $W_{k}$ so the
+engineer never forms the Lagrangian Hessian by hand.
+
 \section{Gradient methods, Newton's method}\pathtag{core}
 
 Outside the closed-form cases (a few small LPs and QPs solvable
@@ -1444,6 +1675,97 @@ small trust region). The engineer meets Levenberg-Marquardt in
 every curve-fitting library and now knows what its damping
 parameter controls.
 
+\subsection{Nonsmooth objectives: subgradient and proximal methods}
+
+The methods above assume a differentiable objective. Many
+engineering objectives are not differentiable everywhere. The
+absolute value $\abs{x}$, the $\ell_{1}$ norm $\norm{\vect{x}}_{1}$,
+the hinge loss $\max(0, 1 - y \, \vect{w}^{\transpose} \vect{x})$,
+and the pointwise maximum $\max_{i} f_{i}(\vect{x})$ all have kinks
+where the gradient does not exist. At a kink the gradient is
+replaced by the \engterm{subgradient}, the set of all slopes of
+supporting lines: a vector $\vect{g}$ is a subgradient of a convex
+$f$ at $\vect{x}$ if $f(\vect{y}) \geq f(\vect{x}) +
+\vect{g}^{\transpose}(\vect{y} - \vect{x})$ for all $\vect{y}$. At a
+smooth point the subgradient is the single gradient; at the kink of
+$\abs{x}$ at the origin the subgradient is the whole interval
+$[-1, 1]$. Optimality for a nonsmooth convex problem reads
+$\vect{0} \in \partial f(\vect{x}^{*})$: zero is a valid
+subgradient at the optimum, the nonsmooth generalisation of
+$\grad f = \vect{0}$.
+
+\engterm{Subgradient descent} runs the gradient iteration with any
+subgradient in place of the gradient, $\vect{x}_{k+1} =
+\vect{x}_{k} - \eta_{k} \vect{g}_{k}$ with $\vect{g}_{k} \in
+\partial f(\vect{x}_{k})$. It converges, but slowly, at the
+$O(1/\sqrt{K})$ rate even for strongly convex problems, because the
+subgradient does not vanish near the optimum and a diminishing step
+schedule $\eta_{k} \to 0$ is required to settle. The slow rate
+makes subgradient descent the method of last resort, used when no
+structure beyond convexity is available.
+
+The structure that most nonsmooth engineering objectives do have is
+a split into a smooth part and a simple nonsmooth part, $f(\vect{x})
+= s(\vect{x}) + r(\vect{x})$ with $s$ smooth (a data-fit term) and
+$r$ nonsmooth but simple (a regulariser). The \engterm{proximal
+gradient method} exploits the split: take a gradient step on the
+smooth part, then apply the \engterm{proximal operator} of the
+nonsmooth part,
+\[
+\vect{x}_{k+1} = \operatorname{prox}_{\eta r}\!\left(\vect{x}_{k} -
+\eta \, \grad s(\vect{x}_{k})\right),
+\qquad
+\operatorname{prox}_{\eta r}(\vect{z}) = \argmin_{\vect{u}}
+\left( r(\vect{u}) + \tfrac{1}{2 \eta} \norm{\vect{u} -
+\vect{z}}_{2}^{2} \right).
+\]
+The proximal operator is a small optimisation that pulls toward
+$\vect{z}$ while respecting $r$; for the simple regularisers that
+arise in practice it has a closed form, and the method recovers the
+$O(1/K)$ rate of smooth gradient descent despite the nonsmoothness.
+
+\paragraph{Worked example: LASSO and soft-thresholding.}
+The LASSO regression problem is the canonical proximal target:
+\[
+\min_{\vect{x}} \;\; \tfrac{1}{2} \norm{A \vect{x} - \vect{b}}_{2}^{2}
++ \lambda \norm{\vect{x}}_{1},
+\]
+a smooth least-squares term plus the nonsmooth $\ell_{1}$
+regulariser that drives sparsity. The smooth part has gradient
+$A^{\transpose}(A \vect{x} - \vect{b})$; the nonsmooth part is
+$r(\vect{x}) = \lambda \norm{\vect{x}}_{1}$, whose proximal
+operator separates coordinate by coordinate. For the scalar problem
+$\argmin_{u} (\lambda \abs{u} + \tfrac{1}{2 \eta}(u - z)^{2})$, the
+optimality condition $0 \in \lambda \, \partial \abs{u} +
+(u - z)/\eta$ splits into three cases by the subgradient of
+$\abs{u}$, and the solution is the \engterm{soft-thresholding}
+operator
+\[
+\operatorname{prox}_{\eta \lambda \abs{\cdot}}(z) =
+\sgn(z) \max(\abs{z} - \eta \lambda, \, 0),
+\]
+which shrinks $z$ toward zero by $\eta \lambda$ and sets it exactly
+to zero when $\abs{z} \leq \eta \lambda$
+(\cref{fig:vol02:ch15:soft-threshold}). The dead zone around the
+origin is what makes LASSO produce exactly-zero coefficients and
+hence sparse, interpretable models, where the smooth $\ell_{2}$
+ridge penalty of Section 15.8 only shrinks coefficients toward zero
+without ever zeroing them. The full proximal-gradient iteration for
+LASSO, a gradient step on the least-squares term followed by
+coordinate-wise soft-thresholding, is the \engterm{iterative
+shrinkage-thresholding algorithm} (ISTA); its accelerated cousin
+FISTA reaches the optimal $O(1/K^{2})$ rate by adding a Nesterov
+momentum term. A single worked iteration: with $A = I$, $\vect{b} =
+(3, 0.5, -2)$, $\lambda = 1$, $\eta = 1$, from $\vect{x}_{0} =
+\vect{0}$ the gradient step gives $\vect{z} = \vect{b} = (3, 0.5,
+-2)$, and soft-thresholding by $\eta \lambda = 1$ yields
+$\vect{x}_{1} = (2, 0, -1)$: the small coefficient $0.5$ is killed,
+the large ones are shrunk by one. The middle coordinate is sparse
+after a single step, which is the behaviour the $\ell_{1}$ penalty
+was chosen to produce.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-soft-threshold.tex}
+
 \begin{principle}[Method selection for smooth unconstrained
 optimisation]
 For a smooth convex objective in $n$ variables, choose by scale:
@@ -1603,6 +1925,37 @@ fails to converge are known); its practical performance on deep
 nonconvex objectives is the empirical reason for its dominance,
 current as of 2026.
 
+\begin{mastery}
+\textbf{Momentum as a damped dynamical system.} Polyak's momentum
+has a mechanical reading that explains why it accelerates. Write the
+momentum update as a single second-order recurrence in the
+parameter: $\boldsymbol{\theta}_{k+1} = \boldsymbol{\theta}_{k} -
+\eta \grad f(\boldsymbol{\theta}_{k}) + \beta(\boldsymbol{\theta}_{k}
+- \boldsymbol{\theta}_{k-1})$. The term $\beta(\boldsymbol{\theta}_{k}
+- \boldsymbol{\theta}_{k-1})$ carries the previous step forward, so
+the iterate behaves like a particle with mass rolling on the loss
+surface under a force $-\grad f$ and a friction set by $\beta$. The
+continuous limit is the equation of a damped harmonic oscillator,
+$\ddot{\boldsymbol{\theta}} + a \dot{\boldsymbol{\theta}} + \grad
+f(\boldsymbol{\theta}) = 0$, with the friction coefficient $a$ tied
+to $1 - \beta$. On the elongated quadratic that makes plain
+gradient descent zigzag, the heavy-ball particle builds speed along
+the shallow valley floor and the friction damps the oscillation
+across the steep walls, which is exactly the acceleration the
+method delivers. Choosing $\beta$ is choosing the damping: too
+little friction (small $\beta$) and the particle barely accelerates;
+too much (large $\beta$) and it overshoots and rings. The critical
+damping that reaches the minimum fastest corresponds to $\beta =
+((\sqrt{\kappa} - 1)/(\sqrt{\kappa} + 1))^{2}$, and it converts
+gradient descent's $1 - 1/\kappa$ rate into the $1 - 1/\sqrt{\kappa}$
+rate that Nesterov's method attains, a square-root improvement in
+the condition-number dependence that is the whole reason momentum
+exists. The dynamical reading also explains why momentum tolerates
+the gradient noise of SGD: the velocity term is a running average
+of past gradients, and averaging reduces variance, so momentum
+smooths the stochastic gradient as a side effect of its mechanics.
+\end{mastery}
+
 The engineer's working catalogue: vanilla SGD is the baseline;
 SGD with momentum is the next step up; Adam is the modern
 default for deep nonconvex problems; L-BFGS is the smooth
@@ -1710,6 +2063,54 @@ runnable implementation that prints the visited-node count against
 the brute-force leaf count is in
 \repopath{volumes/02-form/ch15-optimisation/code/knapsack_branch_and_bound.py}.
 
+\subsection{Worked assignment problem: integrality for free}
+
+Not every integer program is hard. The \engterm{assignment
+problem} asks for a one-to-one matching of $n$ agents to $n$ tasks
+that minimises total cost: choose $x_{ij} \in \set{0, 1}$, with
+$x_{ij} = 1$ when agent $i$ is assigned task $j$, to minimise
+$\sum_{ij} c_{ij} x_{ij}$ subject to one task per agent
+($\sum_{j} x_{ij} = 1$ for each $i$) and one agent per task
+($\sum_{i} x_{ij} = 1$ for each $j$). Written this way it is a
+$0/1$ integer program with $n^{2}$ binary variables and $n!$
+feasible matchings. The structure rescues it. The constraint matrix
+of the assignment problem is \engterm{totally unimodular} (every
+square submatrix has determinant $0$, $+1$, or $-1$), and a theorem
+of integer programming guarantees that an LP over a totally
+unimodular constraint matrix with integer right-hand sides has
+integer vertices. The LP relaxation, which drops the integrality
+and asks only $x_{ij} \geq 0$, therefore returns an integer optimum
+on its own; no branching is needed.
+
+A three-agent instance makes the point concrete. The cost matrix
+\[
+C = \begin{pmatrix}
+9 & 2 & 7 \\
+6 & 4 & 3 \\
+5 & 8 & 1
+\end{pmatrix}
+\]
+gives agent $i$ a cost $c_{ij}$ for task $j$. Brute force checks
+$3! = 6$ matchings: $(1{\to}1, 2{\to}2, 3{\to}3)$ costs $9 + 4 + 1 =
+14$; $(1{\to}2, 2{\to}3, 3{\to}1)$ costs $2 + 3 + 5 = 10$;
+$(1{\to}2, 2{\to}1, 3{\to}3)$ costs $2 + 6 + 1 = 9$;
+$(1{\to}3, 2{\to}2, 3{\to}1)$ costs $7 + 4 + 5 = 16$; the remaining
+two cost $12$ and $19$. The optimum is $9$, the matching
+$1{\to}2$, $2{\to}1$, $3{\to}3$. The Hungarian algorithm of
+Kuhn (1955) reaches the same answer in $O(n^{3})$ time without
+enumerating matchings: it subtracts the row minima and column
+minima to expose zero-cost assignments, then covers the zeros with
+a minimal set of lines and adjusts until a complete zero-cost
+matching appears. Solving the LP relaxation with a generic LP
+solver returns the same integer matching, because total
+unimodularity guarantees the relaxation's vertex is integral. The
+lesson generalises: before reaching for branch-and-bound, check
+whether the constraint matrix has special structure (network flow,
+assignment, transportation, interval scheduling) that makes the LP
+relaxation integral, in which case the polynomial-time LP solver
+is also the integer solver and the NP-hardness of the general case
+never bites.
+
 \subsection{Branch-and-bound, recognition level}
 
 \engterm{Branch-and-bound} explores the integer feasible set as a
@@ -1761,6 +2162,180 @@ an approximation algorithm and reports the approximation factor
 along with the solution. The full treatment is in
 \textcite{text:cormen-clrs} and \textcite{text:kleinberg-tardos};
 this chapter establishes the recognition.
+
+\section{Case study: sizing a cantilever truss}\pathtag{standard}
+
+The chapter's apparatus earns its place when it carries a real
+engineering problem from a plain-English brief through a formal
+program, a solution, and an interpretation that changes a design
+decision. We work a structural-sizing problem end to end, choosing
+a truss small enough to solve by hand and rich enough to exercise
+the formulation, the constraint reading, the active-set logic, and
+the failure check.
+
+\subsection{The brief}
+
+A six-member cantilever truss carries a vertical tip load $P =
+40\,\si{\kilo\newton}$ at its lower free node
+(\cref{fig:vol02:ch15:truss-sizing}). The bay is square with side
+$\ell = 3\,\si{\meter}$, so the two diagonals have length
+$\ell \sqrt{2} \approx 4.24\,\si{\meter}$ and the four
+chord-and-vertical members have length $\ell$. The members are
+steel with allowable stress $\sigma_{\mathrm{allow}} =
+160\,\si{\mega\pascal}$ (a representative working value for
+structural steel with a safety factor already applied, current as
+of 2025) and density $\rho = 7850\,\si{\kilogram\per\meter\cubed}$.
+The fabricator can supply any cross-sectional area above a
+manufacturing floor $A_{\min} = 2\,\si{\centi\meter\squared}$ (below
+this the members are too slender to handle and weld reliably). The
+design question in plain English: choose the six member areas to
+build the lightest truss that does not overstress any member.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-truss-sizing.tex}
+
+\subsection{Formulation}
+
+The decision variable is the area vector $\vect{A} = (A_{1},
+\ldots, A_{6})$, with $A_{j}$ the cross-sectional area of member
+$j$. The objective is total material volume (mass divided by the
+common density, so minimising volume minimises mass):
+\[
+\min_{\vect{A}} \;\; V(\vect{A}) = \sum_{j=1}^{6} A_{j} L_{j},
+\]
+with $L_{j}$ the length of member $j$. The constraints are a stress
+limit on each member and the manufacturing floor:
+\[
+\frac{\abs{N_{j}}}{A_{j}} \leq \sigma_{\mathrm{allow}}, \qquad
+A_{j} \geq A_{\min}, \qquad j = 1, \ldots, 6,
+\]
+where $N_{j}$ is the axial force in member $j$ (tension positive,
+compression negative). The stress constraint rearranges to the
+linear form $A_{j} \geq \abs{N_{j}} / \sigma_{\mathrm{allow}}$, so
+the whole problem is a linear program in $\vect{A}$ once the forces
+$N_{j}$ are known.
+
+The structural fact that makes this clean: the truss is statically
+determinate, so the member forces are fixed by equilibrium alone
+and do not depend on the areas. We can solve for the forces once,
+up front, and the optimisation then sees them as constants. In a
+statically indeterminate structure the forces would redistribute as
+the areas change, coupling the equilibrium to the design variables
+and turning the problem nonlinear; that coupling is the subject of
+structural-optimisation courses and Volume IV. Here the
+determinacy decouples force from area and hands us a transparent
+LP.
+
+\subsection{The forces from equilibrium}
+
+Resolve the tip load through the truss by method of joints. The
+load $P$ at the lower free node is carried by the lower chord
+(member 2) in tension and the rising diagonal (member 5) in
+compression. Taking the geometry of \cref{fig:vol02:ch15:truss-sizing}
+with the standard joint equations, the member forces work out to
+the following magnitudes for $P = 40\,\si{\kilo\newton}$ and a
+square bay (so each diagonal makes $45^{\circ}$):
+\[
+\begin{aligned}
+\abs{N_{1}} &= P = 40\,\si{\kilo\newton} &\text{(top chord)}, \\
+\abs{N_{2}} &= P = 40\,\si{\kilo\newton} &\text{(bottom chord)}, \\
+\abs{N_{3}} &= P = 40\,\si{\kilo\newton} &\text{(rear vertical)}, \\
+\abs{N_{4}} &= 0 &\text{(front vertical)}, \\
+\abs{N_{5}} &= P\sqrt{2} \approx 56.6\,\si{\kilo\newton}
+  &\text{(loaded diagonal)}, \\
+\abs{N_{6}} &= 0 &\text{(idle diagonal)}.
+\end{aligned}
+\]
+Two members carry no force. Member 4, the front vertical, and
+member 6, the idle diagonal, are \engterm{zero-force members} for
+this single load case: the equilibrium of their end joints is
+satisfied without them. Zero-force members are a standard feature
+of statically determinate trusses, and they pose the first design
+judgment the optimisation will surface.
+
+\subsection{Solving the program}
+
+Because the stress constraints decouple (each member's area appears
+in exactly one stress constraint and in the objective), the LP
+separates into six one-variable problems. For each member the
+objective $A_{j} L_{j}$ increases in $A_{j}$, so the optimiser
+drives each area to the smallest value its constraints allow:
+\[
+A_{j}^{*} = \max\!\left(
+\frac{\abs{N_{j}}}{\sigma_{\mathrm{allow}}}, \; A_{\min}
+\right).
+\]
+The stress-limited area for a member carrying $40\,\si{\kilo\newton}$
+is $\abs{N_{j}} / \sigma_{\mathrm{allow}} = 40 \times 10^{3} /
+(160 \times 10^{6}) = 2.5 \times 10^{-4}\,\si{\meter\squared} =
+2.5\,\si{\centi\meter\squared}$, comfortably above the
+$2\,\si{\centi\meter\squared}$ floor, so the stress constraint
+binds. The loaded diagonal needs $56.6 \times 10^{3} / (160 \times
+10^{6}) = 3.54 \times 10^{-4}\,\si{\meter\squared} =
+3.54\,\si{\centi\meter\squared}$. The two zero-force members carry
+nothing, so their stress-limited area is zero and the
+manufacturing floor binds instead: $A_{4}^{*} = A_{6}^{*} =
+A_{\min} = 2\,\si{\centi\meter\squared}$. The optimal areas are
+\[
+\vect{A}^{*} = (2.5, \; 2.5, \; 2.5, \; 2.0, \; 3.54, \; 2.0)
+\;\si{\centi\meter\squared}.
+\]
+The optimal volume is $V^{*} = \sum_{j} A_{j}^{*} L_{j} =
+(2.5 + 2.5 + 2.5)(3)(10^{-4}) + (2.0)(3)(10^{-4}) +
+(3.54)(4.24)(10^{-4}) + (2.0)(4.24)(10^{-4})$, which evaluates to
+about $5.2 \times 10^{-3}\,\si{\meter\cubed}$, a mass of $\rho V^{*}
+\approx 41\,\si{\kilogram}$.
+
+\subsection{The active set and the shadow prices}
+
+The optimum partitions the members by which constraint binds, and
+the partition is the engineering content. Members 1, 2, 3, and 5
+are \engterm{stress-limited}: their stress constraint is active,
+their area is set by the force they carry, and their shadow price
+on the stress limit is positive. Members 4 and 6 are
+\engterm{floor-limited}: the stress constraint is slack (they carry
+no force), the manufacturing floor is active, and the shadow price
+on their stress limit is zero. The shadow price on the
+stress-limit constraint of a loaded member is the volume saved per
+unit relaxation of the allowable stress: $\partial V^{*} /
+\partial \sigma_{\mathrm{allow}}$ for member $j$ equals
+$-\abs{N_{j}} L_{j} / \sigma_{\mathrm{allow}}^{2}$, so a stronger
+steel grade buys the most weight saving on the members carrying the
+most force over the longest length, which is the loaded diagonal.
+The duality reading turns directly into a procurement decision:
+spending on higher-strength steel pays back on members 1, 2, 3,
+and 5 and pays back nothing on members 4 and 6, whose size is fixed
+by manufacturability rather than by strength.
+
+\subsection{Interpretation and the design decision}
+
+The optimisation has surfaced a decision the brief did not state.
+Members 4 and 6 carry no load for this single tip-load case and sit
+at the manufacturing floor purely because the fabricator cannot
+make them thinner. Three readings compete. First, the optimiser is
+correct and the members should be built at the floor, because a
+real structure sees more than one load case (wind, a load at the
+upper node, a construction load) and the zero-force members carry
+force under those cases; sizing them to the floor is cheap
+insurance. Second, if the single tip load is genuinely the only
+case, members 4 and 6 are candidates for removal, which would
+change the topology of the truss and is a \engterm{topology
+optimisation} question one level above this sizing problem.
+Third, the zero-force result is an artifact of the idealised
+pin-jointed model, and a real welded joint carries moment, so the
+members are not truly idle and the floor area is doing real work.
+The optimisation cannot choose among these readings; it can only
+report that the constraint binding on members 4 and 6 is the
+manufacturing floor, not strength, which is exactly the flag the
+engineer needs to ask the right follow-up question. This is the
+chapter's thesis in miniature: the optimiser solved the LP that was
+written down, and the engineering judgment lives in reading the
+active set and deciding whether the formulation captured every load
+case that matters. The full multi-load extension, in which each of
+several load cases contributes its own stress constraint per member
+and the area must satisfy the worst of them, stays an LP of the same
+shape with more constraint rows, and a runnable LP solve of the
+single-case problem with its shadow-price table is in
+\repopath{volumes/02-form/ch15-optimisation/code/truss_sizing_lp.py}.
 
 \section{Failure: local minima, ill-posed objectives, optimisation
 theatre}\pathtag{core}

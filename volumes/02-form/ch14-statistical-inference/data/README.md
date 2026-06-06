@@ -45,6 +45,27 @@ the arithmetic of the normal equations is tractable by hand and the
 residuals scatter without a systematic pattern, making the dataset
 a clean reference for `code/regression_diagnostics.py`.
 
+## `fatigue-sn.csv`
+
+The twenty-point fatigue dataset behind the end-to-end case study of
+section 14.7 (the worked case study). The columns are:
+
+| Column | Meaning | Units |
+|---|---|---|
+| `stress_amplitude_MPa` | Constant-amplitude stress | MPa |
+| `cycles_to_failure` | Cycles to failure | cycles |
+
+The data are simulated from a Basquin log-log model
+`log10(N) = 19.84 - 6.20 log10(S) + eps` with Gaussian log-scale
+noise of standard deviation about `0.115` and one deliberately
+heavier upper-tail point so the normal quantile-quantile diagnostic
+has something to show. The fit reproduces the chapter numbers:
+slope `-6.195` (Basquin exponent `m = 6.20`), `sigma = 0.115`,
+`Sxx = 0.100`, `R^2 = 0.94`, slope 95% CI `[-6.96, -5.44]`. At the
+query stress `260 MPa` the point life is `7.6e4` cycles with a 95%
+parametric prediction interval `[4.3e4, 1.3e5]` cycles. The reference
+implementation is `code/casestudy_fatigue.py`.
+
 ## Provenance
 
 Authors' synthetic data, generated 2026-05-16, seeded

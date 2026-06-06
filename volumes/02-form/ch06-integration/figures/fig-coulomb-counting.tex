@@ -1,0 +1,77 @@
+% Figure: Coulomb counting. Top panel shows the measured discharge
+% current (nominal 1.5 A with a load transient near t = 900 s); bottom
+% panel shows the running charge removed, the trapezoidal integral of
+% the current. Generated to match code/coulomb_counting.py and
+% data/coulomb_trace.csv. Time axis in 100 s units for readability.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}
+
+% Top panel: current trace. Nominal 1.5 A plus a Gaussian transient
+% of peak ~0.7 A centred at t = 900 s (= 9 in 100 s units), width 40 s.
+\begin{axis}[
+  name=cur,
+  width=11.5cm, height=4.2cm,
+  xlabel={},
+  ylabel={current $\abs{I}$ (A)},
+  xmin=0, xmax=18, ymin=0, ymax=2.6,
+  domain=0:18, samples=200,
+  axis lines=left, grid=both,
+  major grid style={engblack!12}, font=\small,
+  xticklabels={},
+  title={Measured discharge current},
+]
+\addplot[engblue, very thick] {1.5 + 0.7*exp(-((x-9)^2)/(2*0.4^2))};
+\addplot[engamber, thick, dashed, domain=0:18] {1.5};
+\node[font=\scriptsize, anchor=south west, engamber!80!black]
+  at (axis cs:0.3,1.55) {nominal $1.5\,$A};
+\node[font=\scriptsize, anchor=south, engblue]
+  at (axis cs:9,2.25) {load transient};
+\end{axis}
+
+% Bottom panel: running charge removed (coulombs). The integral of the
+% top panel: linear at slope 150 C per 100 s on the flat regions, with
+% an extra rise across the transient. Closed form of the cumulative
+% integral (current in A, time in 100 s units, so dt-factor = 100):
+%   Q(x) = 150 x + 100 * 0.7 * sqrt(2 pi) * 0.4 * 0.5 *
+%          (erf((x-9)/(0.4 sqrt2)) - erf((0-9)/(0.4 sqrt2)))
+% The erf term saturates to ~ 70.2 C across the transient. pgfplots has
+% no erf, so we approximate the saturating step with a logistic of
+% matched midpoint and total rise; visually indistinguishable here.
+\begin{axis}[
+  at={(cur.south)}, anchor=north, yshift=-10pt,
+  width=11.5cm, height=4.6cm,
+  xlabel={time $t$ (units of $100\,$s)},
+  ylabel={charge removed (C)},
+  xmin=0, xmax=18, ymin=0, ymax=2900,
+  domain=0:18, samples=200,
+  axis lines=left, grid=both,
+  major grid style={engblack!12}, font=\small,
+  title={Running charge $Q(t)=\int_{0}^{t}\abs{I}\,\dd\tau$
+    (trapezoidal)},
+]
+\addplot[engred, very thick]
+  {150*x + 70.2/(1 + exp(-(x-9)/0.42))};
+\node[font=\scriptsize, anchor=north west, engred]
+  at (axis cs:0.5,2750) {final $\approx 2.77\times 10^{3}\,$C
+    $=0.770\,$Ah};
+\end{axis}
+
+\end{tikzpicture}
+\caption[State of charge by Coulomb counting]{Coulomb counting on a
+$1800\,\si{\second}$ cell discharge. The top panel is the measured
+current: a nominal $1.5\,\si{\ampere}$ discharge (amber dashed) with a
+load transient peaking near $2.2\,\si{\ampere}$ around $t =
+900\,\si{\second}$. The bottom panel is the running charge removed, the
+trapezoidal integral of the current; its slope is the current, so the
+transient appears as a steepening of the otherwise straight
+accumulation. The integral reaches $2.77\times 10^{3}\,\si{\coulomb} =
+0.770\,\si{\ampere\hour}$, a $25.6\,\%$ drop on a
+$3.0\,\si{\ampere\hour}$ cell. The dominant error is not the
+$20\,\si{\milli\ampere}$ measurement noise, which the integral
+averages down to three parts in ten thousand, but the sensor offset,
+which integrates coherently and grows linearly with the integration
+window. The trace is reproduced by
+\texttt{code/coulomb\_counting.py}.}
+\label{fig:vol02:ch06:coulomb-counting}
+\end{figure}

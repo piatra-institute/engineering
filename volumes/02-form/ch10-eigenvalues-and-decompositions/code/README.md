@@ -14,6 +14,8 @@ listed in each file's header.
 | `pca_three_routes.py` | PCA computed three ways (covariance eigendecomposition, power iteration with deflation, SVD of the centred data matrix) with conditioning report and library comparison. | Chapter project. |
 | `markov_stationary.py` | Stationary distribution of a finite-state Markov chain by both eigendecomposition and direct power iteration; reports the mixing time from the second-largest eigenvalue. | Simulation exercise 4; section 10.5. |
 | `pagerank_small.py` | PageRank on the four-page web of section 10.6 by power iteration on the Google matrix, with dangling-node and teleportation corrections and a spectral-gap check. | Section 10.6 worked example; PageRank diagnosis exercise. |
+| `inverse_iteration.py` | Fixed-shift inverse iteration (eigenvalue nearest a shift) and Rayleigh-quotient iteration (cubic convergence on a symmetric matrix), reproducing the two worked examples in section 10.6. | Section 10.6 worked examples. |
+| `machine_reliability.py` | Five-state machine-reliability Markov chain: stationary distribution three ways (eigenvector, linear solve, power iteration), mixing time, long-run availability, and annual downtime cost. | Case study, section "machine availability as a steady-state problem". |
 
 ## Running
 

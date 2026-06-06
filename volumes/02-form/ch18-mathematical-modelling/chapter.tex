@@ -7,15 +7,18 @@ George Box (1976). The chapter takes the second half of the sentence as
 seriously as the first.}
 
 \chapmeta{Half-life: foundational. Archetypes: ethics (responsible
-modelling), uncertainty, scaling, balance. Exercise target: 25. Project
+modelling), uncertainty, scaling, balance, optimisation. Exercise target: 25. Project
 track: analysis only. Hazard class: none. Reader path default: standard,
 with sections explicitly tagged. Named cases: none in chapter prose; the
 recognition-level discussion in section 18.8 names financial and
 operational episodes without invoking the registry. Companion assets:
-\texttt{volumes/02-form/ch18-mathematical-modelling/figures/} (eleven
+\texttt{volumes/02-form/ch18-mathematical-modelling/figures/} (fourteen
 TikZ figures, including the Buckingham-Pi data collapse, the SIR
-compartment diagram, the Kleiber log-log scaling line, and the
-thermal-mass model-revision pair); \texttt{code/} (nine Python scripts:
+compartment diagram, the Kleiber log-log scaling line, the
+thermal-mass model-revision pair, the M/M/c queue state chain with its
+congestion nonlinearity, the queue prediction-versus-simulation and
+staffing-cost optimisation pair, and the model-selection penalised-fit
+curve); \texttt{code/} (nine Python scripts:
 cooling-cup fit, logistic
 fit, identifiability demonstration, bootstrap, cross-validation, overfit
 demonstration, Buckingham-Pi tool, sensitivity propagation, model
@@ -567,6 +570,43 @@ space-filling transport systems. The discipline is the one the chapter
 keeps returning to: a residual that survives a careful fit, here the gap
 between $2/3$ and $3/4$, is the next model's specification.
 
+\subsection{Worked case: the natural frequency of a cantilever}
+
+Dimensional analysis fixes the form of a scaling law before any dynamics
+are written, and a second worked case shows the move on a vibration
+problem the reader will meet again in Volume III. The fundamental natural
+frequency $f$ (dimension $\mathsf{T}^{-1}$) of a cantilever beam can
+depend on its length $L$ ($\mathsf{L}$), its cross-sectional area moment
+of inertia $I$ ($\mathsf{L}^4$), its Young's modulus $E$
+($\mathsf{M}\mathsf{L}^{-1}\mathsf{T}^{-2}$), and its mass per unit length
+$m$ ($\mathsf{M}\mathsf{L}^{-1}$). Five variables, three primary
+dimensions, so the Buckingham count gives $5 - 3 = 2$ dimensionless
+groups. Choosing $L$, $E$, $m$ as the repeating set and combining with $f$
+and with $I$ gives the groups
+\[
+\Pi_1 = f L^2 \sqrt{\frac{m}{E I_0}}, \qquad \Pi_2 = \frac{I}{L^4},
+\]
+where $I_0$ is any fixed reference inertia used to make $\Pi_1$
+dimensionless. Folding $\Pi_2$ back in, dimensional homogeneity forces
+\[
+f = \frac{\text{const}}{L^2}\sqrt{\frac{E I}{m}},
+\]
+and the dynamics (Euler-Bernoulli beam theory) supply only the
+dimensionless constant, $1.875^2/(2\pi) \approx 0.56$ for the fundamental
+mode. The structure, $f \propto L^{-2}$ and $f \propto \sqrt{EI/m}$, came
+from dimensions alone. The scaling consequence is immediate and
+counterintuitive: a beam scaled up geometrically by $\lambda$ in every
+dimension has $I \propto \lambda^4$, $m \propto \lambda^2$, and
+$L \propto \lambda$, so $f \propto \lambda^{-2}\sqrt{\lambda^4/\lambda^2} =
+\lambda^{-1}$. The larger structure rings at a lower frequency in inverse
+proportion to its size, which is why a large bell tolls deep and a small
+bell rings high, and why a scale model's vibration test must correct the
+measured frequency by $\lambda$ before it speaks to the full-size
+structure. A modeller who measured a model bridge's resonance and applied
+it to the prototype without the $\lambda^{-1}$ correction would predict
+the wrong resonant wind speed, the failure the scaling archetype warns
+against.
+
 \begin{estimation}
 \textbf{Question.} A model railway is built at $1{:}87$ scale (HO
 gauge). A real locomotive masses $120\,\text{t}$ and develops a
@@ -1069,6 +1109,40 @@ than full nonlinear coverage. The companion script
 the finite-difference sensitivities for any of the chapter's
 worked-example models.
 
+\begin{mastery}
+The local-derivative sensitivity of this section is the right tool when
+the model is smooth, the parameter intervals are small, and the engineer
+wants a rank order. Three situations break those conditions, and each has
+a standard heavier instrument. When the model is nonlinear and the
+parameter intervals are wide, the first-order propagation
+$\Var(y) = \sum S_i^2 \Var(\theta_i)$ understates the true output spread,
+and the engineer turns to \engterm{Monte-Carlo uncertainty
+quantification}: draw thousands of parameter vectors from their joint
+distribution, run the model on each, and report the empirical distribution
+of $y$ directly. The method makes no linearity assumption and captures the
+full output distribution, including its skew and its tails, at the cost of
+many model evaluations. When the engineer needs not just the output spread
+but the share of it each parameter causes, including the share carried by
+interactions the tornado diagram cannot show, the \engterm{Sobol indices}
+decompose the output variance into contributions from each parameter and
+each combination, the global, model-free generalisation of the relative
+sensitivity, which Saltelli's primer
+\cite{text:v2ch18-saltelli-sensitivity-2008} treats in full. When each
+model evaluation is expensive, a finite-element run of hours or a field
+trial of weeks, the Monte-Carlo and Sobol calculations become
+unaffordable, and the engineer fits a \engterm{surrogate model}: a cheap
+approximation (a polynomial response surface, a Gaussian-process emulator)
+trained on a modest design of expensive runs and then queried thousands of
+times in their place. The surrogate is itself a model, with its own
+identification, validation, and domain of validity, and the discipline of
+this chapter applies to it unchanged: a surrogate trusted outside the
+design region from which it was trained is the regime-extension fallacy
+wearing a faster coat. The progression from local derivative to
+Monte-Carlo to surrogate-accelerated global analysis is a progression in
+cost and in fidelity, and the modeller's judgement is to climb it only as
+far as the decision requires.
+\end{mastery}
+
 \subsection{The estimate as part of a working report}
 
 A modelling report includes, for each parameter, the point
@@ -1168,6 +1242,57 @@ fits. David MacKay's \emph{Sustainable Energy: Without the Hot Air}
 energy questions: the same quantity, computed by independent
 back-of-envelope routes, becomes a triangulated estimate whose
 disagreement is itself the report.
+
+\subsection{Model selection: choosing among candidates by penalised fit}
+
+Triangulation reports the disagreement among models; selection chooses
+one. When the candidates are nested in complexity, a polynomial of
+increasing degree, a compartment model of increasing compartment count, a
+regression with increasing covariates, the choice is governed by a
+trade-off the chapter has named in pieces and now states whole. A richer
+model always fits the training data at least as well, because the simpler
+model is a special case the richer one can reproduce. The training
+residual therefore falls monotonically with complexity and cannot, by
+itself, select a model; a rule that minimised training residual would
+always choose the most complex candidate and overfit.
+
+The selection rule penalises complexity. The \engterm{Akaike information
+criterion} adds to the negative log-likelihood a penalty of $2p$ for a
+model with $p$ free parameters; the \engterm{Bayesian information
+criterion} uses a penalty of $p \ln n$ that grows with the sample size
+$n$ and so favours simpler models more strongly in large samples. Both
+turn the monotone training curve into a U-shape with an interior minimum,
+the simplest model whose added parameters still buy enough fit to pay for
+their penalty. Cross-validation reaches the same end by a different route,
+estimating held-out performance directly rather than penalising parameter
+count, and on most problems the two agree on where the optimum sits even
+when they disagree on the score.
+Figure~\ref{fig:vol02:ch18:model-selection} shows the three curves
+together: the training residual falling toward zero, the penalised and
+held-out scores turning over at the optimum $p^\star$, the underfit regime
+to its left and the overfit regime to its right.
+
+The worked instance is the cooling cup. The Newton's-law model has one
+parameter ($k$); a two-term model adding a radiative correction has two; a
+three-term model adding an evaporative loss has three. Fitting all three
+to the thirty-point notebook, the training residual falls from one model
+to the next, as it must. The AIC, computed as $n \ln(\text{RSS}/n) + 2p$,
+is lowest for the two-parameter model on a hot-start notebook (the
+radiative term earns its parameter) but lowest for the one-parameter model
+on a notebook that never exceeded $50\,\degC$ excess (the radiative term
+is below the noise, and its parameter is not paid for). The criterion
+encodes the chapter's Rule Five mechanically: the simplest model that
+answers the question is the simplest model the data can distinguish from
+its richer rivals, and AIC names that model by number rather than by
+judgement. Box's response-surface monograph
+\cite{text:v2ch18-box-empirical-1987} and the statistical-learning text
+\cite{text:v2ch18-hastie-statistical-learning-2009} treat the
+information-criterion and cross-validation machinery in the depth the
+working engineer occasionally needs; the chapter's claim is the narrow
+one that selection must read the optimum off a complexity-penalised curve,
+never off the training residual.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-model-selection.tex}
 
 \input{volumes/02-form/ch18-mathematical-modelling/figures/fig-triangulation.tex}
 
@@ -1650,6 +1775,271 @@ a reader heating from a cold start in winter sun would find its
 residuals carrying a daily structure that demands a solar-gain term. The
 cycle never closes permanently. It closes well enough for the question,
 which is the only standard a model is ever held to.
+
+\section{Worked example, in full: staffing a service under random demand}\pathtag{standard}
+
+The two thermal examples ran the cycle on deterministic models, where the
+randomness lived only in the measurement noise and the model itself was a
+differential equation with a definite solution. A large class of
+engineering questions has randomness in the system, not merely in the
+instrument: customers arrive at a clinic at unpredictable instants, jobs
+hit a server in bursts, parts reach an inspection station at a rate that
+fluctuates around its mean. The quantity the engineer must predict, the
+time a customer waits, is itself a random variable, and the model that
+predicts it is a stochastic model. We work a staffing problem at full
+length because it exercises a modelling archetype the chapter has not yet
+touched, the discrete-event queue, and because it closes the loop in a way
+the deterministic examples could not: the analytic model is validated
+against a Monte-Carlo simulation of the same random process, two
+independent computations of the same quantity that must agree or expose an
+error. The example reaches across the volume: the probability of Chapter
+14 supplies the arrival and service distributions, the linear algebra of
+Chapter 10 solves for the steady state of the underlying Markov chain, the
+optimisation of Chapter 11 finds the staffing level that minimises total
+cost, and the numerical methods of Chapter 16 drive both the
+transcendental Erlang formula and the simulation.
+
+\subsection{The question and the data}
+
+A walk-in clinic staffs a number of identical service desks. Patients
+arrive without appointments; each desk serves one patient at a time; a
+patient who finds every desk busy waits in a single shared line. The
+engineering question is operational and has a cost attached: how many
+desks $c$ should the clinic staff so that the expected wait stays below a
+service target of five minutes, and what staffing level minimises the sum
+of labour cost and the cost of patients' waiting time? The answer must be
+an integer (a desk is staffed or it is not) and must be defensible to a
+clinic manager who pays the wages and answers for the complaints.
+
+The data are an arrival log and a service log. Over a representative busy
+period, the clinic records the instant each patient arrives and the
+duration of each service. A morning's log gives $480$ arrivals over four
+hours, a mean arrival rate of $\lambda = 2$ patients per minute, and a
+mean service duration of $\bar s = 1.5$ minutes per patient, so a single
+desk serves at rate $\mu = 1/\bar s \approx 0.667$ patients per minute.
+The logs also record the full distribution of inter-arrival gaps and of
+service durations, because the distributions, not just their means, are
+the modelling content.
+
+\subsection{First candidate: the M/M/c queue}
+
+The abstraction discipline of section 18.2 names the question first
+(expected wait as a function of staffing) and then the dominant scales.
+The dimensionless group that governs every queue is the
+\engterm{utilisation} $\rho = \lambda/(c\mu)$, the fraction of the total
+service capacity the arrivals consume. A system with $\rho \ge 1$ has
+arrivals faster than the desks can clear them and its queue grows without
+bound; a system with $\rho < 1$ reaches a statistical steady state. The
+group is the queue's Reynolds number, the single ratio whose value
+decides which regime the system occupies, and the engineer estimates it
+before any equation: with $\lambda = 2$ and $\mu = 0.667$, a single desk
+gives $\rho = 3$, hopelessly overloaded, and stability requires at least
+$c = 4$ desks, where $\rho = 2/(4 \times 0.667) = 0.75$.
+
+The simplest model that answers the question treats the arrivals as a
+Poisson process (independent arrivals at constant average rate) and the
+service durations as exponentially distributed (memoryless service), with
+$c$ identical desks. This is the M/M/c queue, the two M's naming the
+Markov (memoryless) arrival and service processes. The memorylessness is
+the load-bearing assumption, and it is exactly what makes the model
+tractable: the number of patients in the system is a continuous-time
+Markov chain, the birth-death chain of
+figure~\ref{fig:vol02:ch18:queue-state}(a), whose steady-state occupancy
+probabilities $p_n$ satisfy the cut-balance relations $\lambda p_{n-1} =
+\min(n, c)\,\mu\, p_n$. Solving the chain, a linear-algebra computation of
+exactly the kind Chapter 10 performs on any transition operator, gives the
+Erlang C formula for the probability that an arriving patient must wait,
+\[
+P_{\text{wait}}
+  = \frac{\dfrac{(c\rho)^c}{c!}\dfrac{1}{1-\rho}}
+         {\displaystyle\sum_{n=0}^{c-1}\frac{(c\rho)^n}{n!}
+          + \frac{(c\rho)^c}{c!}\frac{1}{1-\rho}},
+\]
+and the mean wait in queue follows from it as
+\[
+W_q = \frac{P_{\text{wait}}}{c\mu - \lambda}.
+\]
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-queue-state.tex}
+
+Two structural facts are available before any data are fit, and both come
+from the dimensionless group rather than from numerical work. First,
+\engterm{Little's law}, $L = \lambda W$, relates the mean number in system
+$L$ to the mean time in system $W$ through the arrival rate alone; it holds
+for any stable queue regardless of the arrival or service distribution,
+and it gives the engineer a conservation-law check on any predicted pair
+$(L, W)$. Second, the congestion nonlinearity of
+figure~\ref{fig:vol02:ch18:queue-state}(b): $W_q$ grows as
+$\rho/(1-\rho)$, mild while $\rho$ is below about $0.7$ and divergent as
+$\rho \to 1$. The nonlinearity is why the model is worth building. A
+planner who reasons about the mean load alone would note that four desks
+have spare capacity ($\rho = 0.75$) and stop; the queue model shows that
+$\rho = 0.75$ already sits on the shoulder of the blow-up, and the wait is
+sensitive to one desk more or less in a way no mean-load argument reveals.
+
+\subsection{Identification of the model}
+
+The M/M/c model has no free parameters to fit once $\lambda$, $\mu$, and
+$c$ are known: $\lambda$ and $\mu$ are estimated directly from the logs as
+sample means, and $c$ is the decision variable. The identification work
+is therefore the identification of the rate parameters and, more
+importantly, the validation of the two distributional assumptions the
+model rests on. The mean arrival rate is $\hat\lambda = 2.0$ per minute
+with a Poisson sampling interval of roughly $\pm 0.09$ from the
+$480$-arrival count ($\hat\lambda \pm \sqrt{\hat\lambda/T}$). The mean
+service rate is $\hat\mu = 0.667$ per minute with an interval set by the
+service-duration sample.
+
+The distributional check is the part a careless modeller skips. For the
+arrival process to be Poisson, the inter-arrival gaps must be exponential,
+which the engineer checks by plotting the empirical gap distribution
+against the exponential on a log scale (an exponential is a straight line
+on a log-survival plot) or by a Kolmogorov-Smirnov test of the kind
+Chapter 14 supplies. For the service to be exponential, the same check
+applies to the service durations. The clinic's arrival gaps pass the
+check well, as walk-in arrivals from a large independent population
+genuinely are close to Poisson. The service durations do not: their
+histogram is far less dispersed than an exponential, with a coefficient of
+variation near $0.5$ rather than the exponential's $1.0$, because a
+consultation has a typical length and rarely runs to many multiples of it.
+The residual that the deterministic examples found in a time-series plot,
+the queue model finds in a distribution-shape mismatch, and it is the same
+kind of evidence: the data refuse the model's assumption, and the refusal
+specifies the revision.
+
+\subsection{Validation against a Monte-Carlo simulation}
+
+Before revising, the engineer validates the M/M/c model as it stands,
+because a model that cannot reproduce its own assumptions' consequences
+has a coding error, not a modelling error, and the two must be separated.
+The validation tool for a stochastic model is a \engterm{discrete-event
+simulation}: a program that draws inter-arrival gaps and service durations
+from the assumed distributions, advances an event clock from one arrival
+or departure to the next, and records the wait each simulated patient
+experiences. Averaging the waits over a long run, and over many replicated
+runs to quantify the sampling spread, gives a Monte-Carlo estimate of
+$W_q$ that depends on no closed-form formula. The simulation and the
+Erlang C formula are two independent computations of the same quantity:
+if they agree, both are trustworthy in their shared domain; if they
+disagree, one has an error to find.
+
+Figure~\ref{fig:vol02:ch18:queue-validation}(a) shows the agreement. The
+analytic $W_q(c)$ curve falls within the simulation's standard-error bars
+at every staffing level from $c = 3$ to $c = 7$, across $40$ replicated
+runs of $10{,}000$ patients each. The validation is the cross-check the
+deterministic examples got from held-out data: here the held-out evidence
+is a second, structurally independent route to the same number. The
+agreement also calibrates the simulation itself, so that when the engineer
+later runs the simulation with the non-exponential service the formula
+cannot handle, the simulation is already trusted.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-queue-validation.tex}
+
+\subsection{Revision: the service distribution the data demanded}
+
+The distribution check refused the exponential service. The revision is
+the M/G/c queue, where the G (general) service distribution carries the
+measured coefficient of variation $c_s \approx 0.5$ rather than the
+exponential's $1.0$. No simple closed form gives the exact wait for M/G/c,
+but the Allen-Cunneen approximation corrects the Erlang C wait by the
+variability factor $(c_a^2 + c_s^2)/2$, where $c_a$ is the arrival-gap
+coefficient of variation (near $1$ for the Poisson arrivals) and $c_s$ the
+service coefficient of variation. With $c_s = 0.5$ the factor is
+$(1 + 0.25)/2 = 0.625$, so the M/M/c wait overstates the true wait by
+about a third: the exponential model, by assuming service is more variable
+than it is, predicts more congestion than the clinic actually suffers. The
+discrete-event simulation, rerun with service durations drawn from the
+measured distribution rather than an exponential, confirms the correction
+directly, and the two revised routes again agree.
+
+The revision changes the engineering answer. At $c = 4$ desks, the M/M/c
+model predicts $W_q \approx 1.4$ minutes; the M/G/c revision predicts
+$W_q \approx 0.9$ minutes. Both clear the five-minute target, so for the
+target question the simpler model would not have misled. The revision
+matters for the cost optimisation, where a third less waiting time shifts
+the balance between labour cost and waiting cost and can move the optimal
+staffing by a full desk.
+
+\subsection{The optimisation, and the prediction}
+
+The staffing decision is an optimisation, the discrete analogue of the
+first-order conditions Chapter 11 derives for smooth objectives. The total
+hourly cost is the sum of a labour cost, $c \cdot w$ for wage rate $w$,
+and a waiting cost, $\lambda \cdot W_q(c) \cdot \kappa$, where $\kappa$
+prices a patient-minute of waiting. Labour cost rises linearly in $c$;
+waiting cost falls convexly as the congestion nonlinearity eases. Their
+sum is U-shaped, with an interior minimum at the staffing level $c^\star$
+where the marginal labour cost of one more desk equals the marginal
+waiting cost it removes
+(figure~\ref{fig:vol02:ch18:queue-validation}(b)). Because $c$ is an
+integer, the optimisation is a one-dimensional search over a handful of
+values rather than a calculus problem, and the engineer evaluates the
+total cost at $c = 4, 5, 6$ and reads off the minimum. With a wage of
+\$30 per hour and a waiting cost of \$1 per patient-minute, the M/G/c
+model places $c^\star = 4$ at the morning peak, with $c = 5$ a close and
+more conservative second that buys headroom against demand surges.
+
+The prediction the engineer reports carries an interval, and the interval
+has two sources the chapter has named throughout. The parameter
+uncertainty propagates the sampling intervals on $\hat\lambda$ and
+$\hat\mu$ through the Erlang formula. The structural uncertainty is larger
+and is the honest part of the report: the model assumes a stationary
+arrival rate, but a real clinic has a morning peak and a midday lull, so a
+single $\rho$ understates the worst-hour congestion. The discipline of
+section 18.5 applies. The engineer reports the staffing recommendation
+peak-hour by peak-hour rather than as a single daily number, states that
+the stationary model is validated only within a peak-load window, and
+notes the regime, a demand surge or a desk going offline, in which the
+recommendation would need re-running.
+
+\subsection{The look-back and the lesson}
+
+Does the result use all the data? Yes; the rate parameters came from the
+full log and the distribution shapes from the full samples. Does it
+explain what the first model could not? Yes; the service-distribution
+mismatch was the residual, and the M/G/c variability factor is the term
+the residual demanded. Does it admit an independent check? Yes, twice: the
+discrete-event simulation validated the analytic formula, and Little's law
+gives a conservation check on the predicted $(L, W)$ pair. Does the model
+survive hostile review within its domain (a single peak-load window,
+stationary arrivals, a shared queue, identical desks, no patient
+abandonment)? Yes, and the domain statement names the regimes (time-varying
+demand, patients who leave when the line is long, priority triage) where a
+richer model would be needed.
+
+The lesson generalises the deterministic examples to the stochastic case.
+The randomness in a queue lives in the system, so the model is a
+distribution rather than a number, and the validation tool is a second
+independent computation, the Monte-Carlo simulation, rather than a
+held-out data set. The discipline is unchanged: name the question, choose
+the simplest model, check its assumptions against the data, validate it
+against an independent route, read the residual (here the
+distribution-shape mismatch), let it specify the revision, and report the
+prediction with an interval that exposes the structural uncertainty the
+stationary assumption hides.
+
+\begin{mastery}
+The discrete-event simulation and the Erlang formula are an instance of a
+distinction the chapter has used implicitly and is worth naming:
+\engterm{verification} versus \engterm{validation}. Verification asks
+whether the model is solved correctly, that the code computes what the
+equations say; validation asks whether the equations describe the world.
+The simulation-versus-formula agreement of
+figure~\ref{fig:vol02:ch18:queue-validation}(a) is a verification: both
+compute the M/M/c wait, so their agreement says the implementations are
+correct, not that the M/M/c model fits the clinic. The
+distribution-shape check against the service log is the validation: it
+compares the model's assumption to the world and finds it wanting. A
+modeller who confuses the two reports a verified model as a validated one,
+the most common form of misplaced confidence in computational work. The
+rule is mechanical: agreement between two computations of the same model
+verifies; agreement between the model and held-out data from the system
+validates; only the second licenses a prediction about the world. The
+aerospace and nuclear communities, where a wrong simulation costs lives,
+codified the separation into formal verification-and-validation standards,
+and the engineering reader takes from them the habit of labelling every
+cross-check as one or the other before trusting it.
+\end{mastery}
 
 \section{Worked example: a biological system, a financial system, a structural system}\pathtag{standard}
 

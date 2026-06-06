@@ -62,6 +62,43 @@ def crc8(data: bytes, poly: int = 0x07) -> int:
     return crc
 
 
+# Parity-check matrix for Hamming(7,4): column j is the binary number j.
+# Position order (p1, p2, d1, p3, d2, d3, d4) = positions 1..7.
+_H = (
+    (0, 0, 0, 1, 1, 1, 1),
+    (0, 1, 1, 0, 0, 1, 1),
+    (1, 0, 1, 0, 1, 0, 1),
+)
+
+
+def hamming74_encode(data: tuple[int, int, int, int]) -> list[int]:
+    """Encode 4 data bits (d1,d2,d3,d4) into a 7-bit Hamming codeword.
+
+    Returns the codeword in position order (p1,p2,d1,p3,d2,d3,d4).
+    """
+    d1, d2, d3, d4 = data
+    p1 = d1 ^ d2 ^ d4
+    p2 = d1 ^ d3 ^ d4
+    p3 = d2 ^ d3 ^ d4
+    return [p1, p2, d1, p3, d2, d3, d4]
+
+
+def hamming74_syndrome(received: list[int]) -> int:
+    """Return the syndrome of a received 7-bit vector as an integer 0..7."""
+    s = [sum(_H[r][j] * received[j] for j in range(7)) % 2 for r in range(3)]
+    return (s[0] << 2) | (s[1] << 1) | s[2]
+
+
+def hamming74_decode(received: list[int]) -> list[int]:
+    """Correct a single-bit error (if any) and return the 7-bit codeword."""
+    syndrome = hamming74_syndrome(received)
+    corrected = list(received)
+    if syndrome != 0:
+        # Syndrome is the 1-based position of the flipped bit.
+        corrected[syndrome - 1] ^= 1
+    return corrected
+
+
 if __name__ == "__main__":
     # A canonical Luhn test number (passes) and a single-digit error (fails).
     print(f"79927398713 valid (Luhn): {luhn_is_valid('79927398713')}")
@@ -76,3 +113,22 @@ if __name__ == "__main__":
     corrupt = b"enginaering"
     print(f"CRC-8('{msg.decode()}') = 0x{crc8(msg):02X}")
     print(f"CRC-8('{corrupt.decode()}') = 0x{crc8(corrupt):02X} (detects flip)")
+
+    # Hamming(7,4): single-error recovery and double-error mis-correction.
+    word = hamming74_encode((1, 0, 1, 1))
+    assert word == [0, 1, 1, 0, 0, 1, 1], word
+    assert hamming74_syndrome(word) == 0
+    # Flip position 5 (index 4): syndrome must read 5, decode recovers word.
+    r = list(word)
+    r[4] ^= 1
+    assert hamming74_syndrome(r) == 5
+    assert hamming74_decode(r) == word
+    print(f"Hamming(7,4) single-bit error at pos 5 corrected: {hamming74_decode(r) == word}")
+    # Flip positions 5 and 6 (indices 4,5): syndrome reads 3, mis-corrects.
+    r2 = list(word)
+    r2[4] ^= 1
+    r2[5] ^= 1
+    assert hamming74_syndrome(r2) == 3
+    mis = hamming74_decode(r2)
+    assert mis != word and mis != r2
+    print(f"Hamming(7,4) double-bit error mis-corrected (syndrome=3): {mis}")

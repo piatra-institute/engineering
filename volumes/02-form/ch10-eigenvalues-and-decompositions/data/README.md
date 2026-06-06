@@ -9,6 +9,7 @@ examples, and project.
 |---|---|---|---|
 | `synth_pca_dataset.csv` | Synthesised by the project editor with a planted rank-2 structure on five features plus small noise. | 2026 | Chapter project (PCA from scratch), as a debugging dataset where the principal directions are known a priori. |
 | `three_mass_modal.csv` | Computed by the editor from the closed-form modal solution of three equal masses, four equal springs of stiffness $k$, between walls. | 2026 | Section 10.8 modal analysis worked example; Diagnosis exercise on near-degenerate modes. |
+| `machine_reliability_chain.csv` | Synthesised by the editor as an illustrative shift-to-shift transition matrix for a single bottleneck machine across five operating states. | 2026 | Case study (machine availability as a steady-state problem); `code/machine_reliability.py`. |
 
 ## Provenance
 

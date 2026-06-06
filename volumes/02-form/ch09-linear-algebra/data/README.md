@@ -6,6 +6,7 @@ Files
 |---|---|---|
 | `temperature-sample.csv` | A noisy sinusoidal temperature trace ($m = 60$ daily means, generated as $y_i = 15 + 8\sin(2\pi (i-1)/365) + \epsilon_i$ with $\epsilon_i \sim \mathcal{N}(0, 1.2^2)$ and seed $42$). Stands in for a real daily-temperature record while remaining reproducible without external network access. | `code/least_squares_three_ways.py` default input; project block reference dataset. |
 | `drag-fit.csv` | Five wind-tunnel drag measurements $(v\,[\mathrm{m/s}], F\,[\mathrm{N}])$ used in the section 9.6 worked quadratic-drag fit. Columns `v,F`. The least-squares quadratic returns $\hat{c}\approx(0.38, -0.032, 0.0206)$, with $\kappa(\mathbf{V})\approx 6.7\times10^3$ and $\kappa(\mathbf{V}^\top\mathbf{V})\approx 4.5\times10^7$. | Section 9.6 quadratic-drag worked example; `code/least_squares_three_ways.py`. |
+| `leveling-network.csv` | Five spirit-levelling runs over four benchmarks ($A$ fixed at $100.000$ m), columns `from,to,observed_diff_m,run_length_km`. Adjusted heights $\hat{H}_B=105.203$, $\hat{H}_C=102.237$, $\hat{H}_D=102.976$ m; the $B\to D$ run carries a $+0.72$ m residual (deliberate blunder) that the adjustment localises. | Section 9.6 levelling worked case study; `code/leveling_adjustment.py`. |
 
 Format
 

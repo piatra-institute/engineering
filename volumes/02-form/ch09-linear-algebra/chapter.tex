@@ -550,6 +550,66 @@ generalises: whenever the matrix is fixed and only the right-hand
 side changes, factor once and back-solve many times.
 \end{example}
 
+\subsection{Cholesky factorisation}
+
+When the matrix is symmetric positive definite, the factorisation
+specialises. \engterm{Cholesky factorisation} writes such a matrix as
+$\mat{A} = \mat{L}\mat{L}^{\transpose}$, with $\mat{L}$ lower
+triangular and positive diagonal. The symmetry halves the work to
+$\tfrac{1}{3}n^{3}$ flops, no pivoting is needed (positive
+definiteness guarantees positive pivots), and the algorithm doubles
+as a definiteness test: it runs to completion exactly when the matrix
+is positive definite, and it fails at the first non-positive pivot
+otherwise. Symmetric positive-definite matrices are the common case
+in engineering, arising from every least-squares Gram matrix
+(section 9.6), every elastic stiffness matrix (Volume III), and every
+grounded network Laplacian (the resistor case above), so Cholesky is
+the factorisation an engineer reaches for first whenever symmetry and
+positive definiteness are in hand.
+
+\begin{example}[Cholesky by hand]
+Factor $\mat{A} = \begin{psmallmatrix} 4 & 2 & 2 \\ 2 & 5 & 3 \\ 2 &
+3 & 6 \end{psmallmatrix}$. The algorithm fills $\mat{L}$ column by
+column. The first diagonal is $L_{11} = \sqrt{4} = 2$; the rest of
+column one is $L_{21} = 2/2 = 1$ and $L_{31} = 2/2 = 1$. The second
+diagonal subtracts the squared entries already placed in its row:
+$L_{22} = \sqrt{5 - 1^{2}} = 2$, and $L_{32} = (3 - L_{31}L_{21})/
+L_{22} = (3 - 1)/2 = 1$. The third diagonal is $L_{33} = \sqrt{6 -
+L_{31}^{2} - L_{32}^{2}} = \sqrt{6 - 1 - 1} = 2$. The factor is
+\[
+\mat{L} = \begin{pmatrix} 2 & 0 & 0 \\ 1 & 2 & 0 \\ 1 & 1 & 2
+\end{pmatrix}, \qquad \mat{L}\mat{L}^{\transpose} = \mat{A}.
+\]
+Every diagonal square root took the root of a positive number, which
+is the running certificate that $\mat{A}$ is positive definite. Had
+any radicand come out non-positive, the matrix would have been
+indefinite and the factorisation would have stopped, the cheapest
+positive-definiteness test available. Solving $\mat{A}\vect{x} =
+\vect{b}$ then forward-solves $\mat{L}\vect{y} = \vect{b}$ and
+back-solves $\mat{L}^{\transpose}\vect{x} = \vect{y}$, two triangular
+solves on the one factor.
+\end{example}
+
+\begin{example}[Iterative refinement recovers lost digits]
+A direct solve in finite precision returns $\hat{\vect{x}}$ with a
+residual $\vect{r} = \vect{b} - \mat{A}\hat{\vect{x}}$ that is small
+but nonzero. The residual carries information: the error $\vect{e} =
+\vect{x} - \hat{\vect{x}}$ satisfies $\mat{A}\vect{e} = \vect{r}$
+exactly, the same system with a new right-hand side. \engterm{Iterative
+refinement} computes $\vect{r}$ (ideally in higher precision), solves
+$\mat{A}\vect{\delta} = \vect{r}$ by reusing the existing LU or
+Cholesky factors at $O(n^{2})$ cost, and updates $\hat{\vect{x}}
+\leftarrow \hat{\vect{x}} + \vect{\delta}$. For a matrix with
+$\kappa(\mat{A}) = 10^{8}$, a first solve in double precision yields
+about eight correct digits; one refinement step with the residual
+formed in extended precision typically recovers a further several
+digits at a cost far below a fresh factorisation. The technique is
+the cheap insurance for a moderately ill-conditioned solve, and it is
+the reason LU and Cholesky reuse (the previous subsection) pays a
+second dividend: the factors that solve the system also drive the
+refinement that sharpens it.
+\end{example}
+
 \subsection{Worked example}
 
 Consider the system
@@ -728,6 +788,39 @@ factorisation: $\det \mat{A} = \det \mat{P}^{-1} \cdot \det \mat{L}
 where $\mat{P}^{-1}$'s determinant is $+1$ or $-1$ depending on the
 parity of the row swaps. The cost is the LU cost: $\tfrac{2}{3}n^{3}$
 flops, the same as solving a system.
+
+\begin{example}[A $4 \times 4$ determinant by elimination]
+The cofactor expansion of a $4 \times 4$ determinant costs $24$
+products by the permutation formula and is error-prone by hand;
+elimination is faster and is the method that scales. Take
+\[
+\mat{A} = \begin{pmatrix}
+2 & 1 & 0 & 0 \\
+1 & 2 & 1 & 0 \\
+0 & 1 & 2 & 1 \\
+0 & 0 & 1 & 2
+\end{pmatrix},
+\]
+the tridiagonal matrix that appears in every one-dimensional
+finite-difference scheme. Eliminate column by column, recording each
+pivot. Row 2 minus $\tfrac{1}{2}$ row 1 gives a $(2,2)$ pivot of
+$2 - 1/2 = 3/2$. Row 3 minus $\tfrac{1}{(3/2)} = \tfrac{2}{3}$ times
+the new row 2 gives a $(3,3)$ pivot of $2 - 2/3 = 4/3$. Row 4 minus
+$\tfrac{1}{(4/3)} = \tfrac{3}{4}$ times the new row 3 gives a $(4,4)$
+pivot of $2 - 3/4 = 5/4$. No row swaps occurred, so $\det \mat{A}$ is
+the product of the pivots,
+\[
+\det \mat{A} = 2 \cdot \tfrac{3}{2} \cdot \tfrac{4}{3} \cdot
+\tfrac{5}{4} = 5.
+\]
+The pivots telescope, $2 \cdot \tfrac{3}{2} \cdot \tfrac{4}{3} \cdot
+\tfrac{5}{4} = 5$, which is the general pattern for the $n \times n$
+version of this matrix: its determinant is $n + 1$. The positivity of
+every pivot is also the certificate that $\mat{A}$ is positive
+definite, the property the Cholesky example of section 9.3 exploited
+and the property that makes the finite-difference matrix solvable by
+the cheap factorisation.
+\end{example}
 
 \subsection{Properties used in practice}
 
@@ -921,6 +1014,31 @@ and $\R^{3}$. The angle is a working notion of \emph{how far} two
 directions disagree, and it underwrites the projection formulas of
 section 9.6.
 
+\begin{example}[Orthogonality in a function space]
+The inner-product machinery is identical when the vectors are
+functions. On the interval $[-1, 1]$, take the $L^{2}$ inner product
+$\inner*{f, g} = \int_{-1}^{1} f(x) g(x)\,\dd x$. The monomials
+$1$, $x$, $x^{2}$ are independent but not orthogonal: $\inner*{1, x^{2}}
+= \int_{-1}^{1} x^{2}\,\dd x = 2/3 \neq 0$. Apply Gram-Schmidt. The
+first vector is $p_{0} = 1$, with $\norm{p_{0}}^{2} = \int_{-1}^{1}
+\dd x = 2$. The second: $\inner*{x, 1} = \int_{-1}^{1} x\,\dd x = 0$,
+so $x$ is already orthogonal to $1$, and $p_{1} = x$, with
+$\norm{p_{1}}^{2} = \int_{-1}^{1} x^{2}\,\dd x = 2/3$. The third:
+subtract the components of $x^{2}$ along $p_{0}$ and $p_{1}$. The
+$p_{1}$ component vanishes by symmetry ($\int_{-1}^{1} x^{3}\,\dd x =
+0$); the $p_{0}$ component is $\inner*{x^{2}, 1}/\norm{p_{0}}^{2} =
+(2/3)/2 = 1/3$, so $p_{2} = x^{2} - 1/3$. These are the Legendre
+polynomials up to normalisation. The orthogonality the construction
+forces, $\inner*{p_{i}, p_{j}} = 0$ for $i \neq j$, is exactly the
+property that makes the Legendre basis well conditioned for
+polynomial fitting where the monomial basis fails (section 9.7). The
+finite-dimensional Gram-Schmidt of the previous example and this
+infinite-dimensional one are the same arithmetic; the sum over
+components becomes an integral, and nothing else changes. The
+spectral methods of Volume IV and the orthogonal-function expansions
+of Chapter 16 run on this identity.
+\end{example}
+
 \section{Projection, least squares}\pathtag{core}
 
 A linear system $\mat{A}\vect{x} = \vect{b}$ may have no exact
@@ -1110,6 +1228,207 @@ reports the three condition numbers; the dataset is recorded in
 raw airspeeds and the Gram conditioning passes $10^{15}$, the regime
 section 9.7 tells the engineer to refuse.
 
+\subsection{Worked case study: adjusting a spirit-levelling network}
+
+The drag fit had one independent variable and a single response. A
+larger and more representative least-squares problem has a network
+structure: many measurements constrain a few unknowns through an
+incidence pattern, the measurements disagree, and the engineer must
+both estimate the unknowns and decide which measurements to trust.
+Surveying supplies the cleanest example, and the apparatus that
+solves it is the same apparatus a structural analysis, a sensor
+fusion, or a circuit solve uses. We carry one network from field
+sheet to adjusted heights to a flagged blunder.
+
+\paragraph{The measurements.}
+A survey crew runs a spirit level between four benchmarks. Benchmark
+$A$ is a national datum mark whose height is known and fixed,
+$H_{A} = 100.000\,\si{\meter}$. The heights of $B$, $C$, and $D$ are
+unknown. Each levelling run measures a height \emph{difference}
+between two benchmarks, not an absolute height; a run from $P$ to $Q$
+returns $\ell = H_{Q} - H_{P}$ plus measurement noise. The crew
+records five runs, listed in Figure~\ref{fig:vol02:ch09:leveling-network}:
+\[
+\begin{array}{llr}
+A \to B: & \ell_{1} = +5.10 & \text{(1 km)} \\
+A \to C: & \ell_{2} = +2.34 & \text{(1 km)} \\
+B \to C: & \ell_{3} = -2.81 & \text{(2 km)} \\
+C \to D: & \ell_{4} = +0.92 & \text{(1 km)} \\
+B \to D: & \ell_{5} = -2.95 & \text{(4 km)}
+\end{array}
+\]
+Three unknowns, five observations: the network is overdetermined by
+two, and the two redundant measurements are the loop closures.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-leveling-network.tex}
+
+\paragraph{The misclosures, read before any algebra.}
+The estimation habit of this book asks for the loop misclosures
+before the normal equations. The loop $A \to B \to C$ should return
+to the same height the direct run $A \to C$ reports:
+$\ell_{1} + \ell_{3}$ against $\ell_{2}$ gives $5.10 - 2.81 - 2.34
+= -0.05\,\si{\meter}$, a $5\,\si{\centi\meter}$ misclosure over
+$4\,\si{\kilo\meter}$ of levelling, within the tolerance of ordinary
+work. The loop $B \to D \to C$ closes through $\ell_{5}$, the reverse
+of $\ell_{4}$, and the reverse of $\ell_{3}$: $\ell_{5} - \ell_{4}
+- \ell_{3} = -2.95 - 0.92 + 2.81 = -1.06\,\si{\meter}$. A
+$1.06\,\si{\meter}$ misclosure is a blunder, not noise. One of the
+three runs in that loop carries a gross error, and the longest, the
+$4\,\si{\kilo\meter}$ run $B \to D$, is the first suspect. The
+adjustment will assign the residual; the misclosure already tells the
+crew where to look.
+
+\paragraph{The linear model.}
+With $A$ fixed, the unknown vector is $\vect{x} = (H_{B}, H_{C},
+H_{D})^{\transpose}$. Each observation $\ell_{k} = H_{Q} - H_{P}$ is
+linear in the unknowns, so the design matrix has a $+1$ in the
+column of the head benchmark, a $-1$ in the column of the tail, and
+the fixed datum moves to the right-hand side. The system $\mat{A}
+\vect{x} = \vect{b}$ is
+\[
+\mat{A} = \begin{pmatrix}
+1 & 0 & 0 \\
+0 & 1 & 0 \\
+-1 & 1 & 0 \\
+0 & -1 & 1 \\
+-1 & 0 & 1
+\end{pmatrix}, \qquad
+\vect{b} = \begin{pmatrix}
+\ell_{1} + H_{A} \\ \ell_{2} + H_{A} \\ \ell_{3} \\ \ell_{4} \\ \ell_{5}
+\end{pmatrix}
+= \begin{pmatrix}
+105.10 \\ 102.34 \\ -2.81 \\ 0.92 \\ -2.95
+\end{pmatrix}.
+\]
+The first column is the incidence of $B$ across the five runs, and so
+on. The matrix has the structure of a graph incidence matrix, which
+is the recurring algebraic shape of every conservation law on a
+network: levelling, the resistor circuit of section 9.6's companion
+example, a pipe flow balance, a traffic assignment. The rank is three
+(the three columns are independent because $A$ anchors the network),
+so the unknowns are determined.
+
+\paragraph{The weights.}
+Levelling error grows with distance, because the random errors of
+successive setups accumulate along the run. Standard practice models
+the variance of a run as proportional to its length, so the weight is
+the inverse length: $w_{k} = 1/L_{k}$. The weight matrix is
+$\mat{W} = \diag(1, 1, 1/2, 1, 1/4)$. The $4\,\si{\kilo\meter}$ run
+$B \to D$ carries one-quarter the weight of a $1\,\si{\kilo\meter}$
+run, the formal statement that the engineer trusts it least, which is
+the weighted-least-squares connection to measurement uncertainty the
+mastery box of section 9.5 set up.
+
+\paragraph{The solve.}
+The weighted normal equations are $\mat{A}^{\transpose}\mat{W}\mat{A}
+\hat{\vect{x}} = \mat{A}^{\transpose}\mat{W}\vect{b}$. The weighted
+Gram matrix is
+\[
+\mat{A}^{\transpose}\mat{W}\mat{A} = \begin{pmatrix}
+1.75 & -0.50 & -0.25 \\
+-0.50 & 1.50 & -1.00 \\
+-0.25 & -1.00 & 1.25
+\end{pmatrix},
+\]
+a symmetric, diagonally weighted graph Laplacian; its condition
+number is $6.05$, so the system is benign and either the normal
+equations or QR returns the same answer. Solving (by the elimination
+of section 9.3, or by the script
+\path{code/leveling_adjustment.py}) gives the adjusted heights
+\[
+\hat{H}_{B} = 105.203\,\si{\meter}, \quad
+\hat{H}_{C} = 102.237\,\si{\meter}, \quad
+\hat{H}_{D} = 102.976\,\si{\meter}.
+\]
+The covariance of the estimate is $\hat{\sigma}_{0}^{2}
+(\mat{A}^{\transpose}\mat{W}\mat{A})^{-1}$, with the reference
+variance $\hat{\sigma}_{0}^{2}$ read off the weighted residual sum of
+squares divided by the redundancy $m - n = 2$. The reference standard
+deviation comes out at $\hat{\sigma}_{0} = 0.31\,\si{\meter}$, and the
+per-benchmark standard errors are $0.26\,\si{\meter}$ for $B$ and $C$
+and $0.37\,\si{\meter}$ for $D$. $D$ is least certain, as it must be:
+it sits at the far end of the long, lightly weighted run.
+
+\paragraph{The residuals localise the blunder.}
+The fitted residuals $\vect{r} = \mat{A}\hat{\vect{x}} - \vect{b}$
+are, run by run,
+\[
+\vect{r} = (+0.10,\; -0.10,\; -0.16,\; -0.18,\; +0.72)^{\transpose}\,
+\si{\meter}.
+\]
+Four residuals are at or below $0.18\,\si{\meter}$, in line with the
+$0.31\,\si{\meter}$ reference deviation. The fifth, the $B \to D$
+run, carries $+0.72\,\si{\meter}$, more than twice the reference
+deviation, exactly where the loop misclosure pointed. The least
+squares did not hide the bad run; it distributed most of the
+discrepancy onto the lightly weighted measurement and left a residual
+large enough to flag. The crew would re-run $B \to D$, and an
+adjustment without that observation would tighten $\hat{H}_{D}$
+toward the value the $A \to C \to D$ chain implies.
+
+\paragraph{What the case teaches.}
+The levelling adjustment is the least-squares template in working
+dress. The design matrix is the incidence matrix of a measurement
+graph; the weights encode measurement uncertainty as an inverse
+variance; the normal-equations Gram matrix is a weighted graph
+Laplacian, symmetric positive definite, so Cholesky is the natural
+factorisation; the redundancy $m - n$ is the number of independent
+checks the network supplies; and the residual vector, not the
+point estimate alone, is the deliverable, because the residuals are
+where blunders surface. Every structural-analysis adjustment, every
+GPS network solution, and every sensor-fusion update in Volume IX
+carries this shape. The dataset is recorded in
+\path{data/leveling-network.csv} and the full adjustment, including
+the covariance propagation, is in \path{code/leveling_adjustment.py}.
+
+\subsection{Companion case: a resistor network by nodal analysis}
+
+The same incidence-matrix algebra solves a linear circuit, with a
+sign that makes the system symmetric positive definite outright. The
+network of Figure~\ref{fig:vol02:ch09:resistor-network} has four
+nodes, node $0$ grounded, a $1\,\si{\ampere}$ current injected at
+node $1$, and five resistors. Nodal analysis writes Kirchhoff's
+current law at each non-ground node: the sum of currents leaving the
+node through its resistors equals the injected current. With
+conductances $g_{ij} = 1/R_{ij}$, the unknown node voltages
+$\vect{v} = (v_{1}, v_{2}, v_{3})^{\transpose}$ satisfy $\mat{G}
+\vect{v} = \vect{i}$, where the diagonal entry $G_{kk}$ is the sum of
+conductances touching node $k$ and the off-diagonal entry $G_{kj}$ is
+the negative of the conductance directly between nodes $k$ and $j$.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-resistor-network.tex}
+
+\begin{example}[Solving the conductance system]
+With $R_{12} = 2$, $R_{13} = 4$, $R_{23} = 1$, $R_{20} = 3$, $R_{30}
+= 5$ ohms, the conductances are $g_{12} = 0.5$, $g_{13} = 0.25$,
+$g_{23} = 1$, $g_{20} = 1/3$, $g_{30} = 0.2$ siemens. The conductance
+matrix and injection are
+\[
+\mat{G} = \begin{pmatrix}
+0.75 & -0.5 & -0.25 \\
+-0.5 & 1.833 & -1.0 \\
+-0.25 & -1.0 & 1.45
+\end{pmatrix}, \qquad
+\vect{i} = \begin{pmatrix} 1 \\ 0 \\ 0 \end{pmatrix}.
+\]
+The matrix is symmetric, because a resistor between two nodes
+contributes equally to both rows, the algebraic face of reciprocity.
+It is positive definite, because the power dissipated for any
+non-trivial voltage pattern is $\vect{v}^{\transpose}\mat{G}\vect{v}
+> 0$. The grounding of node $0$ is what makes it positive definite
+rather than merely positive semidefinite: without a reference node
+the Laplacian would have the constant vector in its null space, the
+floating-ground singularity. Cholesky factorises $\mat{G} =
+\mat{L}\mat{L}^{\transpose}$ at half the cost of LU, and forward and
+back substitution return $\vect{v} \approx (3.21, 1.89,
+1.85)^{\transpose}\,\si{\volt}$. The voltage at the driven node is
+highest, as the injected current must climb the network's effective
+resistance to reach ground. The same matrix shape, a grounded graph
+Laplacian, governs heat conduction on a discretised bar, steady
+diffusion, and the stiffness assembly of Volume III; recognising the
+shape tells the engineer to reach for Cholesky before LU.
+\end{example}
+
 \section{Conditioning and numerical sensitivity}\pathtag{core}
 
 A linear system $\mat{A}\vect{x} = \vect{b}$ has a unique solution
@@ -1169,6 +1488,32 @@ eigenvalues of $\mat{A}^{\transpose}\mat{A}$: for $\mat{A} =
 = \sqrt{3 + 2\sqrt{2}} \approx 2.414$, $\sigma_{2} = \sqrt{3 -
 2\sqrt{2}} \approx 0.414$, and $\kappa \approx 5.83$. The shear,
 mild as it looks, already carries a condition number near six.
+\end{example}
+
+\begin{example}[A small residual is not a small error]
+The most dangerous misreading of a computed solution is to trust it
+because its residual is small. Take the ill-conditioned system
+$\mat{A} = \begin{psmallmatrix} 1 & 1 \\ 1 & 1.0001
+\end{psmallmatrix}$, $\vect{b} = (2, 2.0001)^{\transpose}$, whose
+exact solution is $\vect{x} = (1, 1)^{\transpose}$. Consider the
+candidate $\hat{\vect{x}} = (2, 0)^{\transpose}$, wrong in both
+components. Its residual is $\vect{r} = \vect{b} - \mat{A}
+\hat{\vect{x}} = (2, 2.0001) - (2, 2) = (0, 0.0001)^{\transpose}$,
+with norm $10^{-4}$, reassuringly tiny against $\norm{\vect{b}}
+\approx 2.83$. Yet the error $\hat{\vect{x}} - \vect{x} = (1,
+-1)^{\transpose}$ has norm $\sqrt{2}$, a $100\%$ relative error. The
+residual and the error are related through the inverse, $\vect{e} =
+\mat{A}^{-1}\vect{r}$, so the error can be as large as
+$\norm{\mat{A}^{-1}}$ times the residual, and for this matrix
+$\norm{\mat{A}^{-1}}_{2} \approx 2 \times 10^{4}$. The conditioning
+is the bridge: $\norm{\vect{e}}/\norm{\vect{x}} \leq \kappa(\mat{A})
+\cdot \norm{\vect{r}}/\norm{\vect{b}}$, and with $\kappa \approx 4
+\times 10^{4}$ a residual of $10^{-4}/2.83 \approx 3.5 \times
+10^{-5}$ permits a relative error up to $\approx 1.4$, consistent
+with the $100\%$ error observed. The lesson is operative: on an
+ill-conditioned system, verify the solution by an error estimate
+(an inverse-norm bound, a condition estimate, or iterative
+refinement), never by the residual alone.
 \end{example}
 
 \subsection{The rule of thumb}
@@ -1264,6 +1609,75 @@ is ill-conditioned, and the squared conditioning of the Gram matrix
 makes the normal-equations solution numerically meaningless before
 the engineer notices.
 
+\subsection{Iterative solvers and sparse systems}
+
+The cubic cost of direct factorisation sets a ceiling on the dense
+systems an engineer can solve, around $n \approx 10^{4}$ on a single
+core within a working session. Real engineering systems run far
+larger, a finite-element mesh of a bridge or an aircraft has $10^{6}$
+to $10^{8}$ unknowns, and they are saved by structure. A
+\engterm{sparse} matrix has almost all entries zero; a mesh stiffness
+matrix has a handful of nonzeros per row, because each node couples
+only to its mesh neighbours. Storing only the nonzeros, in a
+compressed-row or coordinate format, turns an impossible $\oom{n^{2}}$
+storage into a manageable $\oom{n}$, and a sparse-direct
+factorisation with a good ordering keeps the fill-in (the new
+nonzeros the elimination creates) under control.
+
+\begin{mastery}
+Iterative solvers reach the systems direct factorisation cannot.
+Rather than factor $\mat{A}$, they generate a sequence
+$\vect{x}^{(0)}, \vect{x}^{(1)}, \ldots$ converging to the solution,
+each step costing one or a few matrix-vector products, which for a
+sparse matrix is $\oom{n}$ rather than $\oom{n^{3}}$. The
+\engterm{stationary} methods split $\mat{A} = \mat{M} - \mat{N}$ and
+iterate $\mat{M}\vect{x}^{(k+1)} = \mat{N}\vect{x}^{(k)} + \vect{b}$
+with $\mat{M}$ cheap to invert: Jacobi takes $\mat{M}$ the diagonal,
+Gauss--Seidel takes $\mat{M}$ the lower triangle. Both converge when
+the iteration matrix $\mat{M}^{-1}\mat{N}$ has spectral radius below
+one, guaranteed for diagonally dominant or symmetric positive-definite
+$\mat{A}$, and they converge linearly, dropping the residual by a
+fixed factor per step (Figure~\ref{fig:vol02:ch09:iterative-convergence}).
+The \engterm{conjugate gradient} method, for symmetric positive-definite
+$\mat{A}$, builds an optimal solution within the expanding Krylov
+subspace $\spn(\vect{b}, \mat{A}\vect{b}, \mat{A}^{2}\vect{b},
+\ldots)$ and converges with an error that shrinks like
+$\bigl((\sqrt{\kappa} - 1)/(\sqrt{\kappa} + 1)\bigr)^{k}$. The
+$\sqrt{\kappa}$, against the $\kappa$ that governs the direct-solve
+error bound, is the structural reason a \engterm{preconditioner}
+$\mat{M} \approx \mat{A}$ pays so steeply: replacing $\mat{A}\vect{x}
+= \vect{b}$ with $\mat{M}^{-1}\mat{A}\vect{x} = \mat{M}^{-1}\vect{b}$
+lowers $\kappa$, and the iteration count falls with its square root.
+The engineering choice between direct and iterative is a memory and
+conditioning trade: direct factorisation is reusable and
+backward stable but its fill-in can exhaust memory; preconditioned
+conjugate gradient and
+its non-symmetric cousins (GMRES, BiCGSTAB) keep memory at $\oom{n}$
+but need a preconditioner whose quality the engineer must engineer
+\cite[ch.~32]{text:trefethen-bau1997}.
+\end{mastery}
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-iterative-convergence.tex}
+
+\begin{example}[One Gauss--Seidel sweep by hand]
+Take the diagonally dominant system $\begin{psmallmatrix} 4 & 1 & 0
+\\ 1 & 4 & 1 \\ 0 & 1 & 4 \end{psmallmatrix}\vect{x} =
+\begin{psmallmatrix} 5 \\ 6 \\ 5 \end{psmallmatrix}$, whose exact
+solution is $(1, 1, 1)^{\transpose}$. Starting from $\vect{x}^{(0)}
+= \vect{0}$, Gauss--Seidel updates each component in turn using the
+freshest values: $x_{1} = (5 - 0)/4 = 1.25$; then $x_{2} = (6 - 1.25
+- 0)/4 = 1.1875$; then $x_{3} = (5 - 1.1875)/4 = 0.9531$. The first
+sweep already lands within $20\%$ of the solution. A second sweep
+gives $x_{1} = (5 - 1.1875)/4 = 0.9531$, $x_{2} = (6 - 0.9531 -
+0.9531)/4 = 1.0234$, $x_{3} = (5 - 1.0234)/4 = 0.9941$, tightening
+toward $(1, 1, 1)$. Each sweep is three scalar updates,
+$\oom{\text{nonzeros}}$ work, with no factorisation stored. For this
+$3 \times 3$ the direct solve is cheaper; the iterative advantage
+appears only when $n$ is large and $\mat{A}$ is sparse, where the
+sweep cost stays $\oom{n}$ while a direct factorisation's fill-in
+would not.
+\end{example}
+
 \subsection{Singular value decomposition (recognition)}
 
 Every real $m \times n$ matrix factors as
@@ -1295,6 +1709,33 @@ Figure~\ref{fig:vol02:ch09:svd-geometry} draws the geometric
 content: rotate, scale, rotate.
 
 \input{volumes/02-form/ch09-linear-algebra/figures/fig-svd-geometry.tex}
+
+\begin{mastery}
+A small SVD computed by hand shows where the singular values come
+from. Take $\mat{A} = \begin{psmallmatrix} 3 & 0 \\ 4 & 5
+\end{psmallmatrix}$. The right singular vectors and the squared
+singular values are the eigenpairs of $\mat{A}^{\transpose}\mat{A} =
+\begin{psmallmatrix} 25 & 20 \\ 20 & 25 \end{psmallmatrix}$, whose
+eigenvalues solve $(25 - \lambda)^{2} = 400$, giving $\lambda_{1} =
+45$ and $\lambda_{2} = 5$. The singular values are the square roots,
+$\sigma_{1} = \sqrt{45} \approx 6.708$ and $\sigma_{2} = \sqrt{5}
+\approx 2.236$, so $\kappa(\mat{A}) = \sigma_{1}/\sigma_{2} = 3$. The
+right singular vectors are the eigenvectors of
+$\mat{A}^{\transpose}\mat{A}$, $\vect{v}_{1} = (1, 1)^{\transpose}/
+\sqrt{2}$ and $\vect{v}_{2} = (1, -1)^{\transpose}/\sqrt{2}$, and the
+left singular vectors follow from $\vect{u}_{i} = \mat{A}\vect{v}_{i}/
+\sigma_{i}$. The geometry the SVD encodes is now explicit: $\mat{A}$
+maps the unit circle to an ellipse whose semi-axes have lengths
+$\sigma_{1}$ and $\sigma_{2}$ along the directions $\vect{u}_{1}$ and
+$\vect{u}_{2}$, the input directions $\vect{v}_{1}$ and $\vect{v}_{2}$
+being the pre-images of those axes. The condition number is the
+aspect ratio of that ellipse, the same quantity section 9.7 reads off
+the singular values. The hand computation is feasible at $2 \times 2$
+and is the route to internalising what the library routine returns;
+beyond $3 \times 3$ the eigenvalue step itself needs iteration, which
+is why the SVD carries the $\approx 22 n^{3}$ price tag of the flop
+table.
+\end{mastery}
 
 \subsection{Floating-point overflow as a related failure}
 

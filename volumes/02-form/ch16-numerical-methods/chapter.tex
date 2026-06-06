@@ -263,6 +263,62 @@ produces the same output on the same input on different hardware,
 different optimisation levels, or different thread counts is a
 program plus a discipline.
 
+\begin{mastery}
+\textbf{Error-free transformations and the fused multiply-add.} The
+single-rounding bound $\operatorname{fl}(a \circ b) = (a \circ b)(1 +
+\delta)$ hides a sharper fact the engineer can exploit. For addition and
+subtraction the rounding error is itself a floating-point number, and it
+can be computed exactly with no extra precision. The \engterm{TwoSum}
+algorithm, given $a$ and $b$, returns $s = \operatorname{fl}(a + b)$ and
+$e$ such that $a + b = s + e$ exactly, in six floating-point operations:
+$s = \operatorname{fl}(a+b)$; $b' = \operatorname{fl}(s - a)$;
+$e = \operatorname{fl}((a - (s - b')) + (b - b'))$. The recovered $e$ is
+the rounding error the addition discarded, and Kahan summation is the
+special case that folds $e$ back into the running sum. For multiplication
+the analogous \engterm{TwoProduct} algorithm recovers the exact product
+error, and it is here that the fused multiply-add earns its place: a
+hardware FMA computes $\operatorname{fl}(a \cdot b + c)$ with a single
+rounding, so $e = \operatorname{fl}(\text{fma}(a, b, -\operatorname{fl}(a
+b)))$ delivers the multiplication error in one instruction rather than the
+seventeen operations the FMA-free Dekker split requires. These
+\engterm{error-free transformations} are the foundation of
+compensated and doubly-compensated algorithms, which deliver an accuracy
+as if the working precision were doubled while running entirely in the
+native format \cite[ch.~4]{text:higham-numerical}. The same FMA that
+improves accuracy here is a reproducibility hazard elsewhere: whether the
+compiler contracts \texttt{a*b + c} into an FMA is a target and
+optimisation-level decision, and the contracted and uncontracted forms
+differ at the last bit. The engineer who wants the accuracy benefit
+requests the FMA explicitly (the C \texttt{fma} function, the
+\texttt{std::fma} call); the engineer who wants bit-reproducibility
+across targets disables contraction (\texttt{-ffp-contract=off}). Section
+16.7 returns to the second face of this trade.
+\end{mastery}
+
+\begin{mastery}
+\textbf{Double rounding.} A value computed in a wider format and then
+stored to a narrower one is rounded twice, and the two-step rounding can
+land on a different representable than a single direct rounding to the
+narrow format would. The historical instance is the x87 floating-point
+unit, which evaluated expressions in an 80-bit extended format and rounded
+to 64-bit double on store. Consider a real number that sits just above the
+midpoint between two doubles but, in the 80-bit intermediate, rounds
+down to exactly the midpoint; the subsequent round-to-even of that
+midpoint then goes the other way from a direct round-to-nearest of the
+original. The discrepancy is at most one unit in the last place, and it
+is rare, but it breaks the clean single-rounding model that every error
+bound in this chapter assumes. Double rounding is why bit-reproducible
+numerics on the x86 architecture moved from the x87 unit to the SSE2
+registers, which compute directly in the target precision, and why a
+build that still routes through x87 (a 32-bit legacy target, certain
+embedded toolchains) can disagree with an SSE2 build at the last bit on
+the same source \cite[ch.~3]{text:overton-ieee754}. The durable lesson
+outlives the specific hardware: when an intermediate is held in a wider
+format than the destination, the engineer states the intermediate
+precision as part of the computation's specification, because the result
+depends on it.
+\end{mastery}
+
 \section{Error: truncation, round-off, conditioning}\pathtag{core}
 
 Three error sources sit behind every numerical answer. The
@@ -565,6 +621,123 @@ conditioning is governed by the matrix rather than the
 coefficients).
 \end{mastery}
 
+\subsection{A backward-error analysis carried to the bound}
+
+The forward-error inequality $\text{forward error} \lesssim \kappa \cdot
+\text{backward error}$ is a slogan until the engineer has run a backward
+analysis end to end on a concrete computation. Horner's rule for
+evaluating a polynomial is the cleanest vehicle, because its backward
+error has a closed form and the analysis exposes every step where round-off
+enters.
+
+Evaluate $p(x) = a_{n} x^{n} + \cdots + a_{1} x + a_{0}$ by Horner's
+nested form,
+
+\[
+p(x) = (\cdots((a_{n} x + a_{n-1}) x + a_{n-2}) x \cdots) x + a_{0},
+\]
+
+which costs $n$ multiplications and $n$ additions. In floating-point each
+operation carries a relative error bounded by $u$. Writing the computed
+partial result after absorbing the multiplication by $x$ at stage $k$ as
+$\hat{b}_{k}$, the recurrence is $\hat{b}_{k} = \operatorname{fl}
+(\hat{b}_{k+1} x + a_{k}) = (\hat{b}_{k+1} x (1 + \mu_{k}) + a_{k})(1 +
+\alpha_{k})$ with $\abs{\mu_{k}}, \abs{\alpha_{k}} \leq u$, where $\mu_{k}$
+is the rounding of the multiply and $\alpha_{k}$ the rounding of the add.
+Carrying the products of $(1 + \mu_{k})$ and $(1 + \alpha_{k})$ factors
+through the recurrence and collecting them with the standard
+$\prod(1 + \delta_{i}) = 1 + \theta$ device, where $\abs{\theta_{m}} \leq
+m u / (1 - m u) \equiv \gamma_{m}$ for $m u < 1$, the computed value
+satisfies
+
+\[
+\hat{p}(x) = \sum_{k=0}^{n} a_{k} (1 + \eta_{k}) x^{k},
+\qquad \abs{\eta_{k}} \leq \gamma_{2n} \approx 2 n u.
+\]
+
+This is a backward-error statement of the strongest kind. The computed
+$\hat{p}(x)$ is the \emph{exact} value at $x$ of a polynomial whose
+coefficients are each perturbed by no more than a relative $2 n u$. Horner's
+rule is backward stable: it returns the exact answer to a nearby problem,
+and the nearby problem differs from the posed one only by coefficient
+perturbations at the level of the arithmetic.
+
+The forward error follows by multiplying the backward error by the
+conditioning. The perturbation $\delta a_{k} = a_{k} \eta_{k}$ changes the
+value by $\sum_{k} \delta a_{k} x^{k}$, bounded in magnitude by $\gamma_{2n}
+\sum_{k} \abs{a_{k}} \abs{x}^{k}$. Dividing by $\abs{p(x)}$ gives the
+relative forward error bound
+
+\[
+\frac{\abs{\hat{p}(x) - p(x)}}{\abs{p(x)}} \leq \gamma_{2n}
+\frac{\sum_{k=0}^{n} \abs{a_{k}} \abs{x}^{k}}{\abs{p(x)}}
+= \gamma_{2n} \cdot \kappa_{\mathrm{Horner}}(x),
+\]
+
+and the ratio $\kappa_{\mathrm{Horner}}(x) = \sum_{k} \abs{a_{k}}
+\abs{x}^{k} / \abs{p(x)}$ is exactly the condition number of polynomial
+evaluation that the second worked example of section 16.2 quoted. The
+slogan is now an inequality with named parts: the backward error is
+$\gamma_{2n} \approx 2 n u$, set by the algorithm and the arithmetic; the
+condition number is $\kappa_{\mathrm{Horner}}$, set by the problem; the
+forward error is bounded by their product.
+
+\begin{example}
+\textbf{Horner near a root, by the numbers.} Evaluate $p(x) = (x-2)^{3}
+= x^{3} - 6 x^{2} + 12 x - 8$ at $x = 2.001$ in binary64. The exact value
+is $(0.001)^{3} = 10^{-9}$. The condition number is
+$\kappa_{\mathrm{Horner}} = (\abs{x}^{3} + 6\abs{x}^{2} + 12\abs{x} + 8)
+/ \abs{p(x)}$, and at $x = 2.001$ the numerator is $8.012 + 24.02 + 24.01
++ 8 = 64.05$ while the denominator is $10^{-9}$, so
+$\kappa_{\mathrm{Horner}} \approx 6.4 \times 10^{10}$. The forward-error
+bound is $\gamma_{6} \cdot \kappa \approx 6 u \cdot 6.4 \times 10^{10}
+\approx 6.7 \times 10^{-16} \cdot 6.4 \times 10^{10} \approx 4 \times
+10^{-5}$. The engineer therefore expects about
+$-\log_{10}(4 \times 10^{-5}) \approx 4$ correct digits in the
+Horner-evaluated value, and a direct computation confirms roughly four:
+the computed value at $x = 2.001$ lands near $1.00004 \times 10^{-9}$
+against the true $10^{-9}$. The algorithm is blameless; Horner delivered
+the exact value of a polynomial whose coefficients moved by a relative
+$6 u$, and the eleven-decade conditioning of evaluation near the triple
+root turned that microscopic coefficient perturbation into a four-digit
+forward error. The remedy is not a better evaluator but a better
+representation: the factored form $(x - 2)^{3}$ has condition number $3$
+at this point (the condition number of the cubing operation), and recovers
+all sixteen digits. The reader who runs the backward analysis once, and
+watches the four-digit prediction match the four-digit observation,
+internalises the decomposition that the rest of numerical analysis rests
+on.
+\end{example}
+
+\begin{mastery}
+\textbf{Conditioning is the problem, stability is the algorithm.} The two
+words are routinely conflated, and the conflation is the source of the most
+common misdiagnosis in numerical work: reaching for higher precision when
+the algorithm is at fault, or rewriting the algorithm when the problem is
+at fault. The clean separation is this. \engterm{Conditioning}
+$\kappa$ is a property of the map $f$ and the input $x$ alone; it is
+defined before any algorithm is chosen, it does not change when the
+language or the library changes, and no algorithm can compute $f(x)$ to a
+relative accuracy better than $\kappa \cdot u$ in working precision $u$.
+\engterm{Stability} (backward stability) is a property of the algorithm
+$\hat{f}$ that approximates $f$; a backward-stable algorithm returns the
+exact value of $f$ at some input within a relative $O(u)$ of $x$,
+regardless of $\kappa$. The two combine in the master inequality
+$\text{relative forward error} \lesssim \kappa \cdot (\text{backward
+error})$, and the diagnostic that follows is mechanical. Compute $\kappa$.
+If $\kappa$ is small and the answer is wrong, the algorithm is unstable:
+rewrite it, and higher precision will not help much. If $\kappa$ is large,
+the problem has lost the digits no matter what: change the problem
+(reformulate, refactor, rescale, recondition) or accept fewer digits and
+report the loss. The four worked examples of this section are the four
+quadrants of that diagnostic: $1 - \cos x$ and $\sqrt{x+1} - \sqrt{x}$ are
+the small-$\kappa$, unstable-algorithm cases that rewriting fixes; the
+expanded $(x-1)^{6}$ and the Wilkinson polynomial are the large-$\kappa$
+cases that only reformulation fixes. An engineer who carries the two words
+as distinct quantities never asks higher precision to solve an algorithm
+problem, and never blames an algorithm for digits the problem never had.
+\end{mastery}
+
 \section{Root-finding: bisection, Newton, secant}\pathtag{core}
 
 The root-finding problem is: given $f: \R \to \R$ continuous,
@@ -683,6 +856,33 @@ doubles the digit count per step. All three saturate near 16 digits
 at the binary64 precision ceiling. The cost per step is one function
 evaluation for bisection and secant; two (one $f$, one $f'$) for
 Newton.
+
+\begin{example}
+\textbf{A secant trace, and the superlinear order read from it.} Solve
+$f(x) = x^{2} - 2 = 0$ for the positive root $x^{*} = \sqrt{2} =
+1.4142135623730951$, starting from $x_{0} = 1$ and $x_{1} = 2$. The secant
+update is $x_{k+1} = x_{k} - f(x_{k})(x_{k} - x_{k-1})/(f(x_{k}) -
+f(x_{k-1}))$. Step by step: $f(x_{0}) = -1$, $f(x_{1}) = 2$, so $x_{2} =
+2 - 2(2 - 1)/(2 - (-1)) = 2 - 2/3 = 1.3333333$, $e_{2} = -8.09 \times
+10^{-2}$. Then $f(x_{2}) = 1.3333^{2} - 2 = -0.2222$, $x_{3} = 1.3333 -
+(-0.2222)(1.3333 - 2)/(-0.2222 - 2) = 1.4000000$, $e_{3} = -1.42 \times
+10^{-2}$. Then $f(x_{3}) = -0.04$, $x_{4} = 1.4146341$, $e_{4} = +4.21
+\times 10^{-4}$; $x_{5} = 1.4142114$, $e_{5} = -2.1 \times 10^{-6}$;
+$x_{6} = 1.41421356205$, $e_{6} = -3.2 \times 10^{-11}$; $x_{7}$ at the
+binary64 floor. The order shows itself in the ratio $\log\abs{e_{k+1}} /
+\log\abs{e_{k}}$, which approaches $\varphi = 1.618$: the digit count is
+multiplied by about $1.6$ per step, between bisection's additive $0.3$ and
+Newton's doubling. Reading the per-step error reduction directly,
+$-\log_{10}\abs{e_{k}}$ runs $1.09, 1.85, 3.38, 5.68, 10.5, \ldots$, and
+the successive increments $0.76, 1.53, 2.30, 4.82$ themselves grow by the
+factor $\varphi$, which is the signature of order-$\varphi$ convergence.
+The secant method reached eleven digits in six steps at one function
+evaluation per step, where Newton would reach the same in five steps at
+two evaluations each; counting evaluations, the secant method's efficiency
+index $\varphi^{1} = 1.618$ beats Newton's $2^{1/2} = 1.414$, which is why
+a derivative-free secant step is the working default when $f'$ is expensive
+to form.
+\end{example}
 
 \subsection{Fixed-point iteration}
 
@@ -984,6 +1184,59 @@ for a clamped spline of a smooth function). The spline is the
 working default for interpolating tabulated engineering data, in CAD
 geometry, and in the smooth reconstruction of sampled signals.
 
+\begin{example}
+\textbf{A natural cubic spline built by hand.} Construct the natural cubic
+spline through the four points $(0, 0)$, $(1, 1)$, $(2, 0)$, $(3, 1)$ on
+the uniform grid $h = 1$. The interior second derivatives $M_{1}, M_{2}$
+at the two interior nodes satisfy the tridiagonal system that the
+continuity-of-first-derivative conditions produce; for a uniform grid the
+standard form is, at interior node $k$,
+
+\[
+M_{k-1} + 4 M_{k} + M_{k+1} = \frac{6}{h^{2}}(y_{k-1} - 2 y_{k} + y_{k+1}),
+\]
+
+with the natural end conditions $M_{0} = M_{3} = 0$. The right-hand sides
+are second differences: at node $1$, $(6/1)(0 - 2 \cdot 1 + 0) = -12$; at
+node $2$, $(6/1)(1 - 2 \cdot 0 + 1) = 12$. With $M_{0} = M_{3} = 0$ the
+system reduces to
+
+\[
+\begin{aligned}
+4 M_{1} + M_{2} &= -12, \\
+M_{1} + 4 M_{2} &= 12.
+\end{aligned}
+\]
+
+Solve by elimination: from the first, $M_{1} = (-12 - M_{2})/4$; substitute
+into the second, $(-12 - M_{2})/4 + 4 M_{2} = 12$, giving $-3 + (15/4) M_{2}
+= 12$, so $M_{2} = (15)(4)/(15) = 4$ and $M_{1} = (-12 - 4)/4 = -4$. The
+second derivatives at the four nodes are therefore $M = (0, -4, 4, 0)$. On
+each subinterval $[x_{k}, x_{k+1}]$ the cubic piece is
+
+\[
+S_{k}(x) = M_{k}\frac{(x_{k+1} - x)^{3}}{6h} + M_{k+1}\frac{(x - x_{k})^{3}}
+{6h} + \Big(\frac{y_{k}}{h} - \frac{M_{k} h}{6}\Big)(x_{k+1} - x)
++ \Big(\frac{y_{k+1}}{h} - \frac{M_{k+1} h}{6}\Big)(x - x_{k}).
+\]
+
+On the first piece $[0, 1]$, with $M_{0} = 0$, $M_{1} = -4$, $y_{0} = 0$,
+$y_{1} = 1$: $S_{0}(x) = -4 \frac{x^{3}}{6} + (0)(1 - x) + (1 + \frac{4}{6})
+x = -\frac{2}{3}x^{3} + \frac{5}{3}x$. A check at the endpoints gives
+$S_{0}(0) = 0$ and $S_{0}(1) = -\frac{2}{3} + \frac{5}{3} = 1$, matching
+the data, and $S_{0}''(0) = 0$, satisfying the natural left condition.
+Evaluate the spline at the midpoint $x = 0.5$: $S_{0}(0.5) = -\frac{2}{3}
+(0.125) + \frac{5}{3}(0.5) = -0.0833 + 0.8333 = 0.75$. The interpolant
+rises to $0.75$ halfway to the first data point, where a straight-line
+interpolant would give $0.5$; the spline's curvature, fixed by the
+continuity conditions and the data on both sides, lifts the midpoint. The
+$O(n)$ tridiagonal solve that the libraries run is exactly this elimination
+at scale; carrying it once by hand on four points shows the engineer where
+the smoothness comes from and why the spline's influence is local: each
+$M_{k}$ couples only to its neighbours, so a single bad data value
+perturbs the curve over a few intervals and not the whole range.
+\end{example}
+
 \begin{mastery}
 \textbf{Why Chebyshev nodes are optimal.} Among all choices of $n +
 1$ nodes on $[-1, 1]$, the Chebyshev nodes minimise the maximum
@@ -1217,6 +1470,60 @@ amplifier of input error, reappears here as the governor of
 iteration count, the same quantity wearing a second hat.
 \end{mastery}
 
+\begin{example}
+\textbf{An iterative solve carried by hand.} Solve
+
+\[
+\mat{A}\vect{x} = \vect{b}, \qquad
+\mat{A} = \begin{psmallmatrix} 4 & 1 \\ 1 & 3 \end{psmallmatrix},
+\qquad \vect{b} = \begin{psmallmatrix} 1 \\ 2 \end{psmallmatrix},
+\]
+
+whose exact solution is $\vect{x}^{*} = (1/11, 7/11)^{\transpose} =
+(0.0909, 0.6364)^{\transpose}$. The matrix is symmetric positive definite
+with eigenvalues $\tfrac{1}{2}(7 \pm \sqrt{5}) = 4.618, 2.382$, so
+$\kappa_{2} = 1.94$, a benign system that lets the iteration counts stay
+readable. \emph{Jacobi} updates both components from the previous iterate:
+$x_{1}^{(k+1)} = (1 - x_{2}^{(k)})/4$, $x_{2}^{(k+1)} = (2 -
+x_{1}^{(k)})/3$. From $\vect{x}^{(0)} = (0, 0)$: $\vect{x}^{(1)} =
+(0.25, 0.6667)$; $\vect{x}^{(2)} = (0.0833, 0.5833)$; $\vect{x}^{(3)} =
+(0.1042, 0.6389)$; $\vect{x}^{(4)} = (0.0903, 0.6319)$; the error norm
+falls by a factor near $0.29$ per step (the spectral radius of the Jacobi
+iteration matrix is $1/\sqrt{12} = 0.289$), reaching $10^{-6}$ in about
+eleven steps. \emph{Gauss-Seidel} uses each freshly computed component
+immediately: $x_{1}^{(k+1)} = (1 - x_{2}^{(k)})/4$ then $x_{2}^{(k+1)} =
+(2 - x_{1}^{(k+1)})/3$. From $(0, 0)$: $\vect{x}^{(1)} = (0.25, 0.5833)$;
+$\vect{x}^{(2)} = (0.1042, 0.6319)$; $\vect{x}^{(3)} = (0.0920, 0.6360)$;
+$\vect{x}^{(4)} = (0.0910, 0.6363)$; the per-step factor is the square of
+Jacobi's, near $0.083$, and the iteration reaches $10^{-6}$ in about six
+steps. The immediate reuse of the updated first component is the whole of
+Gauss-Seidel's advantage, and it costs nothing extra. \emph{Conjugate
+gradients} on the same system, starting from $\vect{x}^{(0)} = (0,0)$ with
+residual $\vect{r}_{0} = \vect{b} = (1, 2)$, takes the steepest first step
+along $\vect{r}_{0}$, then a single $\mat{A}$-conjugate correction, and
+reaches the \emph{exact} solution in two steps, because CG on an $n \times
+n$ SPD system terminates in at most $n$ steps in exact arithmetic. The
+three methods rank by the structure they exploit: Jacobi uses only the
+diagonal; Gauss-Seidel uses the lower triangle as it goes; CG uses the
+full $\mat{A}$-geometry of the Krylov subspace. The ranking that this
+$2 \times 2$ shows at a glance is the ranking that governs the
+million-unknown sparse systems of Volume IV and Volume IX, where the
+constant factors are the same and only $n$ and $\kappa$ change.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-cg-vs-gs}
+
+Figure~\ref{fig:vol02:ch16:cg-vs-gs} carries the same comparison to a
+worse-conditioned system, where the gap between the stationary method and
+the Krylov method is the difference between a tractable and an intractable
+solve. The stationary iteration's residual falls by a near-constant factor
+per step set by $1 - O(1/\kappa)$; the conjugate-gradient residual falls
+at the rate $(\sqrt{\kappa} - 1)/(\sqrt{\kappa} + 1)$, so the iteration
+count to a fixed accuracy scales as $\kappa$ for the stationary method and
+as $\sqrt{\kappa}$ for CG. The square-root in the exponent is the entire
+reason Krylov methods, with a preconditioner that lowers the effective
+$\kappa$, dominate large-scale linear-system practice.
+
 \section{Numerical integration revisited}\pathtag{standard}
 
 Volume II Chapter 6 introduced the trapezoidal rule and Simpson's
@@ -1362,6 +1669,42 @@ tolerance the engineer requests must lie above the round-off floor
 of the algorithm and the format, and a request below that floor
 returns an answer the engineer cannot defend.
 
+\begin{mastery}
+\textbf{Automatic differentiation defeats the round-off floor.} The
+finite-difference derivative is trapped between truncation and round-off:
+the optimal step $h^{*} \sim u^{1/3}$ for the centred difference leaves an
+unavoidable error near $u^{2/3} \approx 10^{-10.6}$ in binary64, far short
+of the arithmetic's full precision. \engterm{Automatic differentiation}
+(AD) computes derivatives to full working precision with no step size at
+all, by propagating derivative information through the program's elementary
+operations rather than perturbing the input. \engterm{Forward-mode} AD
+carries each value as a \engterm{dual number} $a + b\varepsilon$ with
+$\varepsilon^{2} = 0$, defining arithmetic so that $(a + b\varepsilon)(c +
+d\varepsilon) = ac + (ad + bc)\varepsilon$ and, by the chain rule, every
+elementary function $\phi$ acts as $\phi(a + b\varepsilon) = \phi(a) +
+b\,\phi'(a)\varepsilon$. Evaluating $f$ at $x + 1\cdot\varepsilon$ then
+returns $f(x) + f'(x)\varepsilon$, and the $\varepsilon$-component is the
+exact derivative of the program, accurate to round-off and free of any
+truncation. The cost of one forward-mode derivative is a small constant
+times the cost of evaluating $f$. \engterm{Reverse-mode} AD (the
+backpropagation of machine learning) computes the gradient of a scalar
+output with respect to all inputs at a cost independent of the input
+dimension, which is why training a network with millions of parameters is
+feasible at all; Volume VII develops it for that use. The durable point
+for this chapter is the contrast with finite differences: AD is exact up
+to round-off because it differentiates the program symbolically at each
+operation while evaluating numerically, where the finite difference
+approximates the limit and pays the truncation-round-off trade of
+Figure~\ref{fig:vol02:ch16:error-vs-h}. The complex-step derivative
+$f'(x) \approx \Im[f(x + i h)]/h$ is a related trick that also escapes the
+subtractive cancellation (there is no subtraction of nearly equal reals),
+delivering full precision for analytic real functions at $h$ as small as
+$10^{-200}$ \cite[\S 5.7]{text:higham-numerical}. The engineer who needs a
+derivative inside an optimisation or a Newton solve reaches for AD or the
+complex step before the finite difference, and accepts the finite
+difference only when the function is a black box that admits neither.
+\end{mastery}
+
 \subsection{Adaptive quadrature}
 
 Real engineering integrands are not uniformly smooth. An
@@ -1382,6 +1725,46 @@ The engineer's working role is to feed a sensible interval, a
 sensible tolerance, and to read the returned error estimate
 seriously when the integrand has structure (a peak, a corner, a
 log-singular endpoint).
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-adaptive-quadrature}
+
+Figure~\ref{fig:vol02:ch16:adaptive-quadrature} shows the subdivision
+pattern an adaptive routine produces on a peaked integrand: dense near the
+peak, coarse on the flat flanks. The next example carries one level of that
+recursion numerically so the error estimate and the accept-or-recurse
+decision are visible as arithmetic rather than as a library call.
+
+\begin{example}
+\textbf{An adaptive Simpson trace.} Integrate $\int_{0}^{1} \frac{1}{1 +
+16 x^{2}}\, \dd x$, whose exact value is $\tfrac{1}{4}\arctan 4 =
+0.331161$, by adaptive Simpson with a tolerance $\tau = 10^{-3}$ on the
+whole interval. The basic Simpson estimate on a panel $[a, b]$ with
+midpoint $m = (a+b)/2$ is $S(a,b) = \frac{b-a}{6}(f(a) + 4 f(m) + f(b))$.
+On $[0, 1]$: $f(0) = 1$, $f(0.5) = 1/5 = 0.2$, $f(1) = 1/17 = 0.0588$, so
+$S(0, 1) = \frac{1}{6}(1 + 0.8 + 0.0588) = 0.30980$. Subdivide at $m =
+0.5$ and apply Simpson on each half. Left half $[0, 0.5]$ with midpoint
+$0.25$: $f(0.25) = 1/2 = 0.5$, $S(0, 0.5) = \frac{0.5}{6}(1 + 4(0.5) +
+0.2) = \frac{0.5}{6}(3.2) = 0.26667$. Right half $[0.5, 1]$ with midpoint
+$0.75$: $f(0.75) = 1/10 = 0.1$, $S(0.5, 1) = \frac{0.5}{6}(0.2 + 4(0.1) +
+0.0588) = \frac{0.5}{6}(0.6588) = 0.05490$. The two-panel estimate is
+$S_{2} = 0.26667 + 0.05490 = 0.32157$. The error estimate is the Richardson
+quantity $\abs{S_{2} - S(0,1)}/15 = \abs{0.32157 - 0.30980}/15 = 0.01177/15
+= 7.8 \times 10^{-4}$, which exceeds the per-panel tolerance the routine
+assigns to $[0,1]$, so the routine \emph{recurses} on both halves. On the
+left half the local error estimate after one further subdivision drops to
+about $4 \times 10^{-5}$ and the panel is accepted; the steeper right flank
+near the curvature of the integrand requires one more level before its
+estimate falls below tolerance. The accepted total, $S_{2}$ plus the
+Richardson correction $(S_{2} - S(0,1))/15 = 0.32157 + 0.00078 = 0.32235$
+on the first level and refined further on recursion, converges to the exact
+$0.33116$ as the recursion deepens where the integrand bends. The trace
+exposes the two ideas the library hides: the error estimate is a comparison
+of two orders on the same nodes (Simpson against Simpson-on-halves, the
+$1/15$ from the $h^{4}$ error ratio), and the recursion is driven by that
+estimate, not by a fixed grid. The reader who has carried this one level
+reads \texttt{scipy.integrate.quad}'s returned error estimate as the same
+quantity at machine scale.
+\end{example}
 
 \section{Numerical ODE/PDE solvers}\pathtag{standard}
 
@@ -1491,6 +1874,41 @@ working choices. \texttt{scipy.integrate.BDF} and MATLAB
 \texttt{ode15s} are the standard production routines for stiff
 systems. The cost of an implicit step is a Newton-style linear
 solve per step; the savings are the lifted step-size restriction.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-stiff-explicit-implicit}
+
+\begin{example}
+\textbf{Explicit versus implicit on a stiff mode, carried by hand.}
+Integrate the scalar stiff equation $\dot y = -100\,y$, $y(0) = 1$, whose
+exact solution $y(t) = e^{-100 t}$ has decayed to $e^{-5} = 0.0067$ by
+$t = 0.05$ and to $e^{-10} = 4.5 \times 10^{-5}$ by $t = 0.1$. Take a step
+$h = 0.025$, chosen just past the explicit stability limit $h <
+2/\abs{\lambda} = 0.02$, and compare. \emph{Forward Euler} advances by the
+factor $1 + h\lambda = 1 - 100(0.025) = -1.5$. The iterates are $y_{0} =
+1$, $y_{1} = -1.5$, $y_{2} = 2.25$, $y_{3} = -3.375$, $y_{4} = 5.0625$:
+the numerical solution oscillates in sign and grows in magnitude as
+$(-1.5)^{n}$ while the true solution decays smoothly toward zero. The
+explicit step is not inaccurate in the local-truncation sense; it is
+unstable, because $\abs{1 + h\lambda} = 1.5 > 1$ places $h\lambda = -2.5$
+outside the forward-Euler stability disk. \emph{Backward Euler} on the same
+equation solves $y_{n+1} = y_{n} + h\lambda y_{n+1}$, giving $y_{n+1} =
+y_{n}/(1 - h\lambda) = y_{n}/(1 + 2.5) = y_{n}/3.5$. The iterates are
+$y_{0} = 1$, $y_{1} = 0.2857$, $y_{2} = 0.0816$, $y_{3} = 0.0233$, $y_{4}
+= 0.0067$: a monotone decay that tracks the true solution, every step
+stable because $\abs{1/(1 - h\lambda)} = 1/3.5 < 1$ for the decaying mode.
+To resolve the same equation accurately with forward Euler the engineer
+must drop to $h < 0.02$, say $h = 0.01$, requiring $10$ steps to reach
+$t = 0.1$; backward Euler at $h = 0.025$ reaches the same point in $4$
+steps, each step costing one (here trivial) linear solve. On the scalar
+problem the saving is modest; on a system with a stiffness ratio of
+$10^{6}$, the explicit method's stability cap forces a step a million times
+smaller than accuracy requires, and the implicit step's per-step linear
+solve is the price that buys back the million-fold step-count saving.
+Figure~\ref{fig:vol02:ch16:stiff-explicit-implicit} plots both schemes; the
+explicit oscillation and the implicit decay are the visual signature the
+engineer learns to read off any stiff integration that has been pushed past
+its explicit limit.
+\end{example}
 
 \begin{mastery}
 \textbf{Order barriers.} Two theorems of Dahlquist bound what an
@@ -1708,6 +2126,184 @@ double-precision floating-point with a documented build
 environment. The alternatives are tools the engineer reaches for
 when the problem demands them, and the report names the
 arithmetic used.
+
+\section{A worked computation with an error budget}\pathtag{core}
+
+The chapter's apparatus, the three error sources, the conditioning, the
+algorithm choice, the reproducibility discipline, earns its keep only when
+it is carried through one realistic computation from the posed engineering
+question to a verified number with a stated uncertainty. We run such a
+computation here. The question is small enough to verify against an exact
+solution and rich enough to exercise every error source the chapter names.
+
+\subsection{The problem and its exact reference}
+
+A uniform cantilever beam of length $L$, Young's modulus $E$, and
+second moment of area $I$, fixed at $x = 0$ and free at $x = L$, carries
+a uniformly distributed load $w$ per unit length. The static deflection
+$y(x)$ satisfies the Euler-Bernoulli equation $E I\, y''''(x) = w$ with
+the clamped-end conditions $y(0) = y'(0) = 0$ and the free-end conditions
+$y''(L) = y'''(L) = 0$. The quantity of interest is the tip deflection
+$y(L)$. This problem has the exact closed form
+
+\[
+y(x) = \frac{w}{24 E I}\left(x^{4} - 4 L x^{3} + 6 L^{2} x^{2}\right),
+\qquad
+y(L) = \frac{w L^{4}}{8 E I},
+\]
+
+so the engineer can check every numerical decision against a known answer,
+which is the right way to build trust in a method before turning it loose
+on a problem with no closed form. Take the working values $L = 2.000\,
+\text{m}$, $E = 200\,\text{GPa}$ (structural steel), $I = 4.000 \times
+10^{-6}\,\text{m}^{4}$, and $w = 5.000 \times 10^{3}\,\text{N}/\text{m}$.
+The exact tip deflection is
+
+\[
+y(L) = \frac{(5000)(2.000)^{4}}{8 (200 \times 10^{9})(4.000 \times 10^{-6})}
+= \frac{80000}{6.400 \times 10^{6}} = 1.250 \times 10^{-2}\,\text{m}
+= 12.50\,\text{mm}.
+\]
+
+\begin{estimation}
+\textbf{Question.} Before discretising, estimate the tip deflection from
+dimensional reasoning and a single sanity number, and estimate which of the
+three error sources (truncation, round-off, conditioning) will dominate the
+numerical result on a grid of a few dozen intervals.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The deflection must scale as $w L^{4}/(E I)$ by dimensions; the only
+question is the dimensionless prefactor, which for a tip-loaded or
+distributed-load cantilever is an order-unity rational ($1/8$ for the
+uniformly distributed case). With $w L^{4}/(E I) = (5000)(16)/(8 \times
+10^{5}) = 0.1\,\text{m}$ and a prefactor near $1/8$, the tip deflection is
+near $12\,\text{mm}$, a span-over-$160$ deflection that a structural
+engineer reads as plausible for a working beam. For the error sources: a
+second-order finite-difference scheme on $n$ intervals has truncation error
+$O(h^{2}) = O(1/n^{2})$, near $4 \times 10^{-4}$ relative at $n = 50$; the
+linear solve is tridiagonal with a condition number that grows as
+$O(n^{4})$ for a fourth-order operator but stays near $10^{6}$ at $n = 50$,
+so the round-off contribution $\kappa u$ is near $10^{-10}$; and the input
+data ($E$ and $I$ from material and section tolerances) carry a few percent
+each. The dominant source is therefore neither truncation nor round-off
+but the input-data uncertainty, by two orders of magnitude. The estimate
+sets the expectation the budget will confirm: refining the grid past the
+data floor is wasted work.
+\end{estimation}
+
+\subsection{Discretisation and its truncation error}
+
+Replace the fourth derivative by the standard five-point centred
+difference on a uniform grid $x_{i} = i h$, $h = L/n$, $i = 0, \ldots, n$:
+
+\[
+y''''(x_{i}) \approx \frac{y_{i-2} - 4 y_{i-1} + 6 y_{i} - 4 y_{i+1}
++ y_{i+2}}{h^{4}},
+\]
+
+whose truncation error is $-\frac{h^{2}}{6} y^{(6)}(\xi) + O(h^{4})$, of
+order $h^{2}$. The clamped conditions $y_{0} = 0$ and $y'(0) = 0$ (the
+latter as $(y_{1} - y_{-1})/(2h) = 0$, introducing a ghost node $y_{-1} =
+y_{1}$) and the free-end conditions on $y''$ and $y'''$ close the system at
+the boundaries. The result is a banded linear system $\mat{A}\vect{y} =
+\vect{f}$ with $\vect{f}_{i} = w/(E I)$ at the interior nodes, where
+$\mat{A}$ is pentadiagonal of size $(n - 1) \times (n - 1)$ after the
+boundary eliminations. The truncation error of the computed deflection
+inherits the scheme's order: $\abs{y_{n}^{\text{computed}} - y(L)} =
+O(h^{2})$ for this smooth (in fact quartic) solution, and because the exact
+solution is a degree-four polynomial whose sixth derivative is zero, the
+leading $h^{2}$ truncation term vanishes identically and the scheme is
+exact up to round-off on this particular problem. The engineer notes this
+as a feature of the verification case, not of the method: the method's
+$O(h^{2})$ behaviour must be confirmed on a problem whose solution is not
+a low-degree polynomial before the zero-truncation result here is trusted
+as evidence of a correct implementation rather than of an accidental
+exactness.
+
+\subsection{The linear solve and its round-off}
+
+The system is solved by banded LU with partial pivoting (the routine behind
+\texttt{scipy.linalg.solve\_banded}), which is backward stable with
+backward error of order $u$ times a modest growth factor. The forward error
+of the solve is bounded by $\kappa(\mat{A}) \cdot u$ times that factor. The
+condition number of the discrete fourth-derivative operator grows as
+$\kappa(\mat{A}) = O(n^{4})$, the discrete analogue of the
+fourth-order differential operator's unbounded spectrum; at $n = 50$,
+$\kappa(\mat{A}) \approx 4 \times 10^{6}$, so the round-off contribution to
+the tip deflection is bounded by $\kappa u \approx 4 \times 10^{6} \cdot
+1.1 \times 10^{-16} \approx 4 \times 10^{-10}$, ten significant digits
+intact. Doubling $n$ to $100$ raises $\kappa$ by $2^{4} = 16$ and the
+round-off floor to $\approx 7 \times 10^{-9}$, still negligible against the
+data. The $O(n^{4})$ growth is the reason a naive engineer who refines the
+grid toward $n = 10^{4}$ in pursuit of truncation accuracy eventually meets
+a round-off wall: at $n = 10^{4}$, $\kappa \approx 4 \times 10^{14}$ and
+the solve retains only one or two digits. The defence, when high spatial
+resolution is genuinely needed, is to reformulate (a second-order system
+in $y$ and the moment $M = E I y''$ rather than the fourth-order system in
+$y$ alone), which lowers the operator order and the conditioning growth
+from $n^{4}$ to $n^{2}$.
+
+\subsection{The input-data uncertainty}
+
+The dominant term, as the estimation block predicted, is the uncertainty in
+the inputs. Structural steel's Young's modulus is quoted as $200\,\text{GPa}$
+with a typical batch-to-batch and temperature variation of about $\pm 3\,
+\text{percent}$; a rolled or machined section's second moment of area
+carries a tolerance from the dimensional tolerances on the cross-section,
+typically $\pm 2$ to $\pm 5\,\text{percent}$ depending on the section class;
+the distributed load $w$ in service is known to perhaps $\pm 5\,\text{percent}$.
+Propagating these through $y(L) = w L^{4}/(8 E I)$ by the
+relative-uncertainty rule of Volume I Chapter 4, with the relative
+uncertainties combining in quadrature for independent sources,
+
+\[
+\frac{u(y_{L})}{y_{L}} = \sqrt{\left(\frac{u_{w}}{w}\right)^{2} +
+\left(\frac{u_{E}}{E}\right)^{2} + \left(\frac{u_{I}}{I}\right)^{2}
++ \left(4\frac{u_{L}}{L}\right)^{2}}
+\approx \sqrt{0.05^{2} + 0.03^{2} + 0.04^{2} + (4 \cdot 0.005)^{2}}
+\approx 0.075,
+\]
+
+a relative uncertainty near $7.5\,\text{percent}$, dominated by the load
+and the section tolerances and amplified in the length by the fourth power.
+The tip deflection is therefore $12.5\,\text{mm} \pm 0.9\,\text{mm}$,
+current as of the quoted material data, and the honest report carries that
+band, not the ten-digit precision the linear solve preserves.
+
+\subsection{The budget and the verified result}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-error-budget}
+
+Figure~\ref{fig:vol02:ch16:error-budget} stacks the four contributions on
+a logarithmic magnitude axis. The ranking is unambiguous: the input-data
+uncertainty at $7.5 \times 10^{-2}$ dominates the discretisation error at
+$\sim 10^{-3}$ (for a grid fine enough to resolve a non-polynomial
+solution), which dominates the linear-solve round-off at $\sim 10^{-10}$.
+The verified numerical result is
+
+\[
+y(L) = 12.5\,\text{mm} \pm 0.9\,\text{mm}\ (\text{relative } 7.5\,\text{percent}),
+\]
+
+with the numerical method contributing nothing the data can resolve. Three
+disciplines close the computation. First, the method was verified against
+the exact closed form before being trusted, and its $O(h^{2})$ order was
+confirmed on a separate non-polynomial test problem so that the exactness
+on the quartic was not mistaken for an implementation that happens to work.
+Second, the dominant error source was named and quantified, so the
+engineer knows that buying a finer grid or a higher precision is wasted
+money against this data, and that tightening the section tolerance or the
+load estimate is the only path to a tighter deflection. Third, the reported
+number carries its uncertainty and its provenance, so a reader can audit
+the claim. The same three steps scale to a finite-element model with a
+million degrees of freedom, where the closed form is unavailable, the
+verification runs against a manufactured solution or a mesh-refinement
+study, and the error budget is the artefact that tells the engineer which
+term to attack. The discipline does not change with the problem size; only
+the cost of each step does.
 
 \section{Failure: famous numerical failures}\pathtag{core}
 

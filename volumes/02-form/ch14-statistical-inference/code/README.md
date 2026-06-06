@@ -56,6 +56,21 @@ critical value; the numbers match the prose exactly.
 uv run classical_tests.py
 ```
 
+## `casestudy_fatigue.py`
+
+The end-to-end fatigue S-N case study of section 14.7. Reads
+`../data/fatigue-sn.csv`, fits the log-log Basquin model, runs a
+Shapiro-Wilk residual normality check as a numeric companion to the
+quantile-quantile plot, and reports both a parametric prediction
+interval and a residual-bootstrap prediction interval for the life
+at a query stress of 260 MPa. The printed numbers match the chapter
+prose: slope `-6.20`, `sigma = 0.115`, `R^2 = 0.94`, point life
+`7.6e4` cycles, parametric 95% PI `[4.3e4, 1.3e5]` cycles.
+
+```
+uv run casestudy_fatigue.py
+```
+
 ## Conventions
 
 - The random-number generator is seeded explicitly in every script.

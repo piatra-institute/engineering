@@ -18,6 +18,8 @@ uv run code/<script>.py
 | `series_test_picker.py` | Walks the convergence-test decision tree of figure `fig:vol02:ch04:test-decision-tree` on a small catalog of series and prints the test that settles each. | Pedagogical companion to section 4.3 and the test decision-tree figure. |
 | `fixed_point_cobweb.py` | Runs the fixed-point iteration $a_{n+1}=\cos a_n$ toward the Dottie number, printing the signed error and the empirical contraction ratio (settling to $-0.674$). | Section 4.1 worked fixed-point example; cobweb figure `fig:vol02:ch04:cobweb`. |
 | `cancellation_exp.py` | Compares direct Maclaurin summation of $e^{-x}$ (catastrophic cancellation) against the stable reciprocal-of-$e^{+x}$ route, reporting relative error vs `math.exp`. | Section 4.6 catastrophic-cancellation failure subsection. |
+| `aitken_euler.py` | Runs the Aitken $\Delta^2$ and Euler-transform convergence accelerators on the Leibniz series for $\pi/4$ and the alternating series for $\log 2$; reports term counts for six-decimal accuracy and writes per-step errors. | Section 4.3 acceleration subsection; figure `fig:vol02:ch04:acceleration`. |
+| `machin_pi.py` | Computes $\pi$ to ten decimals by Machin's formula with the case study's two-part error budget (truncation + round-off), printing each term, the truncation point, and the empirical error against a high-precision reference. | Section 4.7 case study; figure `fig:vol02:ch04:machin-budget`. |
 
 ## Conventions
 

@@ -9,6 +9,8 @@
 | `harmonic_decades.csv` | Output of `code/harmonic_partial_sums.py`: $H_N$ at $N = 10^{1}\ldots 10^{6}$ and the gap to $\log N + \gamma$. | Simulation exercise on harmonic partial sums; failure section. |
 | `fixed_point_cobweb.csv` | Output of `code/fixed_point_cobweb.py`: iterate, signed error, and contraction ratio for $a_{n+1}=\cos a_n$, $n = 0\ldots 20$. | Section 4.1 fixed-point example; cobweb figure. |
 | `cancellation_exp.csv` | Output of `code/cancellation_exp.py`: direct vs stable evaluation of $e^{-x}$ at $x = 5, 10, 20, 30, 40$ with relative errors. | Section 4.6 catastrophic-cancellation subsection. |
+| `acceleration_compare.csv` | Output of `code/aitken_euler.py`: per-step error of the raw, Aitken-$\Delta^2$, and Euler-transformed estimates of $\pi/4$ for $N = 2\ldots 14$ terms. | Section 4.3 acceleration subsection; figure `fig:vol02:ch04:acceleration`. |
+| `machin_pi_budget.csv` | Output of `code/machin_pi.py`: per-term magnitude, partial sum, and next-term truncation bound for each arctangent series in Machin's formula for $\pi$. | Section 4.7 case study; figure `fig:vol02:ch04:machin-budget`. |
 
 ## Provenance
 

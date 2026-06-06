@@ -303,6 +303,66 @@ wave, or a measured waveform recomputes the integral rather than
 reaching for the $1/\sqrt{2}$ factor, which is specific to the
 sinusoid.
 
+\subsection{Accumulation of measured data: charge from a current
+trace}
+
+The accounting reading of the integral earns its keep when the
+integrand is a column of measured numbers rather than a formula. A
+battery-management system samples the current into and out of a cell
+at a fixed interval and must report the cell's state of charge, which
+is the time integral of the current. The integrand has dimensions of
+current; the integral has dimensions of charge. A trace sampled every
+$\Delta t = 10\,\si{\second}$ over a one-minute window, with measured
+currents $I_{0}, \ldots, I_{6}$ in amperes equal to $2.0$, $2.4$,
+$2.6$, $2.1$, $1.5$, $0.9$, $0.4$, accumulates a charge
+\[
+Q = \int_{0}^{60} I(t)\dd t \approx \Delta t\Bigl[\tfrac{1}{2}I_{0}
++ I_{1} + I_{2} + I_{3} + I_{4} + I_{5} + \tfrac{1}{2}I_{6}\Bigr]
+\]
+by the trapezoidal rule, which evaluates to
+\[
+Q \approx 10\,\bigl[1.0 + 2.4 + 2.6 + 2.1 + 1.5 + 0.9 + 0.2\bigr]
+= 10 \cdot 10.7 = 107\,\si{\coulomb}.
+\]
+Dividing by $3600\,\si{\second\per\hour}$ converts to
+$0.0297\,\si{\ampere\hour}$, or $29.7\,\si{\milli\ampere\hour}$, the
+charge the cell has accepted in the minute. The discrete sum that the
+battery-management firmware runs every sampling tick is the Riemann
+sum of section 6.1, with the trapezoidal weights chosen for their
+$h^{2}$ error. The half-weights on the first and last samples are the
+trapezoidal rule's signature; a reader who weights every sample
+equally is running the left-endpoint sum, which on a declining current
+trace biases the reported charge high. The accumulation reading and
+the dimensional bookkeeping are the whole of the calculation, and they
+recur in section 6.10 where the same Coulomb-counting integral is
+carried end to end with its error budget.
+
+\begin{mastery}
+\textbf{Why the Riemann theory is not the last word.} The three
+sufficient conditions of section 6.1 (continuity, finitely many
+jumps, monotonicity) and the Lebesgue criterion that completes them
+all live inside the Riemann framework, which integrates by partitioning
+the \emph{domain}. The Lebesgue integral partitions the \emph{range}
+instead: it asks, for each value level $y$, how much of the domain
+maps above $y$, and integrates those measures. The change of viewpoint
+buys two things the Riemann integral cannot give. It integrates the
+Dirichlet function of section 6.8 (the indicator of the rationals
+integrates to zero, because the rationals have measure zero), and it
+supplies convergence theorems, the monotone and dominated convergence
+theorems, that let a limit pass inside an integral under mild
+hypotheses. The working engineer meets the Lebesgue integral
+indirectly: the $L^{1}$ and $L^{2}$ spaces that underwrite Fourier
+analysis (Volume II Chapter 12) and the probability integrals of
+Volume II Chapter 13 are Lebesgue integrals, and the interchange of
+limit and integral that a signal-processing derivation performs
+without comment is licensed by a Lebesgue convergence theorem, not by
+the Riemann definition. The two integrals agree on every function the
+Riemann theory can handle, so the engineer who computes a Riemann
+integral computes the Lebesgue integral of the same function; the
+Lebesgue theory extends the catalogue and supplies the limit theorems
+\cite{text:v2ch06-apostol-calculus}.
+\end{mastery}
+
 \begin{estimation}
 \textbf{Question.} A car drives from a city centre to a suburb in
 $30 \,\si{\minute}$. Its speedometer is read at minute $0$, $5$,
@@ -609,6 +669,37 @@ C = \operatorname{arcsinh} x + C$, the inverse hyperbolic sine that
 arises whenever an integrand carries the arc length of a parabola
 or the field of a charged line.
 
+\subsection{The tangent half-angle substitution}
+
+A rational function of $\sin x$ and $\cos x$ has a universal
+substitution that turns it into an ordinary rational function of a
+new variable, which the partial-fraction machinery then handles. The
+\engterm{tangent half-angle} (or Weierstrass) substitution sets $t =
+\tan(x/2)$, from which the half-angle identities give
+\[
+\sin x = \frac{2t}{1 + t^{2}}, \quad
+\cos x = \frac{1 - t^{2}}{1 + t^{2}}, \quad
+\dd x = \frac{2}{1 + t^{2}}\dd t.
+\]
+Every appearance of $\sin x$, $\cos x$, and $\dd x$ becomes a rational
+expression in $t$, so the transformed integral is a rational function
+that the techniques of this section close in elementary terms. A
+worked case that resists the earlier methods: the integral of the
+secant-like form $1/(1 + \sin x)$. The substitution gives
+\[
+\int\frac{\dd x}{1 + \sin x} =
+\int\frac{1}{1 + \frac{2t}{1 + t^{2}}}\cdot\frac{2\dd t}{1 + t^{2}}
+= \int\frac{2\dd t}{(1 + t)^{2}}
+= -\frac{2}{1 + t} + C = -\frac{2}{1 + \tan(x/2)} + C.
+\]
+The transformed integrand $(1 + t)^{-2}$ is in the catalogue at once.
+The substitution is the universal fallback for trigonometric rational
+integrands, with one caution: it is singular at $x = \pi$ (where
+$\tan(x/2)$ blows up), so a definite integral whose interval straddles
+$\pi$ must be split at the singularity and each piece taken as a
+one-sided limit, the same discipline the improper integrals of
+section 6.4 require.
+
 \subsection{Integration by parts}
 
 The product rule says $(uv)' = u'v + uv'$. Integrating,
@@ -826,6 +917,45 @@ For engineering purposes, the working rule is to recognise the
 common non-elementary integrals on sight, look up the value or
 the appropriate special function, and proceed.
 
+\begin{mastery}
+\textbf{Differentiation under the integral sign worked to a closed
+form.} The Leibniz rule of section 6.2 turns into an evaluation
+technique when a definite integral with no elementary antiderivative
+is embedded in a parameterised family whose derivative in the
+parameter \emph{is} elementary. The integral
+\[
+I(b) = \int_{0}^{\infty}\frac{e^{-x} - e^{-bx}}{x}\dd x, \qquad b > 0,
+\]
+has an integrand with no elementary antiderivative (the exponential
+integral lurks in each term separately), yet the whole converges and
+has a closed form. Differentiate in the parameter $b$, passing the
+derivative inside by the Leibniz rule, which is licensed because the
+differentiated integrand is dominated by an integrable function on
+$[0, \infty)$:
+\[
+I'(b) = \int_{0}^{\infty}\frac{\partial}{\partial b}
+\frac{e^{-x} - e^{-bx}}{x}\dd x
+= \int_{0}^{\infty} e^{-bx}\dd x = \frac{1}{b}.
+\]
+The differentiated integral is elementary. Integrating back in $b$,
+$I(b) = \ln b + C$, and the constant is fixed by the boundary value
+$I(1) = 0$ (the integrand vanishes identically at $b = 1$), giving
+$C = 0$. Therefore
+\[
+\int_{0}^{\infty}\frac{e^{-x} - e^{-bx}}{x}\dd x = \ln b,
+\]
+the \engterm{Frullani integral} in its exponential case. The same
+parameter trick evaluates $\int_{0}^{\infty} e^{-x^{2}}\cos(bx)\dd x$,
+$\int_{0}^{\infty}(\sin x)/x\,\dd x = \pi/2$ (introduce a damping
+factor $e^{-sx}$, differentiate in $s$, integrate the rational result,
+and take $s \to 0$), and a wide class of definite integrals that no
+antiderivative reaches. The discipline the technique demands is the
+verification that differentiation may pass inside the integral, which
+the dominated convergence theorem of the section 6.1 mastery box
+settles when a dominating integrable function can be exhibited
+\cite{text:v2ch06-apostol-calculus}.
+\end{mastery}
+
 \section{Improper integrals}\pathtag{standard}
 
 The Riemann integral is defined for a bounded function on a closed
@@ -922,6 +1052,38 @@ fractional derivatives their meaning, and the closed form for the
 volume of a high-dimensional ball; a reader who has integrated it
 once recognises it everywhere \cite{text:v2ch06-apostol-calculus}.
 
+\subsection{The Beta function and its tie to Gamma}
+
+A second named improper integral pairs with the Gamma function and
+recurs throughout reliability and Bayesian statistics. The
+\engterm{Beta function} is
+\[
+B(p, q) = \int_{0}^{1} x^{p-1}(1 - x)^{q-1}\dd x, \qquad p, q > 0.
+\]
+The integrand is improper at both endpoints when $p < 1$ or $q < 1$:
+near $x = 0$ it behaves like $x^{p-1}$, which by the origin power-law
+test converges for $p > 0$; near $x = 1$ it behaves like
+$(1 - x)^{q-1}$, which converges for $q > 0$. The two endpoint tests
+of this section fix the domain in two lines, the same way they fixed
+the Gamma domain. The Beta and Gamma functions are linked by the
+identity
+\[
+B(p, q) = \frac{\Gamma(p)\,\Gamma(q)}{\Gamma(p + q)},
+\]
+which a reader derives by writing $\Gamma(p)\Gamma(q)$ as a double
+integral over the first quadrant and changing to the variables
+$x = u/(u + v)$ and $s = u + v$, where the $x$-integral separates out
+as the Beta integral and the $s$-integral collapses to $\Gamma(p +
+q)$. A worked value: $B(\tfrac{1}{2}, \tfrac{1}{2}) = \Gamma(\tfrac{1}
+{2})^{2}/\Gamma(1) = (\sqrt{\pi})^{2}/1 = \pi$, which the reader checks
+directly by the substitution $x = \sin^{2}\theta$ that turns
+$\int_{0}^{1} x^{-1/2}(1 - x)^{-1/2}\dd x$ into $\int_{0}^{\pi/2}
+2\dd\theta = \pi$. The Beta function is the normalising constant of
+the beta distribution, the conjugate prior for a binomial proportion
+in Bayesian reliability work (Volume II Chapter 13), and the closed
+form for the integrals that arise in the analysis of order statistics
+\cite{text:v2ch06-apostol-calculus}.
+
 \subsection{The Cauchy principal value}
 
 A symmetric improper integral whose two halves diverge can still
@@ -977,6 +1139,33 @@ but its absolute version $\int_{0}^{\infty} \abs{\sin x}/x \dd x$
 diverges. The distinction matters in convolution analysis (section
 6.7) and in the convergence of Fourier integrals (Volume II
 Chapter 12).
+
+\begin{mastery}
+\textbf{Conditional convergence and the Dirichlet test.} An integral
+that converges but not absolutely is \engterm{conditionally
+convergent}, and its convergence rests on cancellation between
+positive and negative contributions rather than on the integrand's
+decay. The sinc integral is the working example: $(\sin x)/x$ does not
+decay fast enough for $\int\abs{\sin x}/x$ to converge (the absolute
+integrand behaves like the divergent harmonic tail averaged over each
+hump), yet the alternating sign of $\sin x$ makes successive humps
+nearly cancel, and the partial integrals settle to $\pi/2$. The
+\engterm{Dirichlet test} for integrals states the general condition:
+if $g(x)$ decreases monotonically to zero as $x \to \infty$ and the
+oscillatory factor $h(x)$ has uniformly bounded partial integrals,
+$\abs*{\int_{a}^{R} h(x)\dd x} \leq M$ for all $R$, then
+$\int_{a}^{\infty} g(x)h(x)\dd x$ converges. For the sinc integral,
+$g(x) = 1/x$ decreases to zero and $h(x) = \sin x$ has partial
+integrals bounded by $2$, so the test applies. The practical hazard
+of conditional convergence is that a numerical quadrature must respect
+the cancellation: truncating $\int_{0}^{\infty}(\sin x)/x\,\dd x$ at a
+finite upper limit $R$ leaves a tail error that decays only like
+$1/R$, far slower than the exponential tails of an absolutely
+convergent integrand, so a reader who integrates a conditionally
+convergent integrand to a fixed tolerance needs an analytic tail
+estimate or a convergence-acceleration scheme, not a brute-force
+extension of the upper limit \cite{text:v2ch06-apostol-calculus}.
+\end{mastery}
 
 \section{Numerical integration: trapezoidal, Simpson, Gauss}\pathtag{core}
 
@@ -1152,6 +1341,38 @@ column stops changing, the answer has converged
 \cite{text:v2ch06-burden-faires-numerical}.
 \end{mastery}
 
+\begin{mastery}
+\textbf{Clenshaw-Curtis and spectral accuracy on smooth integrands.}
+Gauss-Legendre quadrature reaches degree $2n - 1$ exactness with $n$
+nodes, but its nodes are the awkward roots of a Legendre polynomial
+and are not nested (the nodes for $n$ and $2n$ share no points, so a
+refinement throws away every previous evaluation). \engterm{Clenshaw-
+Curtis} quadrature trades a small loss of polynomial degree for two
+practical gains. It samples at the Chebyshev points $x_{k} =
+\cos(k\pi/n)$, which cluster near the endpoints and are nested under
+doubling, and it computes its weights by a fast cosine transform, so a
+thousand-node rule costs an $\mathcal{O}(n\log n)$ transform rather
+than a root-finding solve. Its exactness degree is only $n$ rather
+than $2n - 1$, yet on a smooth (analytic) integrand both rules
+converge \engterm{spectrally}: the error falls faster than any fixed
+power of $1/n$, geometrically in $n$ for an integrand analytic in a
+neighbourhood of the interval. For the integrand $1/(1 + 16x^{2})$ on
+$[-1, 1]$, whose nearest singularities sit at $x = \pm i/4$,
+Clenshaw-Curtis and Gauss-Legendre both reach machine precision near
+$n = 40$, with Gauss a constant factor ahead and Clenshaw-Curtis
+cheaper per node and refinable without waste. The working lesson
+reverses the textbook ordering of the rules: on a smooth analytical
+integrand the convergence is exponential and the choice between Gauss
+and Clenshaw-Curtis is a matter of node reuse and weight-computation
+cost, while the $h^{2}$ and $h^{4}$ orders of the trapezoidal and
+Simpson rules describe the polynomial-fit regime that a smooth
+integrand leaves behind once $n$ is large enough
+\cite{paper:v2ch06-trefethen-quadrature-2008}. The trapezoidal rule
+itself recovers spectral accuracy on a smooth \emph{periodic}
+integrand integrated over a whole period, which is why the discrete
+Fourier transform's quadrature is so accurate.
+\end{mastery}
+
 A reader who has measured data sampled at $n$ points and wants to
 integrate it has two compatible options. Apply the trapezoidal rule
 directly to the data. Or fit a smoother to the data first (a cubic
@@ -1248,6 +1469,42 @@ to read the error estimate, verify it against convergence by
 halving, and treat any disagreement as evidence the integrand has
 broken one of the smoothness assumptions
 \cite{text:v2ch06-burden-faires-numerical}.
+
+The mechanics of adaptive quadrature are worth tracing once on a
+concrete integrand so the black box stops being a black box. Consider
+$\int_{0}^{1} e^{-100(x - 0.3)^{2}}\dd x$, a narrow Gaussian spike of
+width $\sim 0.1$ centred at $x = 0.3$ on an interval ten times wider.
+The adaptive routine begins with the whole interval $[0, 1]$ as a
+single panel. On each panel it computes two estimates: a coarse
+Simpson estimate $S$ using the panel's three nodes, and a finer
+estimate $S'$ obtained by splitting the panel in two and applying
+Simpson to each half. The difference $\abs{S' - S}$ is the panel's
+error estimate. If the estimate exceeds the panel's share of the
+global tolerance $\varepsilon$, the panel is bisected and each half is
+pushed onto the work list with half the tolerance; if the estimate is
+within tolerance, the finer estimate $S'$ (or its Richardson-corrected
+value) is accepted and the panel is retired. The recursion drives
+effort to where the integrand varies. On the spike integrand, the
+first panel $[0, 1]$ fails the test badly, because the coarse Simpson
+nodes at $x = 0, 0.5, 1$ all sit on the spike's flat skirts and read
+the integral as nearly zero while the split estimate catches part of
+the peak. The recursion bisects, then bisects again toward $[0.25,
+0.375]$, spending most of its panels in the narrow band around $x =
+0.3$ and almost none on the flat skirts. The final node distribution
+is the picture of where the integrand earned attention: dense near the
+spike, sparse elsewhere. A fixed-step Simpson rule that matched the
+adaptive routine's accuracy would have to use the adaptive routine's
+finest spacing everywhere, costing an order of magnitude more
+evaluations on the flat regions where the fine spacing buys nothing.
+The discipline the trace exposes is that the error estimate driving
+the refinement is itself a difference of two quadrature estimates;
+when the integrand is too irregular for either estimate to be
+trustworthy (a true singularity, a discontinuity inside a panel), the
+difference can fall below tolerance for the wrong reason, and the
+routine retires a panel it should have refined. A reader who trusts an
+adaptive routine's returned error estimate without a convergence-by-
+halving cross-check has accepted the routine's self-assessment on
+faith \cite{text:v2ch06-burden-faires-numerical}.
 
 \section{Multiple integrals preview}\pathtag{standard}
 
@@ -1355,6 +1612,80 @@ class of revolution integrals into a centroid lookup, and they are
 the reason a draughtsman can quote the volume of a turned part from
 its cross-section's area and centroid alone \cite{text:strang2016}.
 \end{mastery}
+
+\subsection{A worked triple integral: mass and centroid of a solid}
+
+The double-integral apparatus extends to three dimensions by adding a
+third iterated integration. For a solid body occupying region $V$ with
+volume mass density $\rho(x, y, z)$, the total mass is the triple
+integral
+\[
+m = \iiint_{V}\rho\,\dd V,
+\]
+and the centre of mass has coordinates $\bar{x} = \frac{1}{m}\iiint_{V}
+x\rho\,\dd V$, and similarly for $\bar{y}$ and $\bar{z}$. A worked
+case that an engineer meets when locating the centre of mass of a
+tapered component: a solid cone of height $h$ and base radius $R$,
+apex at the origin, axis along $z$, of uniform density $\rho$. At
+height $z$ the cone's cross-section is a disc of radius $r(z) = Rz/h$
+and area $\pi R^{2}z^{2}/h^{2}$. The mass integral collapses to a
+single integral over $z$ once the cross-sectional area is in hand:
+\[
+m = \int_{0}^{h}\rho\,\frac{\pi R^{2}z^{2}}{h^{2}}\dd z =
+\frac{\pi\rho R^{2}}{h^{2}}\cdot\frac{h^{3}}{3} =
+\tfrac{1}{3}\pi\rho R^{2}h,
+\]
+recovering the familiar one-third-of-the-cylinder volume times
+density. The axial centroid is the first moment over the mass:
+\[
+\bar{z} = \frac{1}{m}\int_{0}^{h} z\cdot\rho\,\frac{\pi R^{2}z^{2}}
+{h^{2}}\dd z = \frac{1}{m}\cdot\frac{\pi\rho R^{2}}{h^{2}}\cdot
+\frac{h^{4}}{4} = \frac{\tfrac{1}{4}\pi\rho R^{2}h^{2}}
+{\tfrac{1}{3}\pi\rho R^{2}h} = \tfrac{3}{4}h.
+\]
+The centroid sits three-quarters of the way from the apex to the
+base, biased toward the wide end where the mass is, by an amount the
+integral computes. The full triple integral reduces to a single
+integral here because the cross-sectional area is a known function of
+$z$; this is the \engterm{slicing} reduction, the three-dimensional
+analogue of the disc method of section 6.9 and the workhorse of every
+centroid calculation on a body of revolution. When the density varies
+within a cross-section, the inner double integral over $(x, y)$ does
+not collapse and the full triple integral of Volume II Chapter 11 is
+required.
+
+\subsection{Surface area of a solid of revolution}
+
+The arc-length integral of section 6.9 generates a surface-area
+integral when a curve is revolved. Revolving the curve $y = f(x)$ on
+$[a, b]$ about the $x$-axis sweeps a surface whose area is the integral
+of circumference times arc-length element,
+\[
+A = \int_{a}^{b} 2\pi f(x)\sqrt{1 + \bigl(f'(x)\bigr)^{2}}\dd x,
+\]
+each thin band at position $x$ contributing its circumference $2\pi
+f(x)$ times its slant width $\dd s = \sqrt{1 + (f')^{2}}\dd x$. The
+$\dd s$, not $\dd x$, is the geometric content: a band on a steep part
+of the curve is wider than its horizontal projection, and using
+$\dd x$ in place of $\dd s$ understates the area of any non-horizontal
+band. A worked case: the surface area of a sphere of radius $R$,
+generated by revolving the semicircle $f(x) = \sqrt{R^{2} - x^{2}}$
+about the $x$-axis. Here $f'(x) = -x/\sqrt{R^{2} - x^{2}}$, so $1 +
+(f')^{2} = R^{2}/(R^{2} - x^{2})$ and $\sqrt{1 + (f')^{2}} =
+R/\sqrt{R^{2} - x^{2}}$. The slant width cancels the radius factor:
+\[
+A = \int_{-R}^{R} 2\pi\sqrt{R^{2} - x^{2}}\cdot\frac{R}{\sqrt{R^{2}
+- x^{2}}}\dd x = 2\pi R\int_{-R}^{R}\dd x = 2\pi R\cdot 2R = 4\pi
+R^{2},
+\]
+the surface area of a sphere, in two lines from the integral. The
+cancellation that makes the integrand constant is the analytic content
+of Archimedes' hat-box theorem: the area of a spherical zone depends
+only on its axial height, not on its latitude, so equal slabs of a
+sphere carry equal surface area. The result feeds the disc-method
+volume of section 6.9 and the radiative and convective heat-transfer
+calculations of Volume V, where surface area per unit volume governs
+the rate at which a body exchanges heat with its surroundings.
 
 \section{Convolution introduced}\pathtag{standard}
 
@@ -1473,6 +1804,76 @@ curve while the pulse holds, and the output decays exponentially
 once the pulse drops to zero.
 
 \input{volumes/02-form/ch06-integration/figures/fig-rc-convolution.tex}
+
+\subsection{A worked example: the convolution of two Gaussians}
+
+A convolution that closes in elementary form, and that recurs across
+optics, metrology, and probability, is the convolution of two Gaussian
+functions. Let $f$ and $g$ be normalised Gaussians of widths
+$\sigma_{1}$ and $\sigma_{2}$ centred at the origin,
+\[
+f(x) = \frac{1}{\sigma_{1}\sqrt{2\pi}}e^{-x^{2}/(2\sigma_{1}^{2})},
+\qquad
+g(x) = \frac{1}{\sigma_{2}\sqrt{2\pi}}e^{-x^{2}/(2\sigma_{2}^{2})}.
+\]
+Their convolution $(f * g)(t) = \int_{-\infty}^{\infty} f(\tau)
+g(t - \tau)\dd\tau$ carries a sum of two quadratics in the exponent.
+Completing the square in $\tau$ and integrating out the Gaussian in
+$\tau$ (a normalisation integral of the section 6.6 form) leaves a
+single Gaussian in $t$,
+\[
+(f * g)(t) = \frac{1}{\sigma\sqrt{2\pi}}e^{-t^{2}/(2\sigma^{2})},
+\qquad \sigma = \sqrt{\sigma_{1}^{2} + \sigma_{2}^{2}}.
+\]
+The convolution of two Gaussians is a Gaussian whose variance is the
+sum of the variances. The result is the working content of two facts
+an engineer uses constantly. In metrology, when two independent
+sources of Gaussian error combine, their standard deviations add in
+quadrature, $\sigma = \sqrt{\sigma_{1}^{2} + \sigma_{2}^{2}}$, which is
+the convolution of the two error densities read as the
+add-in-quadrature rule of Volume I Chapter 4. In optics and imaging, a
+Gaussian blur of width $\sigma_{1}$ followed by a second of width
+$\sigma_{2}$ is a single Gaussian blur of width $\sigma$, so cascaded
+blurs never sharpen and the widths combine in quadrature, not
+linearly. The Gaussian is the fixed point of repeated convolution,
+which is the integral statement of the central limit theorem: the
+density of a sum of many independent contributions is the repeated
+convolution of their densities, and it converges to a Gaussian
+(Volume II Chapter 13).
+\Cref{fig:vol02:ch06:gaussian-convolution} shows the widths combining
+in quadrature.
+
+\input{volumes/02-form/ch06-integration/figures/fig-gaussian-convolution.tex}
+
+\subsection{A worked example: the moving-average filter}
+
+The simplest smoothing operation an engineer applies to a noisy signal
+is the \engterm{moving average}, and it is a convolution with a
+rectangular kernel. A moving average of window width $W$ replaces each
+value by the average of the signal over the surrounding window,
+\[
+\bar{s}(t) = \frac{1}{W}\int_{t - W/2}^{t + W/2} s(\tau)\dd\tau =
+(s * k)(t), \qquad
+k(\tau) = \begin{cases} 1/W & \abs{\tau} \leq W/2, \\ 0 &
+\text{otherwise.}\end{cases}
+\]
+The kernel $k$ is the unit-area box of width $W$. Convolving a signal
+with the box averages it, and the convolution of two boxes (section
+6.7) is the triangle, so applying the moving average twice is a
+convolution with a triangular kernel, which smooths more gently at the
+window edges. The moving average is a low-pass filter: its frequency
+response, the Fourier transform of the box kernel, is the sinc
+function $\operatorname{sinc}(fW) = \sin(\pi fW)/(\pi fW)$, which
+passes low frequencies and attenuates high ones, with nulls at the
+frequencies $f = n/W$ where a full integer number of cycles fits the
+window and averages to zero. The hazard the sinc response exposes is
+that the box's sidelobes do not roll off cleanly: a moving average
+leaks high-frequency content through its sinc sidelobes, so a reader
+who needs a sharp frequency cutoff reaches for a designed filter rather
+than a box average. The moving average's virtue is that it is the
+cheapest causal smoother and its impulse response is exactly the
+window the engineer can name; its vice is the sinc leakage that the
+convolution-Fourier pair of Volume II Chapter 12 makes precise.
 
 \subsection{Convolution as the engineer's tool}
 
@@ -1889,6 +2290,186 @@ rate or density into a global total. The transport archetype, in
 its integral form, is the subject of every conservation law the
 reader will meet in Volume III, V, and IX.
 \end{archetype}
+
+\section{Case study: state of charge by Coulomb counting}\pathtag{standard}
+
+The chapter's accounting reading of the integral, the convergence
+discipline of its numerical section, and the failure catalogue of its
+divergence section all converge on a single working calculation that a
+battery-management engineer performs every day: estimating a cell's
+state of charge by integrating its current. The calculation is short,
+the physics is clean, and the error budget exposes every theme of the
+chapter. We carry it end to end, from the governing relation to the
+reported number with its uncertainty, on a realistic measured trace.
+
+\subsection{The quantity and the governing integral}
+
+A rechargeable cell holds a charge that an engineer reports as a
+\engterm{state of charge}, the fraction of the cell's rated capacity
+$Q_{\mathrm{rated}}$ currently stored. Charge enters and leaves the
+cell as current, and the charge accounting is the integral
+\[
+Q(t) = Q(0) + \int_{0}^{t} I(\tau)\dd\tau,
+\]
+with $I$ positive on charge and negative on discharge. The state of
+charge is $\mathrm{SoC}(t) = Q(t)/Q_{\mathrm{rated}}$. The relation is
+the fundamental theorem of calculus read as accounting: the rate at
+which the stored charge changes is the current, so the stored charge
+is the running integral of the current. The method is called
+\engterm{Coulomb counting}, and its accuracy is the accuracy of the
+integral. The integrand is a measured current, sampled at a fixed
+interval by the battery-management system's analogue-to-digital
+converter, so the integral is a numerical quadrature on noisy
+measured data, exactly the regime of section 6.5.
+
+\subsection{Estimation before calculation}
+
+\begin{estimation}
+\textbf{Question.} A cell of rated capacity $Q_{\mathrm{rated}} =
+3.0\,\si{\ampere\hour}$ is discharged at an average current near
+$1.5\,\si{\ampere}$ for about half an hour. Before integrating the
+logged trace, estimate the charge removed and the resulting drop in
+state of charge, with a factor-of-two confidence range.
+
+\smallskip
+\textit{Estimate.}
+
+\smallskip
+A current of $1.5\,\si{\ampere}$ over $0.5\,\si{\hour}$ removes about
+$1.5 \times 0.5 = 0.75\,\si{\ampere\hour}$, which is one quarter of
+the $3.0\,\si{\ampere\hour}$ rated capacity. The state of charge
+should fall by about $25\,\%$. The factor-of-two range, covering a
+heavier or lighter load and a longer or shorter window, runs from
+about $10\,\%$ to $40\,\%$. The estimate uses a single average current
+and a single duration; the logged trace, integrated properly, refines
+the average current to whatever the measurements support. A computed
+state-of-charge drop outside the estimated range is a diagnostic: a
+current sensor stuck or saturated, a sampling gap integrated as if the
+current were zero across it, or an unusually aggressive load.
+\end{estimation}
+
+\subsection{The measured trace and the quadrature}
+
+The battery-management system logs the cell current once per second
+over a $1800\,\si{\second}$ discharge. The trace is the nominal
+discharge current of about $1.5\,\si{\ampere}$ with two features that a
+real cell shows: a measurement noise of standard deviation about
+$20\,\si{\milli\ampere}$ on each sample (the sensor's quantisation and
+thermal noise), and a slow load transient where the current rises to
+about $2.2\,\si{\ampere}$ for a hundred seconds near the middle of the
+window. The reference trace and the running integral are generated by
+the script \texttt{code/coulomb\_counting.py} and tabulated in
+\texttt{data/coulomb\_trace.csv}.
+\Cref{fig:vol02:ch06:coulomb-counting} shows the current trace and the
+accumulated charge.
+
+\input{volumes/02-form/ch06-integration/figures/fig-coulomb-counting.tex}
+
+The trapezoidal rule on the one-second samples computes the charge
+removed,
+\[
+Q_{\mathrm{out}} = \int_{0}^{1800} \abs{I(t)}\dd t \approx
+\Delta t\Bigl[\tfrac{1}{2}\abs{I_{0}} + \sum_{i=1}^{N-1}\abs{I_{i}}
++ \tfrac{1}{2}\abs{I_{N}}\Bigr],
+\]
+with $\Delta t = 1\,\si{\second}$ and $N = 1800$. For the reference
+trace, $Q_{\mathrm{out}} \approx 2.77\times 10^{3}\,\si{\coulomb}$,
+which divided by $3600\,\si{\second\per\hour}$ is
+$0.770\,\si{\ampere\hour}$. The state-of-charge drop is
+$0.770/3.0 = 0.256$, a fall of $25.6\,\%$, comfortably inside the
+estimation block's $25\,\%$ central figure and its factor-of-two band.
+The estimate has earned the calculation: the computed answer is sane.
+
+\subsection{Why trapezoidal, not Simpson, on this trace}
+
+The integrand is measured data carrying noise, so the section 6.5
+guidance applies directly. Simpson's rule, with its $h^{4}$ error,
+assumes a smooth integrand whose fourth derivative is bounded; applied
+to a noisy current trace it amplifies the high-frequency measurement
+noise through its alternating $4, 2, 4, 2$ weights, which differentiate
+the noise rather than average it. The trapezoidal rule's uniform
+interior weights average the noise: the noise contribution to the
+integral is a sum of $N$ nearly independent samples each of magnitude
+$\sigma_{I}\Delta t$, so it grows like $\sqrt{N}\,\sigma_{I}\Delta t$
+rather than like $N$, and the relative noise contribution to the
+integral falls like $1/\sqrt{N}$ as the sampling rate rises. The
+trapezoidal rule is the honest choice on noisy data; the higher-order
+rule buys accuracy the noise floor does not support.
+
+\subsection{The error budget}
+
+The reported charge carries three error sources, which combine as in
+Volume I Chapter 4.
+
+\begin{itemize}[leftmargin=*]
+  \item \engterm{Current-sensor gain and offset error.} The sensor
+    reports $I_{\mathrm{meas}} = (1 + g)I_{\mathrm{true}} + b$ for a
+    gain error $g$ and an offset $b$. The gain error scales the whole
+    integral: a $1\,\%$ gain error produces a $1\,\%$ error in the
+    charge, a systematic error that no amount of sampling reduces.
+    The offset is the more dangerous term, because it integrates
+    coherently: a constant offset $b$ over the window contributes
+    $b\cdot 1800\,\si{\second}$ to the integral regardless of the
+    true current. An offset of just $5\,\si{\milli\ampere}$
+    contributes $9.0\,\si{\coulomb}$, or $0.32\,\%$ of the measured
+    charge, and over a full day of integration the same offset
+    accumulates to a $0.43\,\si{\ampere\hour}$ phantom charge, a
+    $14\,\%$ state-of-charge error from a sensor offset smaller than
+    the noise. Offset, not noise, is the dominant long-term error in
+    Coulomb counting, and the defence is periodic re-zeroing of the
+    sensor at a known zero-current condition.
+  \item \engterm{Quadrature truncation error.} The trapezoidal rule's
+    $h^{2}$ error on a one-second grid is negligible against a current
+    that varies on a hundred-second scale: the error formula
+    $-(b-a)h^{2}f''(\xi)/12$ with $h = 1\,\si{\second}$ and a current
+    curvature of order $\si{\ampere}$ per $(100\,\si{\second})^{2}$
+    gives a truncation error far below a coulomb. The convergence-by-
+    halving check confirms it: integrating on every other sample
+    ($h = 2\,\si{\second}$) changes the answer by under
+    $0.9\,\si{\coulomb}$, three parts in ten thousand, so the sampling
+    is far finer than the integrand's smoothness requires and the
+    residual change is dominated by the noise the coarser grid no
+    longer averages, not by truncation of a smooth integrand.
+  \item \engterm{Measurement noise.} The $20\,\si{\milli\ampere}$
+    per-sample noise contributes a random error to the integral of
+    standard deviation $\sigma_{I}\Delta t\sqrt{N} =
+    0.02\cdot 1\cdot\sqrt{1800} \approx 0.85\,\si{\coulomb}$, which is
+    $0.03\,\%$ of the measured charge. Noise is the smallest of the
+    three terms, because the integration averages it; the section 6.5
+    observation that integration is a noise-suppressing operation is
+    quantified here.
+\end{itemize}
+
+Combining the random terms in quadrature, with the $0.5\,\%$ gain
+uncertainty dominating, the expanded uncertainty at $k = 2$ on the
+measured charge is about $\pm 1.0\,\%$, or
+$\pm 0.008\,\si{\ampere\hour}$ on the $0.770\,\si{\ampere\hour}$
+result. The reported state-of-charge drop is $25.6\,\% \pm 0.3\,\%$
+over this single window, with the caution that the offset error,
+nearly harmless over thirty minutes at $0.32\,\%$, is the term that
+grows linearly with the integration window and forces a recalibration
+over a day.
+
+\subsection{The failure mode and the discipline}
+
+The Coulomb-counting integral never diverges (the integrand is bounded
+and the interval finite), so the section 6.8 divergence catalogue does
+not bite. The failure is subtler and is the one that the
+chapter's discipline principle names: the integral produces a number
+whether or not that number is faithful to the physical charge. A
+dropped sample that the firmware integrates over as a zero-current gap,
+a sensor offset that integrates coherently into a phantom charge, and
+a gain error that scales the whole result are all failures in which the
+quadrature returns a confident, finite, wrong number. The defence is
+the chapter's standing discipline: estimate first, so the answer has a
+yardstick; cross-check the quadrature by halving, so the truncation
+error is bounded; and trace the error budget, so the engineer knows
+which term, here the sensor offset, will dominate as the integration
+window grows. Coulomb counting drifts, and every production
+battery-management system corrects the drift by periodically resetting
+the integral against an independent state-of-charge estimate (an
+open-circuit-voltage reading at rest, or a full-charge reset). The
+integral is the accountant; the periodic reset is the audit.
 
 \section{Project}\pathtag{core}
 
