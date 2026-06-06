@@ -66,6 +66,26 @@ query stress `260 MPa` the point life is `7.6e4` cycles with a 95%
 parametric prediction interval `[4.3e4, 1.3e5]` cycles. The reference
 implementation is `code/casestudy_fatigue.py`.
 
+## `bearing-life.csv`
+
+The ten-bearing censored life test behind the second case study of
+section 14.8. The columns are:
+
+| Column | Meaning | Units |
+|---|---|---|
+| `unit` | Bearing identifier | integer |
+| `time_hours` | Failure time, or cutoff if censored | hours |
+| `status` | `failed` or `censored` (right-censored at cutoff) | label |
+
+Eight bearings failed at recorded times; two were still running at the
+500-hour cutoff and are right-censored. The Weibull maximum-likelihood
+fit on the censored likelihood reproduces the chapter numbers: shape
+`2.33`, scale `404` hours, B10 life `154` hours, delta-method 95%
+one-sided lower bound `68` hours, parametric-bootstrap 5th-percentile
+`88` hours. The naive failures-only mean of `295` hours is the wrong
+answer the case study warns against. The reference implementation is
+`code/casestudy_weibull.py`.
+
 ## Provenance
 
 Authors' synthetic data, generated 2026-05-16, seeded

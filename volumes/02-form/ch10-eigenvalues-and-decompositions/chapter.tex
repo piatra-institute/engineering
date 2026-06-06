@@ -1232,6 +1232,406 @@ been quoting as a black box is itself built from the QR
 decomposition, applied iteratively, with the Schur form of section
 10.7 as its limit.
 
+\section{Generalised eigenproblems and matrix functions}\pathtag{standard}
+
+The eigenproblem $\mat{A}\vect{x} = \lambda\vect{x}$ is the special
+case of a wider family. Physical models routinely produce a second
+matrix on the right-hand side, $\mat{A}\vect{x} = \lambda\mat{B}\vect{x}$,
+and the engineer who forces such a problem into the standard form by
+inverting $\mat{B}$ pays in conditioning and in lost symmetry. Matrix
+functions, the exponential above all, sit in the same family: once the
+spectral decomposition is in hand, any scalar function lifts to the
+matrix. The generalised eigenproblem, simultaneous diagonalisation,
+matrix functions, and the large-scale and random-matrix tools that an
+engineering analysis reaches for once the basic eigenproblem is
+understood all follow.
+
+\subsection{The generalised eigenproblem}
+
+A \engterm{generalised eigenvalue problem} is the equation
+$\mat{A}\vect{x} = \lambda\mat{B}\vect{x}$ for a pair of $n \times n$
+matrices $(\mat{A}, \mat{B})$. The scalars $\lambda$ for which a nonzero
+$\vect{x}$ exists are the \engterm{generalised eigenvalues}, and they
+are the roots of $\det(\mat{A} - \lambda\mat{B}) = 0$. When $\mat{B} =
+\mat{I}$ the problem is the ordinary one. The pair $(\mat{A}, \mat{B})$
+is called a \engterm{matrix pencil}, and its spectrum can include the
+value $\infty$ (when $\mat{B}$ is singular and the leading coefficient
+of the determinant polynomial drops) alongside the finite eigenvalues.
+
+The setting that makes the generalised problem unavoidable is
+structural vibration. The undamped equation of motion of a multi-degree
+of freedom system is $\mat{M}\ddot{\vect{q}} + \mat{K}\vect{q} =
+\vect{0}$, with $\mat{M}$ the mass matrix and $\mat{K}$ the stiffness
+matrix, both symmetric and $\mat{M}$ positive definite. Seeking
+harmonic solutions $\vect{q}(t) = \vect{x}\,e^{i\omega t}$ gives
+$(\mat{K} - \omega^{2}\mat{M})\vect{x} = \vect{0}$, the generalised
+eigenproblem $\mat{K}\vect{x} = \lambda\mat{M}\vect{x}$ with
+$\lambda = \omega^{2}$. The natural frequencies are
+$\omega_{i} = \sqrt{\lambda_{i}}$ and the mode shapes are the
+generalised eigenvectors. The modal analysis of section 10.8 quietly
+assumed $\mat{M} = m\mat{I}$, equal masses, which collapses the
+generalised problem to an ordinary one. Unequal masses break that
+collapse.
+
+The temptation is to write $\mat{M}\inv\mat{K}\vect{x} = \lambda\vect{x}$
+and call an ordinary eigensolver. The product $\mat{M}\inv\mat{K}$ is in
+general not symmetric even though $\mat{M}$ and $\mat{K}$ both are, so
+the orthogonality of mode shapes and the realness of the spectrum, both
+guaranteed for the symmetric pencil, are thrown away and must be
+recovered numerically. The disciplined route keeps the symmetry. Factor
+$\mat{M} = \mat{L}\mat{L}\transpose$ by Cholesky (it succeeds because
+$\mat{M}$ is positive definite, section 10.3), substitute
+$\vect{x} = \mat{L}^{-\transpose}\vect{y}$, and the problem becomes
+$\mat{L}\inv\mat{K}\mat{L}^{-\transpose}\vect{y} = \lambda\vect{y}$,
+an ordinary eigenproblem whose matrix $\tilde{\mat{K}} =
+\mat{L}\inv\mat{K}\mat{L}^{-\transpose}$ is symmetric. Its eigenvalues
+are the generalised eigenvalues; its orthonormal eigenvectors
+$\vect{y}_{i}$ map back to mode shapes $\vect{x}_{i} =
+\mat{L}^{-\transpose}\vect{y}_{i}$ that are orthonormal in the
+\engterm{$\mat{M}$-inner product} $\langle\vect{x}, \vect{x}'\rangle_{M}
+= \vect{x}\transpose\mat{M}\vect{x}'$. Mode shapes are orthogonal with
+respect to the mass, not with respect to the bare dot product, and the
+$\mat{M}$-orthonormalisation is what lets a forced response decouple
+into independent single-degree-of-freedom oscillators. Production code
+calls the LAPACK symmetric-definite generalised driver \texttt{?SYGV},
+which performs exactly this Cholesky reduction internally
+\cite[ch.~8]{text:v2ch10-golub-vanloan2013}.
+
+\subsection{Worked example: a two-mass system with unequal masses}
+
+Two masses $m_{1} = 1$ and $m_{2} = 2$ sit in a line, joined to walls
+and to each other by three springs of stiffness $k = 1$. The stiffness
+and mass matrices are
+
+\[
+\mat{K} = \begin{pmatrix} 2 & -1 \\ -1 & 2 \end{pmatrix}, \qquad
+\mat{M} = \begin{pmatrix} 1 & 0 \\ 0 & 2 \end{pmatrix}.
+\]
+
+The generalised eigenvalues solve $\det(\mat{K} - \lambda\mat{M}) = 0$:
+
+\[
+\det\begin{pmatrix} 2 - \lambda & -1 \\ -1 & 2 - 2\lambda \end{pmatrix}
+= (2 - \lambda)(2 - 2\lambda) - 1 = 2\lambda^{2} - 6\lambda + 3 = 0,
+\]
+
+with roots $\lambda = (3 \pm \sqrt{3})/2$, that is $\lambda_{1} \approx
+0.634$ and $\lambda_{2} \approx 2.366$. The natural frequencies are
+$\omega_{1} = \sqrt{\lambda_{1}} \approx 0.796\sqrt{k/m_{1}}$ and
+$\omega_{2} \approx 1.538\sqrt{k/m_{1}}$. The wrong shortcut, taking the
+ordinary eigenvalues of $\mat{K}$ alone, would give $1$ and $3$ and
+frequencies $1$ and $1.732$, both too high, because it pretends the
+heavier mass weighs the same as the lighter one.
+
+The mode shapes come from $(\mat{K} - \lambda_{i}\mat{M})\vect{x}_{i} =
+\vect{0}$. At $\lambda_{1} \approx 0.634$ the first row reads
+$(2 - 0.634)x_{1} - x_{2} = 0$, so $x_{2} = 1.366\,x_{1}$, a mode in
+which both masses move the same way: in phase. At $\lambda_{2} \approx
+2.366$ the first row reads $(2 - 2.366)x_{1} - x_{2} = 0$, so $x_{2} =
+-0.366\,x_{1}$, a mode in which the masses move in opposition, with the
+heavier $m_{2}$ carrying the smaller amplitude. The two mode shapes
+satisfy $\vect{x}_{1}\transpose\mat{M}\vect{x}_{2} = 0$: taking
+$\vect{x}_{1} = (1, 1.366)\transpose$ and $\vect{x}_{2} = (1,
+-0.366)\transpose$, the $\mat{M}$-inner product is $1 \cdot 1 + 2 \cdot
+1.366 \cdot (-0.366) = 1 - 1.0 \approx 0$, orthogonal in the mass
+metric though not in the ordinary one ($\vect{x}_{1}\transpose
+\vect{x}_{2} = 1 - 0.5 = 0.5 \neq 0$). \Cref{fig:vol02:ch10:generalized-modes}
+draws the two shapes.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-generalized-modes.tex}
+
+\subsection{Simultaneous diagonalisation}\pathtag{mastery}
+
+The Cholesky reduction above does more than solve one problem. It
+diagonalises both $\mat{K}$ and $\mat{M}$ at once. The change of basis
+$\vect{q} = \mat{X}\vect{\eta}$, with $\mat{X}$ the matrix of
+$\mat{M}$-orthonormal mode shapes, gives $\mat{X}\transpose\mat{M}
+\mat{X} = \mat{I}$ and $\mat{X}\transpose\mat{K}\mat{X} =
+\diag(\lambda_{1}, \ldots, \lambda_{n})$. The same congruence transform
+sends the kinetic-energy form to the identity and the potential-energy
+form to a diagonal of squared frequencies. The coordinates
+$\vect{\eta}$ are the \engterm{modal coordinates}, and in them the
+coupled system $\mat{M}\ddot{\vect{q}} + \mat{K}\vect{q} = \vect{0}$
+becomes $n$ independent scalar oscillators $\ddot{\eta}_{i} +
+\lambda_{i}\eta_{i} = 0$. This is the whole power of modal analysis:
+a single congruence decouples an arbitrarily large linear vibration
+problem into a list of one-dimensional ones.
+
+The general theorem is that two symmetric matrices can be simultaneously
+diagonalised by a congruence $\mat{X}\transpose(\cdot)\mat{X}$ whenever
+one of them is positive definite. They can be simultaneously
+diagonalised by an orthogonal similarity (the same $\mat{Q}$ on both
+sides, $\mat{Q}\transpose(\cdot)\mat{Q}$) if and only if they commute,
+$\mat{A}\mat{B} = \mat{B}\mat{A}$, which is the matrix statement that
+two observables share an eigenbasis. The commuting case is the
+linear-algebra core of why simultaneously measurable quantities in a
+linear theory share principal directions, and it recurs whenever an
+analysis hopes to read two coupled matrices in one common basis.
+
+\subsection{Matrix functions through the spectrum}
+
+Section 10.2 noted that $f(\mat{A}) = \mat{S}f(\mat{\Lambda})\mat{S}\inv$
+for a diagonalisable $\mat{A}$ and any scalar $f$ defined on the
+eigenvalues. The identity is worth carrying further, because it is how
+an engineer computes the response of a linear system, the steady-state
+of a diffusion, or the square root of a covariance, and because its
+failure modes are exactly the conditioning traps of the chapter.
+
+The square root of a symmetric positive-definite matrix is the workhorse
+case. Given $\mat{C} = \mat{Q}\mat{\Lambda}\mat{Q}\transpose$ with
+$\mat{\Lambda} = \diag(\lambda_{i})$ and every $\lambda_{i} > 0$, the
+matrix $\mat{C}^{1/2} = \mat{Q}\diag(\sqrt{\lambda_{i}})\mat{Q}
+\transpose$ is the unique symmetric positive-definite matrix whose
+square is $\mat{C}$. It is the object that whitens correlated noise: if
+a random vector has covariance $\mat{C}$, then $\mat{C}^{-1/2}$ applied
+to it produces a vector with identity covariance, the standard
+preconditioning step in estimation and in the generation of correlated
+samples (draw white noise, multiply by $\mat{C}^{1/2}$). The Cholesky
+factor $\mat{L}$ of $\mat{C}$ does the same job more cheaply but is not
+symmetric; the symmetric square root is preferred where the symmetry
+itself matters, as in interpolating between covariances or in the
+geometry of the positive-definite cone.
+
+\subsection{Worked example: the matrix exponential, numerically}
+
+Consider the linear system $\dot{\vect{x}} = \mat{A}\vect{x}$ with
+
+\[
+\mat{A} = \begin{pmatrix} -2 & 1 \\ 0 & -3 \end{pmatrix}.
+\]
+
+The matrix is upper triangular, so its eigenvalues are $\lambda_{1} =
+-2$ and $\lambda_{2} = -3$, both with eigenvectors found from
+$(\mat{A} - \lambda_{i}\mat{I})\vect{v}_{i} = \vect{0}$:
+$\vect{v}_{1} = (1, 0)\transpose$ and $\vect{v}_{2} = (1, -1)
+\transpose$. Then $\mat{S} = \begin{psmallmatrix} 1 & 1 \\ 0 & -1
+\end{psmallmatrix}$, $\mat{S}\inv = \begin{psmallmatrix} 1 & 1 \\ 0 & -1
+\end{psmallmatrix}$ (this $\mat{S}$ is its own inverse here), and
+
+\[
+e^{\mat{A}t} = \mat{S}\begin{pmatrix} e^{-2t} & 0 \\ 0 & e^{-3t}
+\end{pmatrix}\mat{S}\inv = \begin{pmatrix} e^{-2t} & e^{-2t} - e^{-3t}
+\\ 0 & e^{-3t} \end{pmatrix}.
+\]
+
+The reader can check the two defining properties: $e^{\mat{A}\cdot 0} =
+\mat{I}$, and $\frac{d}{dt}e^{\mat{A}t} = \mat{A}e^{\mat{A}t}$. The
+$(1,2)$ entry $e^{-2t} - e^{-3t}$ is the cross-coupling: a disturbance
+in the second state bleeds into the first through the off-diagonal $1$,
+peaks at $t = \ln(3/2) \approx 0.405$, then decays as the slower mode
+$e^{-2t}$ wins. This is the same coupling-then-decay shape that the
+non-normal transient of section 10.7 amplifies; here, with a modest
+off-diagonal, it stays small. The eigenvalues set the asymptotic decay
+rates; the eigenvectors, through $\mat{S}$, set how much the modes mix
+on the way down. Production code does not compute $e^{\mat{A}t}$ by this
+hand route for any matrix that might be near-defective; it uses
+scaling-and-squaring with a Pad\'e approximant (the design exercise at
+the end of the chapter), which the failure section's reasoning explains.
+
+\subsection{Jordan form and the defective exponential}\pathtag{mastery}
+
+When the matrix is defective, the spectral formula needs the Jordan
+form. Take the genuinely defective
+
+\[
+\mat{A} = \begin{pmatrix} \lambda & 1 \\ 0 & \lambda \end{pmatrix},
+\]
+
+a single Jordan block. Write $\mat{A} = \lambda\mat{I} + \mat{N}$ with
+$\mat{N} = \begin{psmallmatrix} 0 & 1 \\ 0 & 0 \end{psmallmatrix}$
+nilpotent, $\mat{N}^{2} = \mat{0}$. Because $\lambda\mat{I}$ and
+$\mat{N}$ commute, $e^{\mat{A}t} = e^{\lambda t}e^{\mat{N}t}$, and the
+series for $e^{\mat{N}t}$ terminates after two terms:
+
+\[
+e^{\mat{A}t} = e^{\lambda t}(\mat{I} + t\mat{N}) = e^{\lambda t}
+\begin{pmatrix} 1 & t \\ 0 & 1 \end{pmatrix}.
+\]
+
+The off-diagonal carries the factor $t$. A defective system's response
+is not a pure exponential; it is a polynomial in $t$ times an
+exponential, here the term $t\,e^{\lambda t}$. When $\lambda < 0$ the
+factor $t$ delays the decay, producing a hump before the exponential
+finally wins, and when $\lambda$ is a pure imaginary the linear growth
+$t$ is unbounded oscillation rather than the bounded oscillation of a
+simple eigenvalue. The engineer who models a system as diagonalisable
+and predicts a clean $e^{\lambda t}$ misses the $t\,e^{\lambda t}$ term
+entirely at a defect, which is one more reason the parameter-sweep
+collision of section 10.7 deserves the caution it gets. The general
+$k \times k$ Jordan block produces terms up to $t^{k-1}e^{\lambda t}$,
+the polynomial degree set by the size of the block.
+
+\subsection{Cayley-Hamilton in computation}\pathtag{mastery}
+
+The Cayley-Hamilton theorem of section 10.2 is not only an algebraic
+curiosity; it computes. Because $\mat{A}$ satisfies its own degree-$n$
+characteristic polynomial, every power $\mat{A}^{k}$ with $k \geq n$ is
+a linear combination of $\mat{I}, \mat{A}, \ldots, \mat{A}^{n-1}$, and
+so is any matrix function expressible as a power series. For the
+$2 \times 2$ matrix $\mat{A} = \begin{psmallmatrix} 4 & 1 \\ 2 & 3
+\end{psmallmatrix}$ of section 10.1, with characteristic polynomial
+$\lambda^{2} - 7\lambda + 10$, the theorem gives $\mat{A}^{2} =
+7\mat{A} - 10\mat{I}$ directly, without forming the product. Higher
+powers follow by repeated substitution: $\mat{A}^{3} = 7\mat{A}^{2} -
+10\mat{A} = 7(7\mat{A} - 10\mat{I}) - 10\mat{A} = 39\mat{A} -
+70\mat{I}$, and so on, every power reduced to the pair $(\mat{A},
+\mat{I})$ with scalar coefficients.
+
+The systematic version computes $f(\mat{A})$ for any $f$ by matching on
+the spectrum. Seek a polynomial $p(\lambda) = c_{0} + c_{1}\lambda +
+\cdots + c_{n-1}\lambda^{n-1}$ of degree $n - 1$ with $p(\lambda_{i}) =
+f(\lambda_{i})$ at every eigenvalue (and, at a repeated eigenvalue, with
+matching derivatives, $p'(\lambda_{i}) = f'(\lambda_{i})$, and so on up
+to the multiplicity). Then $f(\mat{A}) = p(\mat{A})$, because $f$ and
+$p$ agree on the spectrum and the matrix function depends only on the
+values of $f$ there. For the same $\mat{A}$ with eigenvalues $5$ and
+$2$, to compute $e^{\mat{A}}$ solve the two equations $c_{0} + 5c_{1} =
+e^{5}$ and $c_{0} + 2c_{1} = e^{2}$, giving $c_{1} = (e^{5} - e^{2})/3$
+and $c_{0} = e^{2} - 2c_{1}$, then $e^{\mat{A}} = c_{0}\mat{I} +
+c_{1}\mat{A}$. The method is the Krylov-subspace idea in miniature
+(Volume II Chapter 16): a matrix's action on the full space is captured
+by its first $n$ powers, and a function of the matrix is a degree-$(n-1)$
+polynomial whose coefficients are read off the spectrum.
+
+\subsection{Total least squares through the SVD}\pathtag{standard}
+
+Ordinary least squares of Chapter 9 assumes the matrix $\mat{A}$ in
+$\mat{A}\vect{x} \approx \vect{b}$ is known exactly and only $\vect{b}$
+carries error. When both the inputs and the outputs are measured with
+noise, the right model is \engterm{total least squares}, which allows
+corrections to $\mat{A}$ as well as to $\vect{b}$ and finds the
+smallest joint correction that makes the system consistent.
+Geometrically, ordinary least squares minimises vertical distances to a
+fitted line; total least squares minimises perpendicular distances, the
+honest choice when the horizontal axis is as noisy as the vertical.
+
+The SVD solves it cleanly. Stack the data as the augmented matrix
+$[\,\mat{A}\;\;\vect{b}\,]$, compute its SVD, and the total-least-squares
+correction is the rank-one Eckart-Young perturbation that removes the
+smallest singular value. Concretely, if the augmented matrix has
+singular value decomposition with smallest right singular vector
+$\vect{v}_{n+1}$, partitioned as $\vect{v}_{n+1} = (\vect{v}_{x},
+v_{b})\transpose$ with $\vect{v}_{x}$ of length $n$ and $v_{b}$ a
+scalar, then the total-least-squares solution is $\vect{x}_{\text{TLS}}
+= -\vect{v}_{x}/v_{b}$, provided $v_{b} \neq 0$. The solution is the
+direction the augmented data least supports, normalised back into the
+original coordinates. The residual is the smallest singular value of the
+augmented matrix, the exact Eckart-Young error of dropping the last
+component. When $v_{b} = 0$ the smallest singular direction lies
+entirely in the $\mat{A}$ block, the columns of $\mat{A}$ are themselves
+nearly dependent, and the total-least-squares problem has no solution: a
+genuine signal that the inputs themselves are degenerate, beyond any
+trouble in the fit. Total
+least squares is the calibration engineer's tool whenever the
+independent variable is itself an instrument reading, and the SVD is
+what makes it a one-line computation rather than a nonlinear
+optimisation.
+
+\subsection{Krylov methods: Lanczos and Arnoldi}\pathtag{mastery}
+
+Power iteration finds one eigenvector at a time and wastes the
+intermediate iterates. The \engterm{Krylov subspace} $\mathcal{K}_{m}
+(\mat{A}, \vect{b}) = \spn\{\vect{b}, \mat{A}\vect{b}, \mat{A}^{2}
+\vect{b}, \ldots, \mat{A}^{m-1}\vect{b}\}$ keeps all of them, and the
+best eigenvalue estimates from an $m$-dimensional Krylov subspace are
+far better than the single estimate power iteration extracts after $m$
+steps. The \engterm{Arnoldi iteration} builds an orthonormal basis of
+$\mathcal{K}_{m}$ by modified Gram-Schmidt, producing
+$\mat{A}\mat{Q}_{m} = \mat{Q}_{m}\mat{H}_{m} + \text{(remainder)}$ with
+$\mat{H}_{m}$ a small $m \times m$ upper-Hessenberg matrix whose
+eigenvalues, the \engterm{Ritz values}, approximate the extreme
+eigenvalues of $\mat{A}$. For a symmetric $\mat{A}$ the Hessenberg
+matrix is tridiagonal and the Arnoldi recurrence shortens to the
+three-term \engterm{Lanczos iteration}, the method of choice for the
+lowest or highest few eigenvalues of a large sparse symmetric matrix.
+
+The engineering import is scale. A stiffness matrix from a
+finite-element model can have $n$ in the millions, far too large to
+diagonalise densely, yet the engineer wants only the lowest dozen
+natural frequencies. Lanczos delivers them in a few dozen
+matrix-vector products against the sparse $\mat{A}$, never forming a
+dense factor, converging fastest at the ends of the spectrum where the
+modes of interest live. The cost is one subtlety: in floating point the
+Lanczos vectors lose orthogonality once a Ritz value converges,
+producing spurious duplicate eigenvalues (\engterm{ghosts}) that
+re-orthogonalisation or the standard restarted variants remove. The
+judgment exercise at the end of the chapter sizes the Lanczos-versus-
+dense choice; the foundational treatment is in
+\cite[ch.~9-10]{text:v2ch10-golub-vanloan2013} and the numerical-stability
+account in \cite[ch.~36]{text:trefethen-bau1997}.
+
+\subsection{The QR algorithm with shifts}\pathtag{mastery}
+
+Section 10.4 introduced the unshifted QR algorithm as the engine behind
+dense eigensolvers. Unshifted, it converges painfully slowly: the
+trailing subdiagonal entry shrinks at the ratio
+$\abs{\lambda_{n}/\lambda_{n-1}}$ per step, so a clustered spectrum
+crawls. The fix that turned QR from a curiosity into the dominant
+dense eigenalgorithm is \engterm{shifting}. Before each factor-and-
+reverse step, subtract a scalar estimate $\mu_{k}$ of the target
+eigenvalue: factor $\mat{A}_{k} - \mu_{k}\mat{I} = \mat{Q}_{k}\mat{R}_{k}$,
+form $\mat{A}_{k+1} = \mat{R}_{k}\mat{Q}_{k} + \mu_{k}\mat{I}$. The
+shift is still a similarity transform, so the eigenvalues are preserved,
+but it accelerates the bottom-right corner toward the eigenvalue
+nearest $\mu_{k}$, exactly as the shift accelerates inverse iteration
+in section 10.6. The \engterm{Wilkinson shift} takes $\mu_{k}$ as the
+eigenvalue of the trailing $2 \times 2$ block closest to the corner
+entry, which gives near-cubic convergence of the trailing subdiagonal
+for symmetric matrices.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-qr-convergence.tex}
+
+\Cref{fig:vol02:ch10:qr-convergence} contrasts the two rates. Once the
+trailing subdiagonal entry is negligible, the corner holds a converged
+eigenvalue, the matrix \engterm{deflates} to size $n - 1$, and the
+algorithm continues on the leading block. The full production recipe,
+the Francis double-shift QR with a preliminary reduction to Hessenberg
+form, computes all eigenvalues of a dense $n \times n$ matrix in
+$\oom{n^{3}}$ and is the algorithm inside every LAPACK call to
+\texttt{?GEEV} or \texttt{?SYEV} \cite[ch.~7-8]{text:v2ch10-golub-vanloan2013}.
+The reader who calls an eigensolver is calling shifted QR; the figure
+is what its inner loop is doing.
+
+\subsection{A random-matrix view of the noise floor}\pathtag{mastery}
+
+The scree plot of section 10.4 asks the engineer to find the elbow
+between structural and noise components by eye. Random matrix theory
+turns that judgment into a threshold. If a data matrix is pure noise,
+$m$ samples of $n$ independent standardised features, the eigenvalues
+of its sample covariance matrix do not pile up at one; they spread
+across a band whose edges the \engterm{Marchenko-Pastur law} predicts
+exactly. With aspect ratio $\gamma = n/m \leq 1$, the noise eigenvalues
+fill the interval $[\lambda_{-}, \lambda_{+}]$ with $\lambda_{\pm} =
+(1 \pm \sqrt{\gamma})^{2}$.
+
+\begin{principle}[Marchenko-Pastur noise floor]
+For a sample covariance matrix built from $m$ samples of $n$
+independent unit-variance features, the eigenvalues attributable to
+sampling noise lie, for large $m$ and $n$ with $\gamma = n/m$ fixed,
+within $[\,(1 - \sqrt{\gamma})^{2},\, (1 + \sqrt{\gamma})^{2}\,]$. An
+observed eigenvalue above $(1 + \sqrt{\gamma})^{2}$ exceeds what noise
+alone can produce and marks a genuine principal component; an
+eigenvalue inside the band is statistically indistinguishable from
+noise.
+\end{principle}
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-marchenko-pastur.tex}
+
+\Cref{fig:vol02:ch10:marchenko-pastur} shows the law as a significance
+test on the scree plot. The threshold sharpens the chapter's recurring
+honesty check: a component whose eigenvalue sits inside the
+Marchenko-Pastur bulk is noise the engineer should not retain, however
+tempting the cumulative-variance curve makes it. The bridge
+structural-health case study below applies the test to real-shaped data
+and finds it more conservative than the scree elbow, which is the point:
+the elbow
+flatters borderline components, and the noise floor calls them out. The
+law assumes independent entries and breaks for heavy-tailed or strongly
+correlated noise, where the corrected bulk edges of the spiked-covariance
+literature replace the plain formula; the engineer who needs the test on
+genuinely non-Gaussian data should reach for those corrections rather
+than the textbook edges.
+
 \section{Markov chains and stochastic matrices}\pathtag{standard}
 
 A Markov chain is a stochastic process that evolves on a discrete
@@ -2177,6 +2577,213 @@ chapter's discipline is to report both, then let the downstream task
 break the tie. A plot with no clear elbow (the slow power-law decay
 of natural images) warns that no honest low-rank truncation exists,
 and the engineer who forces one is discarding signal.
+
+\section{Case study: structural-health PCA on a bridge}\pathtag{standard}
+\label{sec:vol02:ch10:bridge-casestudy}
+
+The small worked PCA of section 10.8 had two features and four samples,
+enough to see the mechanism and too small to see the engineering. A real
+structural-health-monitoring problem carries the same SVD from a raw
+sensor log to a maintenance decision, and the steps in between, the
+conditioning choice, the loadings interpretation, the noise floor, are
+where the analysis is won or lost. We carry one such problem end to end:
+eight strain gauges on a road bridge, sampled hourly, reduced by PCA to
+the two physical modes that explain the deck's response, with the
+limitations named.
+
+\subsection{The instrument and the data matrix}
+
+A two-span road bridge carries eight strain gauges, four bonded to the
+north span (labelled \texttt{N1}--\texttt{N4}) and four to the south
+span (\texttt{S1}--\texttt{S4}), each reporting microstrain once an
+hour. Over four days, current as of 2025, the campaign records $m = 96$
+hourly readings of $n = 8$ gauges, the data matrix $\mat{X} \in
+\R^{96 \times 8}$ stored in \repopath{data/bridge_strain_gauges.csv}.
+Each row is one hour; each column is one gauge. The raw readings sit
+near $120$ microstrain, a baseline set by the dead load of the deck and
+the bonding pre-strain of each gauge, with hourly swings of a few tens
+of microstrain driven by temperature and traffic. The question the
+bridge owner asks is whether the eight noisy channels can be reduced to
+a few interpretable signals that a monitoring dashboard can track and
+alarm on, and what those signals physically mean.
+
+\subsection{Centring, and the conditioning choice}
+
+PCA begins with centring, subtracting each column's mean so that the
+analysis sees variation rather than baseline. The centred matrix
+$\mat{X}_{c} = \mat{X} - \vect{1}\bar{\vect{x}}\transpose$ has zero
+column mean to machine precision, the first invariant to check before
+anything else. Forgetting to centre is the most common PCA error in the
+field: the first principal direction then points at the centroid, near
+$120$ microstrain along the all-ones direction, and reports a spurious
+$99.9\%$ of variance that is nothing but the offset.
+
+The conditioning choice comes next, and it is the chapter's recurring
+discipline made concrete. The covariance route forms $\mat{C} =
+\mat{X}_{c}\transpose\mat{X}_{c}/(m-1)$ and diagonalises it; the SVD
+route factors $\mat{X}_{c}$ directly. For this dataset $\kappa(\mat{X}_{c})
+\approx 67.8$, a benign number, while $\kappa(\mat{C}) =
+\kappa(\mat{X}_{c})^{2} \approx 4.6 \times 10^{3}$, the squaring that
+Chapter 9 warned about. At this conditioning both routes return the same
+answer to many digits, so the squaring does no visible harm here, but
+the habit of running the SVD route is what protects the analysis when a
+near-collinear pair of gauges drives $\kappa(\mat{X}_{c})$ to $10^{6}$
+and the squared $10^{12}$ destroys the small components. The reference
+implementation \repopath{code/bridge_pca.py} computes the PCA both ways
+and confirms they agree, exactly the cross-check discipline the
+chapter's project imposes.
+
+\subsection{Estimating before solving}
+
+\begin{estimation}
+\textbf{Question.} Before computing the SVD, estimate the fraction of
+the total variance the first principal component will capture, and the
+number of components a monitoring dashboard will need.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+Eight gauges on one deck see mostly the same thing: when a truck crosses
+or the sun warms the structure, every gauge strains together. That
+shared response is one dominant direction, and it should swamp the
+rest. A reasonable guess puts the first component above $90\%$ of the
+variance. The remaining structure is the difference between the two
+spans, the part of the signal where the north gauges and south gauges
+disagree, which is real but small compared with the whole-deck response;
+call it most of the rest. Everything below that is sensor noise at the
+microstrain level. The estimate, then, is one large component near
+$90\%$, one modest component carrying most of the remainder, and a noise
+tail: a two-component dashboard. The full calculation returns $91.6\%$
+and $8.2\%$ for the first two, cumulative $99.8\%$, with the rest below
+$0.1\%$ each, confirming the two-component reading and the order of
+magnitude of the split.
+\end{estimation}
+
+\subsection{The spectrum and the scree reading}
+
+The SVD of $\mat{X}_{c}$ gives singular values $\sigma_{1} \approx 625$,
+$\sigma_{2} \approx 187$, then $\sigma_{3} \approx 16$ and a slow tail
+down to $\sigma_{8} \approx 9$. The variances $\sigma_{i}^{2}/(m-1)$ are
+$4115$, $369$, then $2.6, 1.9, 1.5, 1.4, 1.2, 0.9$. The explained-variance
+ratios are
+
+\[
+(0.916,\ 0.082,\ 0.0006,\ 0.0004,\ 0.0003,\ 0.0003,\ 0.0003,\ 0.0002),
+\]
+
+cumulative $0.916$, $0.998$ at two components. The scree plot shows a
+cliff of two and then a flat talus six wide, the textbook
+low-rank-plus-noise shape: the elbow is unambiguous at $k = 2$. Two
+principal components carry $99.8\%$ of the variation, and the six
+discarded components together hold $0.2\%$, the floor of sensor noise.
+
+\subsection{Reading the loadings}
+
+The numbers that make this a diagnostic rather than a compression are
+the loadings, the entries of the first two right singular vectors that
+say how each gauge contributes to each component. The first principal
+direction $\vect{v}_{1}$ has all eight entries positive and of similar
+size, near $0.3$ to $0.4$:
+
+\[
+\vect{v}_{1} \approx (0.41, 0.40, 0.41, 0.40,\ 0.30, 0.33, 0.25, 0.30),
+\]
+
+ordered \texttt{N1}--\texttt{N4} then \texttt{S1}--\texttt{S4}. Every
+gauge loads the same sign on PC1, so PC1 is the whole-structure
+response: the combined thermal-expansion and traffic-load mode that
+lifts or lowers the entire deck at once. That this mode carries $91.6\%$
+of the variance is the quantitative statement that the bridge mostly
+moves as one piece.
+
+The second direction $\vect{v}_{2}$ splits the gauges by sign:
+
+\[
+\vect{v}_{2} \approx (0.27, 0.32, 0.21, 0.37,\ -0.39, -0.35, -0.49,
+-0.37),
+\]
+
+the four north gauges positive, the four south gauges negative. PC2 is
+the span-asymmetry mode, the part of the response in which one span
+strains while the other relaxes, the signature of differential loading
+or of a stiffness change in one span relative to the other.
+\Cref{fig:vol02:ch10:pca-loadings} draws the eight gauges in the
+$(\text{PC1}, \text{PC2})$ loadings plane, where the two spans separate
+into two clusters. A monitoring dashboard that tracks the PC1 and PC2
+scores is watching the whole-deck response and the span-balance
+response, two physically meaningful signals distilled from eight raw
+channels, and a drift in the PC2 score over months would flag a
+developing asymmetry between the spans before any single gauge crossed
+an absolute threshold.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-pca-loadings.tex}
+
+\subsection{Is the second component real? The noise-floor test}
+
+The scree elbow says keep two components, but a borderline second
+component invites a sharper test. The Marchenko-Pastur law of the
+random-matrix subsection above supplies one. Standardising the data
+(dividing each gauge by its
+own standard deviation, so the covariance becomes the correlation
+matrix) and reading the correlation eigenvalues against the noise band
+gives the honest answer. With $\gamma = n/m = 8/96 \approx 0.083$, the
+noise bulk runs to $\lambda_{+} = (1 + \sqrt{0.083})^{2} \approx 1.66$.
+The correlation eigenvalues are $7.25$, $0.73$, then a tail near and
+below $0.01$. The first eigenvalue, $7.25$, towers far above the noise
+floor and is unmistakably real. The second, $0.73$, sits below
+$\lambda_{+}$, inside the band.
+
+The plain noise-floor test is therefore more conservative than the scree
+elbow: it certifies one component and leaves the span-asymmetry
+component formally inside the noise. This is not a contradiction to
+resolve by picking the friendlier test; it is the genuine status of a
+weak-but-structured signal. The asymmetry mode is physically
+interpretable and reproducible across the campaign, which argues for
+retaining it; the standardised noise floor says it is close enough to
+noise that an automated alarm on its score must be set with care and
+validated against known load events, not trusted blind. The disciplined
+report states both readings and their disagreement. A practitioner who
+quotes only the cumulative $99.8\%$ and declares two clean components
+has overclaimed; the noise floor is the check that keeps the second
+component honest.
+
+\subsection{From components to a maintenance decision}
+
+The engineering payoff is a dashboard the owner can act on. The PC1
+score is the whole-deck strain amplitude, tracked against its seasonal
+envelope; an excursion above the envelope flags an overload event for
+review. The PC2 score is the span balance; a slow secular drift in PC2,
+distinct from its daily thermal cycle, is the early indicator of a
+span-specific change, a bearing seizing, a joint cracking, a localised
+loss of stiffness, that no single gauge would isolate because each gauge
+also carries the dominant PC1 signal. Reducing eight correlated channels
+to two physical scores is what turns a wall of noisy strain traces into
+two lines a maintenance engineer can read at a glance, and the SVD is
+the one computation that finds those two lines optimally under the
+Eckart-Young criterion.
+
+\subsection{Where the model fails}
+
+PCA on this data assumes the response is linear and the principal
+directions are stationary over the campaign. Both assumptions have
+half-lives the engineer must name. PCA finds linear combinations of
+gauges; a nonlinear effect, a gauge that saturates at high strain or a
+joint that responds differently in tension and compression, is not a
+linear combination and will leak across many components rather than
+concentrate in one, defeating the two-component summary. The principal
+directions themselves drift: a temperature-dependent stiffness means the
+loadings estimated in summer differ from those in winter, so the PCA fit
+has a seasonal half-life and must be re-estimated, not frozen. And the
+whole analysis presumes the gauges are healthy; a debonding gauge
+injects a large spurious variance that PCA will happily promote to a
+principal component, mistaking instrument failure for structural signal.
+The defence is the same discipline the chapter has built throughout:
+report the scree and the noise floor together, interpret every retained
+loading physically, and treat a component that resists physical reading
+as a fault to diagnose rather than a finding to publish. The eigenvalues
+and singular values are exact; the interpretation is the engineering, and
+it is where the judgment lives.
 
 \section{Project}\pathtag{core}
 

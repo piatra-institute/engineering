@@ -49,6 +49,25 @@ def crt(residues: list[int], moduli: list[int]) -> int:
     return total % prod
 
 
+def diffie_hellman(p: int, g: int, a: int, b: int) -> dict[str, int]:
+    """Run a toy Diffie-Hellman exchange and return both parties' secrets.
+
+    Alice publishes A = g^a mod p; Bob publishes B = g^b mod p. Each
+    raises the other's public value to its own private exponent. The
+    two secrets must agree, since (g^b)^a = g^{ab} = (g^a)^b mod p.
+    """
+    pub_a = pow(g, a, p)
+    pub_b = pow(g, b, p)
+    secret_alice = pow(pub_b, a, p)
+    secret_bob = pow(pub_a, b, p)
+    return {
+        "pub_a": pub_a,
+        "pub_b": pub_b,
+        "secret_alice": secret_alice,
+        "secret_bob": secret_bob,
+    }
+
+
 def toy_rsa_roundtrip(p: int, q: int, e: int, message: int) -> dict[str, int]:
     """Encrypt then decrypt a single integer message with toy RSA."""
     n = p * q
@@ -81,3 +100,13 @@ if __name__ == "__main__":
     )
     assert result["recovered"] == 65, "RSA round trip failed"
     print("RSA round trip recovered the message.")
+
+    # Toy Diffie-Hellman: p = 23, g = 5, Alice a = 6, Bob b = 15.
+    dh = diffie_hellman(p=23, g=5, a=6, b=15)
+    print(
+        f"DH toy: A={dh['pub_a']} B={dh['pub_b']} "
+        f"secret_alice={dh['secret_alice']} secret_bob={dh['secret_bob']}"
+    )
+    assert dh["secret_alice"] == dh["secret_bob"], "DH secrets disagree"
+    assert dh["secret_alice"] == 2, "DH shared secret should be 2"
+    print("Diffie-Hellman both parties agree on the shared secret.")

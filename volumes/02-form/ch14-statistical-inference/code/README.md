@@ -71,6 +71,23 @@ prose: slope `-6.20`, `sigma = 0.115`, `R^2 = 0.94`, point life
 uv run casestudy_fatigue.py
 ```
 
+## `casestudy_weibull.py`
+
+The censored time-to-failure case study of section 14.8. Reads the
+ten-bearing life test (eight observed failures, two right-censored at
+the 500-hour cutoff) and fits a two-parameter Weibull by maximum
+likelihood on the censored likelihood, keeping the survivors rather
+than discarding them. Reports the shape, scale, the B10 life, a
+delta-method lower confidence bound, and a parametric-bootstrap lower
+bound. The printed numbers match the chapter prose: shape `2.33`,
+scale `404` hours, B10 `154` hours, delta-method 95% one-sided lower
+bound `68` hours, bootstrap 5th-percentile `88` hours, and the wrong
+naive failures-only mean of `295` hours.
+
+```
+uv run casestudy_weibull.py
+```
+
 ## Conventions
 
 - The random-number generator is seeded explicitly in every script.

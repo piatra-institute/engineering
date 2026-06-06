@@ -726,6 +726,39 @@ the table of section~5.1. The same route gives $\dv{}{x} \arctan x
 = 1/(1 + x^{2})$ from $x = \tan y$, $\dv{x}{y} = \sec^{2} y = 1 +
 \tan^{2} y = 1 + x^{2}$.
 
+\begin{mastery}
+Implicit differentiation and the inverse-function formula both presume
+that the relation they differentiate actually defines a differentiable
+function near the point of interest. Two theorems supply the licence and
+say precisely when it is granted. The \engterm{inverse function
+theorem} states that if $f$ is continuously differentiable near $a$ and
+$f'(a) \neq 0$, then $f$ is invertible on a neighbourhood of $a$, the
+inverse is continuously differentiable, and its derivative at $b = f(a)$
+is $1/f'(a)$, the reciprocal formula of this section made rigorous. The
+hypothesis $f'(a) \neq 0$ is exactly the condition that the tangent line
+is not horizontal; where $f'(a) = 0$ the inverse has a vertical tangent
+and the reciprocal formula divides by zero, the analytic signature of a
+local failure of invertibility. The \engterm{implicit function theorem}
+is the several-variable companion: if $F(x, y) = 0$ holds at a point and
+$\partial F/\partial y \neq 0$ there, then the relation defines $y$ as a
+differentiable function of $x$ near that point, with
+$\dv{y}{x} = -(\partial F/\partial x)/(\partial F/\partial y)$, which is
+the implicit-differentiation result of this section read as a ratio of
+partial derivatives. The condition $\partial F/\partial y \neq 0$ is the
+several-variable analogue of $f'(a) \neq 0$: it fails exactly at the
+points where the level curve $F = 0$ has a vertical tangent and $y$
+cannot be solved for as a single-valued function of $x$, the points on
+the unit circle $x^{2} + y^{2} = 1$ where $y = 0$ and the slope $-x/y$
+of this section blows up. Both theorems are the formal backstop of the
+continuation method in the chapter's equation-of-state case study, which
+tracks a root only as long as the relevant derivative stays nonzero
+along the path; the moment it vanishes, the root path turns vertical and
+the tracking must change variables. Chapter~11 develops the
+several-variable statement; the present box names the theorems so the
+reader knows that the techniques of this section rest on a guarantee with
+a checkable hypothesis.
+\end{mastery}
+
 \subsection{Parametric differentiation}
 
 A curve in the plane is often given parametrically, as $x = x(t)$
@@ -1484,6 +1517,102 @@ M (b - a)$. Each is a direct consequence of the mean value
 theorem, applied to a difference of function values at two
 points.
 
+\subsection{The bounded-derivative bound and the Lipschitz constant}
+
+The last consequence of the mean value theorem, that a derivative
+bounded by $M$ forces $|f(b) - f(a)| \leq M\,|b - a|$, is worth a name
+because the engineer relies on it constantly. A function satisfying
+\[
+|f(x) - f(y)| \leq L\,|x - y| \quad \text{for all } x, y
+\]
+is called \engterm{Lipschitz continuous} with \engterm{Lipschitz
+constant} $L$. The bound says the function cannot change faster than a
+fixed rate: its graph is trapped between two lines of slope $\pm L$
+through any of its points. The mean value theorem shows that for a
+differentiable function the smallest valid $L$ is the supremum of
+$|f'|$ over the interval, so the Lipschitz constant is the worst-case
+slope. A Lipschitz function need not be differentiable; $f(x) = |x|$ has
+no derivative at the origin yet is Lipschitz with $L = 1$, because its
+slope never exceeds one in magnitude where it exists. The Lipschitz
+constant is the working replacement for the derivative bound when the
+function has kinks, because it survives the corners where the derivative
+does not exist.
+
+The constant earns its keep in three places the engineer meets early.
+First, it certifies that a numerical scheme is stable: the error
+amplification of a one-step integrator over a time step $\Delta t$ is
+controlled by $L\,\Delta t$ where $L$ is the Lipschitz constant of the
+right-hand side, and the step is taken small enough that $L\,\Delta t$
+stays below a stability threshold. Chapter~7 makes this precise for
+ordinary differential equations; the Lipschitz constant is the quantity
+that the existence-and-uniqueness theorem for those equations requires,
+because two solution curves of a Lipschitz field cannot cross or merge.
+Second, it bounds the sensitivity of an output to an input over a finite
+range, not merely at a point: a controller whose plant has Lipschitz
+constant $L$ cannot see its output move by more than $L$ times the input
+move, which sets a worst-case actuator authority. Third, it governs the
+convergence of fixed-point iteration. A map $g$ with Lipschitz constant
+$L < 1$ on an interval it maps into itself is a \engterm{contraction},
+and the iteration $x_{n+1} = g(x_{n})$ converges to a unique fixed point
+$x^{*} = g(x^{*})$ at the geometric rate $|x_{n} - x^{*}| \leq L^{n}
+|x_{0} - x^{*}|$. The contraction condition is checked by bounding
+$|g'|$: if $|g'(x)| \leq L < 1$ throughout, the mean value theorem
+delivers the contraction directly.
+
+A worked instance. The fixed-point form of a root-finding problem
+rewrites $h(x) = 0$ as $x = g(x)$ and iterates. For the equation
+$x = \cos x$ (the root of $h(x) = x - \cos x$), the iteration map is
+$g(x) = \cos x$ with $g'(x) = -\sin x$, so $|g'(x)| = |\sin x| \leq
+\sin(1) \approx 0.84 < 1$ on the interval around the root near
+$x^{*} \approx 0.739$. The map is a contraction with $L \approx 0.84$,
+so the naive iteration $x_{n+1} = \cos x_{n}$ converges from any
+starting point in the interval, gaining a fixed fraction of a digit per
+step, $\log_{10}(1/L) \approx 0.075$ digits per iteration. The slow
+geometric rate is the price of not using the derivative in the step the
+way Newton does. A reader who compares this contraction iteration to
+Newton on the same root sees the contrast between linear convergence
+governed by a Lipschitz constant and the quadratic convergence governed
+by the second derivative, the two regimes section~5.4 set side by side.
+
+\subsection{Convexity detection on a real cost function}
+
+The second-derivative convexity reading of section~5.3 becomes a working
+test when the engineer must certify that a cost function has a single
+global minimum before trusting a solver to find it. A twice-differentiable
+cost is convex on an interval exactly when $f''(x) \geq 0$ throughout, and
+on a convex cost the first-order condition $f'(x) = 0$ locates the global
+minimum with no search over competing local minima. The test is
+worth running before optimisation, because a solver launched on a
+non-convex cost can converge to a local minimum that is not the answer.
+
+A worked instance from regression. The least-squares cost for fitting a
+single parameter $\theta$ to data, $J(\theta) = \sum_{i} (y_{i} -
+\theta x_{i})^{2}$, has $J''(\theta) = 2\sum_{i} x_{i}^{2} \geq 0$, so it
+is convex (strictly, whenever any $x_{i} \neq 0$), and the normal
+equation $J'(\theta) = 0$ returns the global optimum directly. This is
+the structural reason least-squares fitting is reliable: its cost is
+convex by construction. Contrast a cost with a sigmoid saturation, such
+as $C(\theta) = (y - \sigma(\theta))^{2}$ with $\sigma$ the logistic
+function. Its second derivative changes sign, so the cost is non-convex,
+and gradient descent on it can stall at a flat shoulder far from the
+optimum. The engineer who checks the sign of $C''$ before optimising
+learns which regime they are in and chooses the method accordingly:
+a single Newton step for a convex cost, a multi-start or globalised
+search for a non-convex one.
+
+Convexity also fixes the step size of gradient descent through the
+Lipschitz constant of the derivative. If the gradient $f'$ is itself
+Lipschitz with constant $\beta$ (equivalently $f'' \leq \beta$ where the
+second derivative exists), then gradient descent $x_{n+1} = x_{n} -
+\eta\,f'(x_{n})$ converges for any fixed step $\eta < 2/\beta$, and the
+fastest safe choice is $\eta = 1/\beta$
+\cite{text:boyd-vandenberghe2004}. The bound is read off the curvature:
+a sharply curving cost (large $\beta$) demands a small step, a gently
+curving cost tolerates a large one. The convexity of the cost and the
+Lipschitz constant of its gradient are the two numbers a reader needs to
+set up a first-order optimiser, and both are second-derivative readings
+of the chapter.
+
 \subsection{L'H\^opital's rule}
 
 A common practical question: what is the limit of a ratio
@@ -1577,6 +1706,131 @@ $0.5\,\%$-uncertain resistance gets $(u(P)/P)^{2} = 4(0.01)^{2} +
 (0.005)^{2} = 4.25 \times 10^{-4}$, so $u(P)/P \approx 2.1\,\%$.
 The voltage dominates the budget, and the engineer who wants a
 tighter power figure improves the voltage measurement first.
+
+\subsection{The derivative becomes a matrix: a Jacobian preview}
+
+The single-input single-output derivative of this chapter has a direct
+generalisation that chapter~11 develops in full and that the engineer
+meets the moment a calculation has more than one output. When a map
+sends a vector of inputs $\mathbf{x} = (x_{1}, \ldots, x_{n})$ to a
+vector of outputs $\mathbf{f} = (f_{1}, \ldots, f_{m})$, the role of the
+scalar $f'(x)$ is played by the \engterm{Jacobian matrix}, the
+rectangular array of all first partial derivatives,
+\[
+J(\mathbf{x}) = \begin{pmatrix}
+\dfrac{\partial f_{1}}{\partial x_{1}} & \cdots &
+\dfrac{\partial f_{1}}{\partial x_{n}} \\[1.2ex]
+\vdots & & \vdots \\[0.6ex]
+\dfrac{\partial f_{m}}{\partial x_{1}} & \cdots &
+\dfrac{\partial f_{m}}{\partial x_{n}}
+\end{pmatrix},
+\]
+an $m \times n$ matrix whose entry in row $i$, column $j$ is the
+sensitivity of the $i$-th output to the $j$-th input. The local
+linearisation $f(a + h) \approx f(a) + f'(a) h$ of section~5.4 carries
+over verbatim with the scalar derivative promoted to the matrix and the
+scalar product promoted to a matrix-vector product,
+\[
+\mathbf{f}(\mathbf{x} + \mathbf{h}) \approx \mathbf{f}(\mathbf{x}) +
+J(\mathbf{x})\,\mathbf{h},
+\]
+the best linear approximation of a vector map near a point. The structure
+is the same value-plus-linear-correction the chapter has carried since
+section~5.1; the Jacobian is the linear correction written as a matrix.
+
+A worked instance reads the Jacobian of the polar-to-Cartesian map
+$x = r \cos\theta$, $y = r \sin\theta$, the change of variables that
+recurs in every transport calculation in cylindrical geometry. The
+inputs are $(r, \theta)$ and the outputs are $(x, y)$, so the Jacobian is
+the $2 \times 2$ matrix
+\[
+J = \begin{pmatrix}
+\partial x/\partial r & \partial x/\partial\theta \\
+\partial y/\partial r & \partial y/\partial\theta
+\end{pmatrix}
+= \begin{pmatrix}
+\cos\theta & -r \sin\theta \\
+\sin\theta & r \cos\theta
+\end{pmatrix}.
+\]
+The determinant of this matrix is $r \cos^{2}\theta + r \sin^{2}\theta =
+r$, the factor that appears as the $r\,\dd r\,\dd\theta$ area element in
+polar integration. The determinant of the Jacobian measures how the map
+stretches or shrinks volume locally, the several-variable analogue of
+$|f'(x)|$ measuring how the one-dimensional map stretches length; where
+the determinant vanishes, the map collapses a region to lower dimension
+and is locally non-invertible, the several-variable face of the
+$f'(x) = 0$ condition that defeats the inverse-function formula of
+section~5.2. Chapter~11 develops the partial derivative, the gradient,
+and the Jacobian as first-class objects; the present preview names the
+matrix and reads its determinant so the reader meets the object as a
+generalisation of the scalar derivative rather than as a new invention.
+
+\subsection{The multivariable chain rule, previewed}
+
+The chain rule of section~5.2 has a several-variable form that the
+engineer uses whenever a quantity depends on time through several
+intermediate variables. If $z = f(x, y)$ and both $x$ and $y$ depend on
+a single parameter $t$, the total rate of change of $z$ along the path is
+the sum of the two channels through which $t$ reaches $z$,
+\[
+\dv{z}{t} = \frac{\partial f}{\partial x}\dv{x}{t} +
+\frac{\partial f}{\partial y}\dv{y}{t},
+\]
+each partial derivative weighting the rate at which its input moves. The
+single-variable chain rule $\dv{f}{t} = \dv{f}{u}\dv{u}{t}$ is the case
+of one intermediate variable; the multivariable form adds one term per
+intermediate variable, and the structure is exactly the matrix-vector
+product $\dv{z}{t} = \nabla f \cdot \dv{\mathbf{x}}{t}$ with the gradient
+$\nabla f = (\partial f/\partial x, \partial f/\partial y)$ playing the
+role of the row of sensitivities. A worked instance: the temperature
+felt by a sensor moving through a spatial temperature field $T(x, y)$
+along a trajectory $(x(t), y(t))$ changes at the rate $\dv{T}{t} =
+T_{x}\dot{x} + T_{y}\dot{y}$, the dot product of the temperature gradient
+with the velocity, which is why a probe crossing a steep thermal gradient
+quickly reads a fast temperature change even when the field is static.
+Chapter~11 derives this rule; the present preview connects it to the
+one-variable chain rule so the reader sees the addition of one term per
+path as the natural generalisation.
+
+\subsection{Differentiating an integral: the Leibniz rule}
+
+A quantity is often defined as an integral whose limits or integrand
+depend on a parameter, and the engineer needs the derivative of that
+quantity with respect to the parameter. The \engterm{Leibniz integral
+rule} provides it. For an integral with parameter-dependent limits and a
+parameter-dependent integrand,
+\[
+\dv{}{t}\int_{a(t)}^{b(t)} g(x, t)\,\dd x =
+g(b(t), t)\,b'(t) - g(a(t), t)\,a'(t) +
+\int_{a(t)}^{b(t)}\frac{\partial g}{\partial t}(x, t)\,\dd x.
+\]
+The first two terms are the chain rule applied to the moving limits: as
+the upper limit advances at rate $b'(t)$ it sweeps area at the local
+integrand value $g(b(t), t)$, and the lower limit subtracts by the same
+logic. The third term is the integral of the integrand's own rate of
+change, the contribution from the integrand shifting while the limits
+hold still. The rule is the product rule and chain rule of section~5.2
+applied to the two ways a parametrised area can change.
+
+A worked instance the engineer meets in heat transfer. The total thermal
+energy stored in a growing layer of thickness $L(t)$ with temperature
+profile $T(x, t)$ is $E(t) = \int_{0}^{L(t)} \rho c\,T(x, t)\,\dd x$,
+with $\rho$ the density and $c$ the specific heat. The Leibniz rule gives
+the rate of energy accumulation
+\[
+\dv{E}{t} = \rho c\,T(L(t), t)\,L'(t) +
+\int_{0}^{L(t)} \rho c\,\frac{\partial T}{\partial t}\,\dd x,
+\]
+the first term the energy carried in by the advancing boundary (a
+moving-boundary or Stefan-problem term, the rate at which the growing
+layer engulfs fresh material at the boundary temperature) and the second
+term the energy added by the existing material warming in place. A
+reader who differentiates an integral whose limits move and keeps only
+the integrand term, forgetting the boundary terms, undercounts the
+accumulation by the moving-boundary flux, a recurring error in
+melting-front, charging-front, and reaction-front calculations. The
+Leibniz rule is the bookkeeping that keeps both contributions.
 
 \begin{mastery}
 The mean value theorem extends in several directions. The Cauchy
@@ -2192,6 +2446,58 @@ attention the V demands. The companion script
 the figure; \texttt{code/finite\_diff\_accuracy.py} produces the
 forward and central arms.
 
+\begin{mastery}
+The earlier box introduced forward-mode automatic differentiation, which
+carries one derivative through the program alongside each value. Its cost
+structure decides when it is the wrong tool. Forward mode computes the
+derivative of all outputs with respect to one input in a single sweep, at
+a cost of a small constant factor over one function evaluation. To obtain
+the derivative with respect to $n$ inputs, forward mode runs $n$ sweeps,
+so its cost scales as $n$ times the function cost. The
+\engterm{reverse mode} inverts this trade. It records the operations of
+the function on a tape during a forward pass, then walks the tape
+backward applying the chain rule from the output toward the inputs, and
+in that one backward pass it produces the derivative of one output with
+respect to all $n$ inputs at once. Its cost is a small constant factor
+over a single function evaluation, independent of $n$. The structural
+asymmetry is decisive for optimisation: a cost function maps many
+parameters to one scalar, so reverse mode delivers the entire gradient
+for the price of a few function evaluations, while forward mode would
+pay $n$ times over. This is why training a model with millions of
+parameters uses reverse-mode differentiation, called backpropagation in
+that setting, and why a Jacobian of an $m$-output, $n$-input map is
+assembled column by column with forward mode when $n < m$ and row by row
+with reverse mode when $m < n$. The cost of reverse mode is memory: the
+tape holds every intermediate value of the forward pass so the backward
+pass can reuse it, so a long computation can exhaust memory before it
+exhausts time, and checkpointing schemes trade recomputation for storage
+to fit the tape. The chain rule of section~5.2 is the same in both modes;
+the modes differ only in the order they traverse the composition, and
+that order sets the cost.
+
+A different deepening answers a different question: not how accurate the
+derivative is on average, but how to bound it with certainty.
+\engterm{Interval} or \engterm{validated} differentiation carries an
+interval $[\underline{x}, \overline{x}]$ rather than a point through the
+arithmetic, with every operation rounded outward so the true result is
+guaranteed to lie in the returned interval. Combined with the dual-number
+rules of automatic differentiation, interval arithmetic produces an
+interval that is guaranteed to contain the exact derivative over the
+entire input interval, not merely an estimate at one point. The
+guarantee is what some applications require: a global optimiser that must
+prove no minimum was missed uses interval derivatives to certify that a
+region contains no stationary point (the derivative interval does not
+contain zero) and can be discarded, and a safety argument that must bound
+the worst-case sensitivity over a range uses the interval derivative as a
+rigorous envelope. The cost is conservatism: interval arithmetic ignores
+the correlations between an expression and itself, so the returned
+interval can be far wider than the true range, and the technique repays
+careful formulation to keep the bounds tight. Where a point estimate of
+the derivative suffices, finite differences or point-mode automatic
+differentiation are the working tools; where a certified enclosure is
+required, the interval derivative is the one that carries a proof.
+\end{mastery}
+
 \subsection{Differentiating noisy data}
 
 When the function is a measured time series, the noise in each
@@ -2276,6 +2582,40 @@ $f'(x) = 0$ on a piecewise-linear function will get the wrong
 answer if the optimum is at a corner; the right procedure is to
 compute the function at every kink point and at every endpoint
 of every smooth piece, and pick the smallest (or largest) value.
+
+\begin{mastery}
+A kink defeats the condition $f'(x) = 0$ only because the derivative is a
+single number that does not exist at the corner. Convex analysis repairs
+the defect by replacing the derivative with a set. The
+\engterm{subdifferential} of a convex function $f$ at a point $x$ is the
+set of all slopes $s$ for which the line through $(x, f(x))$ with slope
+$s$ stays on or below the graph,
+\[
+\partial f(x) = \{\, s : f(y) \geq f(x) + s\,(y - x) \text{ for all } y
+\,\},
+\]
+the set of \engterm{subgradients}. Where $f$ is differentiable the
+subdifferential is the single point $\{f'(x)\}$; at a kink it is the
+whole closed interval between the left and right derivatives. For
+$f(x) = |x|$ the subdifferential at the origin is the interval
+$[-1, 1]$, every slope from the left derivative $-1$ to the right
+derivative $+1$. The optimality condition generalises cleanly: a convex
+function attains its global minimum at $x^{*}$ exactly when
+$0 \in \partial f(x^{*})$, the zero slope belongs to the set. For
+$f(x) = |x|$ this reads $0 \in [-1, 1]$, which holds at $x = 0$ and
+locates the minimum that the ordinary $f'(x) = 0$ condition missed. The
+subgradient is not a curiosity. The $L^{1}$ penalties that drive sparse
+regression and compressed sensing are sums of absolute values, nonsmooth
+at every coordinate axis, and their minimisation rests entirely on the
+subgradient condition. The proximal and subgradient methods that solve
+these problems are the nonsmooth analogues of the gradient descent of
+section~5.5, with the subgradient standing in for the gradient wherever
+the kink lives. The engineer who meets an $L^{1}$ regulariser, a hinge
+loss, a worst-case (minimax) objective, or any cost built from maxima and
+absolute values is optimising a nonsmooth function, and the subdifferential
+is the tool that keeps the first-order condition meaningful where the
+ordinary derivative has dissolved.
+\end{mastery}
 
 \subsection{Cusps and vertical tangents}
 
@@ -2824,6 +3164,168 @@ sequence has the working pattern for linearising any nonlinear
 sensor, actuator, or component about its operating point, which is
 the daily work of analogue and instrument engineering and the
 content the small-signal models of Volume~IX assume.
+
+\subsection{Second end-to-end case study: solving a cubic equation of
+state with a globalised Newton iteration}\pathtag{standard}
+
+The thermistor case ran the derivative forward, from a known model to a
+linearisation and an error budget. We close with a case that runs the
+derivative the other way, inside a loop, to solve an equation that has
+no closed-form root. The task is to find the molar volume of a real gas
+at a stated temperature and pressure from a cubic equation of state.
+The calculation is the daily work of process and thermodynamic
+engineering, and it exposes every pathology of Newton's iteration that
+section~5.4 catalogued: a small derivative that throws a full step far
+from the root, multiple roots of which only one is physical, and a
+near-critical regime where two roots coalesce and the derivative
+collapses. The defensive apparatus that survives these pathologies,
+step damping and parameter continuation, is built entirely from the
+linear approximation of this chapter.
+
+\paragraph{The equation and its residual.}
+The Peng-Robinson equation of state relates pressure $p$, absolute
+temperature $T$, and molar volume $v$ through
+\[
+p = \frac{R T}{v - b} - \frac{a\,\alpha(T)}{v^{2} + 2 b v - b^{2}},
+\]
+with $R$ the gas constant, $a$ and $b$ substance constants fixed by the
+critical point, and $\alpha(T)$ a dimensionless temperature function.
+Multiplying out and grouping in the dimensionless compressibility
+$Z = p v /(R T)$ converts the equation into a cubic in $Z$,
+\[
+\phi(Z) = Z^{3} - (1 - B) Z^{2} + \left(A - 2 B - 3 B^{2}\right) Z -
+\left(A B - B^{2} - B^{3}\right) = 0,
+\]
+where $A = a\,\alpha(T)\, p /(R T)^{2}$ and $B = b\, p /(R T)$ are the
+two dimensionless groups that carry the operating condition. The
+engineer wants the root $Z$, then recovers the molar volume as
+$v = Z R T / p$. The cubic has either one real root (a single phase) or
+three real roots (the largest is the vapour-phase compressibility, the
+smallest is the liquid-phase compressibility, and the middle root is
+spurious, an artefact of the cubic with no physical meaning). The
+derivative of the residual,
+\[
+\phi'(Z) = 3 Z^{2} - 2 (1 - B) Z + \left(A - 2 B - 3 B^{2}\right),
+\]
+is the slope Newton's iteration divides by at every step.
+
+\paragraph{Step 1: a working operating point.}
+We take carbon dioxide near its critical point, where the cubic is at
+its most awkward. With $A = 0.45$ and $B = 0.078$ (representative of
+$\mathrm{CO_{2}}$ at a reduced temperature just above critical and a
+moderate pressure), the residual $\phi$ has three real roots close
+enough together that a careless solver lands on the wrong one.
+\Cref{fig:vol02:ch05:eos-newton} plots $\phi$ for an illustrative
+near-critical condition: the liquid root, the spurious middle root, and
+the vapour root sit within a narrow band of $Z$.
+
+\input{volumes/02-form/ch05-differentiation/figures/fig-eos-newton.tex}
+
+\paragraph{Step 2: the naive Newton iteration fails.}
+A reader who applies the bare iteration $Z^{(k+1)} = Z^{(k)} -
+\phi(Z^{(k)})/\phi'(Z^{(k)})$ from an arbitrary guess discovers the
+failure mode of section~5.4 directly. Between the spurious root and the
+vapour root the residual has an interior local maximum, where
+$\phi'(Z) = 0$. A guess near that maximum has a tiny denominator, so
+the step $\phi/\phi'$ is enormous and the iterate flies far past every
+root, often to a negative $Z$ where the molar volume is unphysical. The
+behaviour is the same divergent overshoot the chapter showed for
+$\arctan x$, now embedded in a problem the engineer cannot avoid:
+near-critical conditions are exactly where the equation of state is
+needed and exactly where its residual is flattest.
+
+\paragraph{Step 3: globalisation by step damping.}
+The fix keeps Newton's direction but shortens the step. The Newton
+direction $d^{(k)} = -\phi(Z^{(k)})/\phi'(Z^{(k)})$ is the displacement
+that the linear model predicts will reach the root. When the linear
+model is trustworthy the full step is taken; when it is not, a
+\engterm{damped step} $Z^{(k+1)} = Z^{(k)} + \lambda\, d^{(k)}$ with a
+fraction $\lambda \in (0, 1]$ is taken instead. The fraction $\lambda$
+is chosen so that the magnitude of the residual actually decreases, the
+\engterm{Armijo sufficient-decrease} test,
+\[
+|\phi(Z^{(k)} + \lambda d^{(k)})| \leq (1 - c\,\lambda)\,|\phi(Z^{(k)})|,
+\]
+with a small constant $c \approx 10^{-4}$. The engineer starts with
+$\lambda = 1$ (the full Newton step) and halves $\lambda$ until the test
+passes \cite{text:v2ch05-nocedal-wright-numerical-optimisation-2006}.
+Near a root the full step always passes on the first try, so the
+quadratic convergence of pure Newton is recovered once the iterate is
+close; far from a root the backtracking shortens the step enough to make
+guaranteed progress. The damped iteration is the working default for
+every nonlinear solve in engineering practice, and its entire content is
+the chapter's linear approximation, used as a direction rather than as a
+final answer, with a one-dimensional search guarding the step length.
+
+A worked damped step. From the trapping guess $Z^{(0)} = 0.45$ of
+\Cref{fig:vol02:ch05:eos-newton}, the full Newton step overshoots and
+the residual grows. The Armijo loop halves the step: $\lambda = 1$
+fails, $\lambda = \tfrac{1}{2}$ fails, $\lambda = \tfrac{1}{4}$
+reduces the residual and is accepted. The damped iterate lands inside
+the basin of the vapour root, and from there the full step passes every
+subsequent test, so the last three iterations converge quadratically to
+$Z_{v}$ to machine precision. The molar volume follows as
+$v = Z_{v} R T / p$. The same machinery, started from a small guess such
+as $Z^{(0)} = B + 10^{-3}$ just above the liquid pole, converges to the
+liquid root $Z_{\ell}$, which is how a flash calculation obtains both
+phase volumes from one residual.
+
+\paragraph{Step 4: selecting the physical root.}
+The cubic returns up to three roots; the engineer keeps the one the
+physics demands. The two outer roots are physical (vapour and liquid);
+the middle root is discarded because the isothermal compressibility it
+implies is negative, a thermodynamic impossibility, which the sign of
+$\phi'$ at the root detects directly: at the spurious root $\phi'$ has
+the opposite sign to that at the two physical roots. When the question
+asks for the stable phase, the engineer compares the Gibbs energy of the
+liquid and vapour roots and keeps the lower; the derivative reappears
+there too, because the Gibbs energy difference is an integral of $v\,
+\dd p$ whose integrand is read off the same equation of state. The root
+selection is not a numerical detail. A solver that returns the spurious
+root, or the vapour root when the liquid is stable, produces a molar
+volume wrong by an order of magnitude, and a downstream sizing
+calculation built on it sizes a vessel for the wrong phase.
+
+\paragraph{Step 5: continuation through the critical point.}
+The hardest condition is the critical point itself, where all three
+roots coalesce into one triple root. There $\phi(Z) = 0$,
+$\phi'(Z) = 0$, and $\phi''(Z) = 0$ simultaneously, and Newton's
+quadratic convergence collapses to the linear crawl of a multiple root
+that the section~5.4 mastery box described. The escape is
+\engterm{continuation} (also called homotopy): solve a nearby easy
+condition first, then track the root as the operating condition is moved
+in small steps toward the hard target. The engineer embeds the problem
+in a one-parameter family $\phi(Z; s) = 0$ with $s$ a continuation
+parameter running from an easy value $s = 0$ (an ideal-gas condition far
+from critical, where the single root $Z \approx 1$ is found in two
+Newton steps) to the target $s = 1$ (the near-critical condition). At
+each $s$, the converged root from the previous $s$ is the starting guess
+for the next, and the implicit function theorem guarantees that the root
+moves continuously with $s$ as long as $\phi'(Z; s) \neq 0$ along the
+path. The continuation step size is shortened automatically wherever the
+root path steepens, exactly the same step-control logic as the Armijo
+backtracking, applied in the parameter direction rather than the
+solution direction. Continuation turns an intractable cold start into a
+sequence of easy warm starts, and the tangent that defines each warm
+start is the derivative $\partial Z/\partial s = -(\partial \phi/
+\partial s)/(\partial \phi/\partial Z)$, the implicit-differentiation
+formula of section~5.2 used to predict where the root goes next.
+
+\paragraph{Interpretation.}
+The equation-of-state solve is the linear approximation used as an
+engine rather than as an answer. Newton's step is the tangent-line
+prediction of the root. The Armijo backtracking is a one-dimensional
+search that trusts the tangent only as far as the residual rewards it.
+The root selection reads the sign of the derivative to discard the
+unphysical root. The continuation tracks the root through the critical
+point on the implicit-function tangent, shortening its parameter step
+where the derivative warns of trouble. Every safeguard is the chapter's
+derivative, deployed defensively against the chapter's own failure
+modes. The reader who internalises this sequence has the working pattern
+for solving any smooth nonlinear equation that resists a closed-form
+root, which is most of them, and the discipline that keeps the solve
+from landing on the wrong answer in the regime where the answer matters
+most.
 
 \section{Project}\pathtag{core}
 

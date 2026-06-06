@@ -20,6 +20,7 @@ uv run code/<script>.py
 | `cancellation_exp.py` | Compares direct Maclaurin summation of $e^{-x}$ (catastrophic cancellation) against the stable reciprocal-of-$e^{+x}$ route, reporting relative error vs `math.exp`. | Section 4.6 catastrophic-cancellation failure subsection. |
 | `aitken_euler.py` | Runs the Aitken $\Delta^2$ and Euler-transform convergence accelerators on the Leibniz series for $\pi/4$ and the alternating series for $\log 2$; reports term counts for six-decimal accuracy and writes per-step errors. | Section 4.3 acceleration subsection; figure `fig:vol02:ch04:acceleration`. |
 | `machin_pi.py` | Computes $\pi$ to ten decimals by Machin's formula with the case study's two-part error budget (truncation + round-off), printing each term, the truncation point, and the empirical error against a high-precision reference. | Section 4.7 case study; figure `fig:vol02:ch04:machin-budget`. |
+| `generating_growth.py` | Solves the run-length-limited counting recurrence $a_n = a_{n-1} + a_{n-2}$ by its rational generating function, comparing the recurrence, the closed form $a_n = F_{n+2}$, and the dominant-pole asymptotic $a_n \sim C\phi^n$; reports the per-symbol capacity $\log_2\phi$ and the rate penalty. | Generating-function case study; figure `fig:vol02:ch04:generating-growth`. |
 
 ## Conventions
 

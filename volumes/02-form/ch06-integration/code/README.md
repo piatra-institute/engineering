@@ -9,6 +9,8 @@
 | `moment_of_inertia_profile.py` | Numerical integration of $I = \int x^2 \sigma(x) dx$ from a measured cross-section profile in `data/hammer_profile.csv`; demonstrates the convergence-by-halving check. | Chapter project (method ii); diagnosis exercise on hammer discrepancy. |
 | `monte_carlo_2d.py` | Monte Carlo integration of $\int_0^1 \int_0^1 e^{-(x^2 + y^2)} dx dy$ with reported mean and standard error; comparison to a trapezoidal-rule double integral. | Simulation exercise 4. |
 | `coulomb_counting.py` | Coulomb counting: integrates a measured 1800 s cell-current trace (nominal 1.5 A discharge with a load transient and 20 mA noise) by the trapezoidal rule to get charge removed and state-of-charge drop; reports the three-term error budget (gain, offset, noise) and writes `data/coulomb_trace.csv`. | Case study (section 6.10); figure `fig-coulomb-counting`. |
+| `drag_energy.py` | Aerodynamic drag energy over a 180 s drive cycle: integrates the cubic-in-speed drag power $P = \tfrac12 \rho C_d A v^3$ by the trapezoidal rule, cross-checks by Simpson and by halving, contrasts a $v$-dependent and constant $C_d$, and reports a four-term error budget (drag coefficient, cubed speed-sensor scale, air density, frontal area); writes `data/drag_trace.csv`. | Case study (drag energy); figure `fig-drag-energy`. |
+| `fourier_coefficients.py` | Fourier-coefficient pipeline: computes the sine coefficients of a unit square wave by trapezoidal quadrature of the projection integral, confirms agreement with the closed form $b_n = 4/(n\pi)$, and reconstructs partial sums showing the Gibbs overshoot. | Fourier-coefficient subsection; figure `fig-fourier-coefficients`. |
 
 ## Running
 

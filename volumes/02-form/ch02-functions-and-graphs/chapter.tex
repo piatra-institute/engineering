@@ -212,6 +212,31 @@ the field carries the forward chain explicitly so the inverse can
 be applied without ambiguity; this is the same metrology
 discipline Volume I Chapter 3 named for the calibration chain.
 
+\paragraph{Worked example: domain bookkeeping through a composition
+chain.}
+A composition is only defined where the output of each stage lands
+inside the domain of the next, and tracking that condition through a
+chain is the bookkeeping a draft calculation most often skips. Consider
+the chain $h \circ g \circ f$ with $f(x) = x - 3$, $g(u) = \sqrt{u}$,
+and $h(w) = \ln(w)$, evaluated on a real input $x$. The inner stage
+$f$ accepts all real $x$. The middle stage $g = \sqrt{\cdot}$ requires
+its input non-negative, so it accepts $f(x) = x - 3 \geq 0$, that is,
+$x \geq 3$. The outer stage $h = \ln(\cdot)$ requires its input
+strictly positive, so it needs $g(f(x)) = \sqrt{x - 3} > 0$, that is,
+$x - 3 > 0$, that is, $x > 3$. The strict inequality at the last stage
+overrides the non-strict one at the middle stage: the point $x = 3$
+passes the square root (which returns zero there) but fails the
+logarithm (which diverges at zero), so the domain of the full chain is
+the open ray $x > 3$, not the closed ray $x \geq 3$ the middle stage
+alone would allow. The rule the example teaches is to propagate the
+domain forward stage by stage, intersecting the constraint each stage
+imposes on the running output, and to let the strictest constraint
+win. An engineer who reads the domain off the inner function alone, or
+off the outer function alone, gets a domain that is wrong at exactly
+the boundary points where calculations break, which is where a program
+calls $\ln$ on zero and returns negative infinity into the rest of the
+pipeline.
+
 \subsection{Symmetry: even, odd, neither}
 
 A function $f$ is \engterm{even} if $f(-x) = f(x)$ for every $x$ in
@@ -470,6 +495,38 @@ critically damped response) from a transversal crossing (a simple
 root, a sign change, an underdamped overshoot). Reading multiplicity
 is reading the local behaviour of the system the polynomial models.
 
+\paragraph{Worked example: interpolating a device curve, and why a
+high-degree polynomial fails.}
+A manufacturer supplies a sensor characteristic as a short table of
+calibration points, and the engineer needs the value between the
+tabulated points. The first instinct is to fit one polynomial through
+all the nodes, since a polynomial of degree $n - 1$ passes exactly
+through any $n$ points. The instinct is a trap. A single high-degree
+polynomial forced through equally spaced nodes oscillates wildly
+between them, the swings growing toward the ends of the range, an
+effect named the \engterm{Runge phenomenon} after the function
+$1/(1 + 25x^{2})$ on which it was first shown.
+\Cref{fig:vol02:ch02:spline-vs-polynomial} sets the global polynomial
+beside the working alternative. The polynomial in panel (a) hits every
+node and is useless between them, dipping below zero where the device
+curve is strictly positive. The remedy in panel (b) is the
+\engterm{cubic spline}, a piecewise function built from a separate
+cubic on each interval between nodes, with the cubics joined so that
+the value, the first derivative, and the second derivative all match
+where two pieces meet. The matching conditions buy a curve that is
+smooth to the eye and to two derivatives, stays close to the
+underlying characteristic, and has no oscillation budget to spend
+between nodes. The engineering rule that follows is sharp: interpolate
+a tabulated device curve with a low-degree piecewise fit, almost
+always a cubic spline, and reserve a single global polynomial for the
+two or three nodes where its degree is too low to oscillate. The
+spline is the standard interpolant in instrument firmware,
+finite-element shape functions, and computer-graphics curve drawing
+precisely because it interpolates without inventing structure the data
+never had.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-spline-vs-polynomial.tex}
+
 \begin{estimation}
 \textbf{Drag on a thrown object.}
 
@@ -598,6 +655,34 @@ above cutoff drops the magnitude by a decade, that is,
 $-20\,\si{\deci\bel}$ per decade, a slope of $-1$ on the log-log
 Bode plot. The Design exercise on the Bode plot is the worked
 instance of this calculation.
+
+\paragraph{Worked example: reading a system off its pole-zero map.}
+A rational transfer function $H(s) = N(s)/D(s)$ carries its dynamics
+in the locations of the roots of $D$ (the poles) and the roots of $N$
+(the zeros), plotted as points in the complex plane.
+\Cref{fig:vol02:ch02:pole-zero-map} draws the map for a representative
+system and reads the dynamics off the geometry without solving a
+single differential equation. The vertical (imaginary) axis is the
+stability boundary. A pole in the left half-plane, with negative real
+part, is a mode that decays; a pole in the right half-plane, with
+positive real part, is a mode that grows without bound and renders the
+system unstable; a pole exactly on the imaginary axis is a sustained
+oscillation that neither grows nor decays. For a conjugate pole pair
+at $s = \sigma \pm \mathrm{j}\omega_{d}$ the geometry splits into two
+readings: the real part $\sigma$ sets the decay rate of the mode, so
+the time constant of the ringing is $\tau = 1/|\sigma|$, and the
+imaginary part $\omega_{d}$ sets the frequency at which the mode rings.
+A pole pair close to the imaginary axis is lightly damped and rings for
+a long time; the same pair pushed left into the half-plane is heavily
+damped and settles quickly. The zeros do not set stability but shape
+the response, blocking the input frequencies at which $N(s)$ vanishes.
+The whole reading is the system preview the chapter promised: an
+engineer who can find the roots of a rational function's numerator and
+denominator can read stability, decay rate, and ringing frequency off
+their positions, which is the entry move of the control engineering
+that Volume IX develops in full.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-pole-zero-map.tex}
 
 \subsection{Piecewise functions, steps, and saturation}
 
@@ -839,6 +924,33 @@ of multiplying magnitudes, and it is why engineers reach for the
 decibel and the decade whenever quantities span ranges the eye cannot
 hold linearly.
 
+\paragraph{Worked example: fitting a saturating-growth model.}
+Pure exponential growth is the small-population limit of a process
+that eventually runs into a resource ceiling, and the engineer who
+fits an exponential to data that will saturate is choosing a family
+the physics outgrows. The \engterm{logistic} model
+$N(t) = K/\bigl(1 + ((K - N_{0})/N_{0}) e^{-rt}\bigr)$ carries the
+ceiling explicitly through the \engterm{carrying capacity} $K$, with
+$r$ the small-population rate constant and $N_{0}$ the initial count.
+\Cref{fig:vol02:ch02:logistic-fit} fits the model to a population that
+grows then levels off, and three readings recover the parameters from
+features of the curve. The upper asymptote reads off $K$, the level
+the data approaches. The inflection, the point of steepest rise, sits
+at $N = K/2$ and its time fixes the combination of $r$ and $N_{0}$.
+The early-time slope matches the pure exponential $N_{0} e^{rt}$, so
+$r$ reads off the initial rise on a semilog plot of $N$ against $t$
+while $N \ll K$, before the saturation term bends the curve. The
+logistic linearises under the logit transform of Section~2.6: plotting
+$\ln\bigl(N/(K - N)\bigr)$ against $t$ gives a straight line of slope
+$r$ once $K$ is known, which is the working route to $r$ from the full
+dataset rather than the early points alone. The same curve, under
+other names, describes an autocatalytic reaction, a technology
+adoption curve, a tumour-volume model, and the charge of a
+self-limiting battery; recognising the saturating-S shape is
+recognising that a resource ceiling has entered the mechanism.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-logistic-fit.tex}
+
 \subsection{Semilog and log-log axes}
 
 A function plotted on linear axes shows changes by addition. A
@@ -941,6 +1053,32 @@ The reading order is exponent from slope, prefactor from intercept,
 physics from the value of the exponent. A log-log plot turns a
 two-parameter fit into two straight-line readings and turns the
 exponent into a statement about the mechanism.
+
+\paragraph{Worked example: how transformations act on log axes.}
+The shift-and-scale vocabulary of Section~2.1 changes character on a
+logarithmic axis, and reading the change correctly is what lets an
+engineer compare two curves on the same log plot. Multiplying the
+plotted quantity by a constant, $y \mapsto c y$, becomes a vertical
+\emph{shift} on a log axis, because $\log(c y) = \log c + \log y$, so
+two power laws that differ only in their prefactor $A$ appear as
+parallel lines on log-log axes, offset vertically by $\log(A_{2}/
+A_{1})$ and never crossing. Two exponential decays that differ only in
+their initial value appear the same way on semilog axes, parallel
+lines with the same slope. The diagnostic follows at once: parallel
+lines on a log plot are the same mechanism at different scale, while
+lines of different slope are different mechanisms, a different exponent
+in the power-law case or a different rate constant in the exponential
+case. Scaling the \emph{input}, $x \mapsto bx$, behaves differently on
+the two axis types. On a log-log plot, $y = A(bx)^{n} = (A b^{n})
+x^{n}$ keeps the slope $n$ and shifts the line vertically, so a change
+of input units (metres to millimetres, say) slides a power law up or
+down without tilting it. On a semilog plot a change of input scale
+\emph{does} change the slope, because the horizontal axis is still
+linear and stretching it stretches the apparent rate. The working
+habit is to read a log plot for slope first, since slope carries the
+mechanism, and for vertical offset second, since offset carries the
+scale, and to remember that a unit change on the input slides a
+power-law line but tilts an exponential one.
 
 \begin{mastery}
 The elementary families of this chapter do not exhaust the functions
@@ -1257,6 +1395,41 @@ is a property of the function (bijectivity on the domain of
 interest); the means of computing it (formula or numerical solve) is
 a separate, practical question.
 \end{mastery}
+
+\begin{mastery}
+Monotonicity and convexity are the two structural properties an
+engineer most often needs a function to have, because each carries a
+guarantee the unstructured case cannot offer. A \engterm{monotone}
+function (one that keeps a single direction across an interval)
+guarantees a single-valued inverse, which is the property the previous
+boxes turned into a sensor-design rule. A \engterm{convex} function
+(one whose graph curves upward, so every chord lies on or above the
+graph and every tangent on or below it) guarantees something stronger
+about its minimum.
+\Cref{fig:vol02:ch02:convex-classes} draws the chord and tangent
+properties and the gap that names Jensen's inequality, that the
+average of a convex function exceeds the function of the average. The
+working payoff is the minimisation guarantee: a convex function on an
+interval has at most one local minimum, and that minimum is also the
+global minimum, so a search that finds a point where the slope
+vanishes has found the answer and need not worry that a deeper
+minimum hides elsewhere. A non-convex objective offers no such
+guarantee, and an optimiser may settle into a local minimum far worse
+than the global one. This single difference is why an engineer setting
+up an optimisation works to cast the objective in convex form when the
+physics allows, and the formal development of that craft is the
+subject of convex optimisation
+\cite{text:boyd-vandenberghe2004}. The two classes compose
+predictably: a monotone function of a monotone function is monotone,
+and a convex increasing function of a convex function is convex, so
+the engineer who tracks these labels through a composition chain knows
+which guarantees survive to the output. Carrying the convexity label on
+a function is carrying the promise that its minimum is findable, the
+same way carrying the monotonicity label is carrying the promise that
+its inverse is single-valued.
+\end{mastery}
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-convex-classes.tex}
 
 \section{Reading a graph: shape, slope, asymptote, scale}\pathtag{core}
 
@@ -1663,6 +1836,119 @@ across the rated range with a known and bounded error. One device,
 one dataset, the full vocabulary of the chapter, and a model the
 engineer can defend.
 
+\section{Case study: identifying a transfer characteristic from
+frequency-response data}\pathtag{mastery}
+
+The load-cell case took a static input-output curve from data to a
+usable model. The complementary task takes a \emph{dynamic} curve, the
+way a device responds across frequency, from measured data to a
+transfer function the engineer can compute with. We work it end to end
+on a galvanometer-style moving-coil instrument, the rotating-pointer
+movement at the heart of an analogue panel meter, a chart recorder, and
+the read head positioner of a disk drive. The device is a mass on a
+spring with damping, and its response across frequency is the canonical
+second-order curve every engineer meets. The discipline the case shows,
+reading a model off the asymptotes and the resonant peak rather than
+fitting it blind, transfers to any frequency-domain characterisation.
+
+\subsection{The device and the frequency-sweep measurement}
+
+A moving-coil movement is a coil suspended in a magnetic field on a
+torsion spring. A current through the coil produces a torque, the coil
+rotates against the spring, and a pointer reads the deflection. The
+coil has rotational inertia, the spring provides a restoring torque,
+and eddy currents and air provide damping, so the movement is a
+second-order mechanical system: inertia, stiffness, and damping, the
+same three ingredients as a mass on a spring. The engineer wants to
+know how the pointer deflection follows a current that varies in time,
+which is the device's frequency response.
+
+The characterisation experiment drives the coil with a sinusoidal
+current of fixed amplitude and swept frequency, and at each frequency
+records the amplitude of the steady-state pointer oscillation. The raw
+data is a column of $(f, |H|)$ pairs: drive frequency against
+response amplitude relative to the low-frequency deflection. The frame
+check of Section~2.6 applies to the engineer's own sweep before anyone
+else sees it. The input is frequency, in hertz, over the swept domain.
+The output is response magnitude, a dimensionless ratio because it is
+normalised to the low-frequency response, which divides out the static
+sensitivity exactly as the load cell normalised to excitation voltage.
+The measurement is amplitude only; the phase response is a second
+sweep, recorded separately, that the magnitude reading does not need
+but that confirms the model.
+
+\subsection{Reading the model off the magnitude curve}
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-second-order-bode.tex}
+
+\Cref{fig:vol02:ch02:second-order-bode} plots the magnitude data in
+decibels against log frequency, and two features fix the two
+parameters of a second-order model without any nonlinear fit. The
+low-frequency data sits flat at $0\,\si{\deci\bel}$, the passband where
+the pointer follows the current faithfully. The high-frequency data
+falls along a straight line of slope $-40\,\si{\deci\bel}$ per decade,
+the signature of a two-pole roll-off, where the inertia of the coil
+cannot keep up with the drive. The two asymptotes, the flat passband
+and the $-40\,\si{\deci\bel}$ line, intersect at the
+\engterm{natural frequency} $\omega_{n}$, and reading that intersection
+off the plot is the first parameter recovered. The second parameter is
+the \engterm{damping ratio} $\zeta$, read off the height of the
+resonant peak: a lightly damped movement shows a peak above the
+passband near $\omega_{n}$, and for small $\zeta$ the peak height is
+$M_{p} \approx 1/(2\zeta)$, so a measured peak of $9\,\si{\deci\bel}$,
+a factor of about $2.8$ in amplitude, gives $\zeta \approx 1/(2 \cdot
+2.8) \approx 0.18$. Two readings off the curve, the corner frequency
+and the peak height, and the model is identified.
+
+The identified transfer function is the standard second-order form
+\[
+  H(s) = \frac{\omega_{n}^{2}}{s^{2} + 2\zeta\omega_{n} s
+    + \omega_{n}^{2}},
+\]
+a rational function whose denominator is a quadratic in the complex
+frequency $s$. Everything the chapter said about rational functions
+now pays off. The poles are the roots of the denominator,
+$s = -\zeta\omega_{n} \pm \mathrm{j}\omega_{n}\sqrt{1 - \zeta^{2}}$, a
+conjugate pair in the left half-plane for $0 < \zeta < 1$. The pair is
+exactly the kind \Cref{fig:vol02:ch02:pole-zero-map} drew: the real
+part $-\zeta\omega_{n}$ sets the decay rate of the movement's ringing,
+and the imaginary part $\omega_{d} = \omega_{n}\sqrt{1 - \zeta^{2}}$,
+the \engterm{damped natural frequency}, sets the frequency at which it
+rings. The magnitude curve and the pole-zero map are two views of the
+one model, and the engineer reads between them: the peak in the
+frequency response and the closeness of the poles to the imaginary
+axis are the same physical fact, light damping, seen in two diagrams.
+
+\subsection{Using the model: the step response and the design fix}
+
+The transfer function predicts how the pointer answers a sudden change
+in current, the step response the meter user actually sees. A lightly
+damped movement with $\zeta = 0.18$ overshoots its final reading by a
+large margin and rings several times before settling, because the
+conjugate poles sit close to the imaginary axis and the ringing decays
+slowly. The overshoot fraction follows from the damping ratio alone,
+$e^{-\pi\zeta/\sqrt{1 - \zeta^{2}}}$, which for $\zeta = 0.18$ is about
+$56\,\%$: the pointer swings more than half again past the true value
+before coming back. A panel meter that overshoots by half its reading
+and rings is unusable, so the characterisation has not only identified
+the device, it has diagnosed a defect.
+
+The design fix reads off the model directly. Settling without
+objectionable overshoot wants a damping ratio near
+$\zeta \approx 0.6$ to $0.7$, the standard target that trades a small
+overshoot for a fast settle. Raising $\zeta$ means adding damping,
+which for a moving-coil movement means increasing the eddy-current
+loss, often by winding the coil on an aluminium former that acts as a
+shorted turn. The model says how much: moving from $\zeta = 0.18$ to
+$\zeta = 0.65$ pulls the poles left and down, away from the imaginary
+axis, cutting the overshoot from $56\,\%$ to about $6\,\%$ and turning
+a ringing pointer into one that settles cleanly. The same model, two
+parameters read off a magnitude curve, has carried the engineer from
+raw frequency-sweep data through an identified transfer function to a
+named defect and a quantified design change. One device, two sweeps,
+the rational-function and graph-reading vocabulary of the chapter, and
+a model that does engineering work.
+
 \section{Failure: log-scale traps and linear extrapolation}\pathtag{core}
 
 The chapter's failure mode is the misreading of a plot that mixes
@@ -1977,6 +2263,36 @@ physical device, three input-output functions, three reading
 disciplines, all drawn from this chapter. The engineer chooses the
 description that answers the question at hand, and reads the chosen
 function with the frame-check habit the chapter trains.
+
+\begin{mastery}
+The chapter has treated a function as a rule for turning one number
+into another, which is the working view for most engineering. A deeper
+view, the one the later volumes lean on, treats a whole function as a
+single object: a point in a space whose other points are also
+functions. The shift is the same one that turned a list of three
+numbers into a single vector in Chapter 1. Once functions are points
+in a space, the operations of linear algebra carry over. A set of
+simple functions can serve as a \engterm{basis}, and a complicated
+function is written as a weighted sum of those basis functions the way
+a vector is written as a weighted sum of coordinate directions. The
+Fourier series of the even-odd box is exactly this: the sinusoids of
+every harmonic frequency are a basis, and the Fourier coefficients are
+the coordinates of a periodic function in that basis. The Taylor series
+is the same move with the monomials $1, x, x^{2}, \ldots$ as the basis.
+A spline is the same move with a basis of localised piecewise-cubic
+bumps. The payoff of the function-as-object view is that approximating
+a function becomes choosing how many basis terms to keep, and the error
+of the approximation becomes the size of the discarded coordinates, a
+quantity the engineer can bound and control. The space of functions
+with a notion of length and angle is the subject of functional
+analysis, and the inner product that measures the angle between two
+functions is the integral of their product, which is why a Fourier
+coefficient is computed by integrating a signal against a single
+harmonic. The working engineer does not need the full theory to use
+its first consequence: a function is a thing that can be built out of
+simpler functions, and the art is choosing the basis whose first few
+terms already carry most of what the function does.
+\end{mastery}
 
 \section{Project}\pathtag{core}
 

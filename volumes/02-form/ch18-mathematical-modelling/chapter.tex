@@ -7,18 +7,20 @@ George Box (1976). The chapter takes the second half of the sentence as
 seriously as the first.}
 
 \chapmeta{Half-life: foundational. Archetypes: ethics (responsible
-modelling), uncertainty, scaling, balance, optimisation. Exercise target: 25. Project
+modelling), uncertainty, scaling, balance, optimisation, feedback. Exercise target: 25. Project
 track: analysis only. Hazard class: none. Reader path default: standard,
 with sections explicitly tagged. Named cases: none in chapter prose; the
 recognition-level discussion in section 18.8 names financial and
 operational episodes without invoking the registry. Companion assets:
-\texttt{volumes/02-form/ch18-mathematical-modelling/figures/} (fourteen
+\texttt{volumes/02-form/ch18-mathematical-modelling/figures/} (eighteen
 TikZ figures, including the Buckingham-Pi data collapse, the SIR
 compartment diagram, the Kleiber log-log scaling line, the
 thermal-mass model-revision pair, the M/M/c queue state chain with its
 congestion nonlinearity, the queue prediction-versus-simulation and
-staffing-cost optimisation pair, and the model-selection penalised-fit
-curve); \texttt{code/} (nine Python scripts:
+staffing-cost optimisation pair, the model-selection penalised-fit
+curve, the contact-network contagion pair, the feedback-loop block
+diagram with its closed-loop step response, the analytic-versus-Monte-Carlo
+propagation histogram, and the bias-variance decomposition); \texttt{code/} (nine Python scripts:
 cooling-cup fit, logistic
 fit, identifiability demonstration, bootstrap, cross-validation, overfit
 demonstration, Buckingham-Pi tool, sensitivity propagation, model
@@ -2235,6 +2237,602 @@ for the cash flow. A modeller who spends a beam-style measurement effort
 on a cash-flow problem has optimised the negligible term.
 \end{mastery}
 
+\section{Worked example, in full: contagion on a contact network}\pathtag{standard}
+
+The SIR model of section~18.6 and the queue of section~18.9 both reduced a
+population to an average. SIR assumed every individual mixes with every
+other at the same rate; the queue assumed every patient draws from the same
+arrival process. A large and growing class of engineering questions cannot
+make that assumption, because the structure of who contacts whom, which
+component depends on which, which node routes to which, is the thing that
+governs the answer. The contact network of a disease, the dependency graph
+of a power grid, the citation graph of a literature, the follower graph of
+a platform: in each, a quantity propagates along edges whose pattern is the
+model's content. We work a contagion-on-a-network problem at full length
+because it exercises a modelling archetype the chapter has not yet touched,
+the agent-based or network model, in which the system is a collection of
+interacting individuals rather than a single aggregate equation. The
+example closes the loop in a way the aggregate models could not: the
+network model is validated against the mean-field SIR it generalises, and
+the disagreement between them is itself the structural information the
+heterogeneity carries. The example reaches across the volume: the
+probability of Chapter 14 supplies the degree distribution and the
+infection draws, the linear algebra of Chapter 10 supplies the adjacency
+matrix and its spectral radius, the graph language of Chapter 17 supplies
+the network itself, and the numerical methods of Chapter 16 drive the
+individual-level simulation.
+
+\subsection{The question and the data}
+
+A workplace of $N$ people wants to bound how far an infection will spread
+from a single index case before it burns out, and whether closing the
+canteen, the one place everyone passes through, would change the answer.
+The engineering question has two parts with a decision attached: what
+fraction of the workforce does the model predict will be infected, and does
+removing the highest-degree contact point (the hub) move that fraction
+enough to justify the disruption. The answer must be good to about ten
+percent in the infected fraction, the precision a facilities manager would
+act on.
+
+The data are a contact log. Over a representative week, a proximity sensor
+records, for each pair of employees, whether they were in sustained close
+contact. The log yields a contact network: a node per employee, an edge
+per recorded contact pair. The network is not a number; it is the data, and
+its structure, the distribution of how many contacts each person has, is
+the modelling content. The log shows a right-skewed degree distribution: most
+employees contact five to ten others, a handful (reception staff, the
+canteen server) contact dozens. The mean degree is $\bar{d} \approx 9$,
+but the variance is large, and the chapter's whole lesson about this
+example turns on that variance.
+
+\subsection{First candidate: the mean-field SIR (already in hand)}
+
+The abstraction discipline names the question first (infected fraction and
+its sensitivity to the hub) and the dominant scale next. The dimensionless
+group that governs every contagion is the basic reproduction number $R_0$,
+the expected number of secondary cases one infectious individual produces
+in a fully susceptible population. The simplest model that answers the
+question is the one the chapter already built: the homogeneous-mixing SIR
+of section~18.6, with $R_0 = \beta/\gamma$ estimated from the contact rate
+and the recovery time. With a per-contact transmission probability and the
+mean degree $\bar{d} = 9$, the mean-field estimate is $R_0 \approx 1.8$,
+comfortably above the threshold, and the final-size relation of
+section~18.6's mastery box predicts an infected fraction near $0.73$.
+
+The model is the correct first candidate and it answers the first half of
+the question. It cannot answer the second half. The mean-field SIR has no
+representation of the hub; it knows only the average degree, and removing
+one high-degree node changes the average by less than one part in $N$. A
+planner who stopped here would conclude, wrongly, that closing the canteen
+is irrelevant. The residual that the deterministic examples found in a
+time-series plot and the queue found in a distribution shape, this example
+finds in a question the aggregate model structurally cannot address. The
+refusal specifies the revision: the model must carry the network structure
+the mean field threw away.
+
+\subsection{Second candidate: the network model}
+
+The revision keeps every individual as an agent and the contact log as the
+coupling. Each node $i$ is in one of the three states $S$, $I$, $R$. An
+infectious node infects each susceptible neighbour independently at rate
+$\beta$ per edge; each infectious node recovers at rate $\gamma$. The model
+is no longer a small system of ordinary differential equations; it is a
+stochastic process on the graph, $N$ coupled state variables whose coupling
+is the adjacency matrix $\mathbf{A}$ of Chapter 10, with $A_{ij} = 1$ when
+$i$ and $j$ are in contact. The mean field is the special case in which
+every $A_{ij}$ equals $\bar{d}/N$, the graph with all structure averaged
+away.
+
+The structural insight is again dimensional, and it is the payoff of
+carrying the network. On a heterogeneous network the threshold is governed
+not by the mean degree but by the ratio of the second moment of the degree
+distribution to the first,
+\[
+R_0^{\text{net}} \;\approx\; \frac{\beta}{\gamma}\,
+  \frac{\langle d^2\rangle - \langle d\rangle}{\langle d\rangle},
+\]
+a result that follows from tracking infection along edges rather than
+across the population average. The hubs inflate $\langle d^2\rangle$ far
+above $\langle d\rangle^2$, so a network with the same mean degree as a
+homogeneous one can have a much larger effective reproduction number, and a
+network whose hubs are removed can drop below threshold while its mean
+degree barely moves. Albert, Jeong, and Barab{\'a}si established the
+companion result for network robustness
+\cite{paper:v6c08-albert-barabasi-2000}: scale-free networks tolerate
+random node loss but collapse when their hubs are removed, the same
+hub-dominance the contagion threshold expresses. The equivalent spectral
+statement, that the epidemic threshold is set by the largest eigenvalue of
+$\mathbf{A}$, makes the linear algebra of Chapter 10 the governing
+apparatus: the contagion grows when $\beta/\gamma$ exceeds the reciprocal
+of the adjacency matrix's spectral radius. Removing the hub lowers that
+spectral radius disproportionately, which is exactly the lever the
+mean-field model could not see.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-network-contagion.tex}
+
+\subsection{Identification and the validation against the mean field}
+
+The network model has the same two rate parameters as the SIR, $\beta$ and
+$\gamma$, estimated the same way from the contact and recovery data; the
+network structure itself is observed, not fitted. Before trusting the
+model's answer to the hub question, the engineer validates it against the
+aggregate model in the regime where the two must agree. Run the
+individual-level simulation on a homogeneous network (every node the same
+degree $\bar{d}$, edges placed at random) and the simulated trajectory must
+reproduce the mean-field SIR curve to within the simulation's sampling
+noise. This is the same cross-check the queue used: two independent
+computations of the same quantity, one aggregate equation and one
+stochastic simulation, that must agree or expose an error. They agree, and
+the agreement licenses the simulation as a trustworthy instrument before it
+is run on the structure the formula cannot handle.
+
+Then run it on the real, heterogeneous network.
+Figure~\ref{fig:vol02:ch18:network-contagion}(b) shows the divergence: on
+the heterogeneous network the epidemic starts earlier (a hub, once
+infected, seeds many neighbours at once) and peaks lower and broader (the
+heterogeneity spreads the effective contact rate across a wide range, so
+the synchronised wave the mean field predicts does not form). The final
+infected fraction on the network is near $0.66$, against the mean-field
+$0.73$: the homogeneous model overstates the spread, because it treats the
+low-degree majority as if they mixed at the hub's rate. The gap is the
+structural error the homogeneous-mixing assumption introduced, with the
+sign and shape the network model now explains.
+
+\subsection{The intervention, and the prediction}
+
+The hub question is the one the network model exists to answer. Re-run the
+simulation with the highest-degree node removed (the canteen contact point
+closed). The final infected fraction drops from $0.66$ to $0.41$, a
+reduction of a quarter of the workforce, because removing the hub cuts the
+spectral radius of $\mathbf{A}$ and pushes the effective reproduction
+number down toward threshold. The mean-field model predicted no effect; the
+network model predicts a large one, and the difference is the decision. The
+facilities manager now has a quantified trade-off: a quarter of the
+workforce spared against the disruption of closing the canteen.
+
+The prediction carries an interval from two sources the chapter has named
+throughout. The parameter uncertainty propagates the sampling intervals on
+$\hat\beta$ and $\hat\gamma$, amplified here because the network model is
+more sensitive to $\beta$ near threshold than the mean field is. The
+structural uncertainty is larger and is the honest part of the report: the
+contact log is one week of one configuration, the proximity sensor misses
+brief contacts that may still transmit, and the model assumes the network
+is static while real contacts rewire daily. The engineer reports the
+infected fraction as $0.66 \pm 0.08$ with the hub present and $0.41 \pm
+0.10$ with it removed, states that both rest on the static-network
+assumption, and names the regime (a fast-rewiring contact pattern, a
+second hub the log undercounted) in which the recommendation would need
+re-running on a dynamic-network model.
+
+\subsection{The look-back and the lesson}
+
+Does the result use all the data? Yes; the rate parameters came from the
+contact and recovery logs and the structure from the full network. Does it
+explain what the first model could not? Yes; the hub sensitivity is carried
+by the spectral radius of the adjacency matrix, the quantity the mean field
+averages away. Does it admit an independent check? Yes, twice: the
+homogeneous-network simulation reproduced the mean-field SIR, and the
+network threshold formula $R_0^{\text{net}}$ predicts the direction of the
+hub effect that the full simulation then confirms. Does the model survive
+hostile review within its domain (a closed workplace, a static one-week
+contact network, a single index case, independent per-edge transmission)?
+Yes, and the domain statement names the regimes (dynamic rewiring, repeated
+introductions, correlated transmission within teams) where a richer model
+would be needed.
+
+The lesson generalises the aggregate examples to the structured case. When
+the structure of the interactions governs the answer, the aggregate model
+is not a coarser version of the right model; it is a different model that
+answers a different question, and substituting it silently is the failure
+the chapter's abstraction discipline exists to prevent. The discipline is
+unchanged: name the question, choose the simplest model, find the question
+the simple model cannot answer, let it specify the revision, validate the
+revision against the simple model in their shared regime, and report the
+prediction with an interval that exposes the structural uncertainty the
+static-network assumption hides.
+
+\begin{mastery}
+The choice between an agent-based simulation and an aggregate equation is a
+choice on a spectrum of \engterm{model resolution}, and the spectrum has a
+principled middle. The fully aggregate mean-field model tracks one number
+per compartment; the fully individual agent-based model tracks one state
+per node. Between them sits the \engterm{degree-based} or
+\engterm{pair-approximation} family, which tracks one compartment per
+degree class (all degree-$d$ nodes lumped together) or one variable per
+edge type, recovering most of the heterogeneity at a fraction of the
+individual model's cost. The modelling judgement is to climb the resolution
+ladder only as far as the question requires: the hub question forced at
+least degree-resolution, but it did not require naming individuals, so a
+degree-based model would have answered it more cheaply than the full
+simulation. The general rule, which recurs in fluid dynamics (direct
+simulation versus turbulence closure), in chemistry (every molecule versus
+reaction-rate equations), and in traffic (every vehicle versus flow
+density), is that resolution is a cost paid for a specific structural
+question, and a modeller who simulates individuals when a degree class
+would do has made the overfitting error in its computational form, buying
+fidelity the decision cannot use. The agent-based model also raises a
+verification burden the aggregate model does not: a stochastic simulation
+must be run many times and its sampling spread quantified before its mean
+is trusted, the discrete-event discipline of section~18.9 applied to a
+process on a graph.
+\end{mastery}
+
+\section{Worked example, in full: closing the loop with feedback}\pathtag{standard}
+
+Every model the chapter has built so far describes a system that does what
+its dynamics dictate and is then observed. A controlled system is
+different: an engineer measures its output, compares the measurement to a
+goal, and feeds a correction back into the input, so that the system's
+behaviour is set by the loop rather than by the plant alone. The
+thermostat-controlled room, the cruise control holding a speed, the
+autopilot holding a heading, the chemical reactor holding a temperature:
+each is a feedback loop, and the model that predicts its behaviour must
+model the loop, not just the plant. We work a feedback example at full
+length because it exercises the control-loop archetype the chapter has
+named in passing (Meadows's balancing loops, section~18.2) but never run
+through the cycle, and because it reaches back to the room thermal model of
+section~18.7 and turns it from a system to be predicted into a plant to be
+controlled. The example draws on the ODEs and eigenvalues of Chapter 7, the
+linear-system apparatus of Chapter 10, and the stability language the
+volume has built toward.
+
+\subsection{The question and the plant}
+
+The room of section~18.7 warmed under a heater that was simply switched on.
+A real thermostat does not switch the heater on and leave it; it modulates
+the heating power to hold the room at a setpoint despite a fluctuating
+outdoor temperature. The engineering question is one of control design: how
+should the controller set the heating power as a function of the measured
+temperature error so that the room reaches the setpoint quickly, holds it
+against disturbances, and does not overshoot into discomfort or waste. The
+answer is a controller gain, and the precision required is enough to keep
+the steady-state error below half a degree and the overshoot below a degree.
+
+The plant is the two-lump room model already identified: a fast air node
+and a slow wall node, with the heating power $P$ driving the air. In the
+open-loop model of section~18.7 the power was a fixed input; in the closed
+loop it becomes the controller's output, a function of the temperature the
+sensor reports.
+
+\subsection{First candidate: proportional control}
+
+The abstraction discipline names the question (hold the setpoint) and the
+simplest controller that could answer it: proportional control, which sets
+the heating power proportional to the error between the setpoint and the
+measured temperature,
+\[
+P(t) = K_p\,\bigl(T_{\text{set}} - T_a(t)\bigr),
+\]
+with a single gain $K_p$ to choose. Substituting this into the air-node
+equation of the two-lump plant closes the loop and turns the forced linear
+system into an autonomous one whose dynamics the gain sets. The closed-loop
+system is still the coupled pair of section~18.7, but the constant forcing
+$P$ is replaced by the error-proportional term, which moves the system's
+eigenvalues: the same room, under a controller, has different time
+constants and a different steady state.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-feedback-loop.tex}
+
+Two structural facts are available before any gain is fitted, and both come
+from the eigenvalue analysis of Chapter 7 applied to the closed-loop
+matrix. First, proportional control alone leaves a \engterm{steady-state
+offset}: at equilibrium the heater must supply the standing heat loss, but
+it can only do so if the error is nonzero, so the room settles slightly
+below the setpoint, by an amount that shrinks as $K_p$ rises but never
+reaches zero. Second, raising $K_p$ to reduce that offset moves the
+closed-loop eigenvalues toward the imaginary axis: the response speeds up,
+then begins to overshoot, then rings, and at high enough gain the slow wall
+lag turns the loop oscillatory. Figure~\ref{fig:vol02:ch18:feedback-loop}(b)
+shows the three regimes. The trade-off between offset and overshoot is the
+proportional controller's signature, and it is the residual that specifies
+the revision.
+
+\subsection{Identification, validation, and the residual that breaks it}
+
+The gain is tuned by running the closed loop, measuring the response to a
+setpoint step, and adjusting $K_p$ until the response is as fast as it can
+be without unacceptable overshoot. The validation is a held-out
+disturbance: drop the outdoor temperature and check whether the controller
+holds the room. Here proportional control fails its own check honestly. The
+steady-state offset, predicted by the eigenvalue analysis, appears in the
+data: the room holds about a degree below setpoint when the outdoor
+temperature falls, and the offset grows with the disturbance. The residual
+is not noise; it is the structural signature of a controller that has no
+memory of accumulated error. The discipline of section~18.5 applies: the
+offset is the next controller's specification.
+
+\subsection{Second candidate: proportional-integral control}
+
+The revision adds an integral term that accumulates the error over time,
+\[
+P(t) = K_p\,e(t) + K_i \int_0^t e(\tau)\,\dd\tau,
+\qquad e(t) = T_{\text{set}} - T_a(t),
+\]
+so that any persistent error, however small, integrates into a growing
+correction that drives the steady-state offset to zero. The integral term
+is the controller's memory, the accumulation the proportional term lacked,
+and it is exactly the stock-versus-flow distinction of section~18.2: the
+proportional term responds to the flow of error, the integral term to its
+accumulated stock. Adding it raises the closed-loop system's order by one,
+introducing a third eigenvalue, and the gains $K_p$ and $K_i$ must now be
+chosen together so that all three eigenvalues sit in the stable half-plane
+with adequate damping. {\AA}str{\"o}m and Murray's text
+\cite{text:astrom-murray2021} is the standard engineering treatment of the
+loop-shaping this requires, and Strogatz's nonlinear-dynamics text
+\cite{text:v2ch07-strogatz-nonlinear} supplies the eigenvalue-and-phase-plane
+language the analysis rests on.
+
+\subsection{Validation of the revision, and the prediction}
+
+The proportional-integral controller's response to the same held-out
+disturbance shows no surviving offset: the room returns to setpoint after
+the outdoor temperature drops, with the integral term supplying the extra
+standing power the proportional term could not. The cycle has closed. The
+engineering answer is a gain pair that meets both specifications:
+steady-state error driven to zero by the integral action, overshoot held
+below a degree by the proportional gain and the integral gain chosen
+together for adequate damping. The prediction the engineer reports is the
+closed-loop settling time and overshoot, with an interval propagating the
+uncertainty in the identified plant parameters ($C_a$, $C_w$, the
+resistances) through the closed-loop eigenvalues, and a structural caveat:
+the linear plant model is validated only for small excursions around the
+setpoint, and a controller tuned on the linear model can misbehave if the
+heater saturates (the integral term winds up against a power ceiling it
+cannot exceed), the regime the next revision would have to address.
+
+\subsection{The look-back and the lesson}
+
+Does the result use all the data? Yes; the plant came from the section~18.7
+identification and the gains from the closed-loop step and disturbance
+tests. Does it explain what the first controller could not? Yes; the
+steady-state offset was the residual, and the integral term is the
+accumulation the residual demanded. Does it admit an independent check?
+Yes; the closed-loop eigenvalues predicted from the identified plant and
+the chosen gains match the settling time and overshoot measured in the
+step response. Does the model survive hostile review within its domain
+(small excursions, no actuator saturation, the plant time-invariant over
+the test)? Yes, and the domain statement names the regimes (large setpoint
+changes, a saturating heater, a plant that drifts as the building ages)
+where a richer controller (anti-windup, gain scheduling, re-identification)
+would be needed.
+
+The lesson is the chapter's discipline applied to a system the engineer
+acts on rather than merely observes. A feedback loop is a model whose
+output the engineer chooses, and the modelling cycle runs the same way:
+name the question, choose the simplest controller, read the residual (here
+the steady-state offset), let it specify the revision (the integral term),
+validate against a held-out disturbance, and report the prediction with the
+domain of validity the linear model's small-signal assumption sets. The
+control archetype recurs throughout the later volumes, wherever an engineer
+closes a loop around a plant, and the modelling discipline travels with it
+unchanged.
+
+\section{Worked examples: four sharpened tools}\pathtag{standard}
+
+The full-cycle examples ran the whole loop. Four shorter worked examples
+sharpen individual tools the chapter has named, each on a question the
+running examples raised but did not pursue: how correlated parameters
+defeat identification, how a nonlinear model's uncertainty outruns the
+linear formula, how two competing models are discriminated by evidence
+rather than by fit, and how a scaling law is read off the dimensions before
+any data are taken.
+
+\subsection{Identifiability when parameters trade off}
+
+The pendulum's $L$-and-$g$ ambiguity was a clean structural
+non-identifiability: the model depended only on the ratio. The more common
+and more insidious case is two parameters that are each identifiable in
+principle but trade off against each other so strongly that the data
+constrain only their combination. Consider the two-lump room model fit to a
+warm-up curve that, by misfortune, was logged only over the first half
+hour. The fast air constant $\tau_1$ and the coupling resistance $R_{aw}$
+both shape the early rise, and over a short window an increase in one can
+be compensated almost exactly by a decrease in the other: the fit's
+residuals are nearly unchanged along a ridge in the $(\tau_1, R_{aw})$
+plane. The point estimate sits somewhere on the ridge, the marginal
+interval on each parameter is wide, and a naive report of the two marginal
+intervals hides the fact that the parameters are not independently known.
+
+The diagnostic is the parameter covariance matrix, the inverse of the
+Fisher information the fit returns. Its off-diagonal entries, normalised to
+correlations, expose the trade-off: a correlation near $\pm 1$ between two
+parameters is the signature of the ridge. For the short-window room fit the
+$(\tau_1, R_{aw})$ correlation is about $-0.97$, a near-perfect trade-off,
+and the honest report is not two marginal intervals but the joint
+confidence ellipse, long and thin along the ridge. The remedy is the one
+identifiability always demands: data that break the trade-off. Logging the
+warm-up long enough to see the slow wall constant separates $\tau_1$ from
+$R_{aw}$, because the slow phase depends on them differently, and the
+correlation drops toward zero as the ellipse rounds out. The lesson, which
+the profile-likelihood mastery box anticipated, is that a model can pass
+the structural-identifiability test and still be practically
+unidentifiable along a parameter combination, and only the joint
+covariance, not the marginal intervals, reveals it.
+
+\subsection{Uncertainty propagation: analytic against Monte-Carlo}
+
+Section~18.4 propagated parameter intervals through a prediction by the
+first-order formula $\Var(y) \approx \sum_i S_i^2 \Var(\theta_i)$, exact
+when the model is linear over the parameter intervals. The cooling-cup
+inversion $t_{60} = k^{-1}\ln(\cdots)$ stretches that assumption, because
+$t_{60}$ is nonlinear in $k$ and the interval on $k$ is not negligible. The
+worked comparison runs both methods on the same numbers. The analytic
+delta method gives $\sigma_{t} = |dt/dk|\,\sigma_k$, a symmetric interval
+centred at $t_{60}$ evaluated at $\hat k$. The Monte-Carlo method draws ten
+thousand values of $k$ from its fitted Gaussian, computes $t_{60}$ for
+each, and reports the empirical distribution.
+
+The two agree on the central value but disagree on the shape, and the
+disagreement is instructive. Because $t_{60} \propto 1/k$ is convex, the
+Monte-Carlo distribution is right-skewed: the draws with small $k$ map to
+disproportionately large $t_{60}$, stretching the upper tail beyond what
+the symmetric analytic interval covers.
+Figure~\ref{fig:vol02:ch18:montecarlo-propagation} shows the effect on a
+representative nonlinear model. The Monte-Carlo mean is shifted above the
+linearisation point, and the upper $97.5$th percentile sits noticeably
+higher than $\hat t_{60} + 1.96\,\sigma_t$. For the cooling cup, where the
+relative interval on $k$ is six percent, the shift is small and the
+analytic interval is adequate; for a model fit to sparser data, where the
+relative interval reaches twenty or thirty percent, the skew matters and
+the Monte-Carlo interval is the honest report. The rule the comparison
+installs is to use the cheap analytic propagation when the input intervals
+are small relative to the model's curvature scale, and to switch to
+Monte-Carlo when they are not, with the changeover diagnosed by checking
+whether the analytic and Monte-Carlo intervals agree on a single test case
+before either is trusted in production.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-montecarlo-propagation.tex}
+
+\subsection{Model discrimination by evidence, not by fit}
+
+Section~18.5's model selection penalised complexity to choose among nested
+candidates. The complementary problem is discriminating between two
+non-nested models that fit comparably well, where neither is a special case
+of the other. The cooling cup admits a Newton's-law model (exponential
+decay toward ambient) and a competing lumped-radiative model (a different
+nonlinear decay law); both fit the thirty-point notebook with similar
+residual sums. Choosing by training residual alone would be arbitrary,
+because the two are close, and choosing by parameter count is moot because
+both have the same number of parameters.
+
+The discriminating quantity is the evidence the data give each model,
+formalised as the likelihood ratio or, in the Bayesian framing, the Bayes
+factor. The likelihood-ratio test compares the maximised likelihoods of the
+two models, with the larger likelihood favouring the model that makes the
+observed data more probable. For the cooling cup at modest temperature
+excess the ratio is near one, the data cannot tell the two models apart,
+and the honest report is that both are admissible and the choice should be
+made on other grounds (Newton's law is simpler and its parameter is
+physically interpretable). For a hotter notebook, where the radiative term
+of the competing model bites, the likelihood ratio swings decisively toward
+the radiative model, and the data now discriminate. The lesson is that
+model discrimination is a property of the data's reach, not of the
+modeller's preference: two models that the available data cannot separate
+should both be carried, the triangulation discipline of section~18.5, until
+data in a regime that separates them are acquired. The information criteria
+of section~18.5 are the practical implementation, and Hastie, Tibshirani,
+and Friedman \cite{text:v2ch18-hastie-statistical-learning-2009} connect
+the likelihood ratio, the information criteria, and cross-validation as
+three estimates of the same held-out predictive performance.
+
+\subsection{Dimensional analysis reads a scaling law off the dimensions}
+
+The Buckingham-Pi machinery of section~18.3 fixed the drag law and the
+cantilever frequency before any dynamics were written. A third worked case
+shows the move on a heat-transfer question the reader can pose about the
+cooling cup itself, and it earns its place by deriving a result that the
+chapter's compartment model assumed. How long does a solid body of
+characteristic size $\ell$ take to cool through its interior, as opposed to
+losing heat from its surface? The relevant variables are the size $\ell$
+($\mathsf{L}$), the thermal diffusivity $\alpha$
+($\mathsf{L}^2\mathsf{T}^{-1}$), and the time $t$ ($\mathsf{T}$). Three
+variables, two primary dimensions, so the Buckingham count gives one
+dimensionless group, the \engterm{Fourier number}
+\[
+\mathrm{Fo} = \frac{\alpha t}{\ell^2}.
+\]
+Dimensional homogeneity forces the interior temperature to depend on time
+only through $\mathrm{Fo}$, so the internal equilibration time scales as
+$t \sim \ell^2/\alpha$: the diffusion time grows with the square of the
+size. This is the structural fact the lumped-capacitance model of
+section~18.7 quietly assumed when it treated the room's air as a single
+well-mixed node. The assumption is valid only when the interior
+equilibrates fast compared with the surface loss, a condition the
+\engterm{Biot number} (the ratio of internal to surface resistance) makes
+precise: a small Biot number licenses the single-lump abstraction, and a
+large one demands the spatial resolution the lump throws away. The
+dimensional analysis thus both supplies the scaling law and names the
+dimensionless threshold at which the chapter's own earlier abstraction
+breaks, a closing demonstration that the cheapest structural information in
+any model comes, as Rule Three insisted, from the dimensions before the
+dynamics.
+
+\begin{mastery}
+The Fourier-and-Biot analysis points to the most general form of the
+abstraction the chapter has used repeatedly without naming: \engterm{model
+order reduction}. A spatially distributed system obeys a partial
+differential equation with infinitely many degrees of freedom; the
+lumped-capacitance model replaces it with one. The replacement is justified
+when one mode (here the spatially uniform mode) dominates the response in
+the regime of interest, and the systematic version of the move projects the
+full equation onto the few modes that carry the energy. \engterm{Proper
+orthogonal decomposition} is the data-driven form: collect snapshots of the
+full field, compute the dominant modes by the singular value decomposition
+of Chapter 10, and keep the handful whose singular values dominate. The
+reduced model evolves only the coefficients of those modes, turning a
+field equation into a small system of ordinary differential equations that
+runs orders of magnitude faster while reproducing the dominant dynamics.
+The discipline of this chapter applies to the reduced model unchanged: it
+has a domain of validity (the regime spanned by the snapshots it was built
+from), it has a structural error (the energy in the discarded modes), and
+it fails the regime-extension test if queried outside the snapshot regime,
+the same failure mode the surrogate model of section~18.4's mastery box
+exhibits. Reduced-order modelling, surrogate modelling, and the
+single-lump abstraction are three points on one continuum: each trades
+fidelity for speed by keeping the modes the question needs and discarding
+the rest, and each is honest only when the discarded modes are documented
+as the model's structural error.
+\end{mastery}
+
+\begin{mastery}
+The parameter-identification problem this chapter treats by least squares
+and maximum likelihood has a Bayesian counterpart that is worth the
+engineer's acquaintance because it handles the cases the point-estimate
+methods strain on: wide priors, strong parameter correlations, and the
+genuine quantification of what the data leave unknown. \engterm{Bayesian
+calibration} treats the parameters as random variables with a prior
+distribution encoding what was known before the data, updates the prior by
+the likelihood to a posterior distribution encoding what is known after,
+and reports the posterior rather than a point and an interval. The
+posterior is the honest object: its spread is the parameter uncertainty,
+its correlations are the trade-offs the covariance matrix approximates, and
+its shape carries the skew and the bounds that a Gaussian interval cannot.
+For the room model, a Bayesian calibration would return a joint posterior
+over $(C_a, C_w, R_{aw}, R_{ao})$ whose ridge structure exposes the
+short-window non-identifiability directly, without the linearisation the
+condition number assumes. The computation is the inverse problem of
+inferring causes (the parameters) from effects (the data), and it is
+carried out by sampling the posterior with Markov-chain Monte-Carlo, the
+apparatus Gelman and coauthors' text \cite{text:ch08-gelman-bda3-2013}
+develops in full. The Bayesian framing also makes the structural-error
+question sharper: the Kennedy-O'Hagan formulation adds an explicit
+discrepancy term between the model and the world, calibrated alongside the
+parameters, so that the predictive interval carries the model's own
+inadequacy rather than absorbing it silently into the parameter estimates.
+The engineering reader takes from this the working rule that when the
+parameters are correlated, the priors are informative, or the structural
+error must be quantified rather than bounded, the Bayesian posterior is the
+report the decision deserves, at the cost of the sampling machinery the
+point estimate avoids.
+\end{mastery}
+
+\begin{mastery}
+The full-cycle examples each ended with a domain-of-validity statement and
+a warning that the model would need re-running if the system drifted. The
+contemporary name for a model kept continuously synchronised with its
+physical counterpart is a \engterm{digital twin}: a model that ingests the
+live sensor stream from the system it represents, re-identifies its
+parameters as the system ages, and runs ahead of the system to predict the
+consequences of a contemplated action before the action is taken. The
+two-lump room model becomes a digital twin when it is fed the building's
+live temperature log, re-fits $C_a$ and the resistances as the insulation
+degrades or the furniture changes, and predicts the pre-heat schedule for
+tomorrow morning. The digital twin is not a new kind of model; it is this
+chapter's modelling cycle run continuously rather than once, with
+identification, validation, and revision automated and repeated as new data
+arrive. Its characteristic failure is the chapter's own simulation-became-
+the-system mode (section~18.8) at industrial scale: a twin trusted as a
+substitute for measurement, its predictions acted on without the held-out
+validation that would catch its drift, becomes a confident liar exactly
+when the system has changed enough to matter. The discipline that keeps a
+digital twin honest is the discipline that keeps any model honest, the
+held-out validation against data the re-identification did not use,
+performed on a schedule, with rising validation residuals as the trigger to
+question the twin rather than the system. The engineering reader takes the
+digital twin as a deployment pattern for the chapter's cycle, not as an
+escape from its discipline.
+\end{mastery}
+
 \section{Failure: models that fooled their builders}\pathtag{core}
 
 A model that has fooled its builder is the most dangerous artefact
@@ -2294,6 +2892,22 @@ bias-variance decomposition behind the picture; the engineer takes
 from it the working rule that complexity costs predictive
 performance unless the data span the regime that the complexity is
 needed to model.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-bias-variance.tex}
+
+Figure~\ref{fig:vol02:ch18:bias-variance} resolves the same picture into
+its components. The error a model incurs on data it has not seen splits
+into a bias term, large when the model is too simple to represent the
+system, a variance term, large when the model is flexible enough to chase
+the noise, and an irreducible noise floor no model removes. The
+degree-10 polynomial of figure~\ref{fig:vol02:ch18:overfit} sits far out
+on the variance branch: its bias is near zero (it can represent any
+twelve-point pattern) but its variance is enormous (a different noise
+draw produces a wildly different fit). The quadratic sits near the
+minimum, where the two terms balance. The decomposition is why the
+simplest model that answers the question is not a stylistic preference
+but a quantitative optimum: complexity past $p^\star$ trades a small bias
+reduction for a large variance increase, and the prediction error rises.
 
 \subsection{Garbage in: the model that inherited its data's flaws}
 

@@ -405,6 +405,108 @@ Cholesky factorisation. The Gram matrix $\mat{A}^{\transpose}\mat{A}$
 of a full-column-rank $\mat{A}$ is positive definite, a fact the
 normal equations of section 9.6 rest on.
 
+\subsection{Block matrices and the Schur complement}
+
+Large engineering matrices arrive partitioned. A coupled
+fluid-structure problem stacks a fluid block, a structure block, and
+a coupling block; a network with interior and boundary nodes splits
+into four blocks; a saddle-point system from constrained optimisation
+(Chapter 15) carries a zero block in one corner. Treating a matrix as
+a grid of submatrices, rather than a grid of scalars, is the working
+algebra for all of these. A $2 \times 2$ block matrix multiplies and
+adds by the same rules as a $2 \times 2$ scalar matrix, provided the
+block dimensions are conformable:
+\[
+\begin{pmatrix} \mat{A} & \mat{B} \\ \mat{C} & \mat{D} \end{pmatrix}
+\begin{pmatrix} \vect{x} \\ \vect{y} \end{pmatrix}
+= \begin{pmatrix} \mat{A}\vect{x} + \mat{B}\vect{y} \\
+\mat{C}\vect{x} + \mat{D}\vect{y} \end{pmatrix}.
+\]
+The order within each block product is fixed (blocks do not commute),
+which is the only departure from scalar arithmetic.
+
+The block view earns its place through the \engterm{Schur
+complement}. Eliminating the top block of unknowns from the block
+system above, when $\mat{A}$ is invertible, leaves a smaller system
+in $\vect{y}$ alone. From the first block row, $\vect{x} =
+\mat{A}^{-1}(\vect{b}_{1} - \mat{B}\vect{y})$; substituting into the
+second block row gives
+\[
+(\mat{D} - \mat{C}\mat{A}^{-1}\mat{B})\,\vect{y} = \vect{b}_{2} -
+\mat{C}\mat{A}^{-1}\vect{b}_{1}.
+\]
+The matrix $\mat{S} = \mat{D} - \mat{C}\mat{A}^{-1}\mat{B}$ is the
+Schur complement of $\mat{A}$ in the full matrix. It is the exact
+algebraic statement of block elimination, and it is the engine of
+substructuring: a finite-element model partitioned into a repeated
+substructure and a connecting interface eliminates the interior
+degrees of freedom once per substructure, leaving a small interface
+system, the working principle of static condensation in Volume III.
+The block determinant follows at once, $\det \begin{psmallmatrix}
+\mat{A} & \mat{B} \\ \mat{C} & \mat{D} \end{psmallmatrix} = \det
+\mat{A} \cdot \det \mat{S}$, the block generalisation of the scalar
+$2 \times 2$ formula.
+
+\begin{example}[Static condensation by Schur complement]
+A finite-element model has four interior degrees of freedom and two
+interface degrees of freedom, with the symmetric stiffness matrix
+partitioned as $\begin{psmallmatrix} \mat{K}_{ii} & \mat{K}_{ib} \\
+\mat{K}_{bi} & \mat{K}_{bb} \end{psmallmatrix}$, where the subscript
+$i$ marks interior and $b$ marks boundary (interface). Take the small
+illustrative case
+\[
+\mat{K}_{ii} = \begin{pmatrix} 4 & -1 \\ -1 & 4 \end{pmatrix}, \quad
+\mat{K}_{ib} = \begin{pmatrix} -1 & 0 \\ 0 & -1 \end{pmatrix}, \quad
+\mat{K}_{bb} = \begin{pmatrix} 3 & -1 \\ -1 & 3 \end{pmatrix},
+\]
+with $\mat{K}_{bi} = \mat{K}_{ib}^{\transpose}$ by symmetry. The
+condensed interface stiffness is the Schur complement $\mat{S} =
+\mat{K}_{bb} - \mat{K}_{bi}\mat{K}_{ii}^{-1}\mat{K}_{ib}$. The
+interior inverse is $\mat{K}_{ii}^{-1} = \tfrac{1}{15}
+\begin{psmallmatrix} 4 & 1 \\ 1 & 4 \end{psmallmatrix}$, so
+$\mat{K}_{bi}\mat{K}_{ii}^{-1}\mat{K}_{ib} = \tfrac{1}{15}
+\begin{psmallmatrix} 4 & 1 \\ 1 & 4 \end{psmallmatrix}$ and
+\[
+\mat{S} = \begin{pmatrix} 3 & -1 \\ -1 & 3 \end{pmatrix}
+- \frac{1}{15}\begin{pmatrix} 4 & 1 \\ 1 & 4 \end{pmatrix}
+= \begin{pmatrix} 2.733 & -1.067 \\ -1.067 & 2.733 \end{pmatrix}.
+\]
+The interface now carries the interior's elastic response through a
+$2 \times 2$ matrix, and the full model never re-touches the interior
+unknowns until the interface displacements are known. The condensed
+matrix is again symmetric positive definite, the property that lets a
+substructured solver chain Schur complements up a tree of
+substructures.
+\end{example}
+
+\subsection{Kronecker products and structured grids}
+
+A second structure recurs whenever a problem lives on a tensor-product
+grid: a rectangular finite-difference mesh, a separable image filter,
+a two-factor experimental design. The \engterm{Kronecker product}
+$\mat{A} \otimes \mat{B}$ of $\mat{A} \in \R^{m \times n}$ and
+$\mat{B} \in \R^{p \times q}$ is the $mp \times nq$ block matrix
+whose $(i,j)$ block is $A_{ij}\mat{B}$. Its single most useful
+identity rewrites a matrix equation as a matrix-vector product:
+\[
+(\mat{B}^{\transpose} \otimes \mat{A})\,\operatorname{vec}(\mat{X}) =
+\operatorname{vec}(\mat{A}\mat{X}\mat{B}),
+\]
+where $\operatorname{vec}(\mat{X})$ stacks the columns of $\mat{X}$ into one long
+vector. The two-dimensional Laplacian on an $N \times N$ grid is the
+canonical use: the discrete operator is $\mat{L}_{2\mathrm{D}} =
+\mat{L}_{1\mathrm{D}} \otimes \mat{I} + \mat{I} \otimes
+\mat{L}_{1\mathrm{D}}$, built from the one-dimensional second-difference
+matrix of the determinant example in section 9.4. The eigenvalues of
+the two-dimensional operator are sums of one-dimensional eigenvalues,
+$\lambda_{jk} = \mu_{j} + \mu_{k}$, so the conditioning of the
+$N^{2} \times N^{2}$ grid Laplacian is read off the $N \times N$
+one-dimensional spectrum at no extra cost. The Kronecker form is the
+algebraic reason fast Poisson solvers exist: the eigenvectors of a
+Kronecker sum factor across the two grid directions, and a separable
+problem decouples into independent one-dimensional solves
+\cite[ch.~4]{text:v2ch09-golub-vanloan2013}.
+
 \section{Solving linear systems: Gaussian elimination, LU, QR}\pathtag{core}
 
 A square linear system $\mat{A}\vect{x} = \vect{b}$ with $\mat{A}
@@ -689,6 +791,84 @@ itself, not the solution of a system, is the required output. The
 rare cases that genuinely need the inverse (a variance-covariance
 matrix in statistics, a small analytic Jacobian inverse) are
 exactly those where $\mat{A}^{-1}$ is the deliverable.
+
+\subsection{The pseudoinverse and the minimum-norm solution}
+
+A square invertible matrix has a clean inverse; a rectangular or
+rank-deficient matrix does not, yet engineering still asks for a
+``solution'' of $\mat{A}\vect{x} = \vect{b}$. The
+\engterm{Moore--Penrose pseudoinverse} $\mat{A}^{+}$ supplies the
+answer that two distinct cases require, and it reduces to $\mat{A}^{-1}$
+when the matrix is square and invertible. For a full-column-rank
+$\mat{A} \in \R^{m \times n}$ with $m > n$ (the overdetermined,
+least-squares case), $\mat{A}^{+} = (\mat{A}^{\transpose}\mat{A})^{-1}
+\mat{A}^{\transpose}$, and $\mat{A}^{+}\vect{b}$ is the least-squares
+solution of section 9.6. For a full-row-rank $\mat{A}$ with $m < n$
+(the underdetermined case, more unknowns than equations), $\mat{A}^{+}
+= \mat{A}^{\transpose}(\mat{A}\mat{A}^{\transpose})^{-1}$, and
+$\mat{A}^{+}\vect{b}$ is the \engterm{minimum-norm solution}: among
+the infinitely many $\vect{x}$ that satisfy $\mat{A}\vect{x} =
+\vect{b}$ exactly, it is the one of smallest Euclidean norm. The SVD
+unifies both cases: with $\mat{A} = \mat{U}\mat{\Sigma}\mat{V}^{\transpose}$,
+the pseudoinverse is $\mat{A}^{+} = \mat{V}\mat{\Sigma}^{+}
+\mat{U}^{\transpose}$, where $\mat{\Sigma}^{+}$ inverts the nonzero
+singular values and transposes the shape, leaving the zero (or
+truncated) singular values at zero. This is the form the chapter's
+project applies, and it is the only form that handles the
+rank-deficient case without an arbitrary choice.
+
+\begin{example}[Minimum-norm solution of an underdetermined system]
+A robot arm with three joint angles must place its end effector at a
+single target, two scalar conditions on three unknowns. The
+linearised constraint is the underdetermined system $\mat{A}\vect{x}
+= \vect{b}$ with
+\[
+\mat{A} = \begin{pmatrix} 1 & 1 & 1 \\ 1 & 2 & 3 \end{pmatrix},
+\qquad \vect{b} = \begin{pmatrix} 6 \\ 14 \end{pmatrix}.
+\]
+The general solution is a line in $\R^{3}$: one particular solution
+plus the one-dimensional null space $\spn\{(1, -2, 1)^{\transpose}\}$.
+The minimum-norm solution picks the point on that line closest to the
+origin, the smallest joint motion that reaches the target. Compute
+$\mat{A}\mat{A}^{\transpose} = \begin{psmallmatrix} 3 & 6 \\ 6 & 14
+\end{psmallmatrix}$, with inverse $\tfrac{1}{6}\begin{psmallmatrix}
+14 & -6 \\ -6 & 3 \end{psmallmatrix}$. Then $(\mat{A}\mat{A}^{
+\transpose})^{-1}\vect{b} = \tfrac{1}{6}(14 \cdot 6 - 6 \cdot 14,
+-6 \cdot 6 + 3 \cdot 14)^{\transpose} = \tfrac{1}{6}(0, 6)^{\transpose}
+= (0, 1)^{\transpose}$, and $\vect{x} = \mat{A}^{\transpose}(0,
+1)^{\transpose} = (1, 2, 3)^{\transpose}$. The reader checks
+$\mat{A}(1,2,3)^{\transpose} = (6, 14)^{\transpose}$, so the
+constraint is met exactly, and that $\vect{x}$ is orthogonal to the
+null-space direction $(1, -2, 1)$, the geometric signature of the
+minimum-norm point. Any other solution, $\vect{x} + t(1, -2, 1)$,
+has strictly larger norm. The redundant degree of freedom is the
+robot's freedom of posture; the minimum-norm choice spends it on the
+least joint travel.
+\end{example}
+
+\begin{example}[The cost of exploiting bandedness]
+A one-dimensional finite-difference or finite-element model produces a
+\engterm{banded} matrix: nonzeros confined to a few diagonals around
+the main diagonal, bandwidth $b$ meaning $A_{ij} = 0$ whenever
+$\abs{i - j} > b$. Banded structure changes the economics of the
+solve outright. Gaussian elimination on a banded matrix creates no
+fill-in outside the band, so the factorisation costs $\oom{n b^{2}}$
+flops and the storage is $\oom{n b}$ rather than the dense $\oom{n^{3}}$
+and $\oom{n^{2}}$. For a tridiagonal system ($b = 1$), the count
+collapses to $\oom{n}$, linear in the size: the Thomas algorithm
+solves a tridiagonal system in about $8n$ flops, against the
+$\tfrac{2}{3}n^{3}$ of a dense solve. A model with $n = 10^{6}$
+unknowns and bandwidth $b = 100$ factorises in $\oom{n b^{2}} =
+10^{10}$ flops, about a second on a working core, where the dense
+count $\tfrac{2}{3}(10^{6})^{3} \approx 6.7 \times 10^{17}$ is years.
+The discipline is to detect the band before the solve and to call a
+banded factorisation; the dense routine on a banded matrix wastes the
+structure and overflows memory long before it finishes. Pivoting
+complicates the picture, since row swaps can widen the band, but a
+banded matrix that is diagonally dominant or symmetric positive
+definite (the common engineering case) needs no pivoting, and the
+band is preserved exactly.
+\end{example}
 
 \begin{archetype}[Optimisation]
 The least-squares problem (section 9.6) minimises $\norm{\mat{A}
@@ -1429,6 +1609,258 @@ diffusion, and the stiffness assembly of Volume III; recognising the
 shape tells the engineer to reach for Cholesky before LU.
 \end{example}
 
+\subsection{Worked case study: a truss by the direct-stiffness method}\pathtag{standard}
+
+The levelling and resistor networks were measurement and conservation
+problems: an incidence matrix, a weighting, a solve. A structural
+analysis assembles its matrix differently, by adding up the
+contributions of physical elements, and the assembly is worth one full
+worked pass because it is the algebraic skeleton of the entire
+finite-element method that Volume III builds on. We carry the
+three-bar truss of Figure~\ref{fig:vol02:ch09:truss-stiffness} from
+geometry to displacements to member forces.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-truss-stiffness.tex}
+
+\paragraph{The element stiffness matrix.}
+A pin-jointed bar carries only axial force. Along its own axis a bar
+of cross-sectional area $A$, modulus $E$, and length $L$ behaves as a
+spring of stiffness $k = EA/L$: an axial extension $\delta$ produces
+an axial force $k\delta$. In the global $(x, y)$ frame, a bar inclined
+at angle $\theta$ to the horizontal maps its two nodal displacements
+to two nodal forces through the $4 \times 4$ element stiffness matrix
+\[
+\mat{k}_{\mathrm{e}} = \frac{EA}{L}
+\begin{pmatrix}
+c^{2} & cs & -c^{2} & -cs \\
+cs & s^{2} & -cs & -s^{2} \\
+-c^{2} & -cs & c^{2} & cs \\
+-cs & -s^{2} & cs & s^{2}
+\end{pmatrix},
+\qquad c = \cos\theta,\; s = \sin\theta,
+\]
+where the four rows and columns index the $x$ and $y$ displacements of
+the bar's two end nodes. The matrix is symmetric (the bar stores
+elastic energy, a quadratic form) and singular on its own (a bar with
+no supports has rigid-body modes, the source of the zero determinant).
+The block structure $\begin{psmallmatrix} \mat{K}_{0} & -\mat{K}_{0}
+\\ -\mat{K}_{0} & \mat{K}_{0} \end{psmallmatrix}$ with $\mat{K}_{0} =
+\tfrac{EA}{L}\begin{psmallmatrix} c^{2} & cs \\ cs & s^{2}
+\end{psmallmatrix}$ is the block algebra of the previous section in
+physical dress: action and reaction across the bar.
+
+\paragraph{Geometry and element matrices.}
+Take $EA = 1$ in consistent units for every bar, so the stiffness of
+each is $1/L$. Node 1 sits at $(0, 0)$, node 2 at $(4, 0)$, node 3 at
+$(2, 3)$. The three bars have:
+\[
+\begin{array}{lllll}
+\text{member } c\ (1\!-\!2): & L = 4, & \theta = 0^{\circ}, & c = 1, & s = 0; \\
+\text{member } a\ (1\!-\!3): & L = \sqrt{13}, & \cos\theta = 2/\sqrt{13}, & & \sin\theta = 3/\sqrt{13}; \\
+\text{member } b\ (2\!-\!3): & L = \sqrt{13}, & \cos\theta = -2/\sqrt{13}, & & \sin\theta = 3/\sqrt{13}.
+\end{array}
+\]
+Member $c$ is horizontal, so its only nonzero stiffness is along
+$x$: $k = 1/4 = 0.25$. For members $a$ and $b$, $1/L = 1/\sqrt{13}
+\approx 0.2774$, and the direction cosines give $c^{2} = 4/13$, $s^{2}
+= 9/13$, $\abs{cs} = 6/13$, so the per-bar block scales these by
+$0.2774$: $\tfrac{EA}{L}c^{2} \approx 0.0854$, $\tfrac{EA}{L}s^{2}
+\approx 0.1921$, $\tfrac{EA}{L}\abs{cs} \approx 0.1280$.
+
+\paragraph{Assembly.}
+The global stiffness matrix $\mat{K}$ is $6 \times 6$, indexed by the
+six degrees of freedom $(u_{1}, v_{1}, u_{2}, v_{2}, u_{3}, v_{3})$.
+Each element matrix is \emph{scattered} into the global matrix: the
+bar's four local entries land in the global rows and columns of the
+two nodes it connects, and overlapping contributions add. Node 3, the
+apex, receives contributions from both inclined bars, so its diagonal
+block sums them. Assembling the three element matrices gives the free
+part of $\mat{K}$ for the two unconstrained degrees of freedom at node
+3, $(u_{3}, v_{3})$:
+\[
+\mat{K}_{\mathrm{ff}} = \begin{pmatrix}
+\tfrac{EA}{L_{a}}c_{a}^{2} + \tfrac{EA}{L_{b}}c_{b}^{2} & \tfrac{EA}{L_{a}}c_{a}s_{a} + \tfrac{EA}{L_{b}}c_{b}s_{b} \\[2pt]
+\tfrac{EA}{L_{a}}c_{a}s_{a} + \tfrac{EA}{L_{b}}c_{b}s_{b} & \tfrac{EA}{L_{a}}s_{a}^{2} + \tfrac{EA}{L_{b}}s_{b}^{2}
+\end{pmatrix}
+= \begin{pmatrix} 0.1708 & 0 \\ 0 & 0.3842 \end{pmatrix}.
+\]
+The off-diagonal coupling vanishes because the two inclined bars are
+mirror images: $c_{a}s_{a} = -c_{b}s_{b}$, so the $cs$ terms cancel
+exactly. The symmetry of the structure has decoupled the horizontal
+and vertical response at the apex, a result the assembly hands the
+engineer for free.
+
+\paragraph{The constrained solve.}
+Node 1 is pinned ($u_{1} = v_{1} = 0$) and node 2 is on a roller
+($v_{2} = 0$, with $u_{2}$ free). Imposing the supports deletes the
+constrained rows and columns. For the load $\vect{P} = (3, -4)\,
+\text{kN}$ applied at node 3, and because the apex block decoupled,
+the displacements at node 3 follow directly:
+\[
+u_{3} = \frac{3}{0.1708} \approx 17.6, \qquad
+v_{3} = \frac{-4}{0.3842} \approx -10.4,
+\]
+in the consistent displacement units. The horizontal displacement at
+node 2 couples in through member $c$ and resolves alongside; the full
+$3 \times 3$ reduced system (the two apex freedoms plus $u_{2}$) is
+symmetric positive definite, so Cholesky returns all three free
+displacements in one factorisation. The positive definiteness is the
+payoff of removing the rigid-body modes: the unconstrained $6 \times
+6$ matrix is singular (it has three planar rigid-body modes, two
+translations and one rotation), and the supports remove exactly those
+three, leaving an invertible reduced matrix.
+
+\paragraph{Member forces and reactions.}
+The deliverable of a structural analysis is not the displacements but
+the member forces and support reactions. Each bar's axial force is
+$N = k\,(\text{axial extension}) = \tfrac{EA}{L}(c, s) \cdot
+(\Delta u, \Delta v)$, the projection of the relative end displacement
+onto the bar axis times the bar stiffness. The support reactions
+recover from the deleted rows: multiplying the full $\mat{K}$ by the
+now-known displacement vector returns the forces at the constrained
+degrees of freedom, which are the reactions. The reactions must
+balance the applied load, $\sum \vect{R} + \vect{P} = \vect{0}$, and
+checking that balance is the engineer's arithmetic verification that
+the assembly and solve are correct.
+
+\paragraph{What the case teaches.}
+The direct-stiffness method is the least-squares and network algebra
+turned inside out. The global matrix is not measured and inverted; it
+is \emph{assembled} from element contributions, each a small dense
+block scattered into a large sparse whole. The supports are not data
+to be fitted but constraints that remove the singularity. The matrix
+is symmetric positive definite once constrained, so Cholesky is the
+factorisation, and the sparsity (each node couples only to its bar
+neighbours) is the structure a production code exploits to reach
+$10^{6}$ degrees of freedom. Volume III develops the method in full
+for frames, plates, and solids; the algebra is the algebra of this
+chapter. The assembly pattern, scatter-and-add of element blocks, is
+the same whether the element is a bar, a beam, a triangle, or a
+tetrahedron.
+
+\subsection{Worked case study: a Leontief input-output economy}\pathtag{standard}
+
+A linear system need not come from geometry or measurement. The
+Leontief input-output model, for which Wassily Leontief received the
+1973 economics Nobel, treats an economy as a set of sectors that
+consume one another's output to produce their own, and asks how much
+each sector must produce to meet a given final demand. The model is a
+square linear system whose matrix carries an economic interpretation
+the engineer can read directly, and it introduces the Neumann series,
+the linear-algebra tool behind iterative solvers and behind the
+analysis of feedback in Volume IX.
+
+\paragraph{The technical-coefficient matrix.}
+Number the sectors $1, \ldots, n$. The \engterm{technical coefficient}
+$a_{ij}$ is the amount of sector $i$'s output consumed in producing
+one unit of sector $j$'s output. The matrix $\mat{A} = (a_{ij})$ is
+the technology of the economy. If sector $j$ produces $x_{j}$ units,
+it consumes $a_{ij}x_{j}$ units of sector $i$, so the total
+intermediate consumption of sector $i$ is $\sum_{j} a_{ij}x_{j} =
+(\mat{A}\vect{x})_{i}$. The accounting identity is that each sector's
+output equals what other sectors consume of it plus the final demand
+$d_{i}$ (households, exports, investment):
+\[
+\vect{x} = \mat{A}\vect{x} + \vect{d}, \qquad\text{so}\qquad
+(\mat{I} - \mat{A})\vect{x} = \vect{d}.
+\]
+The matrix $\mat{I} - \mat{A}$ is the \engterm{Leontief matrix}, and
+the gross output that meets demand $\vect{d}$ is $\vect{x} = (\mat{I}
+- \mat{A})^{-1}\vect{d}$, with the inverse computed never explicitly
+but through a single LU solve.
+
+\paragraph{A three-sector economy.}
+Take the economy of Figure~\ref{fig:vol02:ch09:leontief} with sectors
+agriculture, manufacturing, and energy, and technical coefficients
+\[
+\mat{A} = \begin{pmatrix}
+0.2 & 0.2 & 0.3 \\
+0.1 & 0.0 & 0.2 \\
+0.0 & 0.1 & 0.1
+\end{pmatrix}.
+\]
+Column $j$ reads as the recipe for one unit of sector $j$: producing
+one unit of manufacturing (column 2) consumes $0.2$ of agriculture and
+$0.1$ of energy. The column sums, $0.3$, $0.3$, $0.6$, are all below
+one, the sign that each sector delivers net output rather than
+consuming more than it makes. The Leontief matrix is
+\[
+\mat{I} - \mat{A} = \begin{pmatrix}
+0.8 & -0.2 & -0.3 \\
+-0.1 & 1.0 & -0.2 \\
+0.0 & -0.1 & 0.9
+\end{pmatrix}.
+\]
+
+\paragraph{The solve.}
+For a final demand $\vect{d} = (100, 50, 30)^{\transpose}$ (in
+monetary units), Gaussian elimination on $(\mat{I} - \mat{A})\vect{x}
+= \vect{d}$ returns the gross outputs $\vect{x} \approx (164.6, 88.6,
+43.2)^{\transpose}$. Each sector must produce more than its final
+demand because part of every sector's output is swallowed as
+intermediate input to the others: agriculture produces about $165$ to
+deliver $100$ to final demand, the extra $65$ feeding manufacturing
+and energy. The off-diagonal couplings are the economy's supply chain,
+and the inverse $(\mat{I} - \mat{A})^{-1}$ records the total (direct
+plus indirect) requirement of each sector per unit of each final
+demand.
+
+\paragraph{Productivity and the Neumann series.}
+The model has a non-negative, finite solution for every non-negative
+demand exactly when the economy is \engterm{productive}, and the
+algebraic condition is that the spectral radius of $\mat{A}$ (its
+largest eigenvalue magnitude) is below one. When it is, the inverse
+expands as the convergent \engterm{Neumann series}
+\[
+(\mat{I} - \mat{A})^{-1} = \mat{I} + \mat{A} + \mat{A}^{2} +
+\mat{A}^{3} + \cdots,
+\]
+the matrix analogue of the geometric series $1/(1 - a) = 1 + a +
+a^{2} + \cdots$ for $\abs{a} < 1$. The series has a direct economic
+reading: $\mat{I}$ is the demand itself, $\mat{A}\vect{d}$ is the
+first round of intermediate inputs to make that demand, $\mat{A}^{2}
+\vect{d}$ is the inputs to make those inputs, and so on. The
+convergence of the series is the statement that the supply chain
+terminates: each round of indirect demand is smaller than the last.
+For the matrix above, the spectral radius is about $0.45$, comfortably
+below one, so the series converges geometrically and the first few
+terms already approximate the gross output. The same Neumann series is
+how iterative solvers (the stationary methods of section 9.7) generate
+their iterates, and how a feedback loop's closed-loop response is
+expanded in Volume IX; the economic model and the control loop are the
+same algebra.
+
+\begin{example}[Low-rank approximation as image compression]
+The truncated SVD of section 9.7 has a direct application that makes
+the rank concept concrete: compression. A grayscale image is a matrix
+$\mat{M} \in \R^{m \times n}$ of pixel intensities. Its SVD $\mat{M}
+= \sum_{i} \sigma_{i}\vect{u}_{i}\vect{v}_{i}^{\transpose}$ writes the
+image as a sum of rank-one layers, ordered by importance through the
+singular values. Keeping the first $r$ layers gives the rank-$r$
+approximation $\mat{M}_{r} = \sum_{i=1}^{r} \sigma_{i}\vect{u}_{i}
+\vect{v}_{i}^{\transpose}$, and the \engterm{Eckart--Young theorem}
+certifies that no other rank-$r$ matrix is closer to $\mat{M}$ in
+either the 2-norm or the Frobenius norm
+\cite{paper:v2ch10-eckart-young1936}. The error of the truncation is
+exactly the first discarded singular value, $\norm{\mat{M} -
+\mat{M}_{r}}_{2} = \sigma_{r+1}$. The storage drops from $mn$ numbers
+to $r(m + n + 1)$ numbers, the $r$ singular values plus their left and
+right vectors. For a $1000 \times 1000$ image whose singular values
+decay quickly (Figure~\ref{fig:vol02:ch09:low-rank}), a rank-$50$
+truncation stores $50 \times 2001 \approx 10^{5}$ numbers against the
+original $10^{6}$, a tenfold compression, while the discarded tail
+$\sigma_{51}, \sigma_{52}, \ldots$ is small enough that the eye cannot
+distinguish the result. The same truncation is principal-component
+analysis when $\mat{M}$ is a data matrix, model-order reduction when
+$\mat{M}$ is a state-transition operator, and noise filtering when the
+discarded tail is measurement noise. The rank of a matrix, an abstract
+count of independent directions, becomes a compression ratio.
+\end{example}
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-leontief.tex}
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-low-rank.tex}
+
 \section{Conditioning and numerical sensitivity}\pathtag{core}
 
 A linear system $\mat{A}\vect{x} = \vect{b}$ has a unique solution
@@ -1678,6 +2110,60 @@ sweep cost stays $\oom{n}$ while a direct factorisation's fill-in
 would not.
 \end{example}
 
+\begin{mastery}
+The conjugate-gradient method works only for symmetric
+positive-definite matrices; the non-symmetric systems that arise from
+convection, from non-self-adjoint operators, and from many
+discretised flow problems need a different Krylov method, and the
+standard choice is \engterm{GMRES} (generalised minimal residual). It
+builds the same expanding Krylov subspace $\mathcal{K}_{k} =
+\spn(\vect{r}_{0}, \mat{A}\vect{r}_{0}, \ldots, \mat{A}^{k-1}
+\vect{r}_{0})$ from the initial residual, but instead of minimising
+energy in the $\mat{A}$-inner-product (which is not defined for a
+non-symmetric matrix) it minimises the ordinary residual norm
+$\norm{\vect{b} - \mat{A}\vect{x}_{k}}_{2}$ over that subspace. The
+minimisation is a small least-squares problem solved by the QR
+factorisation of section 9.3 applied to the $(k+1) \times k$
+Hessenberg matrix the Arnoldi process produces, so the QR machinery of
+this chapter is the inner engine of GMRES. The cost is the method's
+liability: GMRES stores the entire Krylov basis, so memory grows
+linearly with the iteration count and the orthogonalisation cost grows
+quadratically. Production codes therefore \engterm{restart} GMRES
+every $m$ iterations, discarding the accumulated basis and beginning
+afresh from the current iterate, trading guaranteed monotone
+convergence for bounded memory. The restart parameter $m$ is an
+engineering choice, and a poorly chosen $m$ can stall convergence
+entirely, the non-symmetric counterpart of the preconditioner-quality
+problem that governs conjugate gradient
+\cite[ch.~35]{text:trefethen-bau1997}.
+\end{mastery}
+
+\begin{mastery}
+When a matrix is large and only approximately low-rank, the classical
+$\oom{mn^{2}}$ SVD is wasteful, because the engineer wants only the
+top few singular triplets. \engterm{Randomised} linear algebra computes
+them at a fraction of the cost by a deliberately probabilistic
+sketch. To approximate the dominant rank-$r$ subspace of $\mat{A} \in
+\R^{m \times n}$, draw a random Gaussian matrix $\mat{\Omega} \in
+\R^{n \times (r + p)}$ with a small oversampling $p$, form the sketch
+$\mat{Y} = \mat{A}\mat{\Omega}$ (one matrix-matrix product, cheap when
+$\mat{A}$ is sparse or available only as an operator), orthonormalise
+$\mat{Y}$ to a thin $\mat{Q}$ by QR, and project: $\mat{B} =
+\mat{Q}^{\transpose}\mat{A}$ is small, and its SVD lifts back to an
+approximate SVD of $\mat{A}$. The random projection captures the
+dominant subspace with overwhelming probability, and the
+approximation error is within a modest factor of the optimal
+Eckart--Young error $\sigma_{r+1}$, with the failure probability
+falling exponentially in the oversampling $p$. The method's value is
+in the regime modern data analysis lives in: a matrix too large to
+factor densely, available only through matrix-vector products, and
+known to be well approximated by low rank. Randomisation converts the
+intractable deterministic decomposition into a tractable probabilistic
+one, with a probability of failure the engineer can drive below any
+threshold by spending a few extra columns of the sketch
+\cite{paper:v2ch10-eckart-young1936}.
+\end{mastery}
+
 \subsection{Singular value decomposition (recognition)}
 
 Every real $m \times n$ matrix factors as
@@ -1735,6 +2221,59 @@ and is the route to internalising what the library routine returns;
 beyond $3 \times 3$ the eigenvalue step itself needs iteration, which
 is why the SVD carries the $\approx 22 n^{3}$ price tag of the flop
 table.
+\end{mastery}
+
+\begin{mastery}
+The incidence matrices of the levelling and resistor networks
+generalise into one of the most-used objects in applied linear
+algebra, the \engterm{graph Laplacian}. For a graph with $n$ nodes and
+edge weights $w_{ij}$, the Laplacian is $\mat{L} = \mat{D} - \mat{W}$,
+where $\mat{W}$ is the weight matrix and $\mat{D}$ is the diagonal
+matrix of weighted degrees $D_{ii} = \sum_{j} w_{ij}$. The matrix is
+symmetric positive semidefinite, the constant vector lies in its null
+space (the floating-ground mode the resistor example grounded away),
+and its spectrum encodes the graph's connectivity. The smallest
+nonzero eigenvalue, the \engterm{algebraic connectivity} or Fiedler
+value, is zero exactly when the graph is disconnected, and its
+eigenvector, the \engterm{Fiedler vector}, sorts the nodes into the
+two loosely connected halves: thresholding the Fiedler vector at zero
+partitions the graph along its weakest cut. This is \engterm{spectral
+clustering}, and it turns a combinatorial partitioning problem (which
+is hard) into an eigenvalue problem (which the SVD machinery solves).
+The same Laplacian governs heat diffusion on the graph, random walks,
+the resistance distance between nodes, and the stiffness of a spring
+network; recognising a matrix as a graph Laplacian tells the engineer
+that its spectrum carries the connectivity and that its near-null
+directions are the slow, large-scale modes. Volume IX uses the Fiedler
+vector for mesh partitioning and load balancing on parallel solvers
+\cite[ch.~9]{text:v2ch09-golub-vanloan2013}.
+\end{mastery}
+
+\begin{mastery}
+The factorisations of this chapter solve algebraic systems; a glance
+ahead shows the same apparatus solving differential ones. A linear
+system of ordinary differential equations $\dot{\vect{x}} = \mat{A}
+\vect{x}$ has the closed-form solution $\vect{x}(t) = e^{\mat{A}t}
+\vect{x}(0)$, where the \engterm{matrix exponential} is defined by the
+same power series as the scalar exponential, $e^{\mat{A}t} = \mat{I} +
+\mat{A}t + \tfrac{1}{2}\mat{A}^{2}t^{2} + \cdots$. When $\mat{A}$ is
+diagonalisable, $\mat{A} = \mat{V}\mat{\Lambda}\mat{V}^{-1}$, the
+exponential decouples into scalar exponentials of the eigenvalues,
+$e^{\mat{A}t} = \mat{V}e^{\mat{\Lambda}t}\mat{V}^{-1}$, so the
+eigenstructure of $\mat{A}$ (Chapter 10) is what governs the dynamics:
+eigenvalues with positive real part grow, negative decay, imaginary
+oscillate. Computing the matrix exponential reliably is its own
+numerical problem, and the naive power series is one of the recognised
+ways to get it wrong, since cancellation in the series ruins the
+accuracy for matrices with widely separated eigenvalues. The standard
+production methods scale the matrix down, exponentiate by a Pad\'e
+approximation, and square the result back up
+\cite{text:v2ch10-higham-functions2008}. The preview matters here
+because it closes the loop the book opened in Chapter 7: the
+state-space form of a linear dynamical system is a matrix, its
+stability is a spectral property of that matrix, and its time
+evolution is a matrix function. Volume IX builds control and
+estimation on exactly this footing.
 \end{mastery}
 
 \subsection{Floating-point overflow as a related failure}

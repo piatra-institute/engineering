@@ -1524,6 +1524,150 @@ as $\sqrt{\kappa}$ for CG. The square-root in the exponent is the entire
 reason Krylov methods, with a preconditioner that lowers the effective
 $\kappa$, dominate large-scale linear-system practice.
 
+\subsection{GMRES for nonsymmetric systems}
+
+Conjugate gradients exploits symmetric positive definiteness, and most
+matrices an engineer meets in a discretised convection problem or a
+circuit-network solve are neither symmetric nor definite. The
+\engterm{generalised minimal residual} method (GMRES) is the Krylov
+method for the general nonsingular $\mat{A}$. At step $k$ it builds an
+orthonormal basis $\mat{Q}_{k} = [\vect{q}_{1}, \ldots, \vect{q}_{k}]$ of
+the Krylov subspace $\mathcal{K}_{k} = \spn\{\vect{r}_{0},
+\mat{A}\vect{r}_{0}, \ldots, \mat{A}^{k-1}\vect{r}_{0}\}$ by the Arnoldi
+process, and chooses the iterate $\vect{x}_{k} \in \vect{x}_{0} +
+\mathcal{K}_{k}$ that minimises the residual norm $\norm{\vect{b} -
+\mat{A}\vect{x}_{k}}_{2}$ over that subspace
+\cite[ch.~35]{text:trefethen-bau1997}. The minimisation reduces to a small
+$(k+1) \times k$ least-squares problem on the upper-Hessenberg matrix
+$\mat{H}_{k}$ that the Arnoldi process produces, solved cheaply by Givens
+rotations that are updated one column per step.
+
+GMRES carries two costs that CG does not. The Arnoldi orthogonalisation
+stores all $k$ basis vectors and costs $O(k)$ inner products at step $k$,
+so the work and the memory grow with the iteration count. Production GMRES
+therefore \engterm{restarts}: after $m$ steps (a typical $m$ is $20$ to
+$50$) it discards the basis, takes the current iterate as a new $\vect{x}_{0}$,
+and begins a fresh cycle, written GMRES($m$). The restart caps the memory
+at $m$ vectors and the per-step cost at $O(m)$, at the price of slower
+convergence, since the restarted method forgets the subspace it had built.
+
+\begin{example}
+\textbf{GMRES on a $3 \times 3$ nonsymmetric system, by hand.} Solve
+$\mat{A}\vect{x} = \vect{b}$ with
+
+\[
+\mat{A} = \begin{psmallmatrix} 2 & 1 & 0 \\ 0 & 2 & 1 \\ 1 & 0 & 2
+\end{psmallmatrix}, \qquad
+\vect{b} = \begin{psmallmatrix} 1 \\ 0 \\ 0 \end{psmallmatrix},
+\]
+
+a matrix that is nonsymmetric (so CG does not apply) and nonsingular (its
+determinant is $9$). Start from $\vect{x}_{0} = \vect{0}$, so $\vect{r}_{0}
+= \vect{b} = (1, 0, 0)^{\transpose}$, $\norm{\vect{r}_{0}} = 1$, and
+$\vect{q}_{1} = \vect{r}_{0}$. The first Arnoldi step forms $\mat{A}
+\vect{q}_{1} = (2, 0, 1)^{\transpose}$; the Hessenberg entry is $h_{11} =
+\vect{q}_{1}^{\transpose}\mat{A}\vect{q}_{1} = 2$; the orthogonal residual
+is $\vect{w} = \mat{A}\vect{q}_{1} - h_{11}\vect{q}_{1} = (0, 0,
+1)^{\transpose}$, so $h_{21} = \norm{\vect{w}} = 1$ and $\vect{q}_{2} =
+(0, 0, 1)^{\transpose}$. The least-squares problem at $k = 1$ minimises
+$\norm{\,\norm{\vect{r}_{0}}\vect{e}_{1} - \bar{\mat{H}}_{1} y\,}$ with
+$\bar{\mat{H}}_{1} = (2, 1)^{\transpose}$ and target $(1, 0)^{\transpose}$,
+giving $y_{1} = (2)(1)/(2^{2} + 1^{2}) = 0.4$ and residual norm
+$\abs{1 - 2 \cdot 0.4} / \sqrt{1} \cdot \ldots$, concretely
+$\norm{(1, 0)^{\transpose} - (2, 1)^{\transpose}(0.4)} = \norm{(0.2,
+-0.4)^{\transpose}} = 0.447$. The residual has fallen from $1$ to $0.447$
+in one step, exactly the monotone decrease GMRES guarantees. The second
+Arnoldi step forms $\mat{A}\vect{q}_{2} = (0, 1, 2)^{\transpose}$,
+orthogonalises against $\vect{q}_{1}$ and $\vect{q}_{2}$ to extend
+$\bar{\mat{H}}$, and the $k = 2$ least-squares solve drops the residual
+again; the third step closes the Krylov subspace (it now spans $\R^{3}$)
+and GMRES returns the exact $\vect{x} = \mat{A}^{-1}\vect{b} =
+(0.444, 0.111, -0.222)^{\transpose}$ at step $3$, the finite-termination
+property every Krylov method has on an $n$-dimensional space. The example
+exposes the machinery the library hides: GMRES is least-squares over a
+growing orthonormal Krylov basis, the residual decreases monotonically by
+construction, and the work per step is the Arnoldi orthogonalisation whose
+cost is the reason the method restarts on large problems.
+\end{example}
+
+\begin{example}
+\textbf{Preconditioning changes the iteration count, not the answer.} The
+convergence of GMRES is governed not by $\kappa$ alone but by how the
+spectrum of $\mat{A}$ clusters. A matrix whose eigenvalues lie in a tight
+cluster away from the origin converges in a handful of steps; a matrix with
+eigenvalues scattered across a wide region, or straddling the origin,
+converges slowly. \engterm{Preconditioning} replaces $\mat{A}\vect{x} =
+\vect{b}$ with $\mat{M}^{-1}\mat{A}\vect{x} = \mat{M}^{-1}\vect{b}$ for an
+$\mat{M}$ cheap to invert and close to $\mat{A}$, so that $\mat{M}^{-1}
+\mat{A} \approx \mat{I}$ has a clustered spectrum. Take the
+diagonally dominant $\mat{A} = \mat{D} + \mat{E}$ with $\mat{D} = 100\,
+\mat{I}$ and $\mat{E}$ a random matrix of entries near $1$. Unpreconditioned,
+the eigenvalues cluster near $100$ already and GMRES converges in a few
+steps. Take instead a matrix with $\mat{D}$ spanning $\{1, 10, 100, 1000,
+\ldots\}$ on the diagonal: now the spectrum spans four decades, GMRES
+crawls, and the Jacobi (diagonal) preconditioner $\mat{M} = \mat{D}$ maps
+every diagonal entry to $1$, clustering the preconditioned spectrum near
+unity and cutting the iteration count by an order of magnitude. The
+preconditioned and unpreconditioned solves return the same
+$\vect{x}$ to working precision; the preconditioner buys iteration count,
+not accuracy. The art of large-scale solving, as the conjugate-gradient
+mastery box stated, is the art of choosing $\mat{M}$: incomplete-LU for
+general sparse matrices, algebraic multigrid for elliptic-PDE
+discretisations, and block-Jacobi or additive-Schwarz for domain-decomposed
+problems, each matched to the structure of $\mat{A}$.
+\end{example}
+
+\subsection{Iterative refinement and mixed precision}
+
+A backward-stable direct solve returns $\hat{\vect{x}}$ whose forward error
+is bounded by $\kappa(\mat{A}) u$. When that bound costs the engineer more
+digits than the application allows, \engterm{iterative refinement} recovers
+them without re-factorising. Given the computed $\hat{\vect{x}}$ from one
+LU solve, the refinement loop is: compute the residual $\vect{r} =
+\vect{b} - \mat{A}\hat{\vect{x}}$; solve $\mat{A}\vect{d} = \vect{r}$ reusing
+the existing $\mat{L}$ and $\mat{U}$; update $\hat{\vect{x}} \leftarrow
+\hat{\vect{x}} + \vect{d}$; repeat. Each pass costs an $O(n^{2})$ residual
+and triangular solve against the $O(n^{3})$ of the original factorisation,
+so refinement is cheap. The crucial detail is the precision of the
+residual: when $\vect{r}$ is computed in higher precision than the working
+factorisation, the loop drives the forward error down to working-precision
+accuracy even for condition numbers up to $1/u$
+\cite[ch.~12]{text:higham-numerical}.
+
+The modern form of this idea drives the fastest dense solvers in production.
+Graphics and machine-learning hardware computes low-precision matrix
+products (binary16 or bfloat16) at several times the throughput of binary64.
+\engterm{Mixed-precision iterative refinement} factorises $\mat{A}$ in
+binary16 or binary32 at the high low-precision throughput, then refines in
+a higher precision (sometimes three precisions: low for the factorisation,
+working for the update, high for the residual), recovering binary64 accuracy
+on well-conditioned problems while paying the $O(n^{3})$ cost at
+low-precision speed. The technique reached the top of the high-performance
+computing benchmarks in the late 2010s and is the reason a tensor-core GPU
+solves a dense linear system far faster than its binary64 peak flop rate
+would predict \cite[ch.~12]{text:higham-numerical}.
+
+\begin{example}
+\textbf{One refinement pass recovers digits.} Solve $\mat{A}\vect{x} =
+\vect{b}$ for a matrix with $\kappa(\mat{A}) = 10^{8}$ in binary64. The
+plain LU solve returns $\hat{\vect{x}}$ with relative forward error near
+$\kappa u \approx 10^{8} \cdot 10^{-16} = 10^{-8}$, eight correct digits.
+Iterative refinement with a residual computed in the same binary64 working
+precision typically halves the exponent of the error per pass when
+$\kappa u < 1$, so two or three passes bring the error toward $10^{-15}$,
+full working accuracy, at the cost of a few $O(n^{2})$ residual-and-solve
+steps. The same loop on a matrix with $\kappa = 10^{17} > 1/u$ stalls: the
+residual itself cannot be computed to enough relative accuracy in working
+precision, and refinement needs an extended-precision residual to make
+progress. The diagnostic the engineer reads from this is the same separation
+the chapter rests on. Refinement attacks the algorithm's contribution to
+the error (it cleans up round-off in the solve), and it works while the
+problem still carries recoverable digits ($\kappa u < 1$); once the problem
+itself has destroyed the digits ($\kappa u \geq 1$), no working-precision
+loop recovers them and the engineer must raise the residual precision or
+reformulate.
+\end{example}
+
 \section{Numerical integration revisited}\pathtag{standard}
 
 Volume II Chapter 6 introduced the trapezoidal rule and Simpson's
@@ -1607,6 +1751,33 @@ gain at lower cost. The lesson is the one the section states: for
 smooth integrands, accuracy per evaluation favours Gauss heavily;
 the engineer reserves the equispaced rules for tabulated data whose
 abscissae are not free to choose.
+\end{example}
+
+\begin{example}
+\textbf{Where the Gauss nodes come from.} The two-point Gauss-Legendre
+rule on $[-1, 1]$ has four free parameters, the nodes $x_{1}, x_{2}$ and
+the weights $w_{1}, w_{2}$, so it can be made exact for the four monomials
+$1, x, x^{2}, x^{3}$, that is for every polynomial through degree $3$. The
+exactness conditions are the moment equations $\sum_{i} w_{i} x_{i}^{k} =
+\int_{-1}^{1} x^{k}\, \dd x$ for $k = 0, 1, 2, 3$, namely $w_{1} + w_{2} =
+2$, $w_{1}x_{1} + w_{2}x_{2} = 0$, $w_{1}x_{1}^{2} + w_{2}x_{2}^{2} =
+2/3$, and $w_{1}x_{1}^{3} + w_{2}x_{2}^{3} = 0$. Symmetry of the interval
+suggests $x_{2} = -x_{1}$ and $w_{1} = w_{2}$; the first equation then gives
+$w_{1} = w_{2} = 1$, the second and fourth are satisfied automatically, and
+the third gives $2 x_{1}^{2} = 2/3$, so $x_{1} = 1/\sqrt{3}$. The two-point
+rule is therefore $\int_{-1}^{1} f \approx f(-1/\sqrt{3}) + f(1/\sqrt{3})$,
+exact through cubics with no weights to remember. The same nodes arise a
+second way, which is the route that scales: $\pm 1/\sqrt{3}$ are the roots
+of the degree-two Legendre polynomial $P_{2}(x) = \tfrac{1}{2}(3x^{2} - 1)$.
+That the Gauss nodes are the roots of the orthogonal polynomial is the
+general theorem. A rule whose nodes are the roots of the degree-$n$ member
+of the family orthogonal under the integral's weight integrates the node
+polynomial $\prod(x - x_{i})$ against any lower-degree polynomial to zero,
+which is exactly the extra $n$ degrees of exactness that lift an $n$-node
+rule from degree $n - 1$ (generic) to degree $2n - 1$ (Gauss). The
+construction generalises by changing the orthogonal family to match the
+weight: Laguerre for $e^{-x}$ on $[0, \infty)$, Hermite for $e^{-x^{2}}$ on
+$\R$, Chebyshev for $(1 - x^{2})^{-1/2}$ on $[-1, 1]$.
 \end{example}
 
 \begin{mastery}
@@ -1765,6 +1936,37 @@ estimate, not by a fixed grid. The reader who has carried this one level
 reads \texttt{scipy.integrate.quad}'s returned error estimate as the same
 quantity at machine scale.
 \end{example}
+
+\begin{mastery}
+\textbf{Gauss-Kronrod node sharing.} The adaptive Simpson trace estimated
+its error by halving the panel and comparing two rules of the same family,
+which throws away the coarse rule's function values when it refines. The
+production adaptive routines (QUADPACK's \texttt{qag}, behind
+\texttt{scipy.integrate.quad} and MATLAB \texttt{integral}) instead pair a
+Gauss rule with a \engterm{Kronrod extension} that reuses every Gauss node.
+A degree-$n$ Gauss rule integrates polynomials through degree $2n - 1$ with
+$n$ nodes; the Gauss-Kronrod extension adds $n + 1$ new nodes, interlacing
+with the originals, to build a $(2n + 1)$-point rule exact through degree
+$3n + 1$, and the $2n + 1$ points include all $n$ original Gauss points, so
+the engineer pays only $n + 1$ \emph{new} evaluations to obtain a much
+higher-order estimate alongside the original. The difference between the
+Gauss and the Gauss-Kronrod values on the same panel is the local error
+estimate, computed at $n + 1$ extra function calls rather than the doubling
+an order-comparison would cost. The standard QUADPACK pairing is the
+$7$-point Gauss with the $15$-point Kronrod, the (G7, K15) pair: fifteen
+evaluations deliver a degree-$22$ estimate and a free error indicator. The
+extra Kronrod nodes are not arbitrary; they are the roots of the Stieltjes
+polynomial orthogonal to the Legendre polynomials under the Legendre weight,
+the same orthogonality argument that placed the Gauss nodes, applied one
+level up to place the points that extend the rule
+\cite[ch.~3]{text:trefethen-bau1997}. The durable reading is that node
+sharing is the quadrature analogue of the embedded Runge-Kutta pairs of the
+next section: two rules of different order built on overlapping evaluations,
+the cheap one a free error estimate for the accurate one. The same
+design pattern, an accurate estimate paired with a cheap error indicator on
+shared work, recurs in every adaptive numerical method the engineer will
+meet.
+\end{mastery}
 
 \section{Numerical ODE/PDE solvers}\pathtag{standard}
 
@@ -1935,6 +2137,98 @@ the Radau and Gauss collocation schemes, at the cost of a larger
 nonlinear solve per step. The barriers are durable mathematics, not
 tooling: they will hold in 2050 exactly as in 1963
 \cite[ch.~10]{text:moler-numerical}.
+\end{mastery}
+
+\subsection{Multistep methods and predictor-corrector pairs}
+
+The Runge-Kutta methods reach high order by taking several stage evaluations
+of $f$ within one step, throwing away the work once the step is taken. A
+\engterm{linear multistep method} reaches high order instead by reusing the
+$f$-values from previous steps, at one new evaluation per step. The
+\engterm{Adams-Bashforth} family is the explicit branch: the two-step
+second-order method is
+
+\[
+y_{n+1} = y_{n} + \frac{h}{2}\big(3 f_{n} - f_{n-1}\big),
+\]
+
+which fits a line through the two most recent slopes $f_{n} = f(t_{n}, y_{n})$
+and $f_{n-1}$ and integrates that line forward. The \engterm{Adams-Moulton}
+family is the implicit branch: the one-step second-order member is the
+trapezoidal rule $y_{n+1} = y_{n} + \tfrac{h}{2}(f_{n} + f_{n+1})$, and
+because $f_{n+1}$ depends on the unknown $y_{n+1}$, the formula is solved
+rather than evaluated. Pairing the two is the classic
+\engterm{predictor-corrector} scheme: the explicit Adams-Bashforth step
+\emph{predicts} $y_{n+1}^{P}$; the implicit Adams-Moulton formula, with
+$f_{n+1}$ evaluated at the prediction, \emph{corrects} it; the difference
+$y_{n+1}^{C} - y_{n+1}^{P}$ is a local error estimate that drives step-size
+control. The cost is two $f$-evaluations per step (one for the corrector
+slope, one carried forward), against RK4's four, which is why
+variable-order Adams predictor-correctors are the working choice when $f$ is
+expensive and the problem is nonstiff. The backward differentiation
+formulas of the stiffness subsection are the implicit multistep family
+tuned for the stiff case; the Adams pair is its nonstiff sibling, and a
+production solver such as \texttt{LSODA} switches between the two as it
+detects stiffness.
+
+\begin{example}
+\textbf{A two-step Adams-Bashforth start, by hand.} Integrate $\dot y = -y$,
+$y(0) = 1$, with $h = 0.1$, whose exact solution is $e^{-t}$. A two-step
+method needs two starting values; take $y_{0} = 1$ and bootstrap $y_{1}$
+with one RK4 step, $y_{1} = 0.904837$ (the calculation exercise of this
+chapter), so $f_{0} = -1$ and $f_{1} = -0.904837$. The Adams-Bashforth-2
+step gives $y_{2} = y_{1} + \tfrac{h}{2}(3 f_{1} - f_{0}) = 0.904837 +
+0.05(3(-0.904837) - (-1)) = 0.904837 + 0.05(-1.714512) = 0.818111$, against
+the exact $e^{-0.2} = 0.818731$, an error of $6.2 \times 10^{-4}$, the
+$O(h^{2})$ accuracy the two-step formula promises at one new evaluation per
+step. Correcting with Adams-Moulton-2 (the trapezoidal rule) using the
+predicted slope $f_{2}^{P} = -0.818111$ gives $y_{2}^{C} = y_{1} +
+\tfrac{h}{2}(f_{1} + f_{2}^{P}) = 0.904837 + 0.05(-0.904837 - 0.818111) =
+0.818690$, error $4.1 \times 10^{-5}$, a decade better than the predictor
+alone, and the predictor-corrector difference $\abs{y_{2}^{C} - y_{2}^{P}}
+= 5.8 \times 10^{-4}$ is the local error estimate the step controller reads.
+The example shows the three working facts of multistep methods: they need a
+starter (here one RK4 step) because they reference past values that do not
+exist at $t_{0}$; they reach their order at one new $f$-evaluation per step;
+and the predictor-corrector gap is a free error estimate.
+\end{example}
+
+\begin{mastery}
+\textbf{Structure-preserving integrators.} The error analysis of this
+chapter has measured a method by its order, the power of $h$ at which the
+local error vanishes. For a long integration of a conservative system, order
+is the wrong figure of merit. Consider a Hamiltonian system, a planet
+orbiting a star or a frictionless pendulum, whose true trajectory conserves
+total energy exactly and preserves phase-space volume (Liouville's theorem).
+A high-order method such as RK4 conserves neither: applied to the harmonic
+oscillator $\ddot q = -q$ over many periods, RK4's energy drifts
+monotonically (downward, since its stability region pulls the amplitude in),
+and after enough orbits the simulated planet spirals into the star though no
+physical force draws it there. The defect is not poor order; RK4's local
+error is tiny. The defect is that RK4 does not respect the geometric
+structure the dynamics live on. A \engterm{symplectic integrator} preserves
+the phase-space area form exactly, and as a consequence its energy error
+does not drift: it oscillates within a bounded band for exponentially long
+times. The simplest symplectic method is \engterm{symplectic Euler}, which
+updates position and momentum in a staggered order ($p_{n+1} = p_{n} -
+h\,\partial_{q}H(q_{n})$ then $q_{n+1} = q_{n} + h\,\partial_{p}H(p_{n+1})$),
+and the workhorse is the second-order \engterm{Stormer-Verlet} (leapfrog)
+method, ubiquitous in molecular dynamics and orbital mechanics precisely
+because its energy stays bounded over billions of steps where a
+higher-order non-symplectic method drifts away
+\cite[ch.~1]{text:v2ch07-hairer-lubich-wanner-geometric}. The reason a
+low-order symplectic method beats a high-order generic one on the long haul
+is \engterm{backward error analysis} of the geometric kind: the symplectic
+method is the exact flow of a nearby \emph{modified} Hamiltonian
+$\tilde H = H + O(h^{2})$, and because it exactly conserves $\tilde H$, the
+true $H$ stays within $O(h^{2})$ of constant forever rather than walking
+away linearly in time. The durable engineering lesson outlives any solver
+library: the figure of merit for a long simulation of a conserved quantity
+is whether the method preserves the structure that protects the quantity,
+not the order of its local truncation error. The same principle governs the
+choice of a divergence-free discretisation for an incompressible flow and a
+charge-conserving scheme for a plasma; structure preservation is the
+property, order is the refinement.
 \end{mastery}
 
 \subsection{Finite differences and finite elements (preview)}
@@ -2304,6 +2598,382 @@ verification runs against a manufactured solution or a mesh-refinement
 study, and the error budget is the artefact that tells the engineer which
 term to attack. The discipline does not change with the problem size; only
 the cost of each step does.
+
+\section{The fast Fourier transform and spectral differentiation}\pathtag{mastery}
+
+Two of the most consequential algorithms in computational engineering, the
+fast Fourier transform and the spectral-differentiation methods built on it,
+share a single idea: a smooth periodic or analytic function is represented
+exactly by a short list of coefficients in an orthogonal basis, and the
+operations the engineer wants (differentiation, convolution, filtering) are
+diagonal or near-diagonal in that basis. This section develops the working
+arithmetic of both, at the depth a reader who calls \texttt{numpy.fft.fft}
+or builds a Chebyshev solver should be able to defend.
+
+\subsection{The discrete Fourier transform and its fast algorithm}
+
+The \engterm{discrete Fourier transform} (DFT) of a length-$N$ sequence
+$x_{0}, \ldots, x_{N-1}$ is the sequence
+
+\[
+X_{k} = \sum_{j=0}^{N-1} x_{j}\, \omega_{N}^{jk},
+\qquad \omega_{N} = e^{-2\pi i/N},
+\qquad k = 0, \ldots, N-1,
+\]
+
+a matrix-vector product $\vect{X} = \mat{F}_{N}\vect{x}$ with the symmetric
+DFT matrix $(\mat{F}_{N})_{jk} = \omega_{N}^{jk}$. Computed as written, the
+product costs $N^{2}$ complex multiply-adds. The \engterm{fast Fourier
+transform} (FFT) computes the identical $\vect{X}$ in $O(N \log N)$
+operations by exploiting the algebraic structure of $\omega_{N}$. The
+radix-2 Cooley-Tukey factorisation splits the sum into its even-indexed and
+odd-indexed terms,
+
+\[
+X_{k} = \underbrace{\sum_{j=0}^{N/2-1} x_{2j}\,\omega_{N/2}^{jk}}_{E_{k}}
++ \omega_{N}^{k}\underbrace{\sum_{j=0}^{N/2-1} x_{2j+1}\,\omega_{N/2}^{jk}}_{O_{k}},
+\]
+
+using $\omega_{N}^{2} = \omega_{N/2}$. Each of $E_{k}$ and $O_{k}$ is a DFT
+of length $N/2$, and the periodicity $E_{k+N/2} = E_{k}$ lets the full
+length-$N$ transform be assembled from the two half-transforms by the
+\engterm{butterfly} combination $X_{k} = E_{k} + \omega_{N}^{k} O_{k}$ and
+$X_{k+N/2} = E_{k} - \omega_{N}^{k} O_{k}$ for $k = 0, \ldots, N/2 - 1$.
+Recursing the split until the transforms are length one gives the recurrence
+$T(N) = 2 T(N/2) + O(N)$, whose solution is $T(N) = O(N \log N)$.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-fft-butterfly}
+
+Figure~\ref{fig:vol02:ch16:fft-butterfly} draws one radix-2 butterfly stage:
+two inputs, one twiddle factor $\omega_{N}^{k}$, two outputs formed by a
+sum and a difference. The full transform is $\log_{2} N$ such stages, each
+touching all $N$ values once, which is the $N \log_{2} N$ operation count
+read directly off the diagram.
+
+\begin{example}
+\textbf{What $O(N \log N)$ buys, in seconds.} A one-dimensional transform of
+$N = 10^{6}$ points costs $N^{2} = 10^{12}$ operations by the direct DFT and
+$N \log_{2} N \approx 2 \times 10^{7}$ operations by the FFT, a ratio near
+$5 \times 10^{4}$. At a sustained $10^{10}$ operations per second, the direct
+DFT takes about $100$ seconds and the FFT about two milliseconds. The gap
+widens with $N$: at $N = 10^{9}$ the direct transform is a $10^{18}$-operation
+computation that runs for years, while the FFT is a $3 \times 10^{10}$-operation
+computation that runs in seconds. The FFT is the reason real-time spectral
+analysis, digital filtering, large-scale convolution, and spectral PDE
+solvers are feasible at all; the same physics computed through the direct DFT
+would be intractable. Cooley and Tukey published the radix-2 algorithm in
+1965, though Gauss had used the same factorisation by hand in 1805; the
+modern rediscovery, arriving with digital computers that could exploit it,
+is among the most cited results in computational science.
+\end{example}
+
+The DFT diagonalises circular convolution: the transform of a convolution is
+the pointwise product of the transforms, so an $O(N^{2})$ convolution becomes
+two forward FFTs, an $O(N)$ pointwise multiply, and one inverse FFT, total
+$O(N \log N)$. The same diagonalisation makes differentiation of a periodic
+function a multiplication: if $x_{j}$ samples a periodic $f$ on a uniform
+grid, then the derivative samples are recovered by multiplying the
+$k$-th Fourier coefficient by $ik$ (the wavenumber) and transforming back.
+This is \engterm{Fourier spectral differentiation}, and for a smooth periodic
+function its error decreases faster than any power of the grid spacing,
+\engterm{spectral accuracy}.
+
+\subsection{Chebyshev spectral differentiation}
+
+Most engineering domains are not periodic. On a bounded non-periodic interval
+the Fourier basis is replaced by the Chebyshev basis, and the uniform grid is
+replaced by the Chebyshev points $x_{j} = \cos(j\pi/N)$, $j = 0, \ldots, N$,
+the same cosine-spaced points that cured the Runge phenomenon. A function
+sampled at the Chebyshev points has a unique interpolating polynomial, and
+the derivative of that interpolant at the grid points is a linear map: the
+sampled derivative vector is $\mat{D}_{N}\vect{u}$ for the
+\engterm{Chebyshev differentiation matrix} $\mat{D}_{N}$, an $(N+1) \times
+(N+1)$ dense matrix with entries known in closed form
+\cite[ch.~6]{text:v2ch06-trefethen-spectral}. The corner entries are
+$(\mat{D}_{N})_{00} = (2N^{2}+1)/6$ and $(\mat{D}_{N})_{NN} =
+-(2N^{2}+1)/6$; the off-diagonal entries are $(\mat{D}_{N})_{ij} =
+\frac{c_{i}}{c_{j}}\frac{(-1)^{i+j}}{x_{i}-x_{j}}$ with $c_{0} = c_{N} = 2$
+and $c_{i} = 1$ otherwise; the interior diagonal entries are
+$(\mat{D}_{N})_{jj} = -x_{j}/(2(1 - x_{j}^{2}))$.
+
+\begin{example}
+\textbf{The $N = 2$ Chebyshev differentiation matrix, and its accuracy.} For
+$N = 2$ the Chebyshev points are $x_{0} = 1$, $x_{1} = 0$, $x_{2} = -1$. The
+differentiation matrix is
+
+\[
+\mat{D}_{2} = \begin{psmallmatrix}
+1.5 & -2 & 0.5 \\
+0.5 & 0 & -0.5 \\
+-0.5 & 2 & -1.5
+\end{psmallmatrix}.
+\]
+
+Apply it to the sampled values of $f(x) = x^{2}$, which are $\vect{u} =
+(1, 0, 1)^{\transpose}$: the product $\mat{D}_{2}\vect{u} = (1.5 + 0.5,
+0.5 - 0.5, -0.5 - 1.5)^{\transpose} = (2, 0, -2)^{\transpose}$, which is
+exactly $f'(x) = 2x$ sampled at $(1, 0, -1)$. The matrix differentiates
+$x^{2}$ with zero error because the degree-two interpolant through three
+points \emph{is} $x^{2}$, so its derivative is exact. This is the spectral
+method's signature: for a polynomial of degree at most $N$ the differentiation
+is exact, and for a smooth non-polynomial the error falls faster than any
+power of $1/N$ as $N$ grows. A second-order finite difference would need
+thousands of points to match what the Chebyshev method achieves with a
+few dozen on a smooth problem.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-spectral-convergence}
+
+Figure~\ref{fig:vol02:ch16:spectral-convergence} plots, on a semi-logarithmic
+axis, the maximum error of the Chebyshev derivative of a smooth test function
+against the number of grid points, beside the algebraic $O(h^{2})$ decay of a
+centred finite difference. The spectral error falls along a straight line on
+the semi-log plot, the signature of geometric (exponential) convergence,
+until it reaches the round-off floor near $10^{-14}$; the finite-difference
+error falls along a line of slope $-2$ on a log-log plot, decades slower. The
+trade is that the spectral differentiation matrix is dense ($O(N^{2})$ work
+per derivative, or $O(N \log N)$ via the FFT for the Chebyshev case) and
+sensitive to non-smoothness: a single corner or jump in the function destroys
+the spectral convergence and reintroduces oscillation, the Gibbs phenomenon.
+The engineer reaches for spectral methods when the solution is smooth and the
+domain is simple, and for finite elements when the geometry is complicated or
+the solution has fronts and corners.
+
+\begin{mastery}
+\textbf{Interval arithmetic and verified computing.} Every error bound in
+this chapter is an \emph{a priori} estimate: the engineer reasons about the
+worst case before running, then trusts that the run stayed inside it. Interval
+arithmetic delivers an \emph{a posteriori} guarantee instead, a machine-checked
+enclosure of the true answer. Each quantity is carried as an interval
+$[\underline{x}, \overline{x}]$ guaranteed to contain the true value, and
+each operation rounds its result outward (the lower endpoint toward
+$-\infty$, the upper toward $+\infty$, using the directed rounding modes IEEE
+754 provides exactly for this purpose), so the output interval provably
+contains the true result regardless of round-off. The \engterm{interval
+Newton} method is the structure-revealing application: to enclose a root of
+$f$ in $[a, b]$, form $N([a,b]) = m - f(m)/F'([a,b])$ where $m$ is the
+midpoint and $F'([a,b])$ is an interval enclosure of $f'$ over the box; if
+$N([a,b]) \subset [a,b]$ the method has \emph{proved} that a unique root
+exists in the box and that every iterate stays enclosed, a theorem the
+floating-point Newton of section 16.3 can never deliver. The cost is the
+\engterm{wrapping effect}: naive interval arithmetic overestimates, because
+it treats every occurrence of a variable as independent and so loses the
+cancellation a real computation would enjoy; the interval for $x - x$ is
+$[\underline{x} - \overline{x}, \overline{x} - \underline{x}]$, a band of
+width $2(\overline{x} - \underline{x})$ rather than the true zero. Taming the
+wrapping effect (centred forms, affine arithmetic, Taylor models) is the
+craft of verified computing, and the payoff is a result the engineer can put
+in front of a regulator as a proof rather than an estimate. Verified interval
+computations have closed open mathematical problems (the Kepler conjecture on
+sphere packing, the existence of the Lorenz attractor) and underwrite
+safety-critical control where an unproven bound is unacceptable. INTLAB,
+Boost.Interval, and Arb provide working implementations
+\cite[ch.~26]{text:higham-numerical}.
+\end{mastery}
+
+\section{A second worked computation: a convection-diffusion boundary-value problem}\pathtag{core}
+
+The cantilever computation of section 16.10 ran a fourth-order
+boundary-value problem whose exact solution was a polynomial, so the
+discretisation error vanished and the budget was dominated by input data.
+A second case study earns its place by exercising the error sources the
+first one suppressed: a problem whose discretisation can become
+\emph{unstable} at the wrong grid resolution, whose remedy trades one error
+for another, and whose verification requires a manufactured solution because
+no clean closed form is available across the parameter range. The
+one-dimensional steady convection-diffusion equation is the canonical
+vehicle, and the lessons it teaches govern every advection-dominated flow,
+heat-transfer, and transport solver the reader will later build.
+
+\subsection{The problem and the Peclet number}
+
+A scalar quantity $u(x)$, a temperature or a concentration, on $[0, 1]$ is
+carried by a flow of speed $v$ and spread by diffusion of coefficient $D$,
+in steady state with fixed end values:
+
+\[
+v\, u'(x) - D\, u''(x) = 0, \qquad u(0) = 0, \quad u(1) = 1.
+\]
+
+The exact solution is the exponential boundary-layer profile
+
+\[
+u(x) = \frac{e^{P x} - 1}{e^{P} - 1}, \qquad P = \frac{v}{D},
+\]
+
+where $P$ is the \engterm{global Peclet number}, the dimensionless ratio of
+convective to diffusive transport. For small $P$ the profile is nearly
+linear (diffusion dominates); for large $P$ it is flat across most of the
+domain and rises steeply in a boundary layer of width $\sim 1/P$ near
+$x = 1$ (convection dominates). The quantity of interest is the full profile,
+and in particular the solver's behaviour as $P$ grows and the boundary layer
+thins below the grid resolution.
+
+\begin{estimation}
+\textbf{Question.} Before discretising, estimate the grid spacing $h$ at
+which a naive centred-difference scheme will begin to misbehave for
+$P = 100$, and predict the qualitative form of the failure.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The boundary layer has width $\sim 1/P = 0.01$. A scheme that does not
+resolve the layer, $h \gtrsim 1/P$, cannot represent the steep rise and will
+either smear it or oscillate. The relevant local parameter is the
+\engterm{cell Peclet number} $P_{h} = v h / D = P h$, the Peclet number
+built on the grid spacing rather than the domain. Dimensional reasoning says
+the scheme's character changes when $P_{h}$ crosses order unity: with $P =
+100$, that is $h \sim 0.01$, or about $100$ grid intervals. Below that
+resolution the centred scheme, which has no inherent bias toward the upwind
+direction, is likely to produce spurious oscillations rather than smooth
+smearing, because a centred approximation to a strongly one-directional
+transport term is the discrete analogue of an unstable algebraic system. The
+estimate sets the test: sweep $h$ across $P_{h} = 1$ and watch the centred
+scheme break while an upwind scheme stays monotone.
+\end{estimation}
+
+\subsection{Two discretisations and the cell Peclet number}
+
+On the uniform grid $x_{i} = i h$, $h = 1/n$, the \engterm{centred} scheme
+approximates both derivatives to second order,
+
+\[
+v\,\frac{u_{i+1} - u_{i-1}}{2h} - D\,\frac{u_{i-1} - 2 u_{i} + u_{i+1}}{h^{2}}
+= 0,
+\]
+
+which rearranges to the three-point stencil $(-1 - P_{h}/2)\,u_{i-1} +
+2\,u_{i} + (-1 + P_{h}/2)\,u_{i+1} = 0$ with cell Peclet number $P_{h} =
+vh/D$. When $P_{h} > 2$ the coefficient of $u_{i+1}$ turns positive, the
+tridiagonal system loses diagonal dominance, and the discrete solution
+develops node-to-node oscillations that have no counterpart in the smooth
+exact profile. The \engterm{upwind} scheme replaces the centred convection
+term with a one-sided difference biased into the flow,
+
+\[
+v\,\frac{u_{i} - u_{i-1}}{h} - D\,\frac{u_{i-1} - 2 u_{i} + u_{i+1}}{h^{2}}
+= 0,
+\]
+
+whose stencil $(-1 - P_{h})\,u_{i-1} + (2 + P_{h})\,u_{i} - u_{i+1} = 0$
+keeps all off-diagonal signs negative and the matrix diagonally dominant for
+every $P_{h}$, so the upwind solution is monotone at any resolution. The
+upwind scheme buys that robustness at a price the engineer must name. Its
+truncation error is only first order, $O(h)$, and the leading error term is a
+spurious diffusion: the upwind difference is equivalent to the centred
+difference applied to the equation with diffusion coefficient $D + vh/2$
+rather than $D$, an added \engterm{numerical diffusion} of magnitude $vh/2$.
+The upwind scheme is stable because it has quietly thickened the boundary
+layer, smearing the front the centred scheme oscillated around.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-peclet-instability}
+
+Figure~\ref{fig:vol02:ch16:peclet-instability} plots both discrete solutions
+against the exact profile for $P = 100$ on a grid with $P_{h} = 4$ (too
+coarse). The centred solution oscillates between nodes, overshooting and
+undershooting the exact profile near the layer; the upwind solution is
+monotone but visibly smeared, its front spread over several cells by the
+$vh/2$ numerical diffusion. Neither is acceptable at this resolution, and the
+two failures are the two faces of the cell-Peclet constraint: a scheme is
+either oscillatory or over-diffusive when the layer is unresolved, and the
+only clean cure is to resolve it.
+
+\subsection{Verification by a manufactured solution}
+
+The exact boundary-layer profile lets the engineer verify the solver, but
+only on this particular right-hand side. To confirm the implementation's
+order of accuracy independently of the boundary-layer regime, the disciplined
+move is the \engterm{method of manufactured solutions}: choose a smooth
+target $u_{\mathrm{m}}(x)$, substitute it into the differential operator to
+compute the source term $s(x) = v\,u_{\mathrm{m}}' - D\,u_{\mathrm{m}}''$
+that makes $u_{\mathrm{m}}$ the exact solution of the forced problem, then
+run the solver with that source and Dirichlet data from $u_{\mathrm{m}}$ and
+measure the error against $u_{\mathrm{m}}$. Take $u_{\mathrm{m}}(x) =
+\sin(\pi x)$, giving $s(x) = v\pi\cos(\pi x) + D\pi^{2}\sin(\pi x)$, a smooth
+forcing with no boundary layer. Running the centred scheme on this
+manufactured problem at $P = 1$ (so the cell-Peclet constraint is not
+active) and halving $h$ across $n = 10, 20, 40, 80$ should show the error
+falling by a factor of four per halving, confirming the $O(h^{2})$ order; the
+upwind scheme on the same manufactured problem falls by a factor of two,
+confirming its $O(h)$ order. The manufactured solution separates the two
+questions the single closed form conflated: \emph{is the code correct}
+(does it converge at the design order on a smooth problem) and \emph{is the
+discretisation adequate} (does it resolve the boundary layer of the actual
+problem). An implementation that passes the manufactured-solution order test
+but oscillates on the boundary-layer problem is correct code applied at
+inadequate resolution, a diagnosis the engineer must distinguish from a
+coding error.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-mms-convergence}
+
+Figure~\ref{fig:vol02:ch16:mms-convergence} is the \engterm{work-precision
+diagram} for the manufactured problem: the maximum error against the grid
+count on log-log axes, one line per scheme. The centred scheme's line has
+slope $-2$, the upwind scheme's slope $-1$, and the slopes are the
+machine-checked confirmation of the orders the truncation analysis predicted.
+A line that fails to reach its predicted slope is the signature of an
+implementation bug, a boundary-condition error, or an unresolved feature, and
+reading the slope off this diagram is the single most useful verification an
+engineer runs on a new discretisation.
+
+\subsection{The budget and the resolved result}
+
+The error budget for the convection-diffusion solve at the target $P = 100$
+ranks differently from the cantilever's. Three contributions compete. The
+discretisation error is $O(h^{2})$ for the centred scheme but only when
+$P_{h} < 2$, which forces $h < 2/P = 0.02$, that is at least $50$ grid
+intervals merely to keep the scheme stable and more to make the error small;
+at $n = 400$ ($P_{h} = 0.25$) the centred error is near $10^{-4}$ relative.
+The round-off contribution is the conditioning of the tridiagonal system
+times $u$; the convection-diffusion operator's discrete condition number
+grows as $O(n^{2})$ (a second-order operator, milder than the cantilever's
+$n^{4}$), reaching $\sim 10^{5}$ at $n = 400$ and a round-off floor near
+$10^{-11}$, negligible against the discretisation error. The modelling error
+is the physical uncertainty in $v$ and $D$, which for a measured flow and a
+tabulated diffusivity might be a few percent each, dominating once the grid
+is fine enough. The ranking is the reverse of a naive expectation: the
+binding constraint at coarse resolution is stability, the cell-Peclet cap,
+rather than accuracy, and once the grid is fine enough to be stable and accurate,
+the physical-parameter uncertainty takes over and dominates exactly as it did
+for the cantilever.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-conv-diff-budget}
+
+Figure~\ref{fig:vol02:ch16:conv-diff-budget} stacks the four magnitudes (the
+cell-Peclet stability threshold, the discretisation error at the chosen grid,
+the linear-solve round-off, the physical-parameter uncertainty) against grid
+count, and the crossing points tell the engineer where each constraint binds.
+Below $P_{h} = 2$ the solver oscillates and no error claim is meaningful;
+above it the discretisation error falls as the grid refines until it drops
+below the physical-parameter floor, past which refinement is wasted. The
+disciplined deliverable for this problem states the cell-Peclet number of the
+chosen grid (the evidence that the scheme is in its stable regime), the
+verified order of accuracy from the manufactured-solution study, the
+discretisation error at the working resolution, and the physical-parameter
+uncertainty that sets the floor. The same four-part statement scales to a
+three-dimensional finite-volume flow solver with a hundred million cells,
+where the cell-Peclet constraint becomes a local mesh-adaptation criterion,
+the manufactured solution becomes a code-verification suite, and the budget
+is the artefact that decides whether the next computation should buy a finer
+mesh or a better measurement of the inflow.
+
+\begin{principle}[Stability before accuracy]
+A discretisation has an order of accuracy and a stability constraint, and the
+two are separate properties that fail in separate ways. The order governs how
+fast the error falls as the grid refines; the stability constraint governs
+whether the discrete problem is well-posed at the chosen resolution at all. A
+scheme run outside its stability regime does not merely lose accuracy, it
+produces a solution whose error bears no relation to the grid spacing, so the
+order of accuracy is meaningless until the stability constraint is satisfied.
+The engineer verifies stability first (the cell-Peclet cap for convection-diffusion,
+the CFL condition for explicit time stepping, diagonal dominance for an
+iterative solve), confirms the order second on a manufactured solution, and
+quotes the discretisation error third, against the physical-parameter floor.
+The convection-diffusion oscillation and the explicit-integrator blow-up of
+section 16.6 are the same failure at different parameters: a discrete operator
+pushed past the resolution its stability requires.
+\end{principle}
 
 \section{Failure: famous numerical failures}\pathtag{core}
 

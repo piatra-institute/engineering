@@ -10,6 +10,7 @@ examples, and project.
 | `synth_pca_dataset.csv` | Synthesised by the project editor with a planted rank-2 structure on five features plus small noise. | 2026 | Chapter project (PCA from scratch), as a debugging dataset where the principal directions are known a priori. |
 | `three_mass_modal.csv` | Computed by the editor from the closed-form modal solution of three equal masses, four equal springs of stiffness $k$, between walls. | 2026 | Section 10.8 modal analysis worked example; Diagnosis exercise on near-degenerate modes. |
 | `machine_reliability_chain.csv` | Synthesised by the editor as an illustrative shift-to-shift transition matrix for a single bottleneck machine across five operating states. | 2026 | Case study (machine availability as a steady-state problem); `code/machine_reliability.py`. |
+| `bridge_strain_gauges.csv` | Synthesised by the editor from a three-latent-factor structural-response model (global thermal-traffic, span asymmetry, local) with measurement noise, shaped after a real bridge strain-monitoring campaign. | 2026 | Case study (structural-health PCA); `code/bridge_pca.py`. |
 
 ## Provenance
 
@@ -20,6 +21,17 @@ Gaussian noise with standard deviation $0.05$. The recipe is in
 `code/pca_three_routes.py` (`synth_data` function); the file lets the
 reader run the PCA pipeline against a dataset whose true principal
 directions are known.
+
+`bridge_strain_gauges.csv` holds 96 hourly readings (four days) from
+eight strain gauges, four on a north span (columns `N1`-`N4`) and four
+on a south span (`S1`-`S4`), in microstrain. The generator draws three
+latent factors: a large global thermal-and-traffic factor that loads
+near-equally on all gauges, a span-asymmetry factor that loads the
+north gauges against the south gauges, and a small local factor, then
+adds isotropic Gaussian measurement noise of about 1.2 microstrain. The
+seed is fixed (`numpy` default generator, seed 20260606) so the PCA
+numbers quoted in the case study reproduce exactly; the recipe and the
+full analysis are in `code/bridge_pca.py`.
 
 `three_mass_modal.csv` contains the analytical mode shapes and
 eigenvalues of the stiffness matrix

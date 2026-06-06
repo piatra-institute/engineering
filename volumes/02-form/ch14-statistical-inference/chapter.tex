@@ -927,6 +927,117 @@ unbiased estimator's variance: information is finite, and the data
 carry only so much of it.
 \end{mastery}
 
+\subsection{The Wald, score, and likelihood-ratio trio}
+
+Three tests of $H_{0}: \theta = \theta_{0}$ fall out of the
+likelihood, and they read three different geometric features off the
+same log-likelihood curve. The \engterm{Wald test} measures the
+horizontal distance between the unrestricted MLE and the null value,
+scaled by the curvature at the maximum:
+\[
+W = (\hat{\theta} - \theta_{0})^{2}\, I_{n}(\hat{\theta}),
+\]
+which is the square of the familiar estimate-over-standard-error
+statistic, since $I_{n}(\hat{\theta})^{-1}$ is the squared standard
+error. The \engterm{score test}, also called the Lagrange-multiplier
+test, measures the slope of the log-likelihood at the null value,
+scaled by the information there:
+\[
+S = \frac{U(\theta_{0})^{2}}{I_{n}(\theta_{0})},
+\qquad U(\theta_{0}) = \pdv{\ell}{\theta}\Big|_{\theta_{0}}.
+\]
+The \engterm{likelihood-ratio test} measures the vertical drop in the
+log-likelihood from the peak to the null,
+\[
+L = -2\bigl[\ell(\theta_{0}) - \ell(\hat{\theta})\bigr].
+\]
+All three converge in distribution to $\chi^{2}_{1}$ under $H_{0}$,
+and all three agree to leading order in a neighbourhood of the
+maximum, where the log-likelihood is well approximated by a
+parabola. Figure \ref{fig:vol02:ch14:trinity-tests} draws the three
+features on one curve. The working differences are operational. The
+Wald test needs only the unrestricted fit, which is why software
+reports it by default, but it is not invariant under
+reparametrisation: testing $\beta = 0$ and testing $e^{\beta} = 1$
+give different Wald statistics on the same data, a defect that
+produces the well-known \engterm{Hauck-Donner effect} of a Wald
+statistic that paradoxically shrinks as the estimate moves further
+from the null in a logistic fit. The score test needs only the
+restricted fit, which is its advantage when the unrestricted model is
+expensive to fit or fails to converge. The likelihood-ratio test
+needs both fits and is invariant under reparametrisation, which is
+the reason to prefer it as the referee when the three disagree.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-trinity-tests.tex}
+
+\paragraph{Worked example: the three statistics on a Poisson rate.}
+A reliability team observes $\sum x_{i} = 18$ faults over $n = 12$
+equal monitoring weeks and tests $H_{0}: \lambda = 1.0$ fault per
+week against the two-sided alternative. The MLE is $\hat{\lambda} =
+\bar{x} = 1.5$. The Poisson per-observation information is
+$I_{1}(\lambda) = 1/\lambda$, so $I_{n}(\lambda) = n/\lambda$. The
+Wald statistic uses the information at the MLE: $W = (1.5 -
+1.0)^{2}\, (12/1.5) = 0.25 \cdot 8.0 = 2.00$. The score statistic
+uses the information at the null: the score is $U(\lambda_{0}) =
+(\sum x_{i})/\lambda_{0} - n = 18/1.0 - 12 = 6$, and $I_{n}(1.0) =
+12/1.0 = 12$, so $S = 36/12 = 3.00$. The likelihood-ratio statistic
+uses both fits: $\ell(\lambda) = (\sum x_{i})\ln\lambda - n\lambda$
+up to a constant, so $L = -2[\ell(1.0) - \ell(1.5)] = -2[(18\ln 1.0
+- 12) - (18\ln 1.5 - 18)] = -2[(0 - 12) - (7.30 - 18)] = -2[-12 +
+10.70] = -2(-1.30) = 2.60$. The three statistics, $W = 2.00$,
+$L = 2.60$, $S = 3.00$, bracket each other and all fall below
+$\chi^{2}_{0.95,1} = 3.84$, so none rejects at $\alpha = 0.05$; the
+$12$-week record does not establish a rate above one fault per week.
+The spread between $2.00$ and $3.00$ is the small-sample
+disagreement the asymptotic theory smooths over, and it is precisely
+in this near-threshold band that the choice of statistic can flip a
+decision. The engineer who reports all three, or who reports the
+likelihood-ratio statistic by default, is insulated against a
+reparametrisation accident the Wald statistic alone would hide.
+
+\subsection{The delta method}
+
+The engineer rarely wants the parameter the model is written in. A
+fit returns $\hat{\lambda}$, but the design needs the mean lifetime
+$1/\hat{\lambda}$; a fit returns log-odds, but the report needs a
+probability. The \engterm{delta method} propagates the standard error
+of an estimate through a smooth nonlinear transformation
+$g(\cdot)$. If $\hat{\theta}$ is asymptotically normal with
+$\sqrt{n}(\hat{\theta} - \theta) \xrightarrow{d} \mathcal{N}(0, V)$,
+then a first-order Taylor expansion of $g$ about $\theta$ gives
+\[
+\sqrt{n}\bigl(g(\hat{\theta}) - g(\theta)\bigr)
+\xrightarrow{d} \mathcal{N}\!\left(0,\, g'(\theta)^{2}\, V\right),
+\]
+so the standard error of $g(\hat{\theta})$ is
+$\abs{g'(\hat{\theta})}$ times the standard error of $\hat{\theta}$.
+The vector form replaces the scalar derivative with the gradient and
+the scalar variance with the covariance matrix:
+$\Var(g(\hat{\vect{\theta}})) \approx \nabla g^{\transpose}
+\Sigma\, \nabla g$. The method is the chain rule applied to
+uncertainty, and it is the standard tool for an error bar on any
+quantity that is a function of fitted parameters.
+
+\paragraph{Worked example: the standard error of a mean lifetime.}
+The exponential fit earlier in this section returned $\hat{\lambda}
+= 0.741$ per thousand hours with asymptotic standard error
+$0.234$. The design needs the mean lifetime $g(\lambda) = 1/\lambda$.
+The derivative is $g'(\lambda) = -1/\lambda^{2}$, so $\abs{g'
+(\hat{\lambda})} = 1/0.741^{2} = 1.821$, and the delta-method
+standard error of the mean lifetime is $1.821 \cdot 0.234 = 0.426$
+thousand hours, on a point estimate of $1/\hat{\lambda} = 1.35$. The
+symmetric delta-method interval $1.35 \pm 1.96 \cdot 0.426 = [0.52,
+2.18]$ thousand hours is wider on the low side than the
+endpoint-inversion interval $[0.83, 3.55]$ computed earlier, and the
+two disagree because the delta method linearises a transformation
+that is markedly curved at small $n$. The working rule is direct:
+the delta method is the fast first answer, valid when the
+transformation is gentle over the span of one standard error, and
+the engineer who finds the delta-method interval disagreeing with an
+endpoint-inversion or a bootstrap interval has been told that the
+linearisation is straining and should report the interval that does
+not assume a straight transformation.
+
 \subsection{When the MLE fails}
 
 The MLE fails when the regularity conditions fail. Three working
@@ -996,6 +1107,41 @@ per-group effects in a multilevel model is in the regime where
 shrinkage beats the separate estimates, which is the practical
 reason hierarchical models dominate when the groups are many and the
 per-group data are thin.
+\end{mastery}
+
+\begin{mastery}
+The reason the same handful of summaries, the sample mean, the sample
+sum, the sum of squares, the sample maximum, recur as the estimators
+for distribution after distribution is \engterm{sufficiency}. A
+statistic $T(X)$ is sufficient for $\theta$ when the conditional
+distribution of the data given $T$ does not depend on $\theta$: once
+$T$ is known, the rest of the data carry no further information about
+the parameter. The \engterm{factorisation theorem} makes this
+checkable without computing a conditional distribution: $T$ is
+sufficient if and only if the likelihood factors as $p(x; \theta) =
+h(x)\, g(T(x); \theta)$, a part that does not involve $\theta$ times
+a part that touches the data only through $T$. The \engterm{exponential
+family} is the class of distributions whose density has the canonical
+form
+\[
+p(x; \theta) = h(x)\, \exp\!\bigl(\eta(\theta)^{\transpose} T(x)
+- A(\theta)\bigr),
+\]
+and the Gaussian, Bernoulli, Poisson, exponential, Gamma, and Beta
+are all members. For an exponential family the statistic $T(x)$ in
+the exponent is sufficient by inspection, which is why the sample sum
+is sufficient for a Poisson rate, the count of successes is
+sufficient for a Bernoulli probability, and the pair (sample sum,
+sum of squares) is sufficient for a Gaussian mean and variance. The
+log-partition function $A(\theta)$ carries the moments: its gradient
+is the mean of $T$ and its Hessian is the covariance of $T$, which is
+the Fisher information in the canonical parametrisation. The working
+payoff is the \engterm{Rao-Blackwell theorem}: any estimator can be
+improved, in mean squared error, by conditioning it on a sufficient
+statistic, so an estimator that is not a function of the sufficient
+statistic is throwing information away. The engineer who notices that
+a proposed estimator ignores part of a sufficient statistic has found
+a strictly better estimator without any new data.
 \end{mastery}
 
 \section{Bayesian inference}\pathtag{standard}
@@ -1169,6 +1315,55 @@ worries about, is about $0.10$ under the predictive against $0.07$
 under the plug-in Poisson, a $40\,\%$ relative underestimate of the
 busy-week risk that the plug-in commits.
 
+\subsection{A Bayesian decision under a loss function}
+
+A posterior is not yet a decision. The Bayesian framing closes only
+when the engineer attaches a \engterm{loss function} and chooses the
+action that minimises expected posterior loss. The pattern is the
+decision-theoretic framing of section 14.2 carried through to a
+posterior rather than a sampling distribution, and it is the right
+machine for the A/B choice that recurs whenever two process settings,
+two suppliers, or two designs are compared on a binary outcome.
+
+\paragraph{Worked example: an A/B decision with an asymmetric loss.}
+Two coating processes are compared on the probability that a part
+passes a corrosion test. Process A, the incumbent, has a long record
+encoded as a $\mathrm{Beta}(40, 10)$ posterior, mean pass rate
+$0.80$. Process B, a candidate, has been run on $30$ parts with $27$
+passes; under a flat $\mathrm{Beta}(1, 1)$ prior its posterior is
+$\mathrm{Beta}(28, 4)$, mean $0.875$. The engineer wants the
+probability that B is genuinely better, $\Pr[p_{B} > p_{A} \mid
+\text{data}]$, which is a two-dimensional posterior integral over the
+product of the two independent Beta posteriors. Monte Carlo settles
+it directly: draw $p_{A}$ from $\mathrm{Beta}(40, 10)$ and $p_{B}$
+from $\mathrm{Beta}(28, 4)$ ten thousand times and count the fraction
+with $p_{B} > p_{A}$, which lands near $0.88$. The point estimate
+favours B, and the posterior probability that B is better is high but
+not decisive.
+
+The decision needs the cost structure, not the probability alone.
+Switching to B carries a one-time changeover cost equivalent to a
+$0.02$ drop in pass rate amortised over the production run, and
+staying with A forgoes whatever real improvement B offers. Encode the
+loss of choosing B as $\ell_{B} = \max(0,\, p_{A} - p_{B}) + 0.02$,
+the regret if A was actually better plus the changeover penalty, and
+the loss of choosing A as $\ell_{A} = \max(0,\, p_{B} - p_{A})$, the
+regret of forgoing B's improvement. Averaging each loss over the same
+Monte Carlo draws gives an expected loss of staying with A of about
+$0.078$ (dominated by the $0.075$ mean improvement B offers when B is
+better) and an expected loss of switching to B of about $0.025$ (the
+$0.02$ changeover plus the small probability-weighted regret that A
+was better). The expected-loss-minimising action is to switch, and
+the margin, $0.078$ against $0.025$, is the quantity the engineer
+reports rather than the bare posterior probability. Had the
+changeover cost been equivalent to a $0.08$ pass-rate drop instead of
+$0.02$, the expected loss of switching would have risen to about
+$0.085$, exceeding the cost of staying, and the same posterior would
+have selected the opposite action. The lesson is that the posterior
+is an input to the decision, and the loss function is the other
+input; an A/B test reported as ``B wins, posterior probability
+$0.88$'' has reported half the analysis.
+
 \subsection{When to reach for Bayesian inference}
 
 The engineer reaches for Bayesian inference when prior information
@@ -1195,6 +1390,41 @@ the posterior in small-sample regimes while letting the data
 dominate as $n$ grows. A \engterm{strong prior} reflects genuine
 knowledge from earlier studies or physical constraints, and must be
 defensible as such; otherwise it is wishful thinking.
+\end{mastery}
+
+\begin{mastery}
+The Bayesian comparison of two models is the ratio of their
+evidences, the \engterm{Bayes factor}. For models $M_{1}$ and
+$M_{2}$ with marginal likelihoods $m_{k}(x) = \int p(x \mid \theta,
+M_{k})\, \pi(\theta \mid M_{k})\, \dd\theta$, the Bayes factor is
+\[
+B_{12} = \frac{m_{1}(x)}{m_{2}(x)}
+= \frac{\Pr[M_{1} \mid x]/\Pr[M_{2} \mid x]}
+       {\Pr[M_{1}]/\Pr[M_{2}]},
+\]
+the factor by which the data move the prior odds on the two models to
+the posterior odds. A Bayes factor of $10$ means the data are ten
+times as probable under $M_{1}$ as under $M_{2}$; the conventional
+reading places $B_{12}$ above $3$ as positive evidence, above $20$ as
+strong, and above $150$ as very strong, with the symmetric brackets
+below one favouring $M_{2}$ \cite{text:wasserman2004}. The Bayes
+factor builds in an automatic penalty for complexity, the
+\engterm{Bayesian Occam factor}: a model with more free parameters
+spreads its prior predictive mass over a larger data space, so it
+assigns less probability to any particular observed dataset, and the
+marginal likelihood is lower unless the extra parameters earn their
+keep. This is the Bayesian counterpart to cross-validation's penalty
+on flexibility, reached by integration rather than by holding out
+data. The working caution is that the marginal likelihood depends on
+the prior in a way the posterior does not: a diffuse prior on a
+parameter that the data constrain well still suppresses the evidence,
+which is the \engterm{Lindley-Jeffreys paradox}, where a frequentist
+test rejects the null while a Bayes factor under a vague prior favours
+it. The engineer who reports a Bayes factor reports the prior it was
+computed under, because a Bayes factor without its prior is a number
+without a referent, and the approximation by the Bayesian information
+criterion, $-2\ln B_{12} \approx \mathrm{BIC}_{1} - \mathrm{BIC}_{2}$,
+is the cheap large-sample stand-in when the integral is intractable.
 \end{mastery}
 
 \section{Regression: linear, logistic, regularised}\pathtag{core}
@@ -1438,6 +1668,113 @@ Newton step is a weighted regression of a working response, the
 weights are the variances of the Bernoulli outcomes at the current
 fit, and the iteration converges because the log-likelihood is
 concave in $\vect{\beta}$.
+
+\subsection{Generalised linear models and Poisson regression}
+
+Linear regression and logistic regression are two instances of one
+structure, the \engterm{generalised linear model}, which the engineer
+meets again whenever the response is not a continuous Gaussian
+quantity \cite[ch.~4]{text:hastie-tibshirani-friedman}. The structure
+has three parts: a response distribution from the exponential family,
+a \engterm{linear predictor} $\eta_{i} = x_{i}^{\transpose}\vect{\beta}$,
+and a \engterm{link function} $g$ that connects the mean of the
+response to the linear predictor, $g(\E[Y_{i}]) = \eta_{i}$. Ordinary
+linear regression is the Gaussian response with the identity link;
+logistic regression is the Bernoulli response with the logit link.
+The count case is the third member the engineer needs by name.
+
+\engterm{Poisson regression} models a count response $Y_{i} \in
+\set{0, 1, 2, \ldots}$ with the log link:
+\[
+Y_{i} \sim \mathrm{Poisson}(\mu_{i}),
+\qquad \ln\mu_{i} = x_{i}^{\transpose}\vect{\beta}.
+\]
+The log link guarantees the fitted mean stays positive, and it makes
+the coefficients multiplicative: a unit change in $x_{j}$ multiplies
+the expected count by $e^{\beta_{j}}$, the count analogue of the
+logistic odds ratio. The model is the working tool for defect counts,
+fault arrivals, accident rates, and any response that is a number of
+events over an exposure. When the exposure varies across observations,
+say a defect count over a panel of varying area $A_{i}$, the model
+carries an \engterm{offset}, $\ln\mu_{i} = \ln A_{i} +
+x_{i}^{\transpose}\vect{\beta}$, the term with a fixed coefficient of
+one that turns the model into a rate model for events per unit
+exposure.
+
+\paragraph{Worked example: a defect-rate model with an offset.}
+Painted panels are inspected for surface defects; the count $y_{i}$ of
+defects is recorded along with the panel area $A_{i}$ in square metres
+and a single binary predictor $x_{i}$, whether the panel was cured in
+the new oven ($x = 1$) or the old one ($x = 0$). A Poisson regression
+with a log-area offset returns $\hat{\beta}_{0} = -1.20$ and
+$\hat{\beta}_{1} = -0.45$. The intercept sets the baseline defect rate
+in the old oven: $e^{-1.20} = 0.301$ defects per square metre. The
+slope multiplies that rate for the new oven by $e^{-0.45} = 0.638$, a
+$36\,\%$ reduction in defect rate per unit area, so the new oven's
+fitted rate is $0.301 \cdot 0.638 = 0.192$ defects per square metre.
+The interpretation is a rate ratio, and the engineer who needs an
+absolute defect count for a $2.5\,\si{\meter\squared}$ panel from the
+new oven computes $\mu = A\, e^{\beta_{0} + \beta_{1}} = 2.5 \cdot
+0.192 = 0.48$ expected defects. The standard error of the rate ratio
+follows from the delta method or, more directly, from exponentiating
+the endpoints of the Wald interval on $\hat{\beta}_{1}$, never by
+exponentiating a symmetric interval's centre and adding the
+exponentiated half-width, which would misplace the asymmetry the log
+link creates.
+
+\paragraph{Overdispersion, the Poisson model's standard failure.}
+The Poisson model carries one rigid assumption, that the variance
+equals the mean. Real count data routinely show variance larger than
+the mean, \engterm{overdispersion}, when unmodelled heterogeneity or
+clustering inflates the spread. The diagnostic is the ratio of the
+residual deviance to its degrees of freedom: a ratio near one is
+consistent with the Poisson model, and a ratio well above one signals
+overdispersion. The fix is either a \engterm{quasi-Poisson} model,
+which inflates every standard error by the square root of the
+dispersion ratio while leaving the coefficients unchanged, or a
+\engterm{negative-binomial} model, which adds a second parameter for
+the extra variance and is the same negative binomial that arose as the
+Gamma-Poisson predictive in the Bayesian section. An engineer who fits
+a Poisson model and reports its standard errors without checking the
+dispersion ratio has, on overdispersed data, reported intervals that
+are too narrow by exactly the factor the dispersion check would have
+caught.
+
+\begin{mastery}
+The Gaussian mixture and the missing-data problem behind it are
+solved by the \engterm{expectation-maximisation algorithm}, the
+workhorse for likelihoods that are intractable directly but easy once
+a hidden label is filled in
+\cite[ch.~8]{text:hastie-tibshirani-friedman}. Suppose a sample of
+vibration amplitudes is a mixture of two Gaussian populations,
+healthy and faulty bearings, with unknown mixing weight $\pi$, means
+$\mu_{1}, \mu_{2}$, and variances $\sigma_{1}^{2}, \sigma_{2}^{2}$,
+and the label of each observation is unobserved. The likelihood is a
+sum of two Gaussians per observation, and its logarithm does not
+separate, so direct maximisation is awkward. The algorithm alternates
+two steps. The \engterm{E-step} computes, for each observation, the
+posterior \engterm{responsibility} that component $k$ generated it,
+\[
+\gamma_{ik} = \frac{\pi_{k}\, \mathcal{N}(x_{i}; \mu_{k},
+\sigma_{k}^{2})}{\sum_{j}\pi_{j}\,\mathcal{N}(x_{i}; \mu_{j},
+\sigma_{j}^{2})},
+\]
+a soft assignment between zero and one. The \engterm{M-step} then
+refits each component's parameters as responsibility-weighted sample
+statistics, $\hat{\mu}_{k} = \sum_{i}\gamma_{ik}x_{i}/\sum_{i}
+\gamma_{ik}$ and likewise for the variances and the weights. The two
+steps repeat; each iteration is guaranteed not to decrease the
+observed-data log-likelihood, which is the algorithm's defining
+property and the reason it converges, though only to a local maximum,
+so several random starts are the working safeguard. The pattern, fill
+in the missing label by its expectation, then maximise as if it were
+observed, generalises far beyond mixtures: it is the engine behind
+hidden-Markov-model fitting, factor analysis with missing entries, and
+censored-data likelihoods. The failure mode is its own: a component
+variance can collapse toward zero around a single point, sending the
+likelihood to infinity in a degenerate spike, which is why working
+implementations floor the variances or place a weak prior on them.
+\end{mastery}
 
 \subsection{Regularised regression: ridge and lasso}
 
@@ -1829,6 +2166,282 @@ the chapter compressed into one comparison: the naive report omits
 the interval, the interval's kind, the domain, and the boundary, and
 each omission is a place a part fails earlier than the report
 promised.
+
+\section{A second case study: a censored time-to-failure analysis}\pathtag{standard}
+
+The fatigue study fitted a regression to complete data. The
+reliability engineer rarely has complete data, because a life test
+ends before every unit has failed, and the units still running carry
+\engterm{right-censored} observations: their failure time is known
+only to exceed the test duration. The censored observation is real
+information, not a missing value, and discarding it biases every life
+estimate downward. This second case carries a censored life test from
+raw data to a confidence-bounded life estimate, with the censoring
+handled correctly at every step, and it exercises the
+maximum-likelihood, delta-method, and bootstrap machinery on a
+problem whose structure the regression case did not reach. The data
+are stored at
+\repopath{volumes/02-form/ch14-statistical-inference/data/bearing-life.csv}
+and the analysis script at
+\repopath{volumes/02-form/ch14-statistical-inference/code/casestudy\_weibull.py}.
+
+\subsection{Step one: the model and the censored likelihood}
+
+A batch of $n = 10$ ball bearings is run on a test rig to a planned
+cutoff of $500$ hours. Eight bearings fail at recorded times, in
+hours, $\set{120, 180, 226, 270, 314, 358, 408, 484}$, and two are
+still running at the $500$-hour cutoff, contributing two
+right-censored observations at $500$. Bearing life under rolling
+contact fatigue is conventionally modelled by the \engterm{Weibull
+distribution} \cite{paper:weibull1939}, whose flexibility in the
+shape of the hazard makes it the reliability engineer's default. The
+Weibull has shape $\beta$ and scale (characteristic life) $\eta$, with
+density, survival function, and hazard
+\[
+f(t) = \frac{\beta}{\eta}\!\left(\frac{t}{\eta}\right)^{\beta-1}
+e^{-(t/\eta)^{\beta}},
+\quad
+S(t) = e^{-(t/\eta)^{\beta}},
+\quad
+h(t) = \frac{\beta}{\eta}\!\left(\frac{t}{\eta}\right)^{\beta-1}.
+\]
+The shape carries the engineering meaning: $\beta < 1$ is a falling
+hazard (infant mortality), $\beta = 1$ is the constant-hazard
+exponential (random failures), and $\beta > 1$ is a rising hazard
+(wear-out), which is what a bearing on a fatigue rig should show. The
+likelihood splits the two kinds of observation. A failure at time
+$t_{i}$ contributes its density $f(t_{i})$; a unit censored at time
+$c_{j}$ contributes its survival probability $S(c_{j})$, the
+probability that it lasted at least that long. With $d$ failures and
+the rest censored,
+\[
+L(\beta, \eta) = \prod_{i \in \text{failed}} f(t_{i})
+                 \prod_{j \in \text{censored}} S(c_{j}),
+\]
+and the log-likelihood is maximised numerically, since no closed form
+exists once censoring enters. Naming the censored term before the fit
+is the discipline: an analyst who drops the two survivors and fits the
+eight failures alone is fitting the wrong likelihood and will report a
+characteristic life biased low.
+
+\subsection{Step two: a graphical check before the numerical fit}
+
+The Weibull probability plot transforms the axes so that a Weibull
+sample falls on a straight line. Taking the logarithm of the survival
+function twice gives $\ln(-\ln S(t)) = \beta\ln t - \beta\ln\eta$, a
+line in $\ln t$ with slope $\beta$ and intercept $-\beta\ln\eta$. The
+engineer assigns each ordered failure a plotting position by the
+median-rank formula $\hat{F}_{i} = (i - 0.3)/(n + 0.4)$ on the full
+sample size $n = 10$, so the two survivors keep the late failures'
+plotting positions from being pushed to one, and plots
+$\ln(-\ln(1 - \hat{F}_{i}))$ against
+$\ln t_{i}$. Figure \ref{fig:vol02:ch14:weibull-plot} shows the eight
+points falling close to a line, the graphical licence to trust the
+single-Weibull model. A systematic curve, a dogleg with two slopes,
+would have been the signature of two competing failure modes and would
+have sent the engineer to a mixture model before any single-Weibull
+number was reported.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-weibull-plot.tex}
+
+\subsection{Step three: the maximum-likelihood fit and its information}
+
+Maximising the censored log-likelihood numerically returns
+$\hat{\beta} = 2.33$ and $\hat{\eta} = 404$ hours. The shape above one
+confirms the rising, wear-out hazard the bearing physics predicts. The
+standard errors come from the observed information, the negative
+Hessian of the log-likelihood at the maximum, inverted to a $2\times2$
+covariance matrix; for this dataset the routine returns
+$\widehat{\mathrm{se}}(\hat{\beta}) = 0.70$ and
+$\widehat{\mathrm{se}}(\hat{\eta}) = 63$ hours, with a mild negative
+correlation between the two estimates. A Wald interval for the shape
+is $2.33 \pm 1.96 \cdot 0.70 = [0.96, 3.70]$, which the engineer reads
+with caution: its lower end nearly reaches one, but the symmetric Wald
+approximation strains on a small censored sample, and the
+likelihood-ratio interval, found by profiling the log-likelihood, is
+the one to trust here because it respects the parameter's boundary at
+$\beta > 0$ and the skew of its sampling distribution.
+
+\subsection{Step four: the quantity the design needs, with bounds}
+
+A bearing-life specification rarely asks for the characteristic life.
+It asks for a low percentile, the \engterm{$B_{10}$ life}, the time by
+which ten percent of the population has failed, because the design
+must protect the early failures, not the median. For the Weibull,
+$t_{p} = \eta\,(-\ln(1 - p))^{1/\beta}$, so the $B_{10}$ life is
+\[
+\hat{t}_{0.10} = \hat{\eta}\,(-\ln 0.90)^{1/\hat{\beta}}
+= 404 \cdot (0.10536)^{1/2.33}
+= 404 \cdot 0.381 = 154 \text{ hours}.
+\]
+The point estimate is not the deliverable; the lower confidence bound
+is, because a design that depends on the $B_{10}$ life must protect
+against the estimate being optimistic. The $B_{10}$ life is a
+nonlinear function of both fitted parameters, so its standard error
+follows from the delta method applied to $g(\beta, \eta) = \eta\,
+(-\ln 0.9)^{1/\beta}$, propagating the full $2\times2$ covariance
+through the gradient $\nabla g$. The delta-method calculation returns
+a standard error near $52$ hours, giving an approximate $95\,\%$
+lower confidence bound of $154 - 1.645 \cdot 52 \approx 68$ hours for
+a one-sided design limit. Because the $B_{10}$ life sits in the lower
+tail where the Weibull sampling distribution is skewed, the engineer
+cross-checks the delta-method bound against a parametric bootstrap:
+simulate many censored datasets from the fitted Weibull, refit each,
+and read the $5$th percentile of the resulting $B_{10}$ estimates,
+which lands near $88$ hours, above the delta-method bound because the
+bootstrap captures the lower-tail skew the symmetric delta interval
+overcorrects. The engineer reports the more conservative
+delta-method bound of $68$ hours as the design floor and notes that
+the bootstrap places the bound no lower, which is the cross-check
+discipline the fatigue case applied to its prediction interval.
+
+\subsection{Step five: the defensible sentence}
+
+The deliverable reads: on a Weibull model fitted to ten bearings with
+two right-censored at the $500$-hour cutoff, the fitted shape is
+$\hat{\beta} = 2.33$, consistent with wear-out, the characteristic
+life is $\hat{\eta} = 404$ hours, and the $B_{10}$ life is estimated
+at $154$ hours with a one-sided $95\,\%$ lower confidence bound near
+$68$ hours, valid for this bearing under the test rig's load and
+speed and not extrapolable to field conditions that differ in
+lubrication or contamination. The sentence names the model, the
+censoring, the shape (which carries the failure-mode claim), the
+design-relevant percentile rather than the median, the confidence
+bound rather than the point estimate, and the boundary of validity.
+The naive report, ``mean time to failure $295$ hours'' computed by
+averaging the eight failure times and ignoring the two survivors,
+commits two errors at once: it discards the censored information, and
+it reports a central tendency where the design needs a protected lower
+percentile. The gap between $295$ hours of naive mean and $68$ hours
+of defensible $B_{10}$ lower bound is the distance between a number
+and an engineering decision.
+
+\section{Designed experiments and response-surface optimisation}\pathtag{standard}
+
+The two-way analysis of variance read the effect of factors that were
+set deliberately. The full discipline of choosing those settings to
+extract the most information per run is \engterm{design of
+experiments}, and its optimisation arm, \engterm{response-surface
+methodology}, is the engineer's tool for finding the process settings
+that maximise a response \cite[ch.~11]{text:montgomery-doe-2019}. The
+method earns a worked example because it closes the loop from
+estimation to action: the regression fits a surface, and the fitted
+surface points to where to run next.
+
+\subsection{The two-level factorial and its efficiency}
+
+A \engterm{two-level full factorial} runs every combination of $k$
+factors each at a low and a high setting, $2^{k}$ runs in all. With
+two factors the four corner runs estimate the grand mean, both main
+effects, and the interaction, each from the full set of runs rather
+than from a one-factor-at-a-time sweep that would waste runs and miss
+the interaction entirely. The factorial's efficiency is the reason the
+design literature treats one-factor-at-a-time experimentation as a
+mistake: changing one factor while holding the others fixed estimates
+each effect from half the data and cannot see whether the factors
+interact. When the factor count is large, a \engterm{fractional
+factorial} runs a carefully chosen subset, $2^{k-p}$ runs, accepting
+that some high-order interactions are \engterm{aliased} (confounded)
+with lower-order effects, a trade the engineer makes deliberately by
+choosing the design's resolution.
+
+\subsection{Steepest ascent and the central composite design}
+
+A factorial fits a first-order plane, $\hat{y} = \hat{\beta}_{0} +
+\hat{\beta}_{1}x_{1} + \hat{\beta}_{2}x_{2}$, whose gradient points
+uphill. The \engterm{method of steepest ascent} moves the experiment
+in the gradient direction until the response stops improving, which is
+the signal that the linear approximation has reached the neighbourhood
+of a maximum and curvature now matters. To fit curvature the engineer
+augments the factorial with centre points and \engterm{axial points},
+producing a \engterm{central composite design} that supports a full
+second-order model,
+\[
+\hat{y} = \hat{\beta}_{0} + \sum_{j}\hat{\beta}_{j}x_{j}
++ \sum_{j}\hat{\beta}_{jj}x_{j}^{2}
++ \sum_{j<l}\hat{\beta}_{jl}x_{j}x_{l}.
+\]
+The centre points, replicated, supply a pure-error estimate and a
+test for curvature; the axial points supply the spread along each axis
+needed to estimate the quadratic terms.
+
+\paragraph{Worked example: maximising a reaction yield.} A process
+yield depends on temperature and reaction time, coded so that the
+factorial corners sit at $\pm 1$. A central composite design fits the
+second-order surface
+\[
+\hat{y} = 91.0 + 1.8\,x_{1} - 2.4\,x_{2} - 3.0\,x_{1}^{2}
+- 2.0\,x_{2}^{2} - 1.5\,x_{1}x_{2},
+\]
+where $y$ is the yield in percent and $x_{1}, x_{2}$ are coded
+temperature and time. The stationary point, where both partial
+derivatives vanish, solves the linear system
+\[
+\pdv{\hat{y}}{x_{1}} = 1.8 - 6.0\,x_{1} - 1.5\,x_{2} = 0,
+\qquad
+\pdv{\hat{y}}{x_{2}} = -2.4 - 1.5\,x_{1} - 4.0\,x_{2} = 0.
+\]
+Solving, from the first equation $x_{1} = (1.8 - 1.5\,x_{2})/6.0$;
+substituting into the second gives $-2.4 - 1.5(1.8 - 1.5\,x_{2})/6.0
+- 4.0\,x_{2} = 0$, that is $-2.4 - 0.45 + 0.375\,x_{2} - 4.0\,x_{2}
+= 0$, so $-2.85 = 3.625\,x_{2}$ and $x_{2} = -0.79$; back-substituting
+gives $x_{1} = (1.8 + 1.185)/6.0 = 0.50$. The stationary point sits at
+coded $(0.50, -0.79)$, inside the experimental region. To confirm it is
+a maximum rather than a saddle, the engineer inspects the matrix of
+second-order coefficients
+\[
+\mat{B} = \begin{pmatrix} \hat{\beta}_{11} & \tfrac{1}{2}\hat{\beta}_{12}
+\\ \tfrac{1}{2}\hat{\beta}_{12} & \hat{\beta}_{22} \end{pmatrix}
+= \begin{pmatrix} -3.0 & -0.75 \\ -0.75 & -2.0 \end{pmatrix},
+\]
+whose eigenvalues are both negative ($-3.40$ and $-1.60$), so the
+surface is concave and the stationary point is a maximum. The
+predicted yield there is $\hat{y} \approx 92.4\,\%$, against the
+$91.0\,\%$ at the design centre, and the eigenvector of the smaller
+eigenvalue marks the flat direction along which the process tolerates
+drift. Figure \ref{fig:vol02:ch14:response-surface} draws the fitted
+contours; the engineer reads the optimum's location and the contour
+spacing together, because a tight contour set means the yield is
+sensitive to a setting error the operator might make, and a flat
+optimum means it is not. The next experiment is run at the predicted
+optimum to confirm it, never reported as established from the fitted
+surface alone, since the surface is an extrapolating quadratic and the
+confirmation run is the cheap insurance against a fitted maximum that
+the process does not actually deliver.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-response-surface.tex}
+
+\begin{mastery}
+The percentile bootstrap interval that section 14.1 introduced is the
+crudest of the bootstrap intervals, and two refinements matter when
+the statistic is biased or skewed. The \engterm{bias-corrected and
+accelerated} interval, the \engterm{BCa} interval, adjusts the
+percentiles it reads off the bootstrap distribution by two quantities
+estimated from the resamples \cite{paper:ch08-efron-bca-1987}. The
+bias-correction $\hat{z}_{0}$ is the normal quantile of the fraction
+of bootstrap replicates below the original estimate, zero when the
+bootstrap distribution is centred on the estimate and nonzero when the
+statistic is biased. The acceleration $\hat{a}$ measures how fast the
+standard error changes with the parameter, estimated from the
+\engterm{jackknife} skewness of the statistic. The jackknife itself is
+the leave-one-out cousin of the bootstrap: it recomputes the statistic
+on each of the $n$ subsamples that omit one observation, and the
+spread of those $n$ values estimates the standard error, with the
+jackknife's third moment supplying the acceleration BCa needs. The BCa
+interval is transformation-invariant and second-order accurate, where
+the percentile interval is only first-order accurate, so the
+refinement is worth the extra computation precisely when the
+percentile and BCa intervals disagree, which is the diagnostic that
+the statistic's sampling distribution is skewed enough to matter. A
+deeper variant, the \engterm{bootstrap-t}, studentises each replicate
+by its own standard-error estimate and is more accurate still for a
+location statistic, at the cost of a nested bootstrap to estimate the
+per-replicate standard error. The working rule is to default to BCa
+for a confidence interval on a biased or bounded statistic, to fall
+back to the percentile interval only when the statistic is plainly
+symmetric, and to read a large gap between the two as evidence that
+the simple interval was hiding the skew.
+\end{mastery}
 
 \section{Failure: p-hacking, multiple comparisons, replication crisis revisited}\pathtag{core}
 

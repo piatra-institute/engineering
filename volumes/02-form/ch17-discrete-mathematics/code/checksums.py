@@ -49,6 +49,25 @@ def isbn10_is_valid(code: str) -> bool:
     return total % 11 == 0
 
 
+def crc_remainder(message_bits: str, generator_bits: str) -> str:
+    """Polynomial CRC remainder of a bit string over GF(2).
+
+    Appends (len(generator) - 1) zero bits to the message and divides by
+    the generator using exclusive-or in place of subtraction, the worked
+    example of section 17.7. Returns the remainder as a bit string of
+    width (len(generator) - 1).
+    """
+    g = generator_bits
+    deg = len(g) - 1
+    work = list(message_bits + "0" * deg)
+    for i in range(len(message_bits)):
+        if work[i] == "1":
+            for j in range(len(g)):
+                # XOR the generator into the working register.
+                work[i + j] = str(int(work[i + j]) ^ int(g[j]))
+    return "".join(work[-deg:])
+
+
 def crc8(data: bytes, poly: int = 0x07) -> int:
     """Compute an 8-bit CRC (polynomial division over GF(2))."""
     crc = 0
@@ -107,6 +126,14 @@ if __name__ == "__main__":
 
     # ISBN-10 of a classic discrete-math text (mod-11 catches more errors).
     print(f"0262033844 valid (ISBN-10): {isbn10_is_valid('0262033844')}")
+
+    # Worked polynomial CRC: message 1101, generator 1011 -> remainder 100.
+    rem = crc_remainder("1101", "1011")
+    print(f"CRC remainder of 1101 by 1011 = {rem}")
+    assert rem == "001", rem
+    # The transmitted frame message+remainder divides the generator cleanly.
+    assert crc_remainder("1101" + rem, "1011") == "000"
+    print("CRC frame 1101001 has zero remainder (passes the check).")
 
     # A CRC-8 over a short message and a corrupted copy.
     msg = b"engineering"

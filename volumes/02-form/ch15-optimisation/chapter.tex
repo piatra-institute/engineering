@@ -1284,6 +1284,41 @@ certificate without breaking the optimum.
 \end{mastery}
 
 \begin{mastery}
+\textbf{Second-order conditions: when KKT is not enough.} For a convex
+problem the KKT conditions are sufficient: any point satisfying them is
+globally optimal. For a nonconvex problem they are only necessary, and
+a point can satisfy every KKT condition while being a saddle or even a
+constrained maximum. The discriminator is the second-order condition,
+the constrained analogue of the Hessian test. At a KKT point
+$(\vect{x}^{*}, \boldsymbol{\lambda}^{*}, \boldsymbol{\nu}^{*})$, form
+the Hessian of the Lagrangian in the primal variable, $\nabla^{2}_{
+\vect{x}\vect{x}} \mathcal{L} = \nabla^{2} f_{0} + \sum_{i}
+\lambda_{i}^{*} \nabla^{2} f_{i} + \sum_{j} \nu_{j}^{*} \nabla^{2}
+h_{j}$, and restrict it to the \engterm{critical cone}, the directions
+$\vect{d}$ that stay tangent to the active constraints (the $\vect{d}$
+with $\grad h_{j}^{\transpose} \vect{d} = 0$ for all $j$ and $\grad
+f_{i}^{\transpose} \vect{d} = 0$ for the active inequalities with
+positive multiplier). The \engterm{second-order sufficient condition}
+for a strict local minimum is that $\vect{d}^{\transpose} \nabla^{2}_{
+\vect{x}\vect{x}} \mathcal{L} \, \vect{d} > 0$ for every nonzero
+$\vect{d}$ in the critical cone: the Lagrangian curves upward in every
+feasible direction. The restriction to the critical cone is the entire
+subtlety. The full Lagrangian Hessian can be indefinite, with negative
+curvature in directions that point out of the feasible set, and the
+point is still a local minimum because those descent directions are
+blocked by the constraints. A worked sign of this: minimising
+$-x^{2} - y^{2}$ on the circle $x^{2} + y^{2} = 1$ has a Lagrangian
+$-x^{2} - y^{2} + \nu(x^{2} + y^{2} - 1)$ whose unconstrained Hessian
+$\diag(2\nu - 2, 2\nu - 2)$ is negative definite at the optimal $\nu^{*}
+= 1$ would suggest a maximum, yet restricted to the tangent direction
+of the circle the second-order term is positive and the KKT point is a
+genuine constrained minimum. The engineering lesson: a solver that
+returns a KKT point on a nonconvex problem has returned a candidate,
+not a verified minimum, and the second-order check on the critical cone
+is what upgrades the candidate to a certified local optimum.
+\end{mastery}
+
+\begin{mastery}
 \textbf{The duality gap and certificates of suboptimality.} Weak
 duality gives more than a theorem; it gives the working engineer a
 running certificate of how close an iterate sits to the optimum.
@@ -1675,6 +1710,70 @@ small trust region). The engineer meets Levenberg-Marquardt in
 every curve-fitting library and now knows what its damping
 parameter controls.
 
+\paragraph{Worked example: a trust-region step on an indefinite
+model.}
+Take a single trust-region step at an iterate where the Hessian is
+indefinite, the case a raw Newton step cannot handle. Let the local
+model be $m(\vect{p}) = \grad^{\transpose} \vect{p} + \tfrac{1}{2}
+\vect{p}^{\transpose} H \vect{p}$ with gradient $\grad = (1, 0)^{
+\transpose}$ and Hessian $H = \diag(2, -1)$, indefinite because of the
+negative curvature in the second coordinate. The unconstrained
+minimiser would solve $H \vect{p} = -\grad$, which fixes the first
+coordinate at $-1/2$ but slides to $-\infty$ along the second, since
+$m$ has no minimum in the negative-curvature direction. The Newton
+step is meaningless here. The trust-region subproblem
+$\min_{\norm{\vect{p}} \leq \Delta} m(\vect{p})$ has a finite answer
+for any radius. Its solution satisfies $(H + \lambda I) \vect{p} =
+-\grad$ for a multiplier $\lambda \geq 0$ chosen so that $H + \lambda
+I \succeq 0$ and the step reaches the boundary $\norm{\vect{p}} =
+\Delta$. With $\Delta = 1$, the smallest $\lambda$ making $H + \lambda
+I$ positive semidefinite is $\lambda = 1$, which lifts the $-1$
+eigenvalue to zero. At $\lambda = 1$ the matrix $H + I = \diag(3, 0)$
+is singular: the first coordinate is pinned at $p_{1} = -1/3$ by the
+stationarity equation, and the second coordinate is free to run along
+the zero-curvature direction out to the boundary, $p_{2} = \pm
+\sqrt{\Delta^{2} - p_{1}^{2}} = \pm\sqrt{1 - 1/9} \approx \pm 0.943$.
+The step rides the negative-curvature direction to the trust-region
+boundary, where the model keeps decreasing. The example shows the
+mechanism \cref{fig:vol02:ch15:trust-region} draws: when curvature is
+negative, the step runs to the boundary along the descent direction the
+model offers, the graceful handling of indefinite Hessians that makes
+trust-region methods the default for nonconvex smooth problems.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-trust-region.tex}
+
+\begin{mastery}
+\textbf{Conjugate gradient: the optimal first-order method for a
+quadratic.} Between gradient descent's geometric crawl and Newton's
+expensive solve sits the \engterm{conjugate gradient} (CG) method,
+which minimises the quadratic $f(\vect{x}) = \tfrac{1}{2}
+\vect{x}^{\transpose} A \vect{x} - \vect{b}^{\transpose} \vect{x}$
+(with $A \succ 0$) using only matrix-vector products with $A$ and no
+Hessian solve. CG builds its search directions to be mutually
+\engterm{$A$-conjugate}, $\vect{p}_{i}^{\transpose} A \vect{p}_{j} = 0$
+for $i \neq j$, and this conjugacy makes each one-dimensional line
+minimisation permanent: a step along $\vect{p}_{k}$ never spoils the
+minimisation already achieved along $\vect{p}_{0}, \ldots,
+\vect{p}_{k-1}$. The consequence is exact convergence in at most $n$
+steps for an $n$-dimensional quadratic, against gradient descent's
+infinite geometric tail. The convergence rate before step $n$ is the
+load-bearing improvement: CG reaches error $\epsilon$ in $O(\sqrt{
+\kappa} \log(1/\epsilon))$ iterations, the square root of gradient
+descent's $O(\kappa \log(1/\epsilon))$, the same
+square-root-of-condition-number speedup that momentum and Nesterov
+acceleration deliver and that no first-order method can beat for a
+worst-case quadratic. CG is the workhorse inside every large sparse
+linear solver and inside the truncated-Newton methods that approximate
+a Newton step by running a few CG iterations on the Hessian system
+without ever factorising it, which is how second-order information is
+exploited at the scale where a dense Hessian solve is impossible. The
+working knowledge: when the Hessian is available only as a
+matrix-vector product (a Hessian-vector product, cheap by automatic
+differentiation), CG turns that product into a near-second-order step,
+and the $\sqrt{\kappa}$ rate is the reason it earns its keep over plain
+gradient descent.
+\end{mastery}
+
 \subsection{Nonsmooth objectives: subgradient and proximal methods}
 
 The methods above assume a differentiable objective. Many
@@ -1954,6 +2053,70 @@ exists. The dynamical reading also explains why momentum tolerates
 the gradient noise of SGD: the velocity term is a running average
 of past gradients, and averaging reduces variance, so momentum
 smooths the stochastic gradient as a side effect of its mechanics.
+\end{mastery}
+
+\begin{mastery}
+\textbf{Online learning and the regret bound.} The convergence theorems
+above assume a fixed objective. Many engineering systems instead face a
+sequence of objectives revealed one at a time: a pricing system sees a
+new demand curve each day, a control loop sees a new disturbance each
+step, an ad system sees a new query each request. The framework is
+\engterm{online convex optimisation}: at each round $t$ the engineer
+commits a decision $\vect{x}_{t}$, then an adversary reveals a convex
+loss $f_{t}$, and the loss $f_{t}(\vect{x}_{t})$ is incurred. The
+performance measure is not distance to an optimum (there is no fixed
+optimum) but \engterm{regret}, the gap between the cumulative loss
+incurred and the cumulative loss of the best single fixed decision in
+hindsight:
+\[
+\mathrm{Regret}_{T} = \sum_{t=1}^{T} f_{t}(\vect{x}_{t}) -
+\min_{\vect{x}} \sum_{t=1}^{T} f_{t}(\vect{x}).
+\]
+Online gradient descent, $\vect{x}_{t+1} = \vect{x}_{t} - \eta_{t}
+\grad f_{t}(\vect{x}_{t})$, achieves $\mathrm{Regret}_{T} =
+O(\sqrt{T})$ for convex losses with a diminishing step
+$\eta_{t} \propto 1/\sqrt{t}$, and $O(\log T)$ for strongly convex
+losses. The $\sqrt{T}$ bound means the per-round regret
+$\mathrm{Regret}_{T}/T \to 0$: the online learner's average
+performance approaches that of the best fixed decision, even against an
+adversary who chooses the losses knowing the algorithm. The connection
+to stochastic optimisation is exact: running online gradient descent on
+losses $f_{t}$ drawn i.i.d.\ from a distribution, and averaging the
+iterates, recovers the SGD guarantee of this section, so the regret
+bound is the adversarial generalisation of the SGD convergence rate.
+The engineer's working takeaway: when the objective drifts or arrives
+in a stream, the right guarantee is a regret bound, not a convergence
+rate, and online gradient descent is the first method to reach for.
+\end{mastery}
+
+\begin{mastery}
+\textbf{Derivative-free optimisation.} Every method so far has assumed
+a computable gradient. Some engineering objectives offer none: the
+output of a legacy simulator with no adjoint, a physical experiment
+where each evaluation is a wind-tunnel run, a black-box hyperparameter
+tuning where the objective is a full training run. \engterm{Derivative-
+free optimisation} (DFO) works from function values alone, and the
+engineer should know the three families and their cost. Pattern-search
+and Nelder-Mead simplex methods maintain a geometric pattern of trial
+points and move it downhill by reflecting the worst vertex; they are
+simple and tolerant of noise on low-dimensional smooth problems but scale poorly
+beyond a few dozen variables. Model-based DFO (the trust-region method
+of the NEWUOA and BOBYQA family) fits a quadratic surrogate to sampled
+function values and minimises it inside a trust region, recovering much
+of Newton's efficiency without a gradient, at the cost of $O(n^{2})$
+samples to fit the surrogate. Bayesian optimisation fits a Gaussian-
+process surrogate with calibrated uncertainty and chooses the next
+evaluation to balance exploiting the surrogate's predicted optimum
+against exploring its uncertain regions, which makes it the method of
+choice when each evaluation is expensive (minutes to days) and the
+dimension is modest. The unifying cost model: DFO spends function
+evaluations to reconstruct the gradient information that gradient-based
+methods get for free, so its iteration count scales worse with
+dimension, and the engineer reaches for it only when a gradient is
+genuinely unavailable. The first question on any black-box problem is
+whether automatic differentiation or an adjoint can supply a gradient
+after all, because a gradient-based method will almost always beat DFO
+when a gradient exists.
 \end{mastery}
 
 The engineer's working catalogue: vanilla SGD is the baseline;
@@ -2336,6 +2499,461 @@ and the area must satisfy the worst of them, stays an LP of the same
 shape with more constraint rows, and a runnable LP solve of the
 single-case problem with its shadow-price table is in
 \repopath{volumes/02-form/ch15-optimisation/code/truss_sizing_lp.py}.
+
+\section{Nonlinear least squares: Gauss-Newton and
+Levenberg-Marquardt}\pathtag{standard}
+
+The truss case was a linear program because the constraints rearranged
+to linear inequalities in the design variable. Most model calibration
+is not so kind. When the quantity being fit depends nonlinearly on the
+parameters, the least-squares objective is nonconvex in general, and
+the linear-algebra recipe of the normal equations no longer reaches the
+optimum in one solve. The structure that survives is that the objective
+is still a sum of squared residuals, and that structure buys a method
+faster than plain gradient descent and cheaper than full Newton. This
+section develops the method, and the case study that follows runs it
+end to end on a real calibration brief.
+
+\subsection{The nonlinear least-squares problem}
+
+A model $\hat{y}(t; \boldsymbol{\theta})$ predicts an observable from an
+input $t$ and a parameter vector $\boldsymbol{\theta} \in \R^{p}$.
+Given measurements $(t_{i}, y_{i})$ for $i = 1, \ldots, N$, the
+\engterm{residual} of the $i$-th datum is $r_{i}(\boldsymbol{\theta}) =
+y_{i} - \hat{y}(t_{i}; \boldsymbol{\theta})$, and the calibration
+minimises the sum of squared residuals
+\[
+\min_{\boldsymbol{\theta}} \;\; F(\boldsymbol{\theta}) =
+\tfrac{1}{2} \sum_{i=1}^{N} r_{i}(\boldsymbol{\theta})^{2}
+= \tfrac{1}{2} \norm{\vect{r}(\boldsymbol{\theta})}_{2}^{2},
+\]
+with $\vect{r} = (r_{1}, \ldots, r_{N})^{\transpose}$. When
+$\hat{y}$ is linear in $\boldsymbol{\theta}$ the residual is affine,
+$F$ is a convex quadratic, and the problem is the ordinary least
+squares of Section 15.2. When $\hat{y}$ is nonlinear in
+$\boldsymbol{\theta}$, the residual is nonlinear, $F$ is generally
+nonconvex, and the problem can have several local minima.
+
+The gradient and Hessian of $F$ follow from the chain rule. Let $J \in
+\R^{N \times p}$ be the \engterm{Jacobian} of the residual,
+$J_{ij} = \partial r_{i} / \partial \theta_{j}$. Then
+\[
+\grad F(\boldsymbol{\theta}) = J^{\transpose} \vect{r},
+\qquad
+\nabla^{2} F(\boldsymbol{\theta}) = J^{\transpose} J +
+\sum_{i=1}^{N} r_{i} \, \nabla^{2} r_{i}.
+\]
+The Hessian has two parts: the \engterm{Gauss-Newton term}
+$J^{\transpose} J$, built from first derivatives alone, and the
+\engterm{second-order term} $\sum_{i} r_{i} \nabla^{2} r_{i}$, which
+weights each residual's curvature by the residual itself. The
+observation that makes the method: near a good fit the residuals
+$r_{i}$ are small, so the second-order term is small, and
+$J^{\transpose} J$ approximates the full Hessian well. This is the
+\engterm{small-residual regime}, and it is the regime of every
+well-posed calibration where the model can actually represent the data.
+
+\subsection{The Gauss-Newton step}
+
+\begin{definition}[Gauss-Newton iteration]
+The \engterm{Gauss-Newton} step at $\boldsymbol{\theta}_{k}$ solves the
+linear least-squares subproblem obtained by linearising the residual,
+$\vect{r}(\boldsymbol{\theta}_{k} + \vect{p}) \approx \vect{r}_{k} +
+J_{k} \vect{p}$, and minimising $\tfrac{1}{2} \norm{\vect{r}_{k} +
+J_{k} \vect{p}}_{2}^{2}$ over the step $\vect{p}$:
+\[
+\vect{p}_{k} = -\,(J_{k}^{\transpose} J_{k})^{-1} J_{k}^{\transpose}
+\vect{r}_{k},
+\qquad
+\boldsymbol{\theta}_{k+1} = \boldsymbol{\theta}_{k} + \vect{p}_{k}.
+\]
+\end{definition}
+
+The Gauss-Newton step is the Newton step with the second-order Hessian
+term dropped. It costs one Jacobian evaluation and one linear
+least-squares solve of size $N \times p$ per iteration, never a second
+derivative of the model. In the small-residual regime it converges
+nearly quadratically, the same fast tail as Newton, because the dropped
+term vanishes as the residuals shrink. The step is the solution of the
+normal equations $J_{k}^{\transpose} J_{k} \vect{p}_{k} = -
+J_{k}^{\transpose} \vect{r}_{k}$, and as in linear least squares the
+numerically careful route solves the linearised subproblem through a QR
+or SVD factorisation of $J_{k}$ rather than forming $J_{k}^{\transpose}
+J_{k}$ and squaring the conditioning.
+
+Gauss-Newton has one failure mode that bites in practice: far from the
+optimum, or when the Jacobian is rank-deficient, $J_{k}^{\transpose}
+J_{k}$ is singular or nearly so, the step blows up, and the iteration
+diverges. The repair is the same Hessian modification that Section 15.5
+introduced for Newton's method.
+
+\subsection{Levenberg-Marquardt}
+
+\begin{definition}[Levenberg-Marquardt iteration]
+The \engterm{Levenberg-Marquardt} step damps the Gauss-Newton solve
+with a nonnegative multiple of the identity,
+\[
+\vect{p}_{k} = -\,(J_{k}^{\transpose} J_{k} + \mu_{k} I)^{-1}
+J_{k}^{\transpose} \vect{r}_{k},
+\qquad \mu_{k} \geq 0,
+\]
+and adapts $\mu_{k}$: the damping shrinks (toward the Gauss-Newton step)
+when a step succeeds and grows (toward a short gradient step) when a
+step fails.
+\end{definition}
+
+The damping term is exactly the trust-region modification of
+\cref{fig:vol02:ch15:trust-region}: $\mu_{k}$ is the Lagrange
+multiplier of a trust-region constraint $\norm{\vect{p}} \leq
+\Delta_{k}$ on the Gauss-Newton subproblem. Small $\mu_{k}$ gives a
+large trust region and the Gauss-Newton step; large $\mu_{k}$ gives a
+small trust region and a step of length $\approx \norm{J_{k}^{\transpose}
+\vect{r}_{k}} / \mu_{k}$ in the steepest-descent direction. The
+adaptive damping interpolates between the two regimes automatically,
+which lets Levenberg-Marquardt converge from a poor starting point where
+pure Gauss-Newton diverges, while retaining the fast tail near the
+optimum where the damping has shrunk to near zero. Levenberg-Marquardt
+is the default method inside every curve-fitting routine an engineer
+reaches for, from \repopath{scipy.optimize.curve_fit} to the fitting
+dialog of a spreadsheet, and the engineer now knows what its single
+tuning knob, the damping, controls.
+
+\subsection{Case study: calibrating a battery-discharge decay model}
+
+A battery test rig records the open-circuit voltage of a cell as it
+relaxes after a load is removed. The physics of the relaxation is a
+diffusion-and-relaxation process whose voltage recovery is well
+described by a single-exponential model with an offset,
+\[
+\hat{V}(t; A, k, C) = A \, e^{-k t} + C,
+\]
+where $t$ is time since the load was removed (in hours), $C$ is the
+settled rest voltage, $A$ is the recovery amplitude, and $k$ is the
+relaxation rate. The engineer needs all three parameters: $C$ for the
+state-of-charge lookup, $A$ and $k$ for the cell's internal-resistance
+and diffusion characterisation. The data are thirty voltage samples
+over five hours, each carrying measurement noise of about
+$50\,\si{\milli\volt}$ standard deviation from the data-acquisition
+hardware. The calibration question in plain English: find the
+$(A, k, C)$ whose decay curve best fits the recorded relaxation in the
+least-squares sense, and report whether the fit is trustworthy.
+
+\paragraph{The brief becomes a program.}
+The decision variable is $\boldsymbol{\theta} = (A, k, C)$. The
+residual of the $i$-th sample is $r_{i} = V_{i} - \hat{V}(t_{i};
+\boldsymbol{\theta})$, and the calibration is the nonlinear
+least-squares program $\min_{\boldsymbol{\theta}} \tfrac{1}{2}
+\sum_{i} r_{i}^{2}$. The model is nonlinear in $k$ (the parameter sits
+in an exponent), so the problem is genuinely nonlinear least squares,
+not the linear case of Section 15.2.
+
+\paragraph{The Jacobian.}
+The Jacobian columns are the partial derivatives of the residual with
+respect to each parameter. Writing $e_{i} = e^{-k t_{i}}$,
+\[
+\pdv{r_{i}}{A} = -e_{i}, \qquad
+\pdv{r_{i}}{k} = A \, t_{i} \, e_{i}, \qquad
+\pdv{r_{i}}{C} = -1,
+\]
+so the $i$-th row of $J$ is $(-e_{i}, \; A t_{i} e_{i}, \; -1)$. The
+Jacobian is the entire input the method needs beyond the residual
+itself; no second derivative of the model is ever formed.
+
+\paragraph{Running the iteration.}
+From a reasonable start $\boldsymbol{\theta}_{0} = (2.0, 0.3, 0.5)$,
+Gauss-Newton drives the residual norm from $\norm{\vect{r}_{0}} \approx
+1.97$ down through $1.85$, $0.43$, to the converged $0.216$ in four
+iterations, the last two iterations agreeing to six figures, the
+near-quadratic tail the small-residual theory predicts. The converged
+parameters are $\boldsymbol{\theta}^{*} \approx (2.606, \; 0.571, \;
+0.418)$, close to the true generating values $(2.6, 0.55, 0.40)$ within
+the noise. Levenberg-Marquardt, started from the deliberately poor
+point $\boldsymbol{\theta}_{0} = (1.0, 0.1, 0.0)$ where pure
+Gauss-Newton produces a rank-deficient $J^{\transpose} J$ and a
+singular solve, instead damps its way down ($4.27 \to 3.62 \to 1.79 \to
+0.66 \to 0.216$) and reaches the identical optimum in five iterations,
+which is the robustness the damping was added to provide. Plain
+gradient descent on the same objective, at the largest stable step, is
+still far from the optimum after thousands of iterations, the geometric
+crawl of \cref{fig:vol02:ch15:gauss-newton-fit}(b).
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-gauss-newton-fit.tex}
+
+\paragraph{Is the fit trustworthy?}
+The condition number of the Gauss-Newton Hessian $J^{\transpose} J$ at
+the optimum is about $73$, a well-conditioned problem: the three
+parameters are jointly identifiable from the data, and a small change
+in the measurements moves the estimate only modestly. The diagnostic
+matters because nonlinear least squares can return a fit that matches
+the data while leaving a parameter all but undetermined, which
+shows up as a near-singular $J^{\transpose} J$ and a huge condition
+number. The covariance of the estimated parameters is
+$\hat{\sigma}^{2} (J^{\transpose} J)^{-1}$, where $\hat{\sigma}^{2} =
+\norm{\vect{r}^{*}}^{2} / (N - p)$ is the residual variance, so the
+same $J^{\transpose} J$ that drove the iteration also delivers the
+error bars on the answer. The engineer reports the parameters with
+their standard errors, not the parameters alone, because a calibration
+without uncertainty is a number without a tolerance. The residual
+variance here, $\hat{\sigma}^{2} = 0.216^{2} / 27 \approx 1.7 \times
+10^{-3}\,\si{\volt\squared}$, gives a residual standard deviation of
+about $42\,\si{\milli\volt}$, consistent with the
+$50\,\si{\milli\volt}$ measurement noise the brief stated, which is the
+final check that the model has not under- or over-fit: a residual
+standard deviation far below the known noise floor would signal
+overfitting, and one far above it would signal a model too simple for
+the data. The full calibration, with all three solvers and the
+condition-number and covariance diagnostics, is in
+\repopath{volumes/02-form/ch15-optimisation/code/gauss_newton_calibration.py}.
+
+\paragraph{What the case study teaches.}
+The nonlinear-least-squares calibration is the second archetype of the
+chapter, distinct from the truss LP in three ways that recur across
+engineering. The objective is nonconvex, so the answer is a local
+optimum and the engineer must consider the start point and, for a hard
+fit, multiple starts. The structure (sum of squares) buys a
+second-order method without a second derivative, the single most
+useful structural recognition in calibration. And the same linear
+algebra that computes the step also certifies the answer through the
+condition number and the parameter covariance, so the optimum arrives
+with its uncertainty attached. The truss case study showed how to read
+an active set; this one shows how to read a Jacobian.
+
+\begin{mastery}
+\textbf{Gauss-Newton as a fixed-point map, and when it diverges.} The
+Gauss-Newton iteration is a fixed-point map $\boldsymbol{\theta}_{k+1}
+= G(\boldsymbol{\theta}_{k})$ whose convergence is governed by the
+spectral radius of the iteration's Jacobian at the optimum. A careful
+expansion shows that map's Jacobian is $(J^{\transpose} J)^{-1} S$,
+where $S = \sum_{i} r_{i}^{*} \nabla^{2} r_{i}$ is exactly the
+second-order Hessian term that Gauss-Newton dropped. The iteration
+converges when the spectral radius $\rho\big((J^{\transpose} J)^{-1}
+S\big) < 1$, and the convergence is linear with that radius as the
+rate. Two regimes follow directly. In the small-residual regime the
+residuals $r_{i}^{*}$ are small, $S$ is small, the spectral radius is
+near zero, and convergence is fast and effectively quadratic. In the
+large-residual regime, where the model cannot fit the data and the
+$r_{i}^{*}$ stay large at the optimum, $S$ is large, the spectral
+radius can exceed one, and Gauss-Newton diverges even from a good
+start. The diagnosis is precise: Gauss-Newton failing to converge on a
+problem with large residuals at the optimum is not a bug but the
+signature of a model that does not describe the data, and the engineer
+should question the model before reaching for a more forgiving solver.
+Levenberg-Marquardt's damping rescues convergence by shrinking the
+step, but a large-residual fit that needs heavy damping to converge is
+telling the engineer the same thing: the model is wrong, not just the
+solver.
+\end{mastery}
+
+\section{Conic optimisation: SOCP and SDP}\pathtag{mastery}
+
+Between the linearly constrained convex programs of Section 15.3 and
+the general convex programs of Section 15.2 sits a structured middle
+layer that modern solvers handle in polynomial time: the conic
+programs, whose constraints require a vector or a matrix to lie in a
+convex cone. Two cones cover most engineering applications, and
+recognising them in a problem statement unlocks a solver that a general
+nonlinear method would never match.
+
+\subsection{Second-order cone programs}
+
+\begin{definition}[Second-order cone program]
+A \engterm{second-order cone program} (SOCP) minimises a linear
+objective subject to constraints of the form
+\[
+\norm{A_{i} \vect{x} + \vect{b}_{i}}_{2} \leq
+\vect{c}_{i}^{\transpose} \vect{x} + d_{i}, \qquad i = 1, \ldots, m,
+\]
+each of which requires the pair $(A_{i} \vect{x} + \vect{b}_{i}, \;
+\vect{c}_{i}^{\transpose} \vect{x} + d_{i})$ to lie in the
+\engterm{second-order cone} $\mathcal{Q} = \set{(\vect{u}, t) :
+\norm{\vect{u}}_{2} \leq t}$, the ice-cream cone in $\R^{n+1}$.
+\end{definition}
+
+The constraint $\norm{\vect{u}}_{2} \leq t$ is convex (a norm bounded
+by an affine function), so an SOCP is a convex program, solvable by the
+interior-point methods of the Section 15.3 mastery box. The class is
+strictly larger than QP and strictly smaller than SDP. Engineering
+instances are abundant: robust least squares (minimise the worst-case
+residual over a bounded perturbation of $A$), the minimum-enclosing-
+ball problem, antenna and loudspeaker beamforming (bound the sidelobe
+level while steering the main lobe), and any QP, which is an SOCP with
+a single cone constraint, since $\tfrac{1}{2} \vect{x}^{\transpose} P
+\vect{x} \leq t$ rewrites as $\norm{P^{1/2} \vect{x}}_{2}^{2} \leq 2t$.
+
+\paragraph{Worked SOCP: a robust linear constraint.}
+A design must satisfy $\vect{a}^{\transpose} \vect{x} \leq b$, but the
+coefficient vector $\vect{a}$ is known only to lie in a ball
+$\set{\bar{\vect{a}} + P \vect{u} : \norm{\vect{u}}_{2} \leq 1}$ around
+a nominal $\bar{\vect{a}}$ (the columns of $P$ are the uncertainty
+directions). Requiring the constraint to hold for every $\vect{a}$ in
+the ball is the robust constraint $\max_{\norm{\vect{u}} \leq 1}
+(\bar{\vect{a}} + P \vect{u})^{\transpose} \vect{x} \leq b$. The inner
+maximum is attained by aligning $\vect{u}$ with $P^{\transpose}
+\vect{x}$, giving $\bar{\vect{a}}^{\transpose} \vect{x} +
+\norm{P^{\transpose} \vect{x}}_{2} \leq b$, a single second-order cone
+constraint. The robust version costs nothing beyond recognising the
+cone: the worst-case-over-an-ellipsoid constraint is exactly an SOCP
+constraint, and the same interior-point solver handles it. This is the
+mechanism behind robust portfolio optimisation, robust beamforming, and
+chance-constrained design under Gaussian uncertainty, all of which
+reduce a worst-case or probabilistic guarantee to a norm-bounded affine
+constraint.
+
+\subsection{Semidefinite programs}
+
+\begin{definition}[Semidefinite program]
+A \engterm{semidefinite program} (SDP) minimises a linear function of
+a symmetric matrix variable $X$ subject to linear matrix equalities and
+the constraint that $X$ be positive semidefinite:
+\[
+\min_{X = X^{\transpose}} \; \tr(C X)
+\quad \text{subject to} \quad
+\tr(A_{i} X) = b_{i}, \;\; i = 1, \ldots, m, \quad X \succeq 0.
+\]
+The constraint $X \succeq 0$ requires $X$ to lie in the
+\engterm{positive semidefinite cone}, the convex cone of symmetric
+matrices with nonnegative eigenvalues.
+\end{definition}
+
+SDP is the most expressive convex class an engineer routinely meets.
+Every SOCP is an SDP (a second-order cone constraint embeds in a
+semidefinite one), so the hierarchy is LP $\subset$ QP $\subset$ SOCP
+$\subset$ SDP, each class solvable in polynomial time by interior-point
+methods and each strictly more expressive than the last. SDP
+applications include control synthesis through linear matrix
+inequalities (Volume IX), optimal experiment design, the
+nearest-correlation-matrix problem, and, most famously, tight
+relaxations of hard combinatorial problems.
+
+\paragraph{Worked SDP: a small semidefinite relaxation.}
+Consider the problem of finding the largest $\gamma$ such that the
+matrix
+\[
+M(\gamma) = \begin{pmatrix} 2 & 1 \\ 1 & \gamma \end{pmatrix}
+\succeq 0.
+\]
+The positive-semidefinite constraint on a symmetric $2 \times 2$ matrix
+is, by the Sylvester criterion of Volume II Chapter 9, the pair of
+conditions: the leading entry $2 \geq 0$ (satisfied) and the
+determinant $2\gamma - 1 \geq 0$. The feasible set is therefore $\gamma
+\geq 1/2$, and the smallest feasible $\gamma$ is $1/2$, at which $M$ is
+singular with a zero eigenvalue. The example is a one-variable SDP, and
+it shows the geometry the cone constraint encodes: the boundary of the
+semidefinite cone is the locus where an eigenvalue hits zero, and an
+optimum on the boundary is a matrix with a nontrivial null vector,
+which in control synthesis is a marginally stable mode and in
+relaxation is a tight bound. The full power of SDP appears when the
+matrix variable is large and the eigenvalue constraint couples many
+scalar decisions, but the two-by-two case already shows that the cone
+constraint is the smooth convex surrogate for a determinant or
+eigenvalue requirement that would otherwise be a nonconvex polynomial
+condition.
+
+\begin{mastery}
+\textbf{The SDP relaxation of MAX-CUT.} The single most influential
+use of semidefinite programming is the Goemans-Williamson relaxation
+of MAX-CUT, the NP-hard problem of partitioning a graph's vertices into
+two sets to maximise the number of edges crossing the partition.
+Assign each vertex $i$ a label $x_{i} \in \set{-1, +1}$; an edge
+$(i, j)$ is cut when $x_{i} \neq x_{j}$, i.e.\ when $(1 - x_{i}
+x_{j})/2 = 1$. MAX-CUT is $\max_{x \in \set{-1,+1}^{n}} \tfrac{1}{2}
+\sum_{(i,j) \in E} (1 - x_{i} x_{j})$, a quadratic objective over the
+discrete cube, NP-hard. The relaxation replaces each scalar label
+$x_{i}$ with a unit vector $\vect{v}_{i} \in \R^{n}$ and each product
+$x_{i} x_{j}$ with the inner product $\vect{v}_{i}^{\transpose}
+\vect{v}_{j}$. Collecting the inner products into the Gram matrix
+$X_{ij} = \vect{v}_{i}^{\transpose} \vect{v}_{j}$, the constraints
+become $X \succeq 0$ (a Gram matrix is positive semidefinite) and
+$X_{ii} = 1$ (unit vectors), and the objective is linear in $X$. The
+relaxation is therefore an SDP, solvable in polynomial time, and its
+optimum upper-bounds the true MAX-CUT. Goemans and Williamson then
+round the SDP solution back to a cut by slicing the unit vectors with a
+random hyperplane, and they prove the expected cut is at least $0.878$
+times the SDP optimum, hence at least $0.878$ times the true optimum: a
+polynomial-time algorithm with a provable approximation ratio for an
+NP-hard problem, obtained by lifting a discrete quadratic to a
+continuous matrix program. The construction is the template for
+semidefinite relaxation across combinatorial optimisation, and it is
+the reason an engineer facing a hard quadratic Boolean problem checks
+whether an SDP relaxation gives a usable bound before settling for a
+heuristic.
+\end{mastery}
+
+\section{Multi-objective optimisation: the Pareto front}\pathtag{standard}
+
+The chapter has so far assumed a single scalar objective. Real
+engineering decisions trade several objectives that pull against each
+other: a structure that is both light and cheap, a controller that is
+both fast and energy-frugal, a portfolio that is both high-return and
+low-risk. When the objectives genuinely conflict, no single design is
+best on all of them at once, and the right output of the optimisation
+is a frontier of trade-offs rather than a single point.
+
+\subsection{Dominance and Pareto optimality}
+
+\begin{definition}[Pareto dominance and Pareto optimality]
+For a vector of objectives $\vect{f}(\vect{x}) = (f_{1}(\vect{x}),
+\ldots, f_{q}(\vect{x}))$ to be minimised, a design $\vect{x}$
+\engterm{dominates} a design $\vect{y}$ if $f_{k}(\vect{x}) \leq
+f_{k}(\vect{y})$ for every objective $k$ and $f_{k}(\vect{x}) <
+f_{k}(\vect{y})$ for at least one. A feasible design is
+\engterm{Pareto optimal} if no feasible design dominates it. The
+\engterm{Pareto front} is the image, in objective space, of the set of
+Pareto-optimal designs.
+\end{definition}
+
+A dominated design is one a rational engineer never chooses: some other
+feasible design is at least as good on every objective and strictly
+better on one. The Pareto-optimal designs are the ones where every
+remaining improvement in one objective forces a sacrifice in another,
+and the Pareto front (\cref{fig:vol02:ch15:pareto-front}) is the set of
+those irreducible trade-offs. The engineer's deliverable in a
+multi-objective problem is the front, because choosing a single point
+on it is a value judgment (how much mass is one dollar worth?) that the
+optimisation cannot make and the decision-maker must.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-pareto-front.tex}
+
+\subsection{Scalarisation: recovering the front}
+
+The working method for tracing a Pareto front is \engterm{weighted-sum
+scalarisation}: combine the objectives into a single weighted objective
+$\sum_{k} w_{k} f_{k}(\vect{x})$ with weights $w_{k} > 0$, solve the
+resulting single-objective problem, and sweep the weights. Each weight
+vector returns one Pareto-optimal point, and varying the weights traces
+the front.
+
+\paragraph{Worked example: a two-objective sweep.}
+Trade mass against cost for a design whose two objectives, as functions
+of a single scalar design parameter $d \in [1, 5]$ (a wall thickness,
+say), are $f_{1}(d) = d$ (cost, rising with material) and $f_{2}(d) =
+9/d$ (mass, falling as the wall thickens and the structure needs less
+reinforcing elsewhere). The scalarised objective is $w_{1} d + w_{2}
+(9/d)$, minimised at $\dv{}{d}(w_{1} d + 9 w_{2}/d) = w_{1} - 9 w_{2}/
+d^{2} = 0$, giving $d^{*}(w) = 3 \sqrt{w_{2}/w_{1}}$. Sweeping the
+weight ratio $w_{2}/w_{1}$ over its range moves $d^{*}$ across the
+feasible interval and traces the front $(f_{1}, f_{2}) = (d^{*},
+9/d^{*})$, a hyperbola $f_{1} f_{2} = 9$. At equal weights $d^{*} = 3$,
+giving $(f_{1}, f_{2}) = (3, 3)$; tilting toward cost ($w_{2}/w_{1} =
+1/9$) gives $d^{*} = 1$, the cheapest, heaviest design; tilting toward
+mass ($w_{2}/w_{1} = 9/4$) gives $d^{*} = 4.5$, the lightest, dearest
+design. Every point on the hyperbola is Pareto optimal, and the
+weighted sum recovered the whole front because the front is convex.
+
+\paragraph{The limit of weighted sums.}
+Weighted-sum scalarisation recovers only the convex part of a Pareto
+front. A front with a non-convex (re-entrant) region has points that no
+weighted sum can reach: the linear contours of $\sum_{k} w_{k} f_{k}$
+touch a non-convex front only at its convex hull, skipping the dimpled
+interior. The repair is a different scalarisation. The
+\engterm{$\epsilon$-constraint method} optimises one objective subject
+to upper bounds on the others, $\min f_{1}$ subject to $f_{k} \leq
+\epsilon_{k}$, and sweeping the bounds $\epsilon_{k}$ recovers the
+whole front, convex or not, at the cost of solving a constrained
+problem at each sweep point. The engineer who reports a Pareto front
+from a weighted-sum sweep alone, on a problem whose front might be
+non-convex, has under-reported the achievable designs, and the
+$\epsilon$-constraint sweep is the honest alternative.
 
 \section{Failure: local minima, ill-posed objectives, optimisation
 theatre}\pathtag{core}

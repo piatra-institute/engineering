@@ -1,0 +1,85 @@
+% Figure: identifying a second-order transfer characteristic from a
+% measured magnitude-response curve. Log-frequency horizontal axis,
+% gain in dB vertical; a resonant peak whose height fixes the damping
+% ratio and whose location fixes the natural frequency, with the two
+% asymptotes (0 dB passband and -40 dB/decade roll-off) drawn as the
+% straight lines whose intersection reads off omega_n.
+\begin{figure}[htbp]
+\centering
+\resizebox{0.92\linewidth}{!}{%
+\begin{tikzpicture}[scale=1.0,
+  ax/.style={->, draw=engblack, thick},
+  tick/.style={draw=engblack!60, thin},
+  curve/.style={draw=engblue, very thick},
+  asy/.style={draw=engblack!55, thick, dashed},
+  marker/.style={draw=engred, thick, dash pattern=on 3pt off 2pt},
+  pt/.style={circle, fill=engred, inner sep=1.0pt},
+  ann/.style={font=\footnotesize, align=center},
+]
+  % Horizontal axis is log10(f/f_n); plotted from -1.5 to +1.5 decades.
+  % 1 decade = 2.2 cm. Vertical axis is gain in dB; 6 dB = 0.9 cm.
+  % Origin at the lower left; 0 dB sits at y = 3.2.
+  \def\xL{-1.6}\def\xR{1.7}
+  \draw[ax] ({2.2*\xL}, 0) -- ({2.2*\xR}, 0)
+    node[below right, ann] {$\log_{10}(f/f_{n})$};
+  \draw[ax] ({2.2*\xL}, -0.4) -- ({2.2*\xL}, 5.6)
+    node[above, ann] {gain (\si{\deci\bel})};
+  % Horizontal decade ticks
+  \foreach \d in {-1, 0, 1} {
+    \draw[tick] ({2.2*\d}, -0.08) -- ({2.2*\d}, 0.08);
+    \node[ann, below, yshift=-2pt] at ({2.2*\d}, 0) {$10^{\d}$};
+  }
+  % Vertical dB ticks: 0 dB at y=3.2, scale 0.15 cm per dB.
+  \foreach \g in {12, 6, 0, -12, -24} {
+    \pgfmathsetmacro{\yy}{3.2 + 0.15*\g}
+    \draw[tick] ({2.2*\xL - 0.08}, {\yy}) -- ({2.2*\xL + 0.08}, {\yy});
+    \node[ann, left, xshift=-2pt] at ({2.2*\xL}, {\yy}) {\g};
+  }
+  % Low-frequency asymptote: 0 dB flat.
+  \draw[asy] ({2.2*\xL}, 3.2) -- ({2.2*0}, 3.2);
+  % High-frequency asymptote: -40 dB/decade through (f_n, 0 dB).
+  % slope = -40 dB/decade => -6 dB per 0.15-decade. y = 3.2 - 0.15*40*x.
+  \draw[asy] ({2.2*0}, 3.2) -- ({2.2*\xR}, {3.2 - 0.15*40*\xR});
+  \node[ann, anchor=west, fill=white, inner sep=1pt]
+    at ({2.2*0.55}, {3.2 - 0.15*40*0.85 + 0.5}) {$-40\,$dB/decade};
+  % Corner-frequency marker (asymptote intersection = omega_n).
+  \draw[marker] ({2.2*0}, -0.3) -- ({2.2*0}, 4.9);
+  \node[ann, anchor=south, text=engred, fill=white, inner sep=1pt]
+    at ({2.2*0}, 4.9) {$f_{n}$ (asymptote crossing)};
+  % Measured magnitude curve for zeta = 0.18 (resonant peak ~ +9 dB).
+  % |H| in dB = -10 log10[(1-r^2)^2 + (2 zeta r)^2], r = f/f_n = 10^x.
+  % r2 = r^2 written via 10^(2x) to keep intermediates inside pgfmath range.
+  % pgfmath clamps magnitudes above ~16384, so the exact curve is drawn
+  % only where r = 10^x stays small enough; the dashed asymptote carries
+  % the high-frequency tail beyond the last drawn point.
+  \draw[curve, domain=\xL:0.62, samples=100]
+    plot (\x, {3.2 + 0.15*(-10*log10( (1 - 10^(2*\x))*(1 - 10^(2*\x))
+      + (2*0.18*10^\x)*(2*0.18*10^\x) ))});
+  % Resonant-peak callout: peak height M_p ~ 1/(2 zeta) for small zeta.
+  \draw[engblack!45, thin, dotted] ({2.2*\xL}, {3.2 + 0.15*9.0})
+    -- ({2.2*(-0.04)}, {3.2 + 0.15*9.0});
+  \node[ann, anchor=west, text=engblue, fill=white, inner sep=1pt]
+    at ({2.2*0.08}, {3.2 + 0.15*9.0 + 0.05})
+    {peak $M_{p}\!\approx\!\dfrac{1}{2\zeta}$};
+  % A few measured data points scattered on the curve.
+  \foreach \x in {-1.2, -0.7, -0.3, -0.08, 0.1, 0.35, 0.5} {
+    \pgfmathsetmacro{\yy}{3.2 + 0.15*(-10*log10( (1 - 10^(2*\x))*(1 - 10^(2*\x))
+      + (2*0.18*10^\x)*(2*0.18*10^\x) ))}
+    \node[pt] at ({2.2*\x}, {\yy}) {};
+  }
+\end{tikzpicture}%
+}%
+\caption[Reading a second-order transfer characteristic from its
+magnitude response]{A measured magnitude response (points, with the
+fitted curve in blue) for a lightly damped second-order system,
+plotted in decibels against log frequency. Two readings fix the model.
+The intersection of the low-frequency asymptote ($0\,\si{\deci\bel}$)
+and the high-frequency asymptote ($-40\,\si{\deci\bel}$ per decade,
+the signature of a two-pole roll-off) locates the natural frequency
+$f_{n}$. The height of the resonant peak above the passband fixes the
+damping ratio through $M_{p}\approx 1/(2\zeta)$ for small $\zeta$. Two
+features of the curve, two parameters of the model, and the transfer
+function $H(s)=\omega_{n}^{2}/(s^{2}+2\zeta\omega_{n}s+\omega_{n}^{2})$
+is identified without a single nonlinear fit.}
+\label{fig:vol02:ch02:second-order-bode}
+\end{figure}

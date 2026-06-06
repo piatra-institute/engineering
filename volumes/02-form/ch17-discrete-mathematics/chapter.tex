@@ -566,6 +566,86 @@ not to build the object; the existence proof and the algorithm that
 finds the object are then separate, and often unequal, tasks.
 \end{mastery}
 
+\subsection{Counting under symmetry: Burnside and Polya}
+
+A counting problem changes character when some of the arrangements
+it would naively distinguish are the same object seen from a
+different angle. A necklace of coloured beads read clockwise from a
+different starting bead is the same necklace; a square circuit-board
+tile rotated by a quarter turn is the same tile in a different
+mounting; a chemical structure reflected is, for many purposes, the
+same molecule. The naive product-rule count overcounts by the number
+of symmetries that map an arrangement to itself, and the correction
+is \engterm{Burnside's lemma}.
+
+\begin{principle}[Burnside's lemma]
+Let a finite group $G$ of symmetries act on a finite set $X$ of
+arrangements. The number of distinct arrangements up to the symmetry
+(the number of \engterm{orbits}) is the average number of
+arrangements each symmetry leaves fixed:
+\[
+\abs{X / G} = \frac{1}{\abs{G}} \sum_{g \in G} \abs{\mathrm{Fix}(g)},
+\]
+where $\mathrm{Fix}(g) = \set{x \in X : g \cdot x = x}$ is the set of
+arrangements fixed by the symmetry $g$.
+\end{principle}
+
+A worked instance counts the distinct ways to colour the four cells
+of a $2 \times 2$ tile with two colours, where two colourings are the
+same if one is a rotation of the other. Without symmetry there are
+$2^{4} = 16$ colourings. The rotation group of the square has four
+elements: the identity, the quarter-turn, the half-turn, and the
+three-quarter turn. Count the colourings each fixes. The identity
+fixes all $16$. The quarter-turn cycles all four cells in one
+$4$-cycle, so a fixed colouring must paint every cell the same
+colour, $2$ choices, $2$ fixed colourings; the three-quarter turn,
+also a single $4$-cycle, likewise fixes $2$. The half-turn pairs the
+two diagonally opposite cells into two $2$-cycles, so a fixed
+colouring must match each pair, $2^{2} = 4$ fixed colourings.
+Burnside's lemma gives
+\[
+\frac{1}{4}\,(16 + 2 + 4 + 2) = \frac{24}{4} = 6
+\]
+distinct tiles, against the naive $16$. The structural reading: each
+$g$ contributes $2^{c(g)}$ fixed colourings, where $c(g)$ is the
+number of cycles in $g$'s permutation of the cells, and the average
+of $2^{c(g)}$ over the group is the orbit count. This cycle-counting
+shortcut is \engterm{Polya's enumeration theorem}, the systematic
+form of Burnside that an engineer reaches for when the colour count
+or the symmetry group grows.
+
+\begin{mastery}
+Polya's theorem refines Burnside by tracking not just how many
+distinct arrangements exist but how many use each multiset of
+colours, through the \engterm{cycle index} of the symmetry group. For
+a group $G$ acting on $n$ objects, the cycle index is the polynomial
+\[
+Z_{G}(a_{1}, \ldots, a_{n}) = \frac{1}{\abs{G}}
+\sum_{g \in G} a_{1}^{j_{1}(g)} a_{2}^{j_{2}(g)} \cdots
+a_{n}^{j_{n}(g)},
+\]
+where $j_{k}(g)$ is the number of $k$-cycles in $g$. Substituting
+$a_{k} \mapsto (x_{1}^{k} + x_{2}^{k} + \cdots + x_{m}^{k})$ for $m$
+colours and reading off a coefficient gives the count of distinct
+arrangements with a prescribed colour multiset. For the necklace of
+$n$ beads under rotation (the cyclic group $C_{n}$), the cycle index
+evaluates by a number-theoretic identity to
+\[
+\frac{1}{n} \sum_{d \mid n} \varphi(n / d)\, m^{d},
+\]
+the count of distinct $m$-colour necklaces of $n$ beads, where
+$\varphi$ is the Euler totient of section 17.7. The same machinery
+counts distinct chemical isomers (Polya's original 1937 application,
+\cite{gen:polya1945}), distinct switching functions up to input
+permutation in logic design, and distinct graph structures up to
+relabelling, the last being why the count of unlabelled graphs on
+$n$ vertices grows far slower than the $2^{\binom{n}{2}}$ labelled
+graphs. The engineer's recognition-level cue: when a count would
+overcount by a symmetry the application treats as irrelevant, divide
+by the symmetry with Burnside, and reach for the cycle index when the
+colour breakdown matters.
+\end{mastery}
+
 \subsection{Estimation before calculation}
 
 \begin{estimation}
@@ -1180,6 +1260,99 @@ large sparse graph, the $n$ Dijkstra runs at $O(n(n+m)\log n)$ win.
 The choice is the all-pairs analogue of the adjacency-matrix versus
 adjacency-list decision: dense favours the matrix method, sparse
 favours the list method.
+
+A worked trace makes the loop invariant concrete and shows the
+three-line algorithm discovering a route no single edge provides.
+Take the four-vertex directed graph with weighted edges $(1, 2){:}3$,
+$(1, 4){:}7$, $(2, 3){:}1$, $(3, 1){:}2$, $(3, 4){:}1$, $(4, 2){:}2$,
+the instance of figure \ref{fig:vol02:ch17:floyd-warshall}. The
+initial matrix $D^{(0)}$ holds the edge weights, with $0$ on the
+diagonal and $\infty$ where no direct edge exists:
+\[
+D^{(0)} = \begin{pmatrix}
+0 & 3 & \infty & 7 \\
+\infty & 0 & 1 & \infty \\
+2 & \infty & 0 & 1 \\
+\infty & 2 & \infty & 0
+\end{pmatrix}.
+\]
+Round $k = 1$ allows vertex $1$ as an intermediate. The only pair it
+improves is $(3, 2)$: the path $3 \to 1 \to 2$ costs $2 + 3 = 5$,
+replacing $\infty$. Round $k = 2$ allows vertex $2$, improving
+$(1, 3)$ to $D_{12} + D_{23} = 3 + 1 = 4$, $(4, 3)$ to $D_{42} +
+D_{23} = 2 + 1 = 3$, and (using the entry $D_{31} = 2$ just chained)
+$(3, 3)$ stays $0$. Round $k = 3$ allows vertex $3$, the round that
+pays off: $(1, 4)$ improves from the direct $7$ to $D_{13} + D_{34}
+= 4 + 1 = 5$, a two-hop saving the direct edge never offered, and
+$(1, 1)$ is checked against the cycle $1 \to 2 \to 3 \to 1$ of cost
+$3 + 1 + 2 = 6$, which does not beat $0$, confirming no negative
+cycle. Round $k = 4$ allows vertex $4$ and improves $(3, 2)$ from
+$5$ to $D_{34} + D_{42} = 1 + 2 = 3$. The final matrix
+\[
+D^{(4)} = \begin{pmatrix}
+0 & 3 & 4 & 5 \\
+3 & 0 & 1 & 2 \\
+2 & 3 & 0 & 1 \\
+5 & 2 & 3 & 0
+\end{pmatrix}
+\]
+holds every shortest distance, and the entry $D_{14} = 5$ records
+the route $1 \to 2 \to 3 \to 4$ that beats the direct edge of weight
+$7$. The diagonal stays at $0$ throughout, the running certificate
+that the graph carries no negative cycle: a negative entry $D_{ii}$
+would have appeared the moment a profitable round trip existed.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-floyd-warshall.tex}
+
+\subsection{Heuristic search: A* and admissibility}\pathtag{mastery}
+
+Dijkstra's algorithm explores vertices in order of distance from the
+source, expanding a frontier that grows in every direction at once.
+When the engineer wants the distance to one specific target $t$
+rather than to all vertices, the undirected expansion wastes work on
+vertices far from $t$. The \engterm{A* algorithm} cuts the waste by
+adding a \engterm{heuristic} $h(v)$, an estimate of the remaining
+distance from $v$ to $t$, and expanding the vertex that minimises
+$f(v) = g(v) + h(v)$, where $g(v)$ is the best-known distance from
+the source. Setting $h \equiv 0$ recovers Dijkstra exactly; a good
+heuristic steers the search toward $t$ and expands far fewer
+vertices.
+
+\begin{principle}[Admissibility and consistency]
+A heuristic $h$ is \engterm{admissible} if it never overestimates the
+true remaining distance: $h(v) \leq d(v, t)$ for every $v$. A* with
+an admissible heuristic returns the true shortest path. A heuristic
+is \engterm{consistent} (or monotone) if $h(u) \leq w(u, v) + h(v)$
+for every edge $(u, v)$, the triangle inequality on the heuristic;
+a consistent heuristic is admissible, and under consistency A* never
+re-expands a finalised vertex, so its running time matches
+Dijkstra's with a smaller explored set.
+\end{principle}
+
+A worked comparison fixes the gain. On a grid map where each cell
+connects to its four neighbours at unit cost, the straight-line
+(Euclidean) distance to the target is admissible: no path can be
+shorter than the straight line. Take a source at grid coordinate
+$(0, 0)$ and a target at $(10, 0)$ on an open grid with no
+obstacles. Dijkstra expands every cell within distance $10$ of the
+source, a disc of roughly $\pi \cdot 10^{2} \approx 314$ cells
+(in the grid's Manhattan metric, the diamond of $2 \cdot 10^{2} =
+200$ cells). A* with the admissible heuristic $h(v) = $ Euclidean
+distance to $(10, 0)$ assigns the cells along the straight corridor
+the smallest $f$-value and expands a narrow band hugging the
+$x$-axis, on the order of $20$ to $30$ cells before reaching the
+target. The path both algorithms return has the same length $10$;
+A* finds it after an order of magnitude fewer expansions. The catch
+is the heuristic's quality: a heuristic that returns $0$ everywhere
+degrades A* to Dijkstra, and a heuristic that \emph{over}estimates
+(the inadmissible case, for instance scaling the Euclidean distance
+by $1.5$ to push the search harder) can return a path that is not
+shortest. Hart, Nilsson, and Raphael proved admissibility both
+necessary and sufficient for optimality in their 1968 paper, the
+result behind every route-planning engine from game pathfinding to
+satellite-navigation shortest-route queries. The engineer's working rule: A* is Dijkstra
+plus a lower bound on the distance-to-go, and the algorithm is exact
+exactly when that lower bound never lies high.
 
 \subsection{Minimum spanning tree: Prim and Kruskal}
 
@@ -2263,6 +2436,31 @@ $g^{b} \bmod p$. The shared secret is $g^{ab} \bmod p$. The
 security rests on the hardness of the discrete logarithm problem
 in the multiplicative group.
 
+A toy exchange exposes the mechanism and the reason it is secure. Let
+the public parameters be the prime $p = 23$ and the generator $g = 5$
+(which generates all of $(\Z/23\Z)^{\ast}$: the powers of $5$ run
+through every non-zero residue before repeating). Alice picks the
+private exponent $a = 6$ and sends $A = 5^{6} \bmod 23$. Fast
+exponentiation by squaring computes it: $5^{2} = 25 \equiv 2$,
+$5^{4} \equiv 2^{2} = 4$, and $5^{6} = 5^{4} \cdot 5^{2} \equiv 4
+\cdot 2 = 8 \pmod{23}$, so $A = 8$. Bob picks $b = 15$ and sends
+$B = 5^{15} \bmod 23$; the same squaring chain gives $B = 19$. Each
+party now raises the value received to its own private exponent.
+Alice computes $B^{a} = 19^{6} \bmod 23$, Bob computes $A^{b} = 8^{15}
+\bmod 23$, and both arrive at the same shared secret because
+$19^{6} \equiv (5^{15})^{6} = 5^{90}$ and $8^{15} \equiv (5^{6})^{15}
+= 5^{90} \pmod{23}$. Evaluating, $5^{90} \bmod 23 = 2$, so the shared
+secret is $2$, known to both and to neither eavesdropper. An attacker
+who sees $p = 23$, $g = 5$, $A = 8$, $B = 19$ on the wire must solve
+$5^{x} \equiv 8 \pmod{23}$ for $x$, the \engterm{discrete logarithm}
+problem; for the toy modulus a brute-force search over $22$ exponents
+recovers $a = 6$ at once, but for a cryptographic prime of thousands
+of bits no known classical algorithm runs in feasible time, which is
+the asymmetry the protocol monetises. The reference code in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/number_theory.py}
+runs this exchange and asserts that the two independently-computed
+secrets agree.
+
 \textbf{Hash functions}. A cryptographic hash function maps
 arbitrary-length strings to fixed-length digests, with the working
 properties of preimage resistance, second-preimage resistance, and
@@ -2330,6 +2528,39 @@ catching a single-character corruption. The recognition-level
 lesson: a checksum that ``mostly works'' is one whose error class
 was never characterised, and the modulus is where the
 characterisation lives.
+
+A worked CRC division shows the polynomial arithmetic that the bit
+shuffling implements. Treat the message bits as the coefficients of a
+polynomial over $\mathrm{GF}(2)$, high bit first, and pick a degree-$3$
+generator $g(x) = x^{3} + x + 1$, the bit pattern $1011$. To protect
+the $4$-bit message $1101$ ($M(x) = x^{3} + x^{2} + 1$), append three
+zero bits (multiply by $x^{3}$) to make room for the remainder, giving
+the dividend $1101000$, then divide by $1011$ using exclusive-or in
+place of subtraction. Align $1011$ under the leading $1$ of
+$1101000$ and XOR: $1101 \oplus 1011 = 0110$, leaving $0110000$. The
+leading $1$ is now at the second position; align $1011$ there and XOR
+to leave $0011100$. The leading $1$ is at the third position; align
+and XOR to leave $0001010$. The leading $1$ is at the fourth position;
+align and XOR to leave $0000001$. No leading $1$ remains above the
+remainder field, so the division halts and the last three bits are the
+remainder, $001$. The transmitted frame is the message with the
+remainder appended, $1101\,001$, which as a polynomial is divisible by
+$g(x)$ with no remainder. The receiver
+divides the received frame by $g(x)$: a zero remainder passes, and any
+non-zero remainder flags corruption. The error-detection guarantee
+reads straight off the polynomial algebra. An error pattern is itself
+a polynomial $E(x)$ added to the frame; the receiver's remainder is
+$E(x) \bmod g(x)$, so an error escapes detection exactly when $g(x)$
+divides $E(x)$. A single-bit error is $E(x) = x^{i}$, which $g(x)$
+never divides because $g(x)$ has more than one term; any burst error
+shorter than the generator's degree $3$ is a polynomial of degree
+below $3$, which $g(x)$ of degree $3$ cannot divide; and choosing a
+$g(x)$ with the factor $(x + 1)$ forces detection of every
+odd-weight error, since $(x + 1)$ divides $E(x)$ only when $E$ has an
+even number of terms. CRC-32, the generator that guards Ethernet
+frames and stored files, is the same construction at degree $32$,
+chosen so its factorisation catches the documented error classes of
+the medium it protects.
 
 \subsection{Case study: the Hamming(7,4) error-correcting code}\pathtag{standard}
 
@@ -2461,6 +2692,189 @@ distance budget is what changes. The reference implementation in
 encodes, corrupts, and decodes a Hamming$(7, 4)$ word and asserts
 both the single-error recovery and the double-error mis-correction.
 
+\subsection{Case study: Reed-Solomon over \texorpdfstring{$\mathrm{GF}(2^{4})$}{GF(16)}}\pathtag{mastery}
+
+The Hamming code lives over the two-element field and corrects one
+bit. The codes that guard a compact disc against a scratch, a QR
+symbol against a torn corner, a deep-space telemetry stream against
+fading, and a RAID array against a failed drive all correct
+\emph{many} adjacent symbols at once, and they do it by leaving the
+field $\mathrm{GF}(2)$ for a larger finite field $\mathrm{GF}(2^{k})$.
+The Reed-Solomon construction is the second worked case of this
+chapter, chosen because it ties together finite-field arithmetic, the
+Vandermonde structure of polynomial evaluation, the Singleton bound
+on what a code can achieve, and the same failure theme as the Hamming
+case: the guarantee holds inside a counted error budget and fails
+silently past it. We build a small Reed-Solomon code from the field
+up and carry one message through encoding, corruption, and
+correction.
+
+\paragraph{The field \texorpdfstring{$\mathrm{GF}(2^{4})$}{GF(16)}:
+arithmetic on four-bit symbols.}
+A symbol is four bits, and there are $2^{4} = 16$ of them. To add and
+multiply symbols the way a code needs (every non-zero symbol must have
+a multiplicative inverse, so the symbols form a field), the four bits
+are read as the coefficients of a polynomial of degree below $4$ over
+$\mathrm{GF}(2)$, and arithmetic is polynomial arithmetic modulo a
+fixed degree-$4$ \engterm{irreducible polynomial}. The standard
+choice is $p(x) = x^{4} + x + 1$, irreducible over $\mathrm{GF}(2)$
+because it has no root in $\set{0, 1}$ and no quadratic factor.
+Addition of two symbols is bitwise exclusive-or, the same $\oplus$ as
+before: $1011 \oplus 0110 = 1101$, no carries. Multiplication
+multiplies the polynomials and reduces modulo $p(x)$. The element
+$\alpha = x$ (bit pattern $0010$) is a \engterm{primitive element}:
+its successive powers run through all $15$ non-zero symbols before
+returning to $1$, so every non-zero symbol is $\alpha^{j}$ for a
+unique exponent $j \in \set{0, \ldots, 14}$. The powers are generated
+by repeatedly multiplying by $\alpha = x$ and reducing whenever the
+degree reaches $4$, using the defining relation $x^{4} = x + 1$ (which
+is $p(x) = 0$ rearranged, since over $\mathrm{GF}(2)$ subtraction is
+addition):
+\[
+\begin{aligned}
+\alpha^{0} &= 0001, & \alpha^{1} &= 0010, & \alpha^{2} &= 0100, &
+\alpha^{3} &= 1000, \\
+\alpha^{4} &= 0011, & \alpha^{5} &= 0110, & \alpha^{6} &= 1100, &
+\alpha^{7} &= 1011, \\
+\alpha^{8} &= 0101, & \alpha^{9} &= 1010, & \alpha^{10} &= 0111, &
+\alpha^{11} &= 1110, \\
+\alpha^{12} &= 1111, & \alpha^{13} &= 1101, & \alpha^{14} &= 1001, &
+\alpha^{15} &= 0001.
+\end{aligned}
+\]
+The step from $\alpha^{3} = 1000$ ($= x^{3}$) to $\alpha^{4}$
+multiplies by $x$ to get $x^{4}$, which exceeds degree $3$ and reduces
+by $x^{4} = x + 1$ to the pattern $0011$. This \engterm{log table} is
+the working device: a multiplication of two non-zero symbols is an
+addition of their exponents modulo $15$, exactly the slide-rule trick
+that turns multiplication into addition. To multiply $\alpha^{7}
+\cdot \alpha^{11}$, add exponents: $7 + 11 = 18 \equiv 3 \pmod{15}$,
+so the product is $\alpha^{3} = 1000$. A hardware or software
+implementation stores the exponent table and its inverse and does
+field multiplication in two table lookups and an add.
+
+\paragraph{Encoding: a codeword is a polynomial sampled at field
+points.}
+A Reed-Solomon code $\mathrm{RS}(n, k)$ over $\mathrm{GF}(2^{4})$ takes
+$k$ data symbols, treats them as the coefficients of a polynomial
+$m(x)$ of degree below $k$, and transmits the $n$ \emph{evaluations}
+$m(\alpha^{0}), m(\alpha^{1}), \ldots, m(\alpha^{n-1})$ at $n$
+distinct field points. With $n = 7$ and $k = 3$ we send seven symbols
+to carry three. Take the data symbols $(m_{0}, m_{1}, m_{2}) =
+(\alpha^{1}, \alpha^{0}, \alpha^{4}) = (0010, 0001, 0011)$, so
+$m(x) = \alpha^{4} x^{2} + \alpha^{0} x + \alpha^{1}$. The codeword is
+the vector of evaluations $c_{i} = m(\alpha^{i})$ for $i = 0, \ldots,
+6$, each computed in field arithmetic. The evaluation at the point
+$\alpha^{0} = 1$ is $c_{0} = \alpha^{4} + \alpha^{0} + \alpha^{1} =
+0011 \oplus 0001 \oplus 0010 = 0000 = 0$. The evaluation at
+$\alpha^{1}$ is $c_{1} = \alpha^{4}\alpha^{2} + \alpha^{0}\alpha^{1}
++ \alpha^{1} = \alpha^{6} + \alpha^{1} + \alpha^{1} = \alpha^{6} =
+1100$ (the two $\alpha^{1}$ terms cancel under $\oplus$). The full
+codeword fills out the same way; the reference implementation in
+\repopath{volumes/02-form/ch17-discrete-mathematics/code/reed_solomon.py}
+builds the field table, tabulates all seven codeword symbols, and runs
+the erasure recovery below. The structure worth seeing is that encoding is a
+matrix-vector product with a \engterm{Vandermonde matrix} whose rows
+are powers of the evaluation points, and a Vandermonde matrix with
+distinct points is invertible, which is why \emph{any} $k$ of the $n$
+codeword symbols suffice to recover the degree-$(k-1)$ polynomial:
+$k$ points determine a degree-$(k-1)$ polynomial uniquely, the
+discrete analogue of two points determining a line.
+
+\paragraph{Correction: any \texorpdfstring{$k$}{k} clean symbols
+rebuild the message.}
+The recovery property is the engineering payoff. The code transmits
+$n = 7$ symbols, and the message is a polynomial of degree at most
+$2$, fixed by any $3$ of its values. Suppose a scratch destroys
+symbols $c_{2}$ and $c_{4}$ entirely (an \engterm{erasure}: the
+receiver knows \emph{which} symbols are gone, the common case for a
+storage medium that flags an unreadable sector). The receiver keeps
+the five surviving symbols $c_{0}, c_{1}, c_{3}, c_{5}, c_{6}$, picks
+any three, say the values at $\alpha^{0}, \alpha^{1}, \alpha^{3}$, and
+solves the $3 \times 3$ Vandermonde system for the three unknown
+coefficients by Lagrange interpolation over $\mathrm{GF}(2^{4})$. The
+interpolation returns $m(x) = \alpha^{4} x^{2} + x + \alpha^{1}$, the
+original polynomial, and the message survives the loss of two of seven
+symbols. Reed-Solomon corrects up to $n - k$ erasures (here $7 - 3 =
+4$) and up to $\lfloor (n - k)/2 \rfloor = 2$ \engterm{errors} when
+the corrupted positions are unknown and must be located, the harder
+case that the Berlekamp-Massey and Euclidean decoders solve by first
+finding the error locations and then their values. The split between
+erasures and errors is the same budget seen twice: an erasure costs
+one symbol of the distance budget, an unlocated error costs two,
+because locating it consumes half the redundancy.
+
+\paragraph{Why the budget is exactly \texorpdfstring{$n - k$}{n-k}:
+the Singleton bound.}
+The minimum distance of $\mathrm{RS}(n, k)$ is $d = n - k + 1$. Two
+distinct messages give two distinct degree-$(k-1)$ polynomials, which
+can agree at most $k - 1$ points (a degree-$(k-1)$ polynomial has at
+most $k - 1$ roots, so their difference does too), hence the two
+codewords differ in at least $n - (k - 1) = n - k + 1$ positions.
+This meets the \engterm{Singleton bound} $d \leq n - k + 1$ with
+equality, the best minimum distance any code of these parameters can
+have, and a code meeting it is called \engterm{maximum distance
+separable} (MDS). The MDS property is why Reed-Solomon is the storage
+engineer's default: it wastes not one symbol of redundancy beyond the
+information-theoretic minimum for its erasure-correction power. For
+the worked $\mathrm{RS}(7, 3)$ the distance is $d = 5$, correcting
+$\lfloor 4/2 \rfloor = 2$ errors or $4$ erasures, the budget the
+previous paragraph spent.
+
+\paragraph{Failure: past the budget, a confident wrong codeword.}
+The guarantee is a statement about a counted error budget, and
+pushing past it reproduces the Hamming case's silent failure at a
+larger scale. If three symbols of the worked code are corrupted with
+unknown locations (one past the two-error budget), the decoder's
+error-locator polynomial either fails to factor over the field, in
+which case the decoder declares a detected-but-uncorrectable failure
+(the safe outcome), or it factors spuriously and the decoder
+``corrects'' to a wrong codeword that matches neither the sent message
+nor the received word (the dangerous outcome). Real systems answer
+this exactly as the Hamming discussion promised: an outer detection
+layer (a CRC over the decoded block) catches the mis-corrections the
+inner Reed-Solomon layer produces, and \engterm{interleaving} spreads
+a physical burst across many codewords so that no single codeword sees
+more than its budget. The compact-disc system, for instance, uses two
+interleaved Reed-Solomon codes (the CIRC scheme) precisely so that a
+scratch long enough to obliterate thousands of consecutive channel
+bits lands as a few correctable symbols in each of many codewords. The
+engineering lesson repeats: a code's promise is indexed to an error
+class, the field arithmetic is the machinery that makes the promise
+checkable, and the engineer who deploys a $t$-error code on a channel
+that delivers more than $t$ errors per codeword has stepped outside
+the class the distance budget can police.
+
+\begin{mastery}
+The achievable trade between a code's rate $R = k/n$ and its
+error-correcting fraction is bounded above and below by clean
+combinatorial inequalities, and an engineer choosing a code reads the
+parameters against them. The \engterm{Singleton bound} $d \leq n - k
++ 1$ caps the distance and is met by the MDS Reed-Solomon family. The
+\engterm{Hamming (sphere-packing) bound} caps the number of codewords
+of a $t$-error-correcting binary code: the $2^{k}$ codewords' disjoint
+radius-$t$ balls must fit in the $2^{n}$-point space, so $2^{k}
+\sum_{i=0}^{t} \binom{n}{i} \leq 2^{n}$, with equality only for
+perfect codes such as Hamming$(7, 4)$ ($t = 1$) and the Golay codes.
+The \engterm{Gilbert-Varshamov bound} runs the other way, guaranteeing
+that a code of distance $d$ \emph{exists} as long as the balls of
+radius $d - 1$ do not yet tile the space, $2^{k} \sum_{i=0}^{d-2}
+\binom{n-1}{i} < 2^{n}$, a counting existence proof in the spirit of
+the probabilistic method of section 17.1. The asymptotic forms of
+these bounds, written in terms of the binary entropy function, sit on
+either side of the unknown true rate-distance frontier, and Shannon's
+channel-coding theorem \cite{paper:shannon1948} guarantees that codes
+exist achieving the channel capacity, a promise that took the field
+half a century to redeem with the low-density parity-check and turbo
+codes of modern wireless. The systematic treatment of the bounds and
+the algebraic decoders is the MacWilliams and Sloane reference text on
+error-correcting codes; the engineer's recognition-level takeaway is
+that the three bounds
+fence the design space, Reed-Solomon sits on the Singleton fence, and
+a vendor claiming a code outside the Hamming bound is claiming the
+impossible.
+\end{mastery}
+
 \begin{estimation}
 \textbf{Question.} A system assigns each of $N$ items a random
 $64$-bit hash and treats the hash as a unique identifier. Estimate,
@@ -2558,6 +2972,39 @@ evaluations, beyond the cluster ceiling.
 The combinatorial and the continuous forms are the same archetype.
 The engineer who has internalised the scaling literacy of section
 17.5 reads the curse before encountering its formal statement.
+
+\begin{mastery}
+The third response, settling for an approximation, becomes
+engineering rather than guesswork when the approximation carries a
+\emph{guarantee}. An \engterm{approximation algorithm} for a
+minimisation problem has \engterm{approximation ratio} $\rho$ if it
+runs in polynomial time and always returns a solution of cost at most
+$\rho$ times the optimum; for maximisation the returned value is at
+least $1/\rho$ of the optimum. The ratio converts a heuristic from a
+hope into a contract. Three landmark results fix the range of what is
+provably achievable. The greedy algorithm for \engterm{set cover}
+achieves ratio $\ln n$, and this ratio is tight: no
+polynomial-time algorithm does better than $(1 - o(1)) \ln n$ unless
+$\mathrm{P} = \mathrm{NP}$. The metric \engterm{travelling salesman}
+problem admits the Christofides algorithm at ratio $3/2$, combining a
+minimum spanning tree (section 17.3) with a minimum-weight matching on
+the odd-degree vertices, a bound improved only slightly after four
+decades. The \engterm{vertex cover} problem has a simple ratio-$2$
+algorithm (take both endpoints of any maximal matching) and, under the
+unique-games conjecture, no constant better than $2$. Some problems
+admit a \engterm{polynomial-time approximation scheme} (PTAS) that
+reaches ratio $1 + \epsilon$ for any $\epsilon > 0$ at a running time
+that worsens as $\epsilon$ shrinks, the knapsack problem of section
+17.6 being the standard example; others, the APX-hard problems, admit
+no PTAS unless $\mathrm{P} = \mathrm{NP}$. The taxonomy is the
+engineer's working map of the approximate-response territory: Vazirani's
+reference text on approximation algorithms catalogues the algorithms
+and their ratios. The discipline the ratio enforces is the same one the
+chapter has pressed throughout, to characterise the guarantee. A
+heuristic with a proven ratio is an engineering deliverable; a
+heuristic that ``usually does well'' on unstated inputs is a liability
+whose failure mode the engineer has not bounded.
+\end{mastery}
 
 \subsection{The named failures}
 
