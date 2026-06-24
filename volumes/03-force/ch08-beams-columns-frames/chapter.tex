@@ -74,6 +74,25 @@ centroidal bending axis. The curvature is linearly proportional to
 the bending moment; the stiffer the beam (larger $EI$), the smaller
 the curvature for a given moment.
 
+Before bending stress can be computed, the bending moment itself must
+be known along the span, and that comes from the shear and moment
+diagrams of chapter 2 of this volume. Figure
+\ref{fig:vol03ch08:shear-moment} shows the canonical case of a central
+point load: the shear is piecewise constant and jumps by the load
+where it acts, the moment is the running integral of the shear and
+peaks where the shear changes sign. Figure
+\ref{fig:vol03ch08:udl-shear-moment} shows the uniform-line-load case,
+where the shear is linear and the moment parabolic. The script
+\path{code/shear_moment.py} integrates $dV/dx=-w$ and $dM/dx=V$ for an
+arbitrary mix of point and line loads and writes a sampled profile to
+\path{data/shear_moment_profile.csv}; the working engineer reads the
+peak moment off such a diagram and carries it into the stress
+calculation.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-shear-moment.tex}
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-udl-shear-moment.tex}
+
 The stress at distance $y$ from the neutral axis is then
 \[
 \sigma = \frac{My}{I},
@@ -93,7 +112,23 @@ distance. The section modulus appears throughout structural design
 because it is what relates the bending moment to the maximum stress in
 one step. Tables of $S$ for standard rolled sections (I-beams, channels,
 angles, hollow tubes) appear in engineering handbooks and the AISC
-Steel Construction Manual.
+Steel Construction Manual; a short excerpt sufficient for the worked
+examples and exercises in this chapter is in
+\path{data/standard_sections.csv}, and \path{code/section_properties.py}
+computes $A$, $I$, $S$, and the radius of gyration $r$ for rectangular,
+circular, hollow, and built-up I sections from first principles.
+
+Figure \ref{fig:vol03ch08:section-properties} makes the geometric point
+that governs section choice. The second moment of area rewards both
+depth and the placement of material far from the neutral axis. A
+rectangle has $I=bh^3/12$; halving the width and doubling the depth
+preserves the area yet quadruples $I$, because depth enters cubed. The
+rolled I-section concentrates its area in the flanges, where each unit
+of material sits at large $y$ and contributes the most to $I$. This is
+why beams are deep rather than wide and why efficient sections push
+material to the extreme fibres.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-section-properties.tex}
 
 The relation between bending moment $M(x)$ and the beam's loading
 $w(x)$ was established in chapter 2 of this volume: $dV/dx = -w$ and
@@ -167,6 +202,18 @@ pocket reference:
     deflection $\delta = w_0 L^4/(384 EI)$, midspan moment $M =
     w_0 L^2/24$ (sagging), end moment $M = w_0 L^2/12$ (hogging).
 \end{itemize}
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-deflection-curve.tex}
+
+Figure \ref{fig:vol03ch08:deflection-curve} plots the deflected shape
+for the uniformly loaded simple beam, the workhorse case. The curve is
+symmetric, the slope vanishes at midspan, and the maximum deflection is
+$5w_0L^4/(384EI)$. The finite-difference solver in
+\path{code/beam_deflection.py} reproduces this closed-form midspan
+value to better than one part in a thousand on a two-hundred-node grid,
+and writes the sampled deflection to \path{data/deflection_profile.csv};
+it is the numerical tool to reach for when the loading or the stiffness
+varies along the span in ways that defeat a table lookup.
 
 The pattern in the deflection formulas is $\delta \propto L^n / EI$
 with $n = 3$ for point loads and $n = 4$ for distributed loads. The
@@ -254,7 +301,12 @@ linear in the loads; it implicitly assumes elastic behaviour and a
 particular ratio of failure modes. More sophisticated codes use
 nonlinear interaction equations (squared or cubic terms) to capture
 the actual interaction between failure modes for specific member
-types.
+types. The AISC specification, for instance, uses a bilinear envelope
+that steepens when the axial demand exceeds one-fifth of the axial
+capacity and flattens below it, the two regimes weighting the two
+loads differently according to which one drives the member to its
+limit. The envelope and a worked check against it appear in example 8
+and figure \ref{fig:vol03ch08:beam-column-interaction}.
 
 \engterm{P-delta effects}. A column in compression that deflects
 laterally experiences additional bending moments because the axial
@@ -308,6 +360,17 @@ with $K$ the \engterm{effective length factor}:
   \item Fixed-pinned: $K = 0.7$.
 \end{itemize}
 
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-column-end-conditions.tex}
+
+Figure \ref{fig:vol03ch08:column-end-conditions} draws the four buckled
+mode shapes with their effective-length factors. Because the critical
+load scales as $1/K^2$, end restraint is the most powerful design
+parameter for a slender column: fixing both ends quadruples the
+capacity of an otherwise identical pinned-pinned column, while leaving
+one end free as a flagpole cantilever cuts it to a quarter. The script
+\path{code/euler_buckling.py} computes $P_{\text{cr}}$ for all four
+cases and the transition slenderness, and tabulates the strength curve.
+
 The effective length $KL$ is the distance between adjacent inflection
 points of the buckled shape. A doubly-pinned column buckles in a
 half-sine, $KL = L$; a fixed-fixed column has inflection points at
@@ -328,7 +391,16 @@ the yield stress is
 \lambda_c = \pi\sqrt{\frac{E}{\sigma_y}}.
 \]
 For mild structural steel ($E = 200\,\text{GPa}$, $\sigma_y =
-250\,\text{MPa}$), $\lambda_c \approx 89$. Columns with $\lambda >
+250\,\text{MPa}$), $\lambda_c \approx 89$.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-column-curve.tex}
+
+Figure \ref{fig:vol03ch08:column-curve} plots the column strength
+curve: the Euler hyperbola $\sigma_{\text{cr}}=\pi^2E/\lambda^2$ for
+long columns, the yield cap for short ones, and the imperfection-reduced
+design curve that real columns follow, written to
+\path{data/column_strength_curve.csv} by the buckling script. Columns
+with $\lambda >
 \lambda_c$ are \engterm{long columns}, governed by elastic Euler
 buckling. Columns with $\lambda < \lambda_c$ are \engterm{short
 columns}, governed by yielding (sometimes with imperfection-
@@ -359,6 +431,20 @@ material yielding through code curves. The deeper the beam, the more
 prone it is to lateral-torsional buckling and the more important
 lateral bracing becomes.
 
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-lateral-torsional.tex}
+
+Figure \ref{fig:vol03ch08:lateral-torsional} shows the mechanism. The
+compression flange of a beam bent about its strong axis behaves like a
+column held by the web and tension flange; when the moment reaches the
+critical value the flange buckles sideways, dragging the section into a
+combined lateral displacement and twist. The defence is to brace the
+compression flange at intervals short enough to keep the unbraced
+length below the limit at which lateral-torsional buckling governs. A
+concrete floor slab cast onto the top flange of a simply supported beam
+braces it continuously, which is why composite floor beams rarely fail
+this way in service yet can buckle during construction before the slab
+is poured.
+
 \begin{principle}[Slenderness limits compression capacity]
 A compression member's load capacity depends on its slenderness
 ratio $\lambda = KL/r$. Short members fail by material yielding;
@@ -382,13 +468,31 @@ The standard analysis methods:
 
 \engterm{Slope-deflection method}. For a frame with rigid joints,
 each member's end moments are expressed in terms of the rotations
-and translations of the joints at the member's ends. Compatibility at
+and translations of the joints at the member's ends. The
+slope-deflection equation for a prismatic member $AB$ writes the moment
+at end $A$ as
+\[
+M_{AB} = \frac{2EI}{L}\left(2\theta_A + \theta_B - 3\psi\right)
++ M^{F}_{AB},
+\]
+where $\theta_A$ and $\theta_B$ are the rotations of the two joints,
+$\psi = \Delta/L$ is the chord rotation produced by a relative
+transverse displacement $\Delta$ of the ends (the sidesway term), and
+$M^{F}_{AB}$ is the fixed-end moment from the loads applied along the
+member. The companion equation for end $B$ swaps the roles of $\theta_A$
+and $\theta_B$. Compatibility at
 each joint (the rotations of all members meeting at a joint are the
 same as the joint's rotation) and equilibrium at each joint (the
 sum of member end-moments equals the applied joint moment) produce
-enough equations to solve. The method works analytically for small
-frames and is the basis of the stiffness method (below) for larger
-frames.
+enough equations to solve. For a frame free to sway, one extra
+equilibrium equation per independent sway degree of freedom, the
+horizontal shear balance of a storey, closes the system. The unknowns
+are the joint rotations and the sway displacements; once they are
+found, back-substitution into the slope-deflection equations gives every
+member end moment. The method works analytically for small
+frames and is the algebraic ancestor of the stiffness method (below)
+for larger frames, which packages the same end-moment relations into
+matrix form.
 
 \engterm{Stiffness method}. The frame is discretised into members
 connected at joints; each member has a $4 \times 4$ or $6 \times 6$
@@ -419,6 +523,8 @@ hundreds of joints are routine in commercial structural-analysis
 software; frames with millions of joints are routine in finite-
 element analysis of complex structures.
 
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-portal-frame.tex}
+
 \engterm{Approximate analysis methods}. Before computer analysis,
 several approximate hand-analysis methods were standard: the
 portal frame method (for low-rise frames under lateral load), the
@@ -428,6 +534,46 @@ which gives the moments to any desired accuracy by successive
 approximation). The moment-distribution method is no longer the
 working tool but remains a check method and a useful conceptual
 framework for understanding load paths in indeterminate structures.
+Figure \ref{fig:vol03ch08:portal-frame} shows the portal method's
+central assumption: inflection points (zero moment) at the mid-height
+of the columns and the mid-span of the beam, which reduce an
+indeterminate frame to a determinate one solvable by statics alone.
+
+\begin{mastery}
+\textbf{The direct stiffness method, member by member.} The
+computer-implemented stiffness method is worth seeing once in full,
+because every structural-analysis package is this calculation at scale.
+Each 2D frame member has three degrees of freedom at each end: two
+translations and one rotation, six in all. In the member's own local
+axes, the $6\times 6$ stiffness matrix couples axial action (the
+$EA/L$ terms) to flexural action (the $12EI/L^3$, $6EI/L^2$, $4EI/L$,
+$2EI/L$ terms familiar from slope-deflection):
+\[
+k_{\text{local}} =
+\begin{pmatrix}
+\frac{EA}{L} & 0 & 0 & -\frac{EA}{L} & 0 & 0 \\[2pt]
+0 & \frac{12EI}{L^3} & \frac{6EI}{L^2} & 0 & -\frac{12EI}{L^3} & \frac{6EI}{L^2} \\[2pt]
+0 & \frac{6EI}{L^2} & \frac{4EI}{L} & 0 & -\frac{6EI}{L^2} & \frac{2EI}{L} \\[2pt]
+-\frac{EA}{L} & 0 & 0 & \frac{EA}{L} & 0 & 0 \\[2pt]
+0 & -\frac{12EI}{L^3} & -\frac{6EI}{L^2} & 0 & \frac{12EI}{L^3} & -\frac{6EI}{L^2} \\[2pt]
+0 & \frac{6EI}{L^2} & \frac{2EI}{L} & 0 & -\frac{6EI}{L^2} & \frac{4EI}{L}
+\end{pmatrix}.
+\]
+A rotation matrix $T$ built from the member's direction cosines
+$c=\cos\theta$, $s=\sin\theta$ transforms this into global axes,
+$k_{\text{global}} = T^{\!\top} k_{\text{local}} T$. The member
+matrices are then added into a global $3n\times 3n$ matrix $K$ by
+placing each member's entries at the rows and columns of the two
+joints it connects (assembly by the connectivity). Supports are
+imposed by deleting the rows and columns of the restrained degrees of
+freedom; what remains is solved as $K\vec{u}=\vec{F}$ for the unknown
+joint displacements, and the member end forces follow from
+$k_{\text{global}}\vec{u}_{\text{member}}$. The implementation in
+\path{code/frame_stiffness.py} carries out exactly this sequence for a
+single member and checks the joint rotation against the closed-form
+value for a propped cantilever; extending it to many members is
+bookkeeping, not new physics.
+\end{mastery}
 
 \section{Energy methods for structures}\pathtag{standard}
 
@@ -489,6 +635,43 @@ more cleanly. They are the standard tool for hand analysis when a
 structure has more than two or three members; for larger structures,
 the stiffness method (computer-implemented) is the working tool.
 
+\begin{mastery}
+\textbf{Plastic hinges and limit analysis.} The elastic analysis of
+the preceding sections stops at first yield, the moment $M_y=\sigma_y
+S$ at which the extreme fibre reaches the yield stress. A ductile steel
+beam carries more load past that point: yielding spreads inward from
+the extreme fibres until the whole section is at the yield stress, at
+which the section forms a \engterm{plastic hinge} carrying the plastic
+moment
+\[
+M_p = \sigma_y Z, \qquad Z = \int_A |y|\,dA,
+\]
+where $Z$ is the plastic section modulus, the first moment of the area
+about the equal-area axis. For a rectangle $Z=bh^2/4$ against the
+elastic $S=bh^2/6$, so $M_p/M_y = Z/S = 1.5$: a rectangular beam
+carries fifty per cent more moment after first yield before the hinge
+forms. This ratio is the \engterm{shape factor}; it is about $1.1$ to
+$1.2$ for rolled I-sections, whose material already sits near the
+extreme fibres.
+
+A statically determinate beam collapses when one plastic hinge forms.
+An indeterminate beam survives the first hinge, which simply removes
+one redundancy and redistributes moment to the still-elastic regions;
+collapse comes only when enough hinges form to turn the structure into
+a mechanism. A fixed-fixed beam under a central point load, for
+instance, forms hinges first at the two fixed ends (the high-moment
+locations) and finally at midspan, three hinges making a mechanism. The
+\engterm{upper-bound (kinematic) theorem} of plastic limit analysis
+equates the external work done by the collapse load moving through a
+virtual mechanism to the internal work dissipated at the hinges,
+$\sum M_p\,\theta_i$, and the lowest collapse load over all admissible
+mechanisms is the true one. Limit-state design codes use the plastic
+moment, not the first-yield moment, for the strength of ductile
+members, which is the deeper reason that ductility is prized in
+structural materials: a ductile structure warns and redistributes
+before it collapses, while a brittle one fails at first crack.
+\end{mastery}
+
 \section{Code-based design preview}\pathtag{mastery}
 
 The previous sections give the structural mechanics for analysing
@@ -517,8 +700,8 @@ inequality must be satisfied at every load combination the code
 requires.
 
 \engterm{Allowable stress design (ASD)}. The older format, still
-used in some jurisdictions and for some materials (notably wood and
-masonry). Material strength is divided by a single safety factor
+used in some jurisdictions and for some materials, wood and
+masonry among them. Material strength is divided by a single safety factor
 (typically $1.67$ to $2.0$ for steel) to give the allowable stress;
 the design check is that the working stress under unfactored loads
 not exceed the allowable. ASD is conceptually simpler but
@@ -613,6 +796,487 @@ deflection-limited span cubed) by eight, giving a deflection-limited
 span of $\sim 6.6\,\si{\meter}$.
 \end{estimation}
 
+\section{Worked examples}\pathtag{standard}
+
+The methods of the chapter come together in full when the bending,
+deflection, buckling, and combined-load checks are carried out
+end to end on concrete numbers. The five examples below are worked at
+the level of detail a design check requires, with every substitution
+shown.
+
+\paragraph{Example 1: a simply supported floor beam, two criteria.}
+A simply supported steel beam spans $L=6\,\si{\meter}$ and carries a
+uniform service load $w_0 = 12\,\text{kN}/\text{m}$ (dead plus live).
+Take $E = 200\,\text{GPa}$ and a deflection limit of $L/360$. Find the
+required section modulus and the required second moment of area, then
+pick a section from \path{data/standard_sections.csv}.
+
+The maximum moment is
+\[
+M_{\max} = \frac{w_0 L^2}{8} = \frac{12\,000 \times 6^2}{8}
+= 54\,000\,\text{N}\cdot\text{m} = 54\,\text{kN}\cdot\text{m}.
+\]
+With an allowable bending stress $\sigma_{\text{allow}} =
+\sigma_y/1.67 = 250/1.67 \approx 150\,\text{MPa}$ for ASD on mild
+steel, the strength requirement is
+\[
+S \geq \frac{M_{\max}}{\sigma_{\text{allow}}} = \frac{54\,000}{150
+\times 10^6} = 3.6 \times 10^{-4}\,\si{\meter\cubed} = 360\,\text{cm}^3.
+\]
+The deflection requirement, with $\delta \leq L/360 = 6000/360 =
+16.7\,\si{\milli\meter}$, is
+\[
+\frac{5 w_0 L^4}{384 EI} \leq \frac{L}{360}
+\;\Rightarrow\;
+I \geq \frac{360 \times 5 w_0 L^3}{384 E}
+= \frac{1800 \times 12\,000 \times 6^3}{384 \times 200 \times 10^9}
+= 6.08 \times 10^{-5}\,\si{\meter\tothe{4}} = 6080\,\text{cm}^4.
+\]
+A $W12\times 65$ ($S = 1440\,\text{cm}^3$, $I = 22\,200\,\text{cm}^4$)
+satisfies both with wide margin; a lighter $W16\times 40$
+($S=1070\,\text{cm}^3$, $I=21\,800\,\text{cm}^4$) also satisfies both
+and is the economical choice, since both its strength and stiffness
+exceed the requirements while it weighs less. The deeper, lighter
+section wins, which is the recurring lesson that depth buys stiffness
+cheaply.
+
+\paragraph{Example 2: a pinned steel column.}
+A pinned-pinned column of unbraced length $L = 4\,\si{\meter}$ carries
+an axial service load of $300\,\text{kN}$. Using a $W10\times 49$
+($A = 92.9\,\text{cm}^2$, weak-axis $r_y = 65\,\si{\milli\meter}$,
+$I_y = A r_y^2 = 92.9\times 10^{-4} \times 0.065^2 = 3.93\times
+10^{-5}\,\si{\meter\tothe{4}}$), check the Euler buckling capacity
+about the governing weak axis.
+
+The slenderness about the weak axis is
+\[
+\lambda = \frac{KL}{r_y} = \frac{1.0 \times 4000}{65} = 61.5,
+\]
+below the transition $\lambda_c \approx 89$, so the column is in the
+intermediate range where neither pure Euler buckling nor pure yielding
+governs. The elastic Euler load is
+\[
+P_{\text{cr}} = \frac{\pi^2 E I_y}{(KL)^2}
+= \frac{\pi^2 \times 200 \times 10^9 \times 3.93 \times 10^{-5}}
+{4^2}
+= 4.85 \times 10^6\,\text{N} = 4850\,\text{kN},
+\]
+and the squash (yield) load is $P_y = \sigma_y A = 250\times 10^6
+\times 92.9 \times 10^{-4} = 2320\,\text{kN}$. The intermediate-column
+capacity lies below both; a code column curve in this slenderness
+range gives roughly $0.8 P_y \approx 1860\,\text{kN}$, comfortably
+above the $300\,\text{kN}$ demand. The column is governed by yielding
+with an imperfection allowance, not by elastic buckling, exactly as the
+slenderness $\lambda < \lambda_c$ predicted.
+
+\paragraph{Example 3: combined bending and torsion in a shaft.}
+A solid circular shaft of diameter $d = 40\,\si{\milli\meter}$ carries
+a bending moment $M = 600\,\text{N}\cdot\text{m}$ and a torque $T =
+500\,\text{N}\cdot\text{m}$. Find the maximum principal stress and the
+maximum shear stress at the surface.
+
+For a solid circle, $I = \pi d^4/64$ and $J = \pi d^4/32 = 2I$, so the
+bending and torsional section moduli are $S = I/(d/2) = \pi d^3/32$ and
+$J/(d/2) = \pi d^3/16 = 2S$. With $d = 0.040\,\si{\meter}$,
+\[
+\pi d^3/32 = \frac{\pi \times 0.040^3}{32} = 6.28 \times 10^{-6}
+\,\si{\meter\cubed}.
+\]
+The bending and torsional surface stresses are
+\[
+\sigma = \frac{M}{\pi d^3/32} = \frac{600}{6.28\times 10^{-6}}
+= 95.5\,\text{MPa}, \qquad
+\tau = \frac{T}{\pi d^3/16} = \frac{500}{2 \times 6.28\times 10^{-6}}
+= 39.8\,\text{MPa}.
+\]
+At the surface the stress state is $\sigma_{xx} = 95.5\,\text{MPa}$,
+$\sigma_{yy} = 0$, $\sigma_{xy} = 39.8\,\text{MPa}$. The principal
+stresses from the Mohr's circle of chapter 3 are
+\[
+\sigma_{1,2} = \frac{\sigma_{xx}}{2} \pm \sqrt{\left(\frac{\sigma_{xx}}
+{2}\right)^2 + \tau^2}
+= 47.7 \pm \sqrt{47.7^2 + 39.8^2}
+= 47.7 \pm 62.1\,\text{MPa},
+\]
+giving $\sigma_1 = 109.8\,\text{MPa}$ (the maximum principal stress)
+and the maximum in-plane shear stress $\tau_{\max} = 62.1\,\text{MPa}$.
+A von Mises check, $\sigma_{vM} = \sqrt{\sigma_{xx}^2 + 3\tau^2} =
+\sqrt{95.5^2 + 3\times 39.8^2} = 116\,\text{MPa}$, would be compared to
+the yield strength to size the shaft.
+
+\paragraph{Example 4: deflection of an overhanging beam by superposition.}
+A simply supported beam of span $L$ carries a central point load $P$
+and also a uniform line load $w_0$ over the full span. Find the midspan
+deflection.
+
+Superposition adds the two single-load results directly, since the
+beam is linear elastic:
+\[
+\delta_{\text{mid}} = \frac{PL^3}{48EI} + \frac{5 w_0 L^4}{384 EI}.
+\]
+With $P = 20\,\text{kN}$, $w_0 = 5\,\text{kN}/\text{m}$, $L =
+8\,\si{\meter}$, $E = 200\,\text{GPa}$, and a $W12\times 65$
+($I = 22\,200\,\text{cm}^4 = 2.22\times 10^{-4}\,\si{\meter\tothe{4}}$):
+\[
+\delta_{\text{mid}} = \frac{20\,000 \times 8^3}{48 \times 200\times
+10^9 \times 2.22\times 10^{-4}} + \frac{5 \times 5000 \times 8^4}
+{384 \times 200\times 10^9 \times 2.22\times 10^{-4}}.
+\]
+The two terms are $4.81\,\si{\milli\meter}$ and $6.01\,\si{\milli
+\meter}$, summing to $\delta_{\text{mid}} = 10.8\,\si{\milli\meter}$.
+This matches, to within the discretisation error, the moment computed
+by \path{code/shear_moment.py} for the same loading, whose midspan
+moment $54 + 40 = 94\,\text{kN}\cdot\text{m}$ feeds the bending-stress
+check in parallel.
+
+\paragraph{Example 5: lateral-torsional buckling sets the unbraced length.}
+A simply supported steel beam carries a moment that would be safe in
+bending if the compression flange were braced. With the flange
+unbraced over the full span, a code lateral-torsional buckling check
+reduces the allowable moment. Suppose the fully braced (plastic)
+moment is $M_p = 200\,\text{kN}\cdot\text{m}$ and the code gives a
+limiting unbraced length $L_p = 2.1\,\si{\meter}$ below which the full
+$M_p$ is available, and $L_r = 6.3\,\si{\meter}$ above which elastic
+lateral-torsional buckling governs. For an unbraced length $L_b =
+4.2\,\si{\meter}$ between these, the AISC inelastic-buckling
+interpolation gives
+\[
+M_n = M_p\left[1 - 0.3\,\frac{L_b - L_p}{L_r - L_p}\right]
+= 200\left[1 - 0.3\,\frac{4.2 - 2.1}{6.3 - 2.1}\right]
+= 200(1 - 0.15) = 170\,\text{kN}\cdot\text{m}.
+\]
+Bracing the compression flange at midspan, halving $L_b$ to
+$2.1\,\si{\meter} = L_p$, restores the full $M_p = 200\,\text{kN}\cdot
+\text{m}$: a single brace recovers eighteen per cent of capacity at
+negligible cost. This is the calculation behind the rule that floor
+beams must be braced at intervals, and the reason an unbraced beam
+during erection is weaker than the same beam in service.
+
+\section{An end-to-end floor-beam design check}\pathtag{standard}
+
+The methods of the chapter are exercised one at a time in the worked
+examples. A real design check runs them in sequence on a single member,
+carrying the same numbers from the load path through to the verdict, and
+the sequence is itself the discipline: a member that passes one check
+and fails another is not designed until every check has been made. The
+case study below sizes an interior steel floor beam in an office
+building, from the floor pressure down to the connection note, and
+records at each stage which check governs.
+
+\subsection{The brief and the load path}
+
+A typical office floor bay frames as a grid of joists spanning onto
+interior beams, which in turn span onto girders. We design one interior
+beam. The beam spans $L = 8\,\si{\meter}$ between girder centrelines and
+sits at a spacing such that its tributary width is $w_t = 3\,\si{\meter}$
+(half the joist span on each side). The floor carries a superimposed
+dead load (slab, finishes, services, partitions) of $g = 4.0\,\text{kN}/
+\text{m}^2$ and an office live load of $q = 3.0\,\text{kN}/\text{m}^2$,
+the latter a standard occupancy value. Steel is grade $S355$
+($\sigma_y = 355\,\text{MPa}$, $E = 200\,\text{GPa}$).
+
+The first step is the load path of figure
+\ref{fig:vol03ch08:floor-beam-loadpath}: floor pressure collected over
+the tributary width becomes a line load on the beam. The service line
+loads are
+\[
+g_0 = g\,w_t = 4.0 \times 3 = 12\,\text{kN}/\text{m}, \qquad
+q_0 = q\,w_t = 3.0 \times 3 = 9\,\text{kN}/\text{m}.
+\]
+The beam self-weight, not yet known, is small against these and is added
+once a trial section is on the table.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-floor-beam-loadpath.tex}
+
+\subsection{Factored load and the demand}
+
+Limit-state design factors the loads up. Using the load combination
+$1.35 g + 1.5 q$ (the Eurocode persistent-design combination, close to
+the AISC $1.2D + 1.6L$),
+\[
+w_u = 1.35\,g_0 + 1.5\,q_0 = 1.35 \times 12 + 1.5 \times 9
+= 16.2 + 13.5 = 29.7\,\text{kN}/\text{m}.
+\]
+The simply supported beam carries the demand moment and shear
+\[
+M_u = \frac{w_u L^2}{8} = \frac{29.7 \times 8^2}{8}
+= 237.6\,\text{kN}\cdot\text{m}, \qquad
+V_u = \frac{w_u L}{2} = \frac{29.7 \times 8}{2} = 118.8\,\text{kN}.
+\]
+These are the numbers every subsequent check is measured against.
+
+\subsection{Section selection by required modulus}
+
+The flexural strength requirement, with a resistance factor $\phi_b =
+0.9$ and the plastic section modulus $Z$ governing for a compact
+section, is $\phi_b \sigma_y Z \geq M_u$, so
+\[
+Z_{\text{req}} = \frac{M_u}{\phi_b \sigma_y}
+= \frac{237.6 \times 10^3}{0.9 \times 355 \times 10^6}
+= 7.44 \times 10^{-4}\,\si{\meter\cubed} = 744\,\text{cm}^3.
+\]
+Scanning the section table, a $W16\times 40$ ($S = 1070\,\text{cm}^3$,
+$I = 21\,800\,\text{cm}^4$, depth $407\,\si{\milli\meter}$) carries a
+plastic modulus of roughly $Z \approx 1.12\,S \approx 1200\,\text{cm}^3$
+for a rolled I-section, comfortably above the $744\,\text{cm}^3$ demand.
+The strength check passes at the trial section with a utilisation of
+about $0.62$. We carry the $W16\times 40$ forward and add its
+self-weight, about $0.58\,\text{kN}/\text{m}$, which lifts $w_u$ by
+roughly $0.8\,\text{kN}/\text{m}$, a two-and-a-half per cent increase
+that the margin absorbs.
+
+\subsection{Shear check}
+
+The web carries the shear. For a $W16\times 40$ the web area is
+approximately $A_w = d\,t_w \approx 0.407 \times 0.0078 = 3.17 \times
+10^{-3}\,\si{\meter\squared}$. The shear capacity is $\phi_v\,0.6
+\sigma_y A_w$ with $\phi_v = 0.9$:
+\[
+\phi_v V_n = 0.9 \times 0.6 \times 355 \times 10^6 \times 3.17 \times
+10^{-3} = 608\,\text{kN},
+\]
+far above the $118.8\,\text{kN}$ demand. Shear rarely governs a
+rolled-section floor beam of normal span, and it does not here; the
+utilisation is below $0.2$.
+
+\subsection{Deflection serviceability}
+
+Serviceability is checked under unfactored loads. The live-load
+deflection, the quantity occupants perceive and the one that cracks
+finishes, is
+\[
+\delta_{q} = \frac{5\,q_0 L^4}{384\,E I}
+= \frac{5 \times 9000 \times 8^4}{384 \times 200 \times 10^9 \times
+2.18 \times 10^{-4}}
+= 11.0\,\si{\milli\meter}.
+\]
+The limit for a floor supporting non-brittle finishes is $L/360 =
+8000/360 = 22.2\,\si{\milli\meter}$, so the beam passes with a
+utilisation of $0.50$. The total-load deflection, $\delta_{g+q}$ under
+$g_0 + q_0 = 21\,\text{kN}/\text{m}$, is $25.7\,\si{\milli\meter}$
+against a looser $L/240 = 33.3\,\si{\milli\meter}$ limit, which also
+passes. Deflection is the closest check so far, which is the usual
+finding for a beam of this span; a shallower section would have been
+governed by it.
+
+\subsection{Lateral-torsional buckling}
+
+The flexural capacity assumed the compression flange braced. The floor
+slab cast onto the top flange braces it continuously in the finished
+condition, so $L_b \approx 0$ and the full plateau moment is available;
+the strength check above stands. The check that matters is the
+construction stage, before the slab is poured, when the beam may be
+braced only at the points where joists frame in. Suppose joists land at
+the third points, giving an unbraced length $L_b = 8/3 = 2.67\,
+\si{\meter}$. For a $W16\times 40$ the plateau limit is about $L_p =
+1.7\,\si{\meter}$ and the elastic limit about $L_r = 5.2\,
+\si{\meter}$, so $L_b$ falls in the inelastic range. The interpolation
+of figure \ref{fig:vol03ch08:ltb-capacity},
+\[
+M_n = M_p\left[1 - 0.3\,\frac{L_b - L_p}{L_r - L_p}\right]
+= M_p\left[1 - 0.3\,\frac{2.67 - 1.7}{5.2 - 1.7}\right]
+= 0.917\,M_p,
+\]
+keeps about ninety-two per cent of capacity during erection, which the
+strength margin still covers. The note on the drawing is that the
+joists must be in place before the construction live load is applied,
+and that no point load may be hung from the unbraced midspan during
+erection.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-ltb-capacity.tex}
+
+\subsection{Connection note and verdict}
+
+The beam delivers its end reaction $V_u = 118.8\,\text{kN}$ (factored)
+to the girder through a simple shear connection: a bolted double-angle
+or a shear tab, designed for the reaction with no moment, since the
+analysis modelled the end as a pin. The connection check is its own
+calculation, against bolt shear, bolt bearing on the beam web, and
+block shear of the connected web, each verified separately; a pair of
+M20 bolts in grade 8.8 carries roughly $94\,\text{kN}$ each in single
+shear, so three bolts clear the reaction with margin. The connection is
+detailed and checked as a subassembly, exactly the joint check whose
+omission caused the Hyatt Regency collapse discussed below.
+
+The verdict: a $W16\times 40$ in $S355$ steel carries the office floor
+bay with the governing check being live-load deflection at a
+utilisation of $0.50$, flexure at $0.62$, and every other mode well
+inside its limit. The member is governed by serviceability, not
+strength, and the design is signed off on that basis. The full table of
+utilisations is the deliverable that an independent checker reviews; a
+single governing number hides the six other checks that had to pass for
+it to be the governing one.
+
+\begin{principle}[A design check is the full sequence, not one number]
+A structural member is designed only when every applicable limit state
+has been verified against the same set of loads: load path, factored
+demand, flexural strength, shear, deflection serviceability, stability
+during construction and service, and the end connection. The governing
+check is whichever has the highest utilisation, and it is meaningful
+only because the others were made and passed. Reporting strength alone,
+or stopping at the first comfortable margin, is the habit that lets a
+serviceability failure or an unbraced-erection buckling reach the field.
+\end{principle}
+
+\section{Further worked examples}\pathtag{standard}
+
+The end-to-end case study runs the checks in series on one member. The
+three examples here isolate methods that the case study did not call on:
+an indeterminate beam solved by the force method, a continuous beam by
+moment distribution, and a beam-column under combined axial and bending
+load checked against the interaction envelope.
+
+\paragraph{Example 6: a propped cantilever by the force method.}
+A propped cantilever of span $L = 6\,\si{\meter}$ carries a uniform load
+$w_0 = 20\,\text{kN}/\text{m}$. The structure is fixed at the left and
+simply propped at the right, once statically indeterminate. Find the
+prop reaction, the fixed-end moment, and the maximum sagging moment in
+the span.
+
+Choose the prop reaction $R$ as the redundant. Releasing the prop
+leaves a cantilever fixed at the left and free at the right, the primary
+structure of figure \ref{fig:vol03ch08:propped-cantilever}. Two
+deflections at the released point matter: the downward tip deflection
+under the distributed load, $\delta_w = w_0 L^4/(8EI)$, and the upward
+tip deflection under the unknown prop reaction acting alone, $\delta_R =
+R L^3/(3EI)$. Compatibility requires the propped end not to move, so
+$\delta_w = \delta_R$:
+\[
+\frac{w_0 L^4}{8 EI} = \frac{R L^3}{3 EI}
+\;\Rightarrow\;
+R = \frac{3 w_0 L}{8} = \frac{3 \times 20 \times 6}{8} = 45\,\text{kN}.
+\]
+The fixed-end moment follows from statics on the released cantilever
+with the prop reaction restored, taking moments about the fixed end:
+\[
+M_{\text{fix}} = \frac{w_0 L^2}{2} - R L
+= \frac{20 \times 6^2}{2} - 45 \times 6 = 360 - 270 = 90\,\text{kN}
+\cdot\text{m},
+\]
+a hogging moment of magnitude $w_0 L^2/8 = 90\,\text{kN}\cdot\text{m}$,
+the closed-form result for this case. The shear is zero where the
+sagging moment peaks; measuring $x$ from the propped end, $V(x) = R -
+w_0 x = 0$ at $x = R/w_0 = 45/20 = 2.25\,\si{\meter}$, and the sagging
+moment there is
+\[
+M_{\text{span}} = R x - \frac{w_0 x^2}{2}
+= 45 \times 2.25 - \frac{20 \times 2.25^2}{2}
+= 101.25 - 50.6 = 50.6\,\text{kN}\cdot\text{m}.
+\]
+The fixed end at $90\,\text{kN}\cdot\text{m}$ is the critical section,
+half again the span peak. The redistribution the prop forces, hogging
+at the wall and sagging in the span, is what makes the indeterminate
+member carry more than a cantilever of the same span and stiffer than a
+simple beam.
+
+\paragraph{Example 7: a two-span continuous beam by moment distribution.}
+A continuous beam runs over three supports, with two equal spans of
+$L = 6\,\si{\meter}$ each, carrying a uniform load $w_0 = 15\,\text{kN}/
+\text{m}$ on both spans. Find the moment over the central support.
+
+Moment distribution (the Hardy Cross method, treated in the mastery box
+below) starts from the fixed-end moments, the moments that would arise
+if every joint were clamped. For a uniformly loaded span clamped at both
+ends the fixed-end moments are $\pm w_0 L^2/12$:
+\[
+M_F = \frac{w_0 L^2}{12} = \frac{15 \times 6^2}{12} = 45\,\text{kN}
+\cdot\text{m}.
+\]
+At the central support two spans meet, each contributing a fixed-end
+moment of $45\,\text{kN}\cdot\text{m}$ but of opposite sense, so before
+release they nearly balance; the unbalanced moment at the central joint
+comes from the difference in carry-over from the far (simply supported)
+ends. The two end supports are simple, so their fixed-end moments
+release fully and carry over one half to the central support. Working
+the single distribution cycle for the symmetric two-span beam gives the
+standard result for equal spans and equal load,
+\[
+M_{\text{central}} = -\frac{w_0 L^2}{8} = -\frac{15 \times 6^2}{8}
+= -67.5\,\text{kN}\cdot\text{m},
+\]
+a hogging moment over the central support larger in magnitude than the
+$w_0 L^2/8 = 67.5\,\text{kN}\cdot\text{m}$ a single simple span would
+carry at midspan, which is why the support region of a continuous beam,
+not its midspan, usually governs. The midspan sagging moment in each
+span drops to $9 w_0 L^2/128 \approx 38\,\text{kN}\cdot\text{m}$,
+roughly nine-sixteenths of the simple-span value, the saving continuity
+buys at the cost of a heavier support moment.
+
+\paragraph{Example 8: a beam-column under combined axial and bending.}
+A column in a braced frame carries a factored axial compression $P_r =
+600\,\text{kN}$ and, because it also supports a beam framing in with an
+eccentric reaction, a factored moment $M_r = 80\,\text{kN}\cdot\text{m}$
+about its strong axis. Its axial capacity for the governing slenderness
+is $P_c = 1700\,\text{kN}$ and its flexural capacity is $M_c =
+250\,\text{kN}\cdot\text{m}$. Check the member.
+
+The axial ratio is $P_r/P_c = 600/1700 = 0.35$, above the $0.2$ kink, so
+the steeper branch of the AISC interaction equation governs:
+\[
+\frac{P_r}{P_c} + \frac{8}{9}\,\frac{M_r}{M_c}
+= 0.35 + \frac{8}{9}\times\frac{80}{250}
+= 0.35 + \frac{8}{9}\times 0.32 = 0.35 + 0.284 = 0.64 \leq 1.0.
+\]
+The member passes at a combined utilisation of $0.64$, plotted as the
+demand point inside the envelope of figure
+\ref{fig:vol03ch08:beam-column-interaction}. Neither load alone is near
+its capacity ($0.35$ axial, $0.32$ flexural), yet the interaction
+consumes nearly two-thirds of the member, the point of the combined
+check: a member acceptable under each load separately can be overloaded
+by their combination, and the envelope is what catches it. Were the
+axial ratio below $0.2$ the shallower branch $P_r/(2P_c) + M_r/M_c \leq
+1$ would apply, weighting bending more heavily, because in the
+bending-dominated regime the moment is the load that drives the member
+to its limit.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-propped-cantilever.tex}
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-beam-column-interaction.tex}
+
+\begin{mastery}
+\textbf{Moment distribution: the Hardy Cross method.} Before the
+stiffness method ran on every laptop, the analysis of continuous beams
+and frames was carried out by hand with the iterative scheme Hardy Cross
+published in 1932, and it remains the fastest hand check for a
+continuous beam and the clearest picture of how moment redistributes
+through a rigid-jointed structure. The method works with three member
+properties. The \engterm{stiffness} of a prismatic member fixed at the
+far end is $k = 4EI/L$; if the far end is pinned it is $k = 3EI/L$. The
+\engterm{distribution factor} at a joint apportions an unbalanced moment
+among the members meeting there in proportion to their stiffnesses,
+$\text{DF}_i = k_i / \sum_j k_j$, and the factors at a joint sum to one.
+The \engterm{carry-over factor} sends half of any moment applied at one
+end of a prismatic member to its fixed far end, carry-over $= 1/2$.
+
+The procedure is a relaxation. Clamp every joint and write the
+fixed-end moments for the applied loads (for a uniform load on a span,
+$\pm w_0 L^2/12$; for a central point load, $\pm PL/8$). Each joint
+then carries an unbalanced moment, the algebraic sum of the fixed-end
+moments of the members meeting there. Release one joint at a time: the
+unbalanced moment is distributed to the members in proportion to their
+distribution factors, with the sign that restores balance, and half of
+each distributed moment is carried over to the member's far end. The
+carry-overs unbalance the neighbouring joints, which are released in
+turn, and the process repeats. Because each cycle multiplies the
+residual unbalanced moments by a factor well below one, the residuals
+shrink geometrically and the moments converge to the exact
+elastic answer in a handful of cycles. Summing the fixed-end moment, the
+distributed moments, and the carried-over moments at each member end
+gives the final moment there.
+
+The two-span continuous beam of example 7 falls out of a single
+distribution cycle by symmetry; an asymmetric three-span beam or a
+no-sway frame needs three or four cycles to converge to three
+significant figures. Sidesway frames need an extra layer, in which the
+sway moments are found by releasing the frame to translate, then
+superposed in the proportion that satisfies horizontal equilibrium. The
+method is no longer the production tool, the stiffness method of the
+mastery box in section 8.5 is, yet an engineer who can run a moment
+distribution on the back of a drawing can check a software model's
+support moments in two minutes and catch the gross input error that a
+column of finite-element output would hide.
+\end{mastery}
+
 \section{Failure: column buckling, beam fatigue, joint detail
 failures}\pathtag{core}
 
@@ -629,7 +1293,18 @@ compressive strength. The failure is sudden: at $P < P_{\text{cr}}$
 the column is straight and in equilibrium; at $P > P_{\text{cr}}$
 the column deflects laterally, and the deflection grows with no
 external warning until either material yielding limits it or the
-column collapses. The standard examples:
+column collapses.
+
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-postbuckling.tex}
+
+The mathematics behind the suddenness is the bifurcation diagram of
+figure \ref{fig:vol03ch08:postbuckling}: at $P_{\text{cr}}$ the
+straight equilibrium exchanges stability with a pair of deflected
+branches in a supercritical pitchfork. Linear theory locates the
+bifurcation but says nothing about the path beyond it; the
+large-deflection (elastica) theory shows the deflected branches rising
+only gently above $P_{\text{cr}}$, so a real column near the critical
+load has almost no reserve. The standard examples:
 
 \begin{itemize}[leftmargin=*]
   \item Long compression chords in trusses; a slender wood or steel
@@ -695,7 +1370,16 @@ specifically beam-related observations are:
     inspection intervals based on the expected service.
 \end{itemize}
 
-Fatigue is a slow process; the warning signs (a hairline crack at a
+\input{volumes/03-force/ch08-beams-columns-frames/figures/fig-fatigue-sn.tex}
+
+Figure \ref{fig:vol03ch08:fatigue-sn} shows the design tool: the S-N
+curve relating the cyclic stress range to the number of cycles a detail
+survives, classified by detail category. The detail, not the base
+material, governs: a smooth ground transition tolerates several times
+the stress range of a sharp re-entrant weld toe at the same life, and
+below the constant-amplitude fatigue limit no further damage
+accumulates. Fatigue is a slow process; the warning signs (a hairline
+crack at a
 weld toe, a few millimetres long, visible only on close inspection)
 are usually present for months or years before failure. The
 discipline of routine inspection is what catches the precursor
@@ -857,6 +1541,18 @@ A simply-supported steel beam ($E = 200\,\text{GPa}$) of span $5\,
 a uniform line load of $5\,\text{kN}/\text{m}$. Find the maximum
 bending stress, the maximum deflection, and the section's
 slenderness ratio.
+
+\paragraph{Solution sketch.} $M_{\max} = w_0L^2/8 = 5000\times 5^2/8 =
+15.6\,\text{kN}\cdot\text{m}$. For the rectangle, $S = bh^2/6 =
+0.1\times 0.2^2/6 = 6.67\times 10^{-4}\,\si{\meter\cubed}$ and $I =
+bh^3/12 = 6.67\times 10^{-5}\,\si{\meter\tothe{4}}$. Bending stress
+$\sigma = M/S = 15\,600/6.67\times 10^{-4} = 23.4\,\text{MPa}$.
+Deflection $\delta = 5w_0L^4/(384EI) = 5\times 5000\times 5^4/(384
+\times 200\times 10^9 \times 6.67\times 10^{-5}) = 3.05\,\si{\milli
+\meter}$ ($\approx L/1640$, well inside any limit). Radius of gyration
+$r = \sqrt{I/A} = \sqrt{6.67\times 10^{-5}/0.02} = 57.7\,\si{\milli
+\meter}$; treated as a simply supported member of length $5\,\si{\meter}$
+the slenderness $L/r = 5000/57.7 \approx 87$.
 \end{exercise}
 
 \begin{exercise}
@@ -866,6 +1562,12 @@ of $3\,\text{kN}$. The beam is a steel I-section with $S = 6 \times
 10^{-5}\,\si{\meter\tothe{4}}$, $E = 200\,\text{GPa}$. Find the
 fixed-end bending moment, the maximum bending stress, and the tip
 deflection.
+
+\paragraph{Solution sketch.} Fixed-end moment $M = PL = 3000\times 2 =
+6\,\text{kN}\cdot\text{m}$. Bending stress $\sigma = M/S = 6000/(6\times
+10^{-5}) = 100\,\text{MPa}$. Tip deflection $\delta = PL^3/(3EI) =
+3000\times 2^3/(3\times 200\times 10^9 \times 1.5\times 10^{-5}) =
+2.67\,\si{\milli\meter}$.
 \end{exercise}
 
 \begin{exercise}
@@ -875,6 +1577,17 @@ A wooden joist $50 \times 250\,\si{\milli\meter}$ (depth $250\,\si{
 With pine $E = 10\,\text{GPa}$, find the maximum bending stress and
 the deflection. Compare to a typical allowable bending stress
 ($10\,\text{MPa}$) and a deflection limit of $L/360$.
+
+\paragraph{Solution sketch.} $M_{\max} = w_0L^2/8 = 2500\times 4^2/8 =
+5\,\text{kN}\cdot\text{m}$. $S = bh^2/6 = 0.05\times 0.25^2/6 =
+5.21\times 10^{-4}\,\si{\meter\cubed}$, $I = bh^3/12 = 6.51\times
+10^{-5}\,\si{\meter\tothe{4}}$. Bending stress $\sigma = M/S = 5000/
+5.21\times 10^{-4} = 9.6\,\text{MPa}$, just under the $10\,\text{MPa}$
+allowable. Deflection $\delta = 5w_0L^4/(384EI) = 5\times 2500\times
+4^4/(384\times 10\times 10^9 \times 6.51\times 10^{-5}) = 16.0\,\si{
+\milli\meter}$, against the limit $L/360 = 4000/360 = 11.1\,\si{\milli
+\meter}$. Deflection governs and the joist fails the serviceability
+check; a deeper section is required.
 \end{exercise}
 
 \begin{exercise}
@@ -883,6 +1596,14 @@ about the weak axis $r_y \approx 76\,\si{\milli\meter}$, $E = 200\,
 \text{GPa}$, $A = 1.23 \times 10^{-2}\,\si{\meter\squared}$) is
 pinned at both ends with unbraced length $6\,\si{\meter}$. Find the
 Euler critical load.
+
+\paragraph{Solution sketch.} The weak axis governs. $I_y = A r_y^2 =
+1.23\times 10^{-2} \times 0.076^2 = 7.10\times 10^{-5}\,\si{\meter
+\tothe{4}}$. With $K=1.0$, $P_{\text{cr}} = \pi^2 E I_y/(KL)^2 =
+\pi^2\times 200\times 10^9 \times 7.10\times 10^{-5}/6^2 = 3.89\times
+10^6\,\text{N} \approx 3890\,\text{kN}$. Check slenderness $\lambda =
+KL/r_y = 6000/76 = 79 < \lambda_c \approx 89$, so the column is
+intermediate and the elastic Euler load overstates the real capacity.
 \end{exercise}
 
 \begin{exercise}
@@ -890,6 +1611,14 @@ A steel pipe column of outer diameter $100\,\si{\milli\meter}$,
 wall thickness $4\,\si{\milli\meter}$, length $3\,\si{\meter}$, fixed
 at one end and free at the other, carries an axial compressive load.
 Find the Euler critical load.
+
+\paragraph{Solution sketch.} Thin tube, $d_o = 0.100$, $d_i = 0.092$.
+$I = \pi(d_o^4 - d_i^4)/64 = \pi(0.100^4 - 0.092^4)/64 = 1.38\times
+10^{-6}\,\si{\meter\tothe{4}}$. Fixed-free gives $K = 2.0$, so
+$P_{\text{cr}} = \pi^2 E I/(KL)^2 = \pi^2\times 200\times 10^9 \times
+1.38\times 10^{-6}/(2\times 3)^2 = 7.57\times 10^4\,\text{N} \approx
+75.7\,\text{kN}$. The $K=2$ flagpole condition cuts the capacity to a
+quarter of the pinned-pinned value.
 \end{exercise}
 
 \begin{exercise}
@@ -898,6 +1627,12 @@ $P$ that produces a bending stress of $200\,\text{MPa}$ at the
 fixed end. The cantilever has a rectangular cross-section $30
 \times 50\,\si{\milli\meter}$ (depth $50\,\si{\milli\meter}$). Find
 $P$.
+
+\paragraph{Solution sketch.} $S = bh^2/6 = 0.030\times 0.050^2/6 =
+1.25\times 10^{-5}\,\si{\meter\cubed}$. Fixed-end moment $M = \sigma S
+= 200\times 10^6 \times 1.25\times 10^{-5} = 2500\,\text{N}\cdot\text{m}$.
+For a cantilever $M = PL$, so $P = M/L = 2500/1 = 2500\,\text{N} =
+2.5\,\text{kN}$.
 \end{exercise}
 
 \begin{exercise}
@@ -905,18 +1640,42 @@ A circular shaft of $40\,\si{\milli\meter}$ diameter is subjected to
 combined torsion $T = 500\,\text{N}\cdot\text{m}$ and bending moment
 $M = 600\,\text{N}\cdot\text{m}$. Find the maximum principal stress
 and the maximum shear stress at the shaft's surface.
+
+\paragraph{Solution sketch.} This is example 3 of the worked-examples
+section with $d = 0.040\,\si{\meter}$. $\pi d^3/32 = 6.28\times 10^{-6}
+\,\si{\meter\cubed}$, giving $\sigma = M/(\pi d^3/32) = 95.5\,\text{MPa}$
+and $\tau = T/(\pi d^3/16) = 39.8\,\text{MPa}$. The principal stresses
+$\sigma_{1,2} = \sigma/2 \pm \sqrt{(\sigma/2)^2 + \tau^2} = 47.7 \pm
+62.1\,\text{MPa}$ give $\sigma_1 = 109.8\,\text{MPa}$ and $\tau_{\max}
+= 62.1\,\text{MPa}$.
 \end{exercise}
 
 \begin{exercise}
 An indeterminate beam (both ends fixed) of span $L = 6\,\si{\meter}$
 carries a centred point load $P = 20\,\text{kN}$. Find the
 fixed-end moments and the midspan moment.
+
+\paragraph{Solution sketch.} For a fixed-fixed beam with a central
+point load, the end moments are $M_{\text{end}} = PL/8$ (hogging) and
+the midspan moment is $M_{\text{mid}} = PL/8$ (sagging). With $P =
+20\,\text{kN}$, $L = 6\,\si{\meter}$: $M_{\text{end}} = M_{\text{mid}} =
+20\times 6/8 = 15\,\text{kN}\cdot\text{m}$. The fixed ends halve the
+peak moment relative to the simply supported $PL/4 = 30\,\text{kN}\cdot
+\text{m}$, the value of end fixity.
 \end{exercise}
 
 \begin{exercise}
 Use Castigliano's theorem to find the tip deflection of a cantilever
 beam of length $L$ under a tip load $P$. Verify that the result
 agrees with $\delta = PL^3/(3EI)$.
+
+\paragraph{Solution sketch.} Measure $x$ from the tip; the moment at
+$x$ is $M(x) = -Px$. The strain energy is $U = \int_0^L M^2/(2EI)\,dx
+= \int_0^L P^2x^2/(2EI)\,dx = P^2L^3/(6EI)$. By Castigliano,
+$\delta = \partial U/\partial P = 2P L^3/(6EI) = PL^3/(3EI)$, which
+matches the table value. Equivalently the unit-load method with
+$m(x) = -x$ gives $\delta = \int_0^L M(x)m(x)/(EI)\,dx = \int_0^L
+Px^2/(EI)\,dx = PL^3/(3EI)$.
 \end{exercise}
 
 \begin{exercise}
@@ -924,6 +1683,14 @@ A steel column has slenderness ratio $\lambda = KL/r = 120$. The
 material has $E = 200\,\text{GPa}$ and $\sigma_y = 250\,\text{MPa}$.
 Determine whether the column is short, intermediate, or long, and
 compute its Euler buckling stress.
+
+\paragraph{Solution sketch.} Transition slenderness $\lambda_c = \pi
+\sqrt{E/\sigma_y} = \pi\sqrt{200\times 10^9/250\times 10^6} = \pi
+\sqrt{800} = 88.9$. Since $\lambda = 120 > \lambda_c$, the column is
+long and governed by elastic Euler buckling. The Euler stress is
+$\sigma_{\text{cr}} = \pi^2E/\lambda^2 = \pi^2\times 200\times 10^9/
+120^2 = 137\,\text{MPa}$, well below $\sigma_y = 250\,\text{MPa}$,
+confirming buckling rather than yielding governs.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -932,24 +1699,60 @@ compute its Euler buckling stress.
 Derive the Euler-Bernoulli beam equation $EI \,y'''' = w(x)$ from
 the moment-curvature relation, the moment-shear-load relations, and
 the geometric small-deflection identity $\kappa \approx y''$.
+
+\paragraph{Solution sketch.} Start from the moment-curvature relation
+$M = EI\kappa = EI\,y''$. Differentiate twice with respect to $x$,
+holding $EI$ constant: $M'' = EI\,y''''$. The equilibrium relations are
+$dM/dx = V$ and $dV/dx = -w$, so $M'' = (dM/dx)' = V' = dV/dx = -w$ (or
+$+w$ depending on the chosen sign convention for $w$). Substituting,
+$EI\,y'''' = w(x)$. The chain is moment-curvature ($M$ to $y''$), then
+two derivatives carry $M$ down to the load through the two equilibrium
+relations.
 \end{exercise}
 
 \begin{exercise}
 Derive the maximum-deflection formula $\delta = 5 w_0 L^4/(384 EI)$
 for a simply-supported beam under uniform line load. State the
 boundary conditions used.
+
+\paragraph{Solution sketch.} Integrate $EI\,y'''' = w_0$ four times:
+$EI\,y''' = w_0 x + C_1$, $EI\,y'' = w_0 x^2/2 + C_1 x + C_2$, and so
+on. Boundary conditions for simple supports at $x = 0, L$: $y = 0$ and
+$M = EI\,y'' = 0$ at each end. The two moment conditions give $C_2 = 0$
+and $C_1 = -w_0L/2$ (so $y'' = (w_0/2EI)(x^2 - Lx)$). Integrating twice
+more with $y(0) = y(L) = 0$ gives $y(x) = (w_0/24EI)(x^4 - 2Lx^3 +
+L^3x)$. At midspan $x = L/2$, $y(L/2) = (w_0/24EI)(L^4/16 - L^4/4 +
+L^4/2) = (w_0/24EI)(5L^4/16) = 5w_0L^4/(384EI)$.
 \end{exercise}
 
 \begin{exercise}
 Derive the Euler critical load $P_{\text{cr}} = \pi^2 EI/L^2$ for a
 pinned-pinned column from the moment-equilibrium equation $EI y'' +
 P y = 0$ and the boundary conditions $y(0) = y(L) = 0$.
+
+\paragraph{Solution sketch.} Write $k^2 = P/EI$, so $y'' + k^2 y = 0$
+with general solution $y = A\sin kx + B\cos kx$. The condition $y(0) =
+0$ forces $B = 0$. The condition $y(L) = 0$ then requires $A\sin kL =
+0$; the non-trivial solution ($A \neq 0$) needs $\sin kL = 0$, hence
+$kL = n\pi$ for integer $n$. The smallest non-zero load corresponds to
+$n = 1$, $kL = \pi$, so $k^2 = \pi^2/L^2 = P/EI$, giving $P_{\text{cr}}
+= \pi^2EI/L^2$. The mode shape is the half-sine $y = A\sin(\pi x/L)$.
 \end{exercise}
 
 \begin{exercise}
 Show that the effective-length factor for a fixed-fixed column is
 $K = 0.5$. Identify the buckled mode shape and its inflection
 points.
+
+\paragraph{Solution sketch.} For a fixed-fixed column the buckled shape
+is the full cosine wave $y \propto 1 - \cos(2\pi x/L)$, with zero slope
+at both ends as the fixed condition requires. The critical load works
+out to $P_{\text{cr}} = 4\pi^2EI/L^2 = \pi^2EI/(L/2)^2$, so comparison
+with $\pi^2EI/(KL)^2$ gives $K = 0.5$. The inflection points (where
+$y'' = 0$, the moment is zero) are at $x = L/4$ and $x = 3L/4$; the
+distance between them is $L/2$, which is the effective length $KL$.
+Between these inflection points the column behaves like a pinned-pinned
+column of length $L/2$.
 \end{exercise}
 
 \begin{exercise}
@@ -957,12 +1760,35 @@ Derive Castigliano's first theorem $\delta_i = \partial U/\partial
 P_i$ for a linear elastic structure. State the assumption that makes
 the strain energy depend only on the loads and not on the loading
 history.
+
+\paragraph{Solution sketch.} For a linear elastic structure the
+displacements are linear in the loads, so the work done is $U =
+\tfrac12 \sum_j P_j \delta_j$ and depends only on the final load set,
+not the order of application (the load-path independence assumption,
+valid because the strain energy is a state function for an elastic
+body). Increase load $P_i$ by $dP_i$; the additional work is
+$\delta_i\,dP_i$ to first order (the new load times the displacement
+already present at its own point), so $\partial U/\partial P_i =
+\delta_i$. The reciprocal theorem (Maxwell-Betti), which follows from
+the symmetry of the flexibility matrix, underwrites the equality.
 \end{exercise}
 
 \begin{exercise}
 Show that, for a slender beam under bending and axial load, the
 P-delta amplification factor for the first-order deflection is
 approximately $1/(1 - P/P_{\text{cr}})$ for $P < P_{\text{cr}}$.
+
+\paragraph{Solution sketch.} Let $\delta_0$ be the first-order
+(transverse-load only) deflection and $\delta$ the amplified
+deflection. The axial force $P$ acting through the deflection adds a
+moment $P\delta$, and the extra deflection it causes is proportional to
+that moment. Expanding the deflection as a sine series and keeping the
+first mode, each P-delta cycle multiplies the contribution by
+$P/P_{\text{cr}}$, giving the geometric series $\delta = \delta_0(1 +
+P/P_{\text{cr}} + (P/P_{\text{cr}})^2 + \cdots) = \delta_0/(1 -
+P/P_{\text{cr}})$. The amplification is mild for $P \ll P_{\text{cr}}$
+and diverges as $P \to P_{\text{cr}}$, which is the same instability the
+Euler load marks.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -972,6 +1798,17 @@ Estimate the maximum span of a pine $50 \times 150\,\si{\milli\meter}$
 floor joist (depth $150\,\si{\milli\meter}$) carrying a residential
 live load of $2\,\text{kN}/\text{m}$. State which design criterion
 (bending stress, deflection) governs.
+
+\paragraph{Reference estimate.} Pine: $E \approx 10\,\text{GPa}$,
+$\sigma_{\text{allow}} \approx 10\,\text{MPa}$. Section $50\times
+150\,\si{\milli\meter}$: $S = bh^2/6 = 0.05\times 0.15^2/6 = 1.875
+\times 10^{-4}\,\si{\meter\cubed}$, $I = bh^3/12 = 1.41\times 10^{-5}
+\,\si{\meter\tothe{4}}$. Bending limit: $L^2 = 8S\sigma/w_0 = 8\times
+1.875\times 10^{-4}\times 10^7/2000 = 7.5$, $L \approx 2.74\,\si{\meter}$.
+Deflection limit $L/360$: $L^3 = 384EI/(1800 w_0) = 384\times 10^{10}
+\times 1.41\times 10^{-5}/(1800\times 2000) = 15.0$, $L \approx 2.47\,
+\si{\meter}$. Deflection governs at $L \approx 2.5\,\si{\meter}$, the
+usual outcome for shallow residential joists.
 \end{exercise}
 
 \begin{exercise}
@@ -979,6 +1816,16 @@ Estimate the buckling load of a wooden $25 \times 25\,\si{\milli\meter}$
 column of $1\,\si{\meter}$ length, with one end fixed and one end
 free. State the assumed material properties and the section's
 radius of gyration.
+
+\paragraph{Reference estimate.} Wood $E \approx 10\,\text{GPa}$.
+Section $25\times 25\,\si{\milli\meter}$: $I = bh^3/12 = 0.025^4/12 =
+3.26\times 10^{-8}\,\si{\meter\tothe{4}}$, $A = 6.25\times 10^{-4}\,
+\si{\meter\squared}$, $r = \sqrt{I/A} = 7.2\,\si{\milli\meter}$.
+Fixed-free $K = 2$, $L = 1\,\si{\meter}$, so $P_{\text{cr}} = \pi^2EI/
+(KL)^2 = \pi^2\times 10\times 10^9 \times 3.26\times 10^{-8}/(2)^2 =
+805\,\text{N}$, roughly $80\,\si{\kilogram}$ of axial load. Slenderness
+$KL/r = 2000/7.2 \approx 278$, very slender, so elastic buckling
+firmly governs.
 \end{exercise}
 
 \begin{exercise}
@@ -986,18 +1833,52 @@ Estimate the tip deflection of a typical broom handle of $1\,\si{
 \meter}$ length and $20\,\si{\milli\meter}$ outer diameter under a
 $5\,\si{\newton}$ side push at its tip. State assumptions about
 material and cross-section.
+
+\paragraph{Reference estimate.} Treat as a cantilever, wood $E \approx
+10\,\text{GPa}$. Solid circle $d = 20\,\si{\milli\meter}$: $I = \pi
+d^4/64 = \pi\times 0.020^4/64 = 7.85\times 10^{-9}\,\si{\meter\tothe{4}}$.
+Tip deflection $\delta = PL^3/(3EI) = 5\times 1^3/(3\times 10\times
+10^9 \times 7.85\times 10^{-9}) = 0.021\,\si{\meter} \approx 21\,\si{
+\milli\meter}$. A broom handle visibly bends a couple of centimetres
+under a modest side push, which matches everyday experience; a hollow
+handle would deflect somewhat more.
 \end{exercise}
 
 \begin{exercise}
 Estimate the bending stress at the base of a $5\,\si{\meter}$
 street lamp pole in a $20\,\si{\meter\per\second}$ wind. State
 assumptions about pole geometry, wind drag, and material.
+
+\paragraph{Reference estimate.} Assume a steel tube, outer diameter
+$150\,\si{\milli\meter}$, wall $5\,\si{\milli\meter}$, height $5\,\si{
+\meter}$, projected width $0.15\,\si{\meter}$. Dynamic pressure $q =
+\tfrac12\rho v^2 = 0.5\times 1.2\times 20^2 = 240\,\text{Pa}$. With a
+drag coefficient $C_d \approx 1.2$ for a cylinder, the line load is
+$w = C_d q D = 1.2\times 240\times 0.15 = 43\,\text{N}/\text{m}$. As a
+cantilever the base moment is $M = wH^2/2 = 43\times 5^2/2 = 540\,
+\text{N}\cdot\text{m}$. Tube $I = \pi(0.150^4 - 0.140^4)/64 = 6.2
+\times 10^{-6}\,\si{\meter\tothe{4}}$, $S = I/(D/2) = 8.3\times 10^{-5}
+\,\si{\meter\cubed}$. Base bending stress $\sigma = M/S = 540/8.3
+\times 10^{-5} \approx 6.5\,\text{MPa}$, modest, so a lamp pole is
+controlled by fatigue and gust dynamics rather than static strength.
 \end{exercise}
 
 \begin{exercise}
 Estimate the maximum unsupported height of a $200\,\si{\milli
 \meter}$-square reinforced-concrete column of typical residential
 design. State the slenderness limit and the assumed material.
+
+\paragraph{Reference estimate.} A reinforced-concrete column is
+treated as ``short'' (no slenderness reduction) below a slenderness
+ratio of about $kL_u/r \leq 22$ for a braced frame. For a square
+section $b = 200\,\si{\milli\meter}$, $r = b/\sqrt{12} = 200/3.46 =
+57.7\,\si{\milli\meter}$. With $k \approx 1.0$ (pinned-pinned) the
+limit gives $L_u \leq 22 r = 22\times 0.0577 = 1.27\,\si{\meter}$;
+with end fixity ($k \approx 0.7$) the height roughly extends to
+$\sim 1.8\,\si{\meter}$. A storey-height column ($\sim 3\,\si{\meter}$)
+of this small section is therefore slender and needs a moment
+magnification check; a residential column is usually larger
+($300\,\si{\milli\meter}$ or more) to stay short.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -1007,6 +1888,17 @@ Implement a numerical solver for the Euler-Bernoulli beam equation
 $EI\,y''''(x) = w(x)$ using the finite-difference method. Verify on
 a simply-supported beam under uniform load against the analytical
 solution.
+
+\paragraph{Solution sketch.} The reference implementation is
+\path{code/beam_deflection.py}. Discretise the span into $n$ nodes,
+approximate $y''''$ by the five-point central difference $(y_{i-2} -
+4y_{i-1} + 6y_i - 4y_{i+1} + y_{i+2})/h^4$, assemble the banded linear
+system, and impose $y = 0$ and $y'' = 0$ (a ghost-node reflection) at
+the simple supports. Solving gives the midspan deflection within about
+$0.1\,\%$ of $5w_0L^4/(384EI)$ on a two-hundred-node grid; the error
+falls as $h^2$ as the grid is refined, the signature of the
+second-order difference. The script writes the profile to
+\path{data/deflection_profile.csv}.
 \end{exercise}
 
 \begin{exercise}
@@ -1015,6 +1907,19 @@ connectivity, member properties ($EA$, $EI$, length), joint
 coordinates, applied loads, support types; output joint
 displacements and member end-forces. Verify on a textbook portal
 frame.
+
+\paragraph{Solution sketch.} The reference implementation is
+\path{code/frame_stiffness.py}. Build the $6\times 6$ local member
+matrix (axial $EA/L$ terms coupled with the flexural $12EI/L^3$,
+$6EI/L^2$, $4EI/L$, $2EI/L$ terms), rotate it to global axes with the
+direction-cosine transformation $T^{\!\top}kT$, and assemble member
+contributions into the global $3n\times 3n$ matrix by the connectivity.
+Delete the rows and columns of the restrained degrees of freedom and
+solve $K\vec{u} = \vec{F}$. The script checks the joint rotation of a
+propped cantilever against the closed-form $ML/(4EI)$ and agrees to
+better than $0.1\,\%$; verification on a portal frame compares joint
+sway and member end-moments to a published worked example or to a
+moment-distribution hand check.
 \end{exercise}
 
 \begin{exercise}
@@ -1022,6 +1927,20 @@ Simulate the post-buckling behaviour of a pinned-pinned column
 beyond its Euler critical load, including the geometric
 nonlinearity (large deflections). Plot the load versus midspan
 deflection and identify the supercritical pitchfork bifurcation.
+
+\paragraph{Solution sketch.} Use the elastica (large-deflection)
+formulation, in which the curvature is $d\theta/ds$ along the arc
+length $s$ rather than $y''$, giving $EI\,d^2\theta/ds^2 + P\sin\theta
+= 0$, the pendulum equation in disguise. Solve the two-point boundary
+value problem (shooting on the end slope) for a sequence of loads
+$P > P_{\text{cr}}$ and record the midspan lateral deflection. The
+load-deflection curve is flat (zero deflection) up to $P_{\text{cr}} =
+\pi^2EI/L^2$, then rises along the two symmetric branches sketched in
+figure \ref{fig:vol03ch08:postbuckling}: the supercritical pitchfork.
+The deflected branch follows $P/P_{\text{cr}} \approx 1 + (\pi^2/8)
+(\delta/L)^2$ near the bifurcation. Adding a small initial
+imperfection rounds the corner and removes the sharp branch point, as
+real columns show.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1033,6 +1952,19 @@ $A992$ structural steel with $\sigma_y = 345\,\text{MPa}$. Specify
 the section (from a standard rolled-section table) and check
 against bending stress, shear stress, and a deflection limit of
 $L/360$.
+
+\paragraph{Model-answer sketch.} $M_{\max} = w_0L^2/8 = 10\,000\times
+6^2/8 = 45\,\text{kN}\cdot\text{m}$. With $\phi M_n = \phi\sigma_y S$
+and $\phi = 0.9$, the required $S = M/(\phi\sigma_y) = 45\,000/(0.9
+\times 345\times 10^6) = 1.45\times 10^{-4}\,\si{\meter\cubed} =
+145\,\text{cm}^3$. Deflection: $I \geq 360\times 5 w_0 L^3/(384E) =
+1800\times 10\,000\times 6^3/(384\times 200\times 10^9) = 5.06\times
+10^{-5}\,\si{\meter\tothe{4}} = 5060\,\text{cm}^4$. From
+\path{data/standard_sections.csv}, a $W16\times 40$ ($S = 1070\,\text{cm}^3$,
+$I = 21\,800\,\text{cm}^4$) passes both with margin; check web shear
+$\tau = V/A_{\text{web}}$ with $V = w_0L/2 = 30\,\text{kN}$, easily
+satisfied. A lighter $W12\times 65$ also works but is heavier than the
+deeper $W16$, which is the economical pick.
 \end{exercise}
 
 \begin{exercise}
@@ -1040,6 +1972,19 @@ Design a steel column to support an axial load of $300\,\text{kN}$
 over an unbraced length of $4\,\si{\meter}$, with pinned ends. Use
 $A992$ steel ($\sigma_y = 345\,\text{MPa}$). Specify the section
 and check against both Euler buckling and material yielding.
+
+\paragraph{Model-answer sketch.} Try a $W8\times 31$ ($A = 58.7\,\text{cm}^2$,
+weak-axis $r_y = 51\,\si{\milli\meter}$). Slenderness $\lambda = KL/r_y
+= 1.0\times 4000/51 = 78 < \lambda_c \approx 76$ to $89$ for $A992$
+($\lambda_c = \pi\sqrt{E/\sigma_y} = \pi\sqrt{200\times 10^9/345\times
+10^6} = 75.6$), so the column is just into the long range. Euler stress
+$\sigma_{\text{cr}} = \pi^2E/\lambda^2 = \pi^2\times 200\times 10^9/78^2
+= 324\,\text{MPa}$; the inelastic AISC column equation reduces this to
+about $0.7\sigma_y \approx 240\,\text{MPa}$. Capacity $\phi P_n \approx
+0.9\times 240\times 10^6 \times 58.7\times 10^{-4} = 1270\,\text{kN}
+\gg 300\,\text{kN}$ demand. The squash load $\sigma_y A = 2025\,\text{kN}$
+confirms yielding does not govern. The $W8\times 31$ is generously
+sufficient; a smaller section could be tried if economy matters.
 \end{exercise}
 
 \begin{exercise}
@@ -1047,6 +1992,20 @@ Design a glulam timber beam to carry a residential floor live load
 of $2.5\,\text{kN}/\text{m}$ over a $6\,\si{\meter}$ span, with
 $E = 12\,\text{GPa}$ and $\sigma_{\text{allow}} = 12\,\text{MPa}$.
 Specify the cross-section and check both bending and deflection.
+
+\paragraph{Model-answer sketch.} $M_{\max} = w_0L^2/8 = 2500\times 6^2/
+8 = 11.25\,\text{kN}\cdot\text{m}$. Bending: $S \geq M/\sigma_{\text{allow}}
+= 11\,250/12\times 10^6 = 9.4\times 10^{-4}\,\si{\meter\cubed} =
+940\,\text{cm}^3$. Deflection $L/360$: $I \geq 1800 w_0 L^3/(384E) =
+1800\times 2500\times 6^3/(384\times 12\times 10^9) = 2.11\times 10^{-4}
+\,\si{\meter\tothe{4}}$. Try a glulam $130\times 400\,\si{\milli\meter}$:
+$S = bh^2/6 = 0.13\times 0.4^2/6 = 3.47\times 10^{-3}\,\si{\meter\cubed}$
+(ample) and $I = bh^3/12 = 6.93\times 10^{-4}\,\si{\meter\tothe{4}}$
+(ample). Deflection governs the depth; a $130\times 360\,\si{\milli
+\meter}$ section, $I = 5.05\times 10^{-4}\,\si{\meter\tothe{4}}$, still
+clears the $2.11\times 10^{-4}$ requirement, so the $360\,\si{\milli
+\meter}$ depth is the economical choice (\path{data/timber_design_values.csv}
+for the glulam grade).
 \end{exercise}
 
 \begin{exercise}
@@ -1054,6 +2013,20 @@ Design a moment-resisting steel portal frame for a $10\,\si{\meter}$
 span and $4\,\si{\meter}$ eaves height, carrying a uniform roof
 live load of $3\,\text{kN}/\text{m}$. Specify the column and rafter
 sections and the moment connection at the eaves.
+
+\paragraph{Model-answer sketch.} For a pinned-base portal under gravity
+load $w_0$ over span $L$, the eaves moment is roughly $M_{\text{eaves}}
+\approx w_0L^2/16 = 3000\times 10^2/16 = 18.75\,\text{kN}\cdot\text{m}$
+and the ridge sagging moment $\sim w_0L^2/24$; a frame analysis with
+\path{code/frame_stiffness.py} sharpens these. Size the rafter for the
+larger of the eaves and span moments: required $S \approx M/(\phi\sigma_y)
+= 18\,750/(0.9\times 345\times 10^6) = 6.0\times 10^{-5}\,\si{\meter
+\cubed} = 60\,\text{cm}^3$, a modest section such as a $W8\times 31$.
+Columns carry the eaves moment plus axial; check combined action with
+the interaction equation $N/N_{\text{allow}} + M/M_{\text{allow}} \leq
+1$. The eaves moment connection must transfer the full $18.75\,\text{kN}
+\cdot\text{m}$ through a haunched or fully welded rigid joint; specify a
+bolted end-plate or welded haunch detailed per the connection code.
 \end{exercise}
 
 \begin{exercise}
@@ -1062,6 +2035,22 @@ to support a residential live load of $2.5\,\text{kN}/\text{m}^2$
 plus its own self-weight. Specify the slab thickness, the
 reinforcement (or equivalent if not reinforced concrete), and the
 deflection criterion.
+
+\paragraph{Model-answer sketch.} Per metre width, the load is $w =
+(2.5 + \text{self weight})\,\text{kN}/\text{m}^2$. For a $180\,\si{
+\milli\meter}$ slab the self-weight is $0.18\times 24 = 4.3\,\text{kN}/
+\text{m}^2$, so $w \approx 6.8\,\text{kN}/\text{m}$ per metre strip.
+Cantilever moment at the support $M = wL^2/2 = 6.8\times 1.5^2/2 =
+7.65\,\text{kN}\cdot\text{m}$ per metre. This tension-on-top moment is
+resisted by top reinforcement; sizing follows the concrete-design
+chapter (Vol V), giving on the order of a $\varnothing12$ bar at
+$150\,\si{\milli\meter}$ centres in the top face. The governing
+serviceability check is the cantilever deflection limit, typically
+$L/180$ for a cantilever ($1500/180 = 8.3\,\si{\milli\meter}$), which
+sets the slab thickness; codes give a span-to-depth ratio near $7$ for
+cantilevers, so $180\,\si{\milli\meter}$ for a $1.5\,\si{\meter}$
+projection is reasonable. Detail the top steel to extend a full
+development length back into the supporting slab.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -1070,12 +2059,39 @@ deflection criterion.
 A residential floor visibly bounces when occupants walk across it.
 Identify the most probable cause, the diagnostic measurement, and
 the corrective action.
+
+\paragraph{Solution sketch.} The probable cause is inadequate floor
+stiffness, not inadequate strength: the joists satisfy the bending
+check but the deflection (or the natural frequency, which scales with
+stiffness) is low enough that footfall excites a perceptible response.
+Diagnostic measurement: deflect the floor with a known weight at
+midspan and compare to the predicted $\delta$, or measure the floor's
+fundamental frequency (perceptible bounce typically appears below
+$\sim 8\,\text{Hz}$). Corrective action: increase stiffness, by adding
+a midspan beam to halve the span, sistering deeper joists, adding
+bridging or blocking to share load between joists, or stiffening the
+deck. Adding stiffness, not strength, is the fix, because $EI$ governs
+both deflection and frequency.
 \end{exercise}
 
 \begin{exercise}
 A steel column in a parking structure has been observed to deflect
 visibly under design vehicle loading. Identify the failure mode at
 risk, the inspection priority, and the corrective action.
+
+\paragraph{Solution sketch.} A column that deflects laterally under
+axial load is showing P-delta behaviour: the visible lateral movement
+means the axial load is an appreciable fraction of the buckling load,
+and the deflection amplifies the moment in the feedback described in
+section 8.3. The failure mode at risk is column buckling (instability),
+potentially sudden. Inspection priority: verify the actual end
+conditions and bracing against the design assumptions, check for an
+overload (heavier vehicles than designed, or an added storey), and look
+for any out-of-plumb or local damage that raises the effective
+slenderness. Corrective action: reduce the effective length by adding
+lateral bracing at mid-height (which can multiply the buckling capacity
+several-fold), reduce the load, or strengthen the section. Treat this as
+urgent, since buckling gives little warning.
 \end{exercise}
 
 \begin{exercise}
@@ -1084,12 +2100,39 @@ a stiffener-to-flange weld toe after twenty years of service.
 Identify the design discipline that should have anticipated this
 failure mode and the inspection regime that should have caught the
 crack earlier.
+
+\paragraph{Solution sketch.} The failure mode is high-cycle fatigue at
+a weld-toe stress concentration; the stiffener-to-flange weld toe is a
+classic poor fatigue detail (a low detail category on the S-N curve of
+figure \ref{fig:vol03ch08:fatigue-sn}). The design discipline that
+should have anticipated it is fatigue design: classify each welded
+detail by category, compute the stress range from the live-load
+spectrum, and verify the accumulated damage against the category's S-N
+curve over the design life (Eurocode 3 part 1-9, AISC 360 Appendix 3).
+The inspection regime: scheduled visual and dye-penetrant or
+magnetic-particle inspection of fatigue-critical details at intervals
+set by the predicted crack-growth life, so a millimetre-scale toe crack
+is found and ground out or retrofitted long before it propagates
+through the flange.
 \end{exercise}
 
 \begin{exercise}
 A wooden bookcase has tipped forward under load. The bookcase was
 free-standing without wall anchoring. Identify the failure mode and
 the design correction.
+
+\paragraph{Solution sketch.} The failure mode is overturning
+(rigid-body instability), not a strength failure of any member. The
+bookcase tips when the overturning moment of the load (books on the
+upper shelves, or a horizontal pull) about the front edge of the base
+exceeds the restoring moment of the self-weight acting through the
+centre of gravity. The relevant inequality is $W\cdot(b/2) \geq
+F_h\cdot h$, restoring versus overturning. Design corrections: anchor
+the top to the wall (the standard fix, and code-required in many
+jurisdictions for tall furniture), widen or weight the base to move the
+centre of gravity forward and lower it, or keep heavy items on the
+lower shelves. Anchoring is the reliable correction because it removes
+the dependence on loading pattern.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1100,6 +2143,20 @@ acc:nbs-hyatt-1982}. Identify the seven structural failure modes
 (section 8.8) and state which one was the proximate cause of the
 collapse. State the design-time analysis that should have caught
 the modification's effect on that failure mode.
+
+\paragraph{Solution sketch.} Of the seven modes (yielding, fracture,
+buckling, lateral-torsional buckling, fatigue, joint failure,
+deflection), the proximate cause was joint failure: the box-beam
+connection to the support rod failed under load. The fabrication change
+from one continuous rod to two stacked rods doubled the load on the
+upper-walkway connection, which then failed as the nut tore through the
+box-beam (a block-shear / weld-tearout joint mechanism). The
+design-time analysis that should have caught it is the joint check: a
+free-body diagram of the connection treated as its own subassembly,
+recomputed for the modified detail when the shop drawings changed. The
+global frame forces were unchanged; the local connection capacity was
+halved, and only a per-joint check exposes that. See
+\cite{acc:nbs-hyatt-1982}.
 \end{exercise}
 
 \begin{exercise}
@@ -1108,6 +2165,22 @@ chords during construction. Argue, in $200$ to $300$ words, what
 the design-time slenderness check should have produced, what the
 construction-time bracing should have provided, and what
 construction discipline was missing.
+
+\paragraph{Solution sketch.} The design-time slenderness check should
+have established the chord's effective length between brace points and
+verified $\lambda = KL/r$ against the code column curve for the actual
+construction-stage load, including the chord's self-weight (the Quebec
+Bridge case turned on an underestimate of exactly this). A compression
+chord is only as strong as its unbraced length allows; if the bracing
+assumed in design is not yet installed during erection, the effective
+length is longer and the buckling load far lower. The construction-time
+bracing should have provided lateral support at the spacing the design
+assumed, present before the chord was loaded. The missing discipline is
+construction-stage analysis: verifying that the partially erected
+structure is stable at every stage, with the bracing actually in place
+matching the bracing the strength calculation assumed. A strong
+finished structure can collapse mid-erection if a temporary
+configuration is unbraced.
 \end{exercise}
 
 \begin{exercise}
@@ -1117,6 +2190,21 @@ in $200$ to $300$ words, the most probable failure mode (brittle
 weld fracture, ductile yielding, fastener failure) and the design
 discipline that catches this mode (typically post-Northridge
 detailing requirements in seismic design).
+
+\paragraph{Solution sketch.} The most probable mode is brittle weld
+fracture: a fracture along the column flange under cyclic seismic
+demand points to a weld and heat-affected-zone failure before the
+intended ductile yielding of the beam could develop. This is the
+signature of pre-Northridge welded moment connections, where the
+complete-joint-penetration weld at the beam flange, with its backing
+bars and low-toughness weld metal, fractured at low ductility. The
+design discipline that catches it is capacity (ductile) seismic
+detailing: force the inelastic action into a pre-qualified ductile
+fuse (a reduced beam section, or a connection detailed to keep yielding
+in the beam away from the weld), use tough weld metal, remove or treat
+backing bars, and qualify the connection by cyclic testing. The
+post-Northridge connection provisions exist precisely to move the
+failure from brittle weld fracture to ductile beam yielding.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1126,6 +2214,19 @@ A junior engineer asks whether the deflection limit $L/360$ is
 based on safety or on serviceability. Write a one-paragraph reply
 that takes the question seriously and identifies what the limit
 actually protects.
+
+\paragraph{Solution sketch.} The $L/360$ limit is serviceability, not
+safety: a beam can deflect well past $L/360$ without any risk of
+collapse, since strength is checked separately and with its own safety
+factors. What the limit protects is everything attached to the beam
+that cannot tolerate movement: plastered ceilings and partitions that
+crack, doors and windows that bind, finishes that show distress, and
+occupants who perceive a floor as too flexible. The specific ratio is
+calibrated to the supported elements, which is why brittle finishes
+(glazing, masonry) get a tighter limit such as $L/500$ or $L/600$ while
+a roof with no ceiling tolerates $L/180$. A good reply distinguishes the
+strength limit state from the serviceability limit state and names what
+the deflection limit is actually defending.
 \end{exercise}
 
 \begin{exercise}
@@ -1133,6 +2234,20 @@ A senior colleague argues that hand-calculation methods (moment
 distribution, slope-deflection, unit-load) are obsolete now that
 finite-element software runs on every laptop. Write a one-paragraph
 reply that states when hand methods are still appropriate.
+
+\paragraph{Solution sketch.} Hand methods remain the right tool in
+several situations even with universal software. They give the
+order-of-magnitude check that catches a gross input error in a
+finite-element model (a misplaced support, a unit slip, a load applied
+to the wrong node); an engineer who cannot estimate the answer by hand
+cannot tell whether the software output is sensible. They are faster
+than building a model for small or preliminary problems, where a
+moment-distribution or unit-load calculation answers the question in
+minutes. They build the intuition for load paths that lets an engineer
+read a model critically rather than trusting it. A good reply concedes
+that software is the production tool for large analyses while insisting
+that hand methods are the verification and intuition layer that keeps
+the software honest.
 \end{exercise}
 
 \begin{exercise}
@@ -1141,6 +2256,21 @@ create an open-plan office. Write a one-paragraph response covering
 the structural-analysis steps that must be completed and the
 verification stages required before the modification can be
 approved.
+
+\paragraph{Solution sketch.} Removing a column changes the load path:
+the loads the column carried must be rerouted to the remaining
+structure, usually by a new transfer beam spanning the opening. The
+analysis steps are to trace what the column supports (the tributary
+gravity load and any role in the lateral system), establish the new
+load path, design the transfer beam and its connections for the
+redistributed forces, and check the remaining columns and foundations
+for the increased load. The deflection of the new transfer beam must be
+limited so the structure above is not distressed. Verification stages:
+an independent design check, a temporary shoring scheme to carry the
+load during the work, staged removal with monitoring, and a final
+inspection confirming the as-built matches the design. The response
+should stress that this is a primary structural alteration requiring a
+qualified engineer, a permit, and shoring, not a casual change.
 \end{exercise}
 
 \begin{exercise}
@@ -1149,4 +2279,17 @@ load path you have never explicitly traced. State, in $200$ to
 $300$ words, the chosen body, the supports, the dominant internal
 force at the critical section, and the failure mode you would
 inspect for first.
+
+\paragraph{Solution sketch.} An open-ended reflection; a strong answer
+names a specific member (say a lecture-hall roof beam or a parking-deck
+column), draws its free body, identifies its supports (pinned, fixed,
+or continuous), and states the dominant internal force at the critical
+section: a bending moment $w_0L^2/8$ at midspan for a uniformly loaded
+simple beam, or an axial compression for a column. The reader then
+names the governing failure mode from the seven of section 8.8 (a long
+roof beam: deflection or lateral-torsional buckling; a slender column:
+buckling; a welded crane girder: fatigue) and what they would inspect
+first, such as deflection sag, lateral bracing, or weld-toe cracking.
+The value of the exercise is the habit of tracing a real load path
+rather than the specific answer.
 \end{exercise}

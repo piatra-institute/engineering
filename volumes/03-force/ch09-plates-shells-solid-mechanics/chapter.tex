@@ -9,7 +9,7 @@ and S.\ Woinowsky-Krieger, \emph{Theory of Plates and Shells}, 2nd
 ed.\ (1959), preface to chapter 1
 \cite[p.~v]{text:timoshenko-plates-shells}.}
 
-\chapmeta{Half-life: durable for plate and shell theory; medium for finite-element practice. Archetypes: stability, scaling, failure. Exercise target: 35. Project track: analytical plus simulation (hybrid). Hazard class: none. Reader path default: standard, with sections explicitly tagged. Named cases: Hubble Space Telescope primary mirror (1990, cross-referenced for thin-mirror figure error and the metrology-chain failure pattern).}
+\chapmeta{Half-life: durable for plate and shell theory; medium for finite-element practice. Archetypes: stability, scaling, failure. Exercise target: 35. Project track: analytical plus simulation (hybrid). Hazard class: none. Reader path default: standard, with sections explicitly tagged. Named cases: Hubble Space Telescope primary mirror (1990, cross-referenced for thin-mirror figure error and the metrology-chain failure pattern); de Havilland Comet (1954, invoked for fatigue crack initiation at square-cornered cabin cutouts, the structural counterpart of the stress-concentration discipline).}
 
 \noindent
 A beam is a one-dimensional structural element; a plate is the
@@ -116,6 +116,22 @@ equation is a fourth-order linear PDE in two spatial variables; the
 boundary conditions on the plate's edge (two conditions per edge)
 close the problem.
 
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-plate-element}
+
+The moment resultants of figure~\ref{fig:vol03ch09:plate-element} are
+the bookkeeping device that turns the three-dimensional stress field
+into a two-dimensional field of stress couples per unit length. Once
+$w(x,y)$ is known, the through-thickness stress at any depth $z$
+recovers from the moments by the linear distribution
+\[
+\sigma_{xx}(x,y,z) = \frac{12 M_{xx}}{h^3}\, z, \qquad
+\sigma_{xx}^{\max} = \pm \frac{6 M_{xx}}{h^2}\ \text{at}\ z = \pm h/2,
+\]
+the plate analogue of the beam flexure formula $\sigma = Mc/I$ with
+$c = h/2$ and $I = h^3/12$ per unit width. The surface stress, not the
+midsurface stress (which is zero in pure bending), is the quantity to
+compare against the material's allowable.
+
 The standard plate boundary conditions, on an edge $x = a$:
 
 \begin{itemize}[leftmargin=*]
@@ -157,6 +173,19 @@ the standard reference case for circular-plate analysis (Timoshenko
 \cite[ch.~3, eqn.~62]{text:timoshenko-plates-shells}). The
 maximum bending moment occurs at the clamped edge, where
 $M_{rr} = -q_0 a^2/8$.
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-circular-plate-deflection}
+
+Figure~\ref{fig:vol03ch09:circular-plate-deflection} contrasts the
+clamped and simply supported deflection shapes. The simply supported
+circular plate carries the same load with about four times the centre
+deflection, because its edge rotates freely instead of being held flat.
+The clamped plate pays for its smaller deflection with a large edge
+moment, which is why a clamped circular plate of brittle material
+tends to crack at the rim, while a simply supported one of the same
+material tends to crack at the centre. The collected deflection and
+moment coefficients for the canonical plate cases are tabulated in
+\repopath{data/plate_coefficients.csv} for quick design reference.
 
 For non-canonical geometries, the working tool is the finite-element
 method (section 9.5); the closed-form solutions remain the reference
@@ -231,15 +260,40 @@ on a strip of the shell. The standard examples:
     cone is therefore most heavily stressed at its base.
 \end{itemize}
 
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-cylinder-stresses}
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-vessel-efficiency}
+
+The three membrane results above share a single algebraic skeleton:
+the membrane stress is the product of the pressure, a length scale set
+by the local radius of curvature, and the reciprocal of the wall
+thickness. The sphere splits the load between two equal principal
+curvatures and so carries it at half the stress of the cylinder, whose
+hoop direction has finite curvature while the axial direction is
+straight. Figure~\ref{fig:vol03ch09:vessel-efficiency} turns this into
+the design statement an engineer uses: for the same radius and
+allowable stress, a sphere needs half the wall thickness of a
+cylinder. The membrane sizing and its inversion to a required wall
+thickness are implemented in \repopath{code/pressure_vessel.py}.
+
 The membrane-theory result is exact within the membrane hypothesis
 (no bending, no transverse shear, no thickness through-stress) and
 is accurate for thin shells away from edge constraints, point loads,
 or geometric discontinuities. Near such locations, bending stresses
 that are not small compared to the membrane stresses arise as a
-\engterm{boundary layer} of bending in the shell; the working tool
-for the boundary-layer analysis is the Donnell-Mushtari-Vlasov
-equation set, beyond the scope of this chapter (see
-\cite[ch.~14]{text:timoshenko-plates-shells}).
+\engterm{boundary layer} of bending in the shell. The bending decays
+away from the discontinuity over a length of order $\sqrt{Rh}$, narrow
+for a thin shell, and inside that band it can reach a sizeable fraction
+of the membrane stress (figure~\ref{fig:vol03ch09:discontinuity-stress};
+the governing equation and its damped-oscillator structure are derived
+in the mastery box below). Every welded junction, supported edge, and
+nozzle in a real vessel carries this discontinuity stress, which is why
+the membrane sizing of a vessel is necessary but never sufficient. The
+working tool for the full boundary-layer analysis is the
+Donnell-Mushtari-Vlasov equation set, beyond the scope of this chapter
+(see \cite[ch.~14]{text:timoshenko-plates-shells}).
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-discontinuity-stress}
 
 \engterm{Shell buckling}. A thin shell in compression buckles at a
 load far below the equivalent flat-plate buckling load and far below
@@ -252,12 +306,42 @@ p_{\text{cr}} = \frac{2 E h^2}{R^2 \sqrt{3(1-\nu^2)}},
 but experiment shows that real spherical shells buckle at $20$ to
 $40\,\%$ of this value because of geometric imperfections. A small
 flat spot, a small dimple, or a small out-of-roundness reduces the
-buckling load substantially. The shell-buckling literature calls
+buckling load substantially. The companion result for a long
+cylindrical shell under uniform external pressure, the case of a
+submarine hull or a vacuum-loaded tank between widely spaced
+stiffeners, is the ring-collapse formula
+\[
+p_{\text{cr}} = \frac{E h^3}{4(1-\nu^2) R^3},
+\]
+which follows from treating a unit-length ring of the cylinder as an
+Euler ring and which falls off as the cube of the thinness ratio
+$h/R$. A cylinder twice as thin (at fixed radius) loses a factor of
+eight in external-pressure capacity, the same thickness-cubed scaling
+that governs plate bending. The same imperfection knock-down applies:
+the working capacity is a fraction of this linear value, and the
+design adds ring stiffeners to shorten the unsupported length when the
+bare shell cannot carry the external pressure (worked example in the
+exercises, and the external-pressure step of the air-receiver case
+study below). The shell-buckling literature calls
 this the \engterm{imperfection sensitivity} of shells, and it is the
 single most important practical issue in shell design. Design
 codes for shells (ASME Boiler and Pressure Vessel Code, Section VIII)
 use reduced buckling capacities calibrated to extensive test data;
 no engineer designs a shell against its linear-theory buckling load.
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-shell-buckling}
+
+The contrast with the flat plate is the instructive one.
+A flat plate in compression buckles close to its linear-theory load,
+within ten or twenty percent, because the post-buckling path is stable
+and small imperfections only nudge the result. A shell buckles on an
+unstable post-buckling path, where the first dimple relieves the
+membrane stress that was holding the neighbouring material, which
+dimples in turn. The result is the steep knock-down of
+figure~\ref{fig:vol03ch09:shell-buckling} and the worked design
+factors collected in \repopath{data/shell_knockdown.csv}: the axially
+compressed cylinder, the most sensitive case, is designed to roughly
+one fifth of its classical load.
 
 \engterm{The Brazier effect}. A thin-walled tube under bending
 ovalises: the originally circular cross-section flattens into an
@@ -269,6 +353,42 @@ significantly below the linear prediction. Brazier (1927) gave the
 classical analysis; modern thin-tube design (bicycle frames, aircraft
 fuselages, oil pipelines) accounts for the Brazier effect in the
 design rules for tube wall thickness.
+
+\begin{mastery}
+\textbf{The shell bending boundary layer.} Membrane theory satisfies
+force equilibrium but cannot, on its own, satisfy the displacement
+conditions at an edge, a support, or a junction between two shells of
+different stiffness. A spherical head welded to a cylindrical shell is
+the standard case: under pressure the two free shells want to grow
+radially by different amounts (worked example 8), and the weld forces
+them to share an edge. The shell reconciles the mismatch by developing
+a self-equilibrating set of edge shears and moments that decay away
+from the discontinuity. Linearising the axisymmetric shell equations
+about the membrane state gives, for the radial displacement
+perturbation $w$, an equation of the damped-oscillator form
+\[
+\frac{d^4 w}{dx^4} + 4\beta^4 w = 0, \qquad
+\beta^4 = \frac{3(1-\nu^2)}{R^2 h^2},
+\]
+whose decaying solutions are $w(x) = e^{-\beta x}(C_1\cos\beta x +
+C_2\sin\beta x)$. The structure is identical to the beam on an elastic
+foundation of chapter 8: the membrane stiffness of the shell plays the
+role of the foundation, and the bending stiffness plays the role of the
+beam. The decay length $1/\beta$ scales as $\sqrt{R h}$, so the bending
+boundary layer is narrow for a thin shell, a few times $\sqrt{Rh}$
+wide. Inside that band the bending stress can reach a sizeable fraction
+of the membrane stress and must be added to it; outside it the membrane
+solution is accurate. The practical consequences run through every
+pressure-vessel detail: the knuckle radius of a torispherical head, the
+thickness taper at a nozzle, the reinforcing ring at a support saddle,
+each exists to keep the boundary-layer stress within the allowable. The
+same mathematics governs the edge of a long cylindrical tank under
+hydrostatic load and the junction of a chimney to its foundation. A
+finite-element model resolves the boundary layer only if the mesh
+places several elements within one decay length of the discontinuity;
+a mesh coarser than $\sqrt{Rh}$ at a junction reports the membrane
+stress and misses the very stress that governs the detail.
+\end{mastery}
 
 \section{Three-dimensional elasticity and the FEM equations}\pathtag{standard}
 
@@ -293,6 +413,19 @@ The strain tensor $\epsilon_{ij}$ is symmetric ($\epsilon_{ij} =
 dimensions; the relation to displacement is the same kinematic
 identity introduced in chapter 3 of this volume.
 
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-stress-element-3d}
+
+The companion object is the stress tensor of
+figure~\ref{fig:vol03ch09:stress-element-3d}, also symmetric and also
+six-component. The symmetry $\sigma_{ij} = \sigma_{ji}$ is not an
+assumption; it is the statement of moment equilibrium of the
+infinitesimal element, an unbalanced shear couple would give the
+element an infinite angular acceleration. Six strains, six stresses,
+three displacements: these fifteen fields at every point of the body,
+tied by the six kinematic relations, the six constitutive relations,
+and the three equilibrium equations, are exactly the unknowns and
+equations the finite-element method discretises.
+
 \engterm{Constitutive law} (Hooke's law, isotropic linear-elastic
 material):
 \[
@@ -303,7 +436,9 @@ with $\lambda, \mu$ the Lam{\'e} parameters ($\mu$ also the shear
 modulus $G$, and $\lambda + 2\mu/3 = K$ the bulk modulus). The
 material constants are two: any pair of $(E, \nu)$, $(E, G)$,
 $(K, G)$, or $(\lambda, \mu)$ uniquely determines the others by
-algebraic identities.
+algebraic identities. Representative values of $E$, $\nu$, $G$, yield
+strength, and density for the materials this chapter uses are
+collected in \repopath{data/elastic_constants.csv}.
 
 \engterm{Equilibrium} (Cauchy stress, no body force besides
 gravity):
@@ -376,6 +511,50 @@ foundation of the finite-element method, which discretises the
 admissible-displacement space and finds the minimum on the
 discretised space.
 
+\subsection{From stress tensor to a yield check}
+
+A solved elasticity problem returns the stress tensor at every point.
+The design question is whether that multiaxial stress state will yield
+the material, and the answer requires collapsing the six stress
+components into a single scalar that can be compared against the
+uniaxial yield strength $\sigma_Y$ measured in a tension test. The
+two criteria in working use for ductile metals are von Mises and
+Tresca.
+
+The \engterm{von Mises criterion} states that yield begins when the
+distortion energy reaches the value it has at uniaxial yield. In terms
+of the principal stresses $\sigma_1, \sigma_2, \sigma_3$,
+\[
+\sigma_{\text{vm}} = \sqrt{\tfrac{1}{2}\left[(\sigma_1-\sigma_2)^2 +
+(\sigma_2-\sigma_3)^2 + (\sigma_3-\sigma_1)^2\right]},
+\]
+and yield occurs when $\sigma_{\text{vm}} = \sigma_Y$. In terms of the
+full stress tensor the same quantity is
+\[
+\sigma_{\text{vm}} = \sqrt{\tfrac{1}{2}\left[(\sigma_{xx}-\sigma_{yy})^2
++ (\sigma_{yy}-\sigma_{zz})^2 + (\sigma_{zz}-\sigma_{xx})^2\right]
++ 3\left(\tau_{xy}^2 + \tau_{yz}^2 + \tau_{zx}^2\right)}.
+\]
+The von Mises stress is the quantity a finite-element post-processor
+plots as its default stress contour; the von Mises computation, with a
+plane-stress specialisation, is implemented in
+\repopath{code/von_mises.py}.
+
+The \engterm{Tresca criterion} states that yield begins when the
+maximum shear stress reaches the value at uniaxial yield, $\tau_{\max}
+= (\sigma_{\max} - \sigma_{\min})/2 = \sigma_Y/2$. Tresca is the more
+conservative of the two; its hexagon is inscribed in the von Mises
+ellipse.
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-von-mises-envelope}
+
+Figure~\ref{fig:vol03ch09:von-mises-envelope} plots both envelopes in
+the plane of the two in-plane principal stresses. The largest gap
+between them, a factor of $2/\sqrt{3} \approx 1.155$, occurs in pure
+shear; for most biaxial states the two criteria agree to within ten
+percent. An engineer reading an FEM von Mises plot is reading the
+distance of the stress state from the boundary of this ellipse.
+
 \section{Anisotropy preview}\pathtag{mastery}
 
 The isotropic constitutive law $\sigma_{ij} = \lambda \delta_{ij}
@@ -433,6 +612,43 @@ Volume V chapters 11 and 12; the present chapter notes only that
 the FEM machinery extends to anisotropic materials by replacing
 the isotropic elasticity tensor with the anisotropic tensor,
 nothing more.
+
+\begin{mastery}
+\textbf{The elasticity tensor in Voigt notation.} The fourth-rank
+tensor $C_{ijkl}$ with its $21$ independent constants is awkward to
+carry around, so engineering practice flattens the symmetric stress
+and strain tensors into six-vectors and writes the constitutive law as
+a $6\times 6$ symmetric matrix. The \engterm{Voigt convention} maps the
+index pairs $(11,22,33,23,31,12) \to (1,2,3,4,5,6)$, so that
+\[
+\begin{pmatrix} \sigma_1 \\ \sigma_2 \\ \sigma_3 \\ \sigma_4 \\
+\sigma_5 \\ \sigma_6 \end{pmatrix}
+= \begin{pmatrix}
+C_{11} & C_{12} & C_{13} & C_{14} & C_{15} & C_{16} \\
+       & C_{22} & C_{23} & C_{24} & C_{25} & C_{26} \\
+       &        & C_{33} & C_{34} & C_{35} & C_{36} \\
+       &        &        & C_{44} & C_{45} & C_{46} \\
+       &        &        &        & C_{55} & C_{56} \\
+\text{sym} & & & & & C_{66}
+\end{pmatrix}
+\begin{pmatrix} \epsilon_1 \\ \epsilon_2 \\ \epsilon_3 \\
+\epsilon_4 \\ \epsilon_5 \\ \epsilon_6 \end{pmatrix},
+\]
+where the shear strains in the strain six-vector are the engineering
+shears $\gamma_{ij} = 2\epsilon_{ij}$. The matrix has $21$ independent
+entries in the triclinic case. For an orthotropic material aligned with
+the coordinate axes, the off-diagonal shear couplings $C_{14}$ through
+$C_{56}$ vanish and the upper-left $3\times 3$ block plus three
+diagonal shear terms leave $9$ constants. For isotropy the matrix
+collapses to two: $C_{11} = C_{22} = C_{33} = \lambda + 2\mu$,
+$C_{12} = C_{13} = C_{23} = \lambda$, $C_{44} = C_{55} = C_{66} = \mu$.
+Every commercial finite-element code stores the material as this
+$6\times 6$ matrix; choosing the right one for the material at hand is
+the single most consequential material-model decision, because an
+isotropic matrix applied to a composite laminate is wrong by the ratio
+of the longitudinal to transverse modulus, a factor that often exceeds
+ten.
+\end{mastery}
 
 \section{Finite-element method: introduction}\pathtag{core}
 
@@ -498,7 +714,12 @@ problems, linear and nonlinear materials, static and dynamic loads.
 Every commercial finite-element package (Abaqus, ANSYS, NASTRAN,
 LS-DYNA, COMSOL, the open-source Code\_Aster and CalculiX) implements
 the same machinery with different element libraries and different
-solvers.
+solvers. A teaching-grade implementation of the six steps for
+plane-stress problems with linear triangular elements, short enough to
+read in one sitting, is in \repopath{code/cst_fem.py}; running it on
+its own patch test reproduces the analytical uniaxial strain
+$\epsilon = \sigma/E$ and makes the assembly-and-solve loop concrete
+before any commercial package hides it.
 
 \engterm{Convergence}. The FEM solution depends on the mesh: refining
 the mesh changes the answer, and a well-posed problem produces a
@@ -531,6 +752,57 @@ size, and extrapolates to zero element size by Richardson
 extrapolation. A result that has not been checked against mesh
 convergence is a result that depends on the mesh, and is therefore
 not a result.
+
+\begin{mastery}
+\textbf{Where the element stiffness matrix comes from.} The element
+stiffness matrix $K_e$ is not a black box; it is the discretised form
+of the variational principle. Within an element, the displacement field
+is interpolated from the nodal displacements $\vec{d}_e$ by the
+\engterm{shape functions} $N_a(\vec{x})$,
+\[
+\vec{u}(\vec{x}) = \sum_a N_a(\vec{x})\,\vec{d}_{e,a}
+= \mathbf{N}(\vec{x})\,\vec{d}_e .
+\]
+Differentiating gives the strain in terms of the nodal displacements
+through the \engterm{strain-displacement matrix} $\mathbf{B} =
+\partial \mathbf{N}$, so $\boldsymbol{\epsilon} = \mathbf{B}\,
+\vec{d}_e$. Substituting into the strain energy
+$\tfrac{1}{2}\int_{\Omega_e} \boldsymbol{\epsilon}^{\mathsf T}
+\mathbf{D}\,\boldsymbol{\epsilon}\,dV$ and minimising over $\vec{d}_e$
+yields
+\[
+K_e = \int_{\Omega_e} \mathbf{B}^{\mathsf T}\,\mathbf{D}\,\mathbf{B}
+\,dV ,
+\]
+with $\mathbf{D}$ the material matrix above. For a constant-strain
+triangle, $\mathbf{B}$ is constant over the element and the integral is
+just $\mathbf{B}^{\mathsf T}\mathbf{D}\,\mathbf{B}$ times the element
+area and thickness, which is exactly the arithmetic implemented in
+\repopath{code/cst_fem.py}. For higher-order elements $\mathbf{B}$
+varies over the element and the integral is evaluated numerically at
+Gauss points, which is why element stresses are most accurate there.
+Assembly is the statement that the displacement is continuous across
+element boundaries: the global $K$ is the sum of element $K_e$ with
+shared nodes overlapped. Every commercial code does precisely this; the
+sophistication is in the element library ($\mathbf{B}$ formulations
+that avoid locking) and the sparse solver, not in the recipe.
+\end{mastery}
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-mesh-convergence}
+
+Figure~\ref{fig:vol03ch09:mesh-convergence} shows the study for the
+plate-with-a-hole problem that recurs as the chapter project: the peak
+stress climbs from a coarse-mesh under-prediction toward the
+analytical value as the mesh refines. The coarse mesh is wrong by
+about fifteen percent and on the unsafe side. The Richardson
+extrapolation that recovers the mesh-independent value from three runs
+is implemented in \repopath{code/richardson_convergence.py}; the
+underlying mesh-by-mesh data are in
+\repopath{data/mesh_convergence.csv}. The structure of the curve is
+worth committing to memory: stress quantities at concentrations
+typically converge from below, so a single coarse run does not merely
+have an unknown error, it has an error of known sign that flatters the
+design.
 
 \begin{archetype}[Stability]
 The archetype of plate, shell, and three-dimensional elasticity is
@@ -617,6 +889,17 @@ nearly incompressible materials ($\nu \to 0.5$, as in rubber or
 nearly-saturated soil), the engineer uses elements formulated with
 mixed displacement-pressure interpolation to avoid
 \engterm{volumetric locking}.
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-shear-locking}
+
+Figure~\ref{fig:vol03ch09:shear-locking} shows the mechanism of shear
+locking, the most common way a beginner's solid-element model of a
+thin part comes back far too stiff. A single linear element through the
+thickness has straight edges and cannot bend; it manufactures a
+parasitic transverse shear strain that soaks up energy and reports a
+deflection that can be a half or a third of the truth. The diagnosis
+is to compare against the analytical Kirchhoff prediction, the cure is
+shell elements or a stack of quadratic elements.
 
 \engterm{The mesh-generation workflow.} A working FEM analyst
 proceeds:
@@ -797,6 +1080,464 @@ would specify a plate that fails in service. The deflection-to-
 thickness ratio is the load-bearing diagnostic.
 \end{estimation}
 
+\section{Worked examples}\pathtag{standard}
+
+The formulas of the preceding sections become engineering only when
+they are pushed through to numbers with units, checked for plausibility,
+and turned into a decision. The examples below work the canonical cases
+end to end: a plate deflection, a pressure-vessel wall sizing, a
+multiaxial yield check, a stress concentration, and a shell-buckling
+margin. Each is the kind of calculation that a working engineer
+performs on the back of a free-body diagram before any finite-element
+package is opened.
+
+\subsection*{Worked example 1: deflection of a simply supported plate}
+
+\textbf{Problem.} A simply supported square steel plate, side
+$a = 1\,\si{\meter}$, thickness $h = 10\,\si{\milli\meter}$, $E =
+200\,\text{GPa}$, $\nu = 0.3$, carries a uniform pressure $q_0 =
+5\,\text{kPa}$. Find the centre deflection and the maximum surface
+stress, and confirm that linear plate theory applies.
+
+\textbf{Solution.} The flexural rigidity is
+\[
+D = \frac{E h^3}{12(1-\nu^2)} = \frac{200\times 10^9 \times (0.01)^3}
+{12(1-0.09)} = \frac{200\times 10^9 \times 10^{-6}}{10.92}
+= 1.832\times 10^4\,\text{N}\cdot\text{m}.
+\]
+For a simply supported square plate the centre deflection is
+$w_{\max} = 0.00406\, q_0 a^4/D$, so
+\[
+w_{\max} = 0.00406 \times \frac{5\times 10^3 \times 1^4}
+{1.832\times 10^4} = 1.11\times 10^{-3}\,\text{m} = 1.11\,\si{\milli\meter}.
+\]
+The maximum bending moment per unit length at the centre is
+$M_{\max} \approx 0.0479\, q_0 a^2 = 0.0479\times 5000\times 1 =
+240\,\text{N}\cdot\text{m}/\text{m}$. The surface stress follows from
+$\sigma_{\max} = 6M_{\max}/h^2$:
+\[
+\sigma_{\max} = \frac{6\times 240}{(0.01)^2} = 1.44\times 10^7\,
+\text{Pa} = 14.4\,\text{MPa},
+\]
+comfortably below the $250\,\text{MPa}$ yield of structural steel,
+giving a yield margin of about $17$. The deflection-to-thickness ratio
+is $1.11/10 = 0.11$, well under unity, so the small-deflection
+Kirchhoff theory is valid and the plate is in the bending regime, not
+the membrane regime. The Navier-series cross-check, summed in
+\repopath{code/navier_plate.py}, reproduces the $0.00406$ coefficient
+to four figures.
+
+\subsection*{Worked example 2: sizing a cylindrical pressure vessel}
+
+\textbf{Problem.} A cylindrical steel pressure vessel of inner radius
+$R = 0.4\,\si{\meter}$ must hold an internal gauge pressure
+$p = 4\,\text{MPa}$ with a safety factor of $3$ against yield
+($\sigma_Y = 250\,\text{MPa}$). Size the cylindrical wall, then size a
+hemispherical end cap, and compare.
+
+\textbf{Solution.} The governing stress in the cylinder is the hoop
+stress $\sigma_\theta = pR/h$. The allowable stress is $\sigma_{\text{
+allow}} = \sigma_Y/3 = 83.3\,\text{MPa}$. Setting $\sigma_\theta =
+\sigma_{\text{allow}}$ and solving for the wall thickness,
+\[
+h_{\text{cyl}} = \frac{pR}{\sigma_{\text{allow}}} = \frac{4\times 10^6
+\times 0.4}{83.3\times 10^6} = 0.0192\,\text{m} = 19.2\,\si{\milli\meter}.
+\]
+The hemispherical cap carries $\sigma = pR/2h$, half the cylinder hoop
+for the same wall, so
+\[
+h_{\text{cap}} = \frac{pR}{2\sigma_{\text{allow}}} = \frac{4\times 10^6
+\times 0.4}{2\times 83.3\times 10^6} = 9.6\,\si{\milli\meter},
+\]
+exactly half the cylinder wall. The thinner cap is the structural
+reason hemispherical and ellipsoidal heads are preferred over flat
+ones, and the reason the cylinder-to-head junction, where the two wall
+thicknesses and the two stress states meet, is the location of a
+bending boundary layer that the membrane theory alone does not
+capture; a real design adds a knuckle radius and a local thickness
+transition there. The sizing arithmetic is in
+\repopath{code/pressure_vessel.py}.
+
+\subsection*{Worked example 3: a multiaxial yield check}
+
+\textbf{Problem.} A point in the wall of the cylinder above carries
+hoop stress $\sigma_\theta = 125\,\text{MPa}$, axial stress $\sigma_z =
+62.5\,\text{MPa}$, and a small radial compression averaging
+$\sigma_r \approx -2\,\text{MPa}$ across the wall. Compute the von
+Mises stress and the safety factor against the $250\,\text{MPa}$
+yield. Compare with the Tresca prediction.
+
+\textbf{Solution.} The three values are principal stresses (the wall
+state is biaxial with a small radial term), so
+\[
+\sigma_{\text{vm}} = \sqrt{\tfrac{1}{2}\left[(125-62.5)^2 +
+(62.5-(-2))^2 + ((-2)-125)^2\right]}\ \text{MPa}.
+\]
+The bracket is $\tfrac{1}{2}[62.5^2 + 64.5^2 + 127^2] =
+\tfrac{1}{2}[3906 + 4160 + 16129] = 12098$, so $\sigma_{\text{vm}} =
+\sqrt{12098} = 110\,\text{MPa}$. The safety factor against yield is
+$250/110 = 2.27$. The Tresca prediction uses the maximum shear:
+$\tau_{\max} = (\sigma_{\max} - \sigma_{\min})/2 = (125-(-2))/2 =
+63.5\,\text{MPa}$, so the Tresca equivalent stress is $2\tau_{\max} =
+127\,\text{MPa}$ and the Tresca safety factor is $250/127 = 1.97$.
+Tresca is the more conservative of the two, as expected from its
+inscribed hexagon. An engineer reporting a margin should state which
+criterion was used; the same stress state is at safety factor $2.27$ by
+von Mises and $1.97$ by Tresca. The computation matches
+\repopath{code/von_mises.py}.
+
+\subsection*{Worked example 4: stress concentration at a hole}
+
+\textbf{Problem.} A wide steel plate carries a remote uniaxial tension
+of $\sigma_\infty = 80\,\text{MPa}$ and contains a small circular hole.
+What is the peak stress at the hole, and how far from the hole does the
+disturbance decay to within five percent of the remote field?
+
+\textbf{Solution.} The Kirsch solution gives a stress-concentration
+factor of $K_t = 3$ at the sides of the hole (the points transverse to
+the load, $\theta = 90^\circ$ in figure~\ref{fig:vol03ch09:kirsch-hole}),
+so the peak hoop stress is
+\[
+\sigma_{\max} = K_t\,\sigma_\infty = 3\times 80 = 240\,\text{MPa},
+\]
+which exceeds the $250\,\text{MPa}$ yield by only a small margin; a
+hole that triples the local stress turns a comfortably elastic member
+into one on the edge of local yielding. The Kirsch field shows the
+hoop stress along the transverse axis decaying as $\sigma_\theta/
+\sigma_\infty = 1 + \tfrac{1}{2}(a/r)^2 + \tfrac{3}{2}(a/r)^4$ for
+$r \ge a$. At $r = 3a$ this gives $1 + 0.056 + 0.0185 = 1.074$, still
+seven percent high; at $r = 4a$ it is $1 + 0.031 + 0.0059 = 1.037$,
+within four percent. The disturbance is local to within three or four
+hole radii, the quantitative basis for the rule that a hole far from
+an edge can be analysed as if the plate were infinite. A coarse FEM
+mesh that places fewer than several elements within one radius of the
+hole will miss this peak entirely.
+
+\subsection*{Worked example 5: a shell-buckling margin}
+
+\textbf{Problem.} A thin steel hemisphere of radius $R = 1\,\si{\meter}$
+and wall thickness $h = 5\,\si{\milli\meter}$ ($E = 200\,\text{GPa}$,
+$\nu = 0.3$) is subjected to external pressure. Find the linear-theory
+critical pressure, apply a realistic imperfection knock-down, and state
+the working buckling pressure.
+
+\textbf{Solution.} The classical buckling pressure of a complete
+spherical shell under external pressure is
+\[
+p_{\text{cr}} = \frac{2E h^2}{R^2\sqrt{3(1-\nu^2)}}
+= \frac{2\times 200\times 10^9 \times (0.005)^2}
+{1^2 \times \sqrt{3\times 0.91}}.
+\]
+The numerator is $2\times 200\times 10^9 \times 2.5\times 10^{-5} =
+1.0\times 10^7$; the denominator is $\sqrt{2.73} = 1.652$, so
+$p_{\text{cr}} = 6.05\times 10^6\,\text{Pa} = 6.05\,\text{MPa}$. This is
+the perfect-shell value. Applying a knock-down factor of $0.3$, typical
+for a sphere under external pressure (\repopath{data/shell_knockdown.csv}),
+the working buckling pressure is $0.3\times 6.05 = 1.82\,\text{MPa}$, a
+little under $18$ atmospheres. A vacuum failure ($\Delta p \le 0.1\,
+\text{MPa}$) is nowhere near this margin, but a hemisphere that has to
+resist several megapascals of external pressure would be designed
+against the knocked-down value, never against the $6\,\text{MPa}$
+linear figure. The factor-of-three penalty between linear theory and
+working capacity is the price of imperfection sensitivity, and an
+analyst who quotes the linear value as the capacity has overstated the
+strength of the shell by a factor of three.
+
+\subsection*{Worked example 6: a rectangular plate and the aspect-ratio effect}
+
+\textbf{Problem.} Two simply supported steel plates carry the same
+uniform pressure $q_0 = 4\,\text{kPa}$ and have the same thickness
+$h = 8\,\si{\milli\meter}$ ($E = 200\,\text{GPa}$, $\nu = 0.3$). The
+first is square, side $a = 1.2\,\si{\meter}$. The second is a long
+rectangle, $a = 1.2\,\si{\meter}$ by $b = 2.4\,\si{\meter}$. Compare
+the centre deflections and explain what the aspect ratio does to the
+load path.
+
+\textbf{Solution.} The flexural rigidity is common to both:
+\[
+D = \frac{E h^3}{12(1-\nu^2)} = \frac{200\times 10^9\times (0.008)^3}
+{12\times 0.91} = 9.38\times 10^3\,\text{N}\cdot\text{m}.
+\]
+For a simply supported rectangular plate the centre deflection is
+$w_{\max} = \alpha\, q_0 a^4/D$, where $a$ is the shorter side and the
+coefficient $\alpha$ rises from $0.00406$ for a square toward the
+one-way-strip limit $0.0130$ as the plate grows long. Tabulated values
+give $\alpha = 0.00406$ at $b/a = 1$ and $\alpha = 0.01013$ at $b/a =
+2$ (the collected coefficients are in
+\repopath{data/plate_coefficients.csv}). With $a^4 = 1.2^4 = 2.074\,
+\text{m}^4$ and $q_0 a^4/D = 4000\times 2.074/9380 = 0.884\,\text{m}$,
+\[
+w_{\text{square}} = 0.00406\times 0.884 = 3.59\times 10^{-3}\,\text{m}
+\approx 3.6\,\si{\milli\meter},
+\]
+\[
+w_{\text{long}} = 0.01013\times 0.884 = 8.96\times 10^{-3}\,\text{m}
+\approx 9.0\,\si{\milli\meter}.
+\]
+The long plate deflects about $2.5$ times as much, although the short
+span is identical. The square plate sends load to all four edges by
+two-way bending, so each direction carries roughly half; the long
+plate carries almost the whole load across the short span in one-way
+bending, with the long edges contributing little once $b/a$ exceeds
+about two. The lesson is the working rule that a rectangular plate of
+aspect ratio above two behaves as a one-way strip spanning the short
+direction, and is designed as such. The deflection-to-thickness ratios
+are $0.45$ and $1.1$, so the long plate is at the edge of the
+small-deflection regime and a more careful analysis would check whether
+membrane stiffening has begun to help.
+
+\subsection*{Worked example 7: a stiffened panel by smeared stiffness}
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-stiffened-panel}
+
+\textbf{Problem.} A steel deck panel, $2\,\si{\meter}\times 1\,
+\si{\meter}$, is a $6\,\si{\milli\meter}$ skin reinforced by
+longitudinal blade stiffeners $50\,\si{\milli\meter}$ deep and $6\,
+\si{\milli\meter}$ thick at a pitch of $250\,\si{\milli\meter}$
+(figure~\ref{fig:vol03ch09:stiffened-panel}). Estimate the effective
+bending rigidity in the stiffener direction and compare it to the bare
+skin, then state the separate check the smeared model cannot supply.
+
+\textbf{Solution.} The bare-skin rigidity per unit width is $D_{\text{
+skin}} = E h^3/[12(1-\nu^2)] = 200\times 10^9\times (0.006)^3/[12\times
+0.91] = 3.96\times 10^3\,\text{N}\cdot\text{m}$. The stiffener adds
+second moment of area along its length. Treat one stiffener plus its
+tributary skin strip (width $b = 0.25\,\si{\meter}$) as a tee section.
+The skin strip contributes area $A_s = 0.25\times 0.006 = 1.5\times
+10^{-3}\,\text{m}^2$; the blade contributes $A_b = 0.05\times 0.006 =
+3.0\times 10^{-4}\,\text{m}^2$. The neutral axis sits a distance
+$\bar{y}$ below the skin midplane,
+\[
+\bar{y} = \frac{A_b\,(0.003 + 0.025)}{A_s + A_b}
+= \frac{3.0\times 10^{-4}\times 0.028}{1.8\times 10^{-3}}
+= 4.67\times 10^{-3}\,\text{m},
+\]
+about $4.7\,\si{\milli\meter}$ below the skin midplane. The section
+second moment about that axis, summing the skin and blade own-inertias
+and their parallel-axis terms, is approximately
+\[
+I = 1.5\times 10^{-3}\,(4.67\times 10^{-3})^2 + 3.0\times 10^{-4}\,
+(0.0233)^2 + \tfrac{1}{12}(0.006)(0.05)^3 \approx 2.6\times 10^{-7}\,
+\text{m}^4
+\]
+per stiffener bay. The smeared rigidity in the stiffener direction is
+$D_x = E I/b = 200\times 10^9\times 2.6\times 10^{-7}/0.25 = 2.08\times
+10^5\,\text{N}\cdot\text{m}$, about $53$ times the bare-skin rigidity.
+The transverse rigidity $D_y$ stays near the bare-skin value, so the
+panel is strongly orthotropic, $D_x \gg D_y$, and the global deflection
+analysis uses the orthotropic plate equation $D_x w_{,xxxx} + 2H
+w_{,xxyy} + D_y w_{,yyyy} = q$ rather than the isotropic biharmonic.
+
+The check the smeared model cannot supply is the local one. Smearing
+replaces the discrete skin-and-stiffener geometry with a continuum, so
+it predicts the panel's global deflection and the stress carried into
+the stiffeners, but it knows nothing about the skin bay between two
+stiffeners. That bay, $250\,\si{\milli\meter}\times$ (its length),
+$6\,\si{\milli\meter}$ thick, is a small plate in its own right and can
+buckle locally under in-plane compression or deflect excessively under
+pressure long before the global panel is in trouble. A complete design
+runs the smeared model for the global response and a separate local
+plate analysis for the worst skin bay. The smeared-versus-discrete
+split is the plate-and-shell instance of the multiscale discipline:
+one model for the structure, another for the detail.
+
+\subsection*{Worked example 8: discontinuity stress at a shell junction}
+
+\textbf{Problem.} A cylindrical shell, radius $R = 0.6\,\si{\meter}$,
+wall $h = 12\,\si{\milli\meter}$, internal pressure $p = 3\,\text{MPa}$,
+is closed by a hemispherical head of the same radius but wall $h/2 =
+6\,\si{\milli\meter}$, the membrane-efficient thickness. Estimate the
+radial growth mismatch at the junction and the axial length over which
+the bending boundary layer decays.
+
+\textbf{Solution.} Under pressure each shell grows radially. The
+cylinder hoop strain is $\epsilon_\theta = (\sigma_\theta - \nu
+\sigma_z)/E$ with $\sigma_\theta = pR/h$ and $\sigma_z = pR/2h$, so
+\[
+\delta_{\text{cyl}} = R\,\epsilon_\theta = \frac{R}{E}\,
+\frac{pR}{h}\left(1 - \tfrac{\nu}{2}\right)
+= \frac{0.6}{200\times 10^9}\,\frac{3\times 10^6\times 0.6}{0.012}\,
+(1 - 0.15).
+\]
+The membrane hoop stress is $pR/h = 3\times 10^6\times 0.6/0.012 =
+150\,\text{MPa}$, so $\delta_{\text{cyl}} = (0.6/200\times 10^9)\times
+150\times 10^6\times 0.85 = 3.83\times 10^{-4}\,\text{m}$, about
+$0.38\,\si{\milli\meter}$. The hemisphere carries equal biaxial stress
+$pR/2h_{\text{sph}} = 3\times 10^6\times 0.6/(2\times 0.006) = 150\,
+\text{MPa}$ as well (the half thickness exactly offsets the factor of
+two), and its radial growth is $\delta_{\text{sph}} = (R/E)\,\sigma\,
+(1-\nu) = (0.6/200\times 10^9)\times 150\times 10^6\times 0.7 = 3.15
+\times 10^{-4}\,\text{m}$, about $0.32\,\si{\milli\meter}$.
+
+The two free shells want to grow by different amounts, a mismatch of
+about $0.07\,\si{\milli\meter}$, but the junction holds them together.
+The shells satisfy continuity by developing shear and bending at the
+edge, a self-equilibrating set of edge forces that produces the local
+\engterm{discontinuity stress}. The bending decays over the
+characteristic length of the shell boundary layer,
+\[
+\ell \approx \frac{\pi}{\beta}, \qquad
+\beta = \left[\frac{3(1-\nu^2)}{R^2 h^2}\right]^{1/4},
+\]
+which for the cylinder gives $\beta = [3\times 0.91/(0.6^2\times
+0.012^2)]^{1/4} = [2.73/(5.18\times 10^{-5})]^{1/4} = (5.27\times
+10^4)^{1/4} = 15.1\,\text{m}^{-1}$, so the bending is confined to about
+$1/\beta = 66\,\si{\milli\meter}$, of order $\sqrt{R h} = \sqrt{0.6
+\times 0.012} = 0.085\,\si{\meter}$. The boundary-layer stress can add
+a meaningful fraction of the membrane stress at the junction
+(figure~\ref{fig:vol03ch09:discontinuity-stress}), which is why the
+junction is detailed with a thickness taper or a knuckle radius and is
+never sized on the membrane formula alone. The estimate sets the scale:
+the local detail matters over a band a few times $\sqrt{R h}$ wide, and
+nowhere else.
+
+\section{Case study: sizing an air receiver end to end}\pathtag{standard}
+
+The membrane formulae, the head selection, the discontinuity check, and
+the buckling check are five separate calculations in the preceding
+sections. A real vessel design carries one set of numbers through all of
+them and ends in a verdict. We size a compressed-air receiver from its
+service requirement to its specified wall and head, with every number
+carried forward, and state at each step which check governs and why.
+
+\textbf{The requirement.} A plant needs an air receiver to buffer a
+reciprocating compressor: storage volume about $3\,\text{m}^3$, maximum
+allowable working pressure $p = 1.6\,\text{MPa}$ gauge (a common
+$16\,\text{bar}$ rating), service temperature near ambient, working
+fluid dry compressed air. The vessel is a horizontal cylinder closed by
+two heads, with a single top nozzle for the relief valve and outlet
+(figure~\ref{fig:vol03ch09:vessel-layout}). The material is a plain
+carbon-steel plate of yield $\sigma_Y = 250\,\text{MPa}$ and a
+code-style allowable stress $S = 138\,\text{MPa}$ (a representative
+value for this class of steel at modest temperature; a real design
+reads $S$ from the material tables of the governing code). We adopt a
+joint efficiency $E_j = 0.85$, the value for a spot-radiographed
+double-welded butt seam.
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-vessel-layout}
+
+\textbf{Step 1: geometry from the volume.} Choose an inner diameter
+$D_i = 1.2\,\si{\meter}$, so $R = 0.6\,\si{\meter}$. The cylindrical
+shell of tangent length $L$ holds $\pi R^2 L$; the two hemispherical-
+equivalent heads add roughly $\tfrac{4}{3}\pi R^3$ between them. Setting
+the total to $3\,\text{m}^3$,
+\[
+\pi (0.6)^2 L + \tfrac{4}{3}\pi (0.6)^3 = 3
+\;\Rightarrow\;
+1.131\,L + 0.905 = 3
+\;\Rightarrow\;
+L = 1.85\,\si{\meter}.
+\]
+Round the tangent length up to $L = 3.0\,\si{\meter}$ to leave margin
+and to suit standard plate, giving a generous $\sim 4.3\,\text{m}^3$;
+the geometry of figure~\ref{fig:vol03ch09:vessel-layout} is fixed.
+
+\textbf{Step 2: cylindrical shell thickness (hoop governs).} The hoop
+stress is the governing membrane stress. Sizing on the code-style
+relation $t = pR/(S E_j)$, which is the membrane hoop formula with the
+allowable reduced by the joint efficiency,
+\[
+t_{\text{shell}} = \frac{p R}{S E_j}
+= \frac{1.6\times 10^6\times 0.6}{138\times 10^6\times 0.85}
+= \frac{9.6\times 10^5}{1.173\times 10^8}
+= 8.19\times 10^{-3}\,\text{m}
+= 8.2\,\si{\milli\meter}.
+\]
+Add a corrosion allowance of $1.5\,\si{\milli\meter}$ and round to a
+standard plate: specify $t_{\text{shell}} = 10\,\si{\milli\meter}$. The
+as-specified hoop stress on the corroded wall ($8.5\,\si{\milli\meter}$
+after allowance) is $\sigma_\theta = pR/t = 1.6\times 10^6\times 0.6/
+(8.5\times 10^{-3}) = 113\,\text{MPa}$, comfortably under the
+$138\,\text{MPa}$ allowable.
+
+\textbf{Step 3: head selection and thickness.} A hemispherical head
+carries $pR/2t$ and would size at $t = pR/(2 S E_j) = 4.1\,\si{
+\milli\meter}$, half the shell. A hemisphere is deep and costly to
+form, though, so we choose a $2{:}1$ ellipsoidal head, the common
+compromise. The ellipsoidal head's governing thickness, from the code
+relation $t = pD_i/(2 S E_j - 0.2 p)$, is
+\[
+t_{\text{head}} = \frac{1.6\times 10^6\times 1.2}
+{2\times 138\times 10^6\times 0.85 - 0.2\times 1.6\times 10^6}
+= \frac{1.92\times 10^6}{2.346\times 10^8 - 3.2\times 10^5}
+= 8.2\times 10^{-3}\,\text{m},
+\]
+the same as the shell thickness to two figures. Specify the head at the same
+$10\,\si{\milli\meter}$ as the shell, which also eases the welding of
+two equal-thickness edges. The thickness ordering across head types is
+the one shown in figure~\ref{fig:vol03ch09:head-types}: the
+hemispherical head is thinnest, the ellipsoidal and torispherical heads
+sit near the shell thickness, and a flat head would be several times
+thicker because it carries the pressure in bending.
+
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-head-types}
+
+\textbf{Step 4: head-to-shell junction.} The ellipsoidal head and the
+cylinder grow by slightly different radial amounts under pressure, the
+discontinuity-stress mechanism of worked example 8. With $R = 0.6\,
+\si{\meter}$ and $t = 10\,\si{\milli\meter}$, the boundary-layer width
+is of order $\sqrt{R t} = \sqrt{0.6\times 0.01} = 0.077\,\si{\meter}$,
+so the local bending is confined to a band about $80\,\si{\milli\meter}$
+from the junction. We detail the junction with the head's own knuckle
+radius (the $2{:}1$ ellipsoidal profile supplies it) and avoid any
+abrupt thickness step, keeping the two welded edges at equal thickness.
+No extra wall is needed here for a vessel of this modest pressure; the
+detail is the fix.
+
+\textbf{Step 5: nozzle reinforcement.} The top nozzle cuts a hole in
+the shell, and a hole removes load-carrying metal, exactly the
+stress-concentration mechanism of worked example 4. The area-
+replacement rule of pressure-vessel codes requires that the metal
+removed by the opening be replaced by reinforcement within a defined
+zone around the nozzle. For a nozzle of inner diameter $d = 100\,
+\si{\milli\meter}$, the area removed is $A_{\text{rem}} = d\,t_{\text{
+required}} = 0.100\times 8.2\times 10^{-3} = 8.2\times 10^{-4}\,
+\text{m}^2$ (using the required, not the specified, wall). The excess
+wall already present (the specified $10\,\si{\milli\meter}$ against the
+$8.2\,\si{\milli\meter}$ required, over the reinforcement zone) supplies
+part of this; the nozzle neck supplies more; a reinforcing pad makes up
+any shortfall. We note the check rather than work the full area
+balance: the design intent is that the opening not lower the vessel's
+pressure capacity, achieved by replacing the removed area locally.
+
+\textbf{Step 6: external-pressure and buckling check.} An air receiver
+is an internal-pressure vessel, but it can see external pressure during
+a vacuum event (a blocked inlet during pump-out, or steam condensation
+if it were ever steamed and sealed). The relevant failure is inward
+buckling, not yield. The long-cylinder ring-buckling pressure is
+$p_{\text{cr}} = E t^3/[4(1-\nu^2)R^3]$; with $E = 200\,\text{GPa}$,
+$t = 8.5\times 10^{-3}\,\si{\meter}$ (corroded), $R = 0.6\,\si{\meter}$,
+\[
+p_{\text{cr}} = \frac{200\times 10^9\times (8.5\times 10^{-3})^3}
+{4\times 0.91\times (0.6)^3}
+= \frac{200\times 10^9\times 6.14\times 10^{-7}}{0.786}
+= 1.56\times 10^5\,\text{Pa}.
+\]
+A $0.3$ imperfection knock-down brings this to about $47\,\text{kPa}$,
+below a full atmosphere of external differential ($101\,\text{kPa}$).
+The bare shell would not survive a hard vacuum. The verdict at this
+step is to fit a vacuum-breaker (anti-vacuum valve) sized so the
+credible external differential cannot exceed the knocked-down capacity,
+the standard and cheap fix; ring stiffeners would be the alternative if
+a vacuum-rated vessel were required.
+
+\textbf{Verdict.} The vessel is a $1.2\,\si{\meter}$ inner-diameter,
+$3.0\,\si{\meter}$ tangent-length carbon-steel cylinder, $10\,\si{
+\milli\meter}$ wall, with two $2{:}1$ ellipsoidal heads also at
+$10\,\si{\milli\meter}$, a top nozzle reinforced by the local excess
+wall plus a pad as the area balance requires, equal-thickness welds at
+the head-to-shell junctions, full radiography downgraded to spot with
+$E_j = 0.85$, a $1.5\,\si{\milli\meter}$ corrosion allowance, and a
+vacuum-breaker against external-pressure collapse. The governing check
+is the cylindrical hoop stress; the head, junction, and nozzle checks
+each refine the detail without changing the wall; the external-pressure
+check changes nothing structural but adds a protective device. The
+membrane sizing arithmetic and the head and external-pressure relations
+are implemented in \repopath{code/pressure_vessel.py}. A reader who
+takes the membrane hoop result as the whole design ships a vessel that
+collapses on the first vacuum event; the discipline is to carry the
+numbers through every check, not only the one that sizes the wall.
+
 \section{Failure: when finite-element analyses lie}\pathtag{core}
 
 A finite-element analysis is a numerical method; its output is a
@@ -952,6 +1693,38 @@ load is wholly an FEM exercise. The discipline that catches
 errors in those analyses is the same VVUQ discipline named in
 section 9.7.
 
+\subsection{The square-corner analogue: the Comet cabin cutouts}
+
+The stress-concentration discipline of this chapter has a structural
+counterpart as sharp as the Hubble metrology case. The de Havilland
+Comet, the first jet-powered passenger airliner, suffered two in-flight
+cabin disintegrations in 1954, traced by the Royal Aircraft
+Establishment to fatigue cracks that initiated at the square-cornered
+cutouts in the pressurised cabin skin and propagated under repeated
+pressurisation cycles \cite{acc:cohen-comet-report-1955}. The cabin
+was a thin cylindrical pressure vessel; each flight took it through one
+full pressure cycle of about $0.55\,\si{\bar}$ differential. The
+cutouts had small fillet radii, and a small fillet radius at the edge
+of a cutout in a loaded plate produces exactly the stress
+concentration that figure~\ref{fig:vol03ch09:kirsch-hole} quantifies
+for a circular hole, except that the square corner concentrates the
+stress more sharply than a round hole does. The local peak exceeded
+the material's fatigue limit; a crack initiated, grew under cycling,
+reached its critical length, and ran.
+
+The connection to FEM practice is the singularity error of section
+9.7. A re-entrant or sharp corner produces an unbounded stress in the
+elastic limit; an FEM model of the Comet cutout meshed coarsely would
+have reported a finite, reassuring peak that rose without bound as the
+mesh refined. The discipline that catches it is the one named earlier:
+recognise the geometric singularity, refine the corner to a real
+fillet radius, and apply a fatigue criterion rather than a static
+peak-stress check. The post-Comet response, full-airframe fatigue
+testing and the generous radiusing of every cutout, is the structural
+analogue of the mesh-convergence and singularity discipline of this
+chapter. A round window is a stress-concentration fix you can see from
+your seat.
+
 \begin{principle}[A FEM result is a hypothesis, not a fact]
 A finite-element output is a numerical prediction of how the
 modelled system would respond to the modelled load. The
@@ -985,9 +1758,12 @@ $50\,\text{MPa}$ applied to its short edges. The long edges and
 the hole boundary are traction-free. Find the maximum stress at
 the hole.
 
+\input{volumes/03-force/ch09-plates-shells-solid-mechanics/figures/fig-kirsch-hole}
+
 \textbf{Analytical solution}. The Kirsch (1898) solution for an
 infinite plate with a circular hole under remote uniaxial tension
-gives a stress concentration factor of $3.0$ at the hole. With the
+gives a stress concentration factor of $3.0$ at the hole
+(figure~\ref{fig:vol03ch09:kirsch-hole}). With the
 applied stress of $50\,\text{MPa}$, the peak hoop stress at the
 hole is $150\,\text{MPa}$. The reader writes out the Kirsch
 solution from first principles (chapter 3 of this volume, section
@@ -1047,6 +1823,13 @@ A simply supported square steel plate of side $1\,\si{\meter}$ and
 thickness $10\,\si{\milli\meter}$ ($E = 200\,\text{GPa}$, $\nu =
 0.3$) carries a uniform pressure of $5\,\text{kPa}$. Compute the
 flexural rigidity $D$ and the centre deflection.
+
+\paragraph{Solution sketch.} $D = Eh^3/[12(1-\nu^2)] = 200\times 10^9
+\times (0.01)^3/[12\times 0.91] = 1.83\times 10^4\,\text{N}\cdot\text{m}$.
+For a simply supported square plate $w_{\max} = 0.00406\, q_0 a^4/D =
+0.00406\times 5000\times 1/(1.83\times 10^4) = 1.11\times 10^{-3}\,
+\text{m} \approx 1.1\,\si{\milli\meter}$. The ratio $w/h = 0.11 < 1$
+confirms linear theory applies. This is Worked example 1.
 \end{exercise}
 
 \begin{exercise}
@@ -1055,6 +1838,15 @@ and thickness $4\,\si{\milli\meter}$ ($E = 70\,\text{GPa}$, $\nu =
 0.33$) carries a uniform pressure of $2\,\text{kPa}$. Compute the
 centre deflection and the maximum bending moment at the clamped
 edge.
+
+\paragraph{Solution sketch.} $D = 70\times 10^9\times (0.004)^3/
+[12(1-0.33^2)] = 70\times 10^9\times 6.4\times 10^{-8}/10.69 =
+419\,\text{N}\cdot\text{m}$. For a clamped circular plate $w_{\max} =
+q_0 a^4/(64D) = 2000\times 0.5^4/(64\times 419) = 2000\times 0.0625/
+26816 = 4.66\times 10^{-3}\,\text{m} \approx 4.7\,\si{\milli\meter}$.
+The edge moment is $M_{rr} = -q_0 a^2/8 = -2000\times 0.25/8 =
+-62.5\,\text{N}\cdot\text{m}/\text{m}$; the surface stress there is
+$6|M|/h^2 = 6\times 62.5/(0.004)^2 = 23.4\,\text{MPa}$.
 \end{exercise}
 
 \begin{exercise}
@@ -1062,6 +1854,13 @@ A thin spherical pressure vessel of radius $0.6\,\si{\meter}$,
 wall thickness $4\,\si{\milli\meter}$, carries an internal gauge
 pressure of $2\,\text{MPa}$. Compute the membrane stress in the
 wall.
+
+\paragraph{Solution sketch.} A sphere has equal meridional and
+circumferential membrane stress $\sigma = pR/(2h) = 2\times 10^6
+\times 0.6/(2\times 0.004) = 1.2\times 10^6/0.008 = 1.5\times 10^8\,
+\text{Pa} = 150\,\text{MPa}$. Both principal stresses are equal, so
+the von Mises stress equals $150\,\text{MPa}$ as well; against a
+$250\,\text{MPa}$ yield the margin is $1.67$.
 \end{exercise}
 
 \begin{exercise}
@@ -1069,6 +1868,11 @@ A thin cylindrical steel pressure vessel of inner radius $0.5\,
 \si{\meter}$ and wall thickness $6\,\si{\milli\meter}$ carries an
 internal gauge pressure of $1.5\,\text{MPa}$. Compute the hoop
 stress, the axial stress, and the ratio of the two.
+
+\paragraph{Solution sketch.} Hoop $\sigma_\theta = pR/h = 1.5\times
+10^6\times 0.5/0.006 = 1.25\times 10^8\,\text{Pa} = 125\,\text{MPa}$.
+Axial $\sigma_z = pR/(2h) = 62.5\,\text{MPa}$. Ratio $\sigma_\theta/
+\sigma_z = 2$, the universal thin-cylinder result; the hoop governs.
 \end{exercise}
 
 \begin{exercise}
@@ -1077,6 +1881,13 @@ thickness $5\,\si{\milli\meter}$ carries an internal gauge pressure
 of $0.5\,\text{MPa}$. Compute the circumferential and meridional
 membrane stresses at a slant distance of $1\,\si{\meter}$ from
 the apex.
+
+\paragraph{Solution sketch.} With $\tan 30^\circ = 0.577$, $s = 1\,
+\si{\meter}$, $h = 0.005\,\si{\meter}$: circumferential $\sigma_\theta
+= p s\tan\alpha/h = 0.5\times 10^6\times 1\times 0.577/0.005 = 5.77
+\times 10^7\,\text{Pa} = 57.7\,\text{MPa}$. Meridional $\sigma_s =
+p s\tan\alpha/(2h) = 28.9\,\text{MPa}$, half the circumferential. The
+stresses grow linearly with $s$, so the base is the critical section.
 \end{exercise}
 
 \begin{exercise}
@@ -1085,6 +1896,14 @@ square cross-section $40 \times 40\,\si{\milli\meter}$ is loaded
 in plane strain with an in-plane uniaxial stress of $100\,\text{MPa}
 $. Compute the effective two-dimensional Young's modulus and
 Poisson's ratio.
+
+\paragraph{Solution sketch.} Plane strain uses $E^* = E/(1-\nu^2) =
+70/(1-0.33^2) = 70/0.891 = 78.6\,\text{GPa}$ and $\nu^* = \nu/(1-\nu)
+= 0.33/0.67 = 0.493$. The effective modulus is stiffer and the
+effective Poisson's ratio approaches $0.5$ because the through-thickness
+constraint prevents the lateral contraction that a free bar would
+have; the constraint makes the material behave as if nearly
+incompressible in the plane.
 \end{exercise}
 
 \begin{exercise}
@@ -1094,6 +1913,22 @@ A simply supported rectangular steel plate of dimensions $1.5\,
 Navier double-sine series, retaining the four smallest terms
 ($m, n = 1, 3$), to compute the centre deflection. Compare to the
 single-term approximation.
+
+\paragraph{Solution sketch.} $D = 200\times 10^9\times (0.008)^3/
+[12\times 0.91] = 9.38\times 10^3\,\text{N}\cdot\text{m}$. At the
+centre $\sin(m\pi/2)\sin(n\pi/2) = \pm 1$ for odd $m,n$. With $a =
+1.5$, $b = 1$, the term denominators $mn[(m/a)^2+(n/b)^2]^2$ are:
+$(1,1)$ gives $1\times[0.444+1]^2 = 2.085$ with sign $+$; $(1,3)$
+gives $3\times[0.444+9]^2 = 267.6$ sign $-$; $(3,1)$ gives $3\times
+[4+1]^2 = 75$ sign $-$; $(3,3)$ gives $9\times[4+9]^2 = 1521$ sign
+$+$. Sum $= 1/2.085 - 1/267.6 - 1/75 + 1/1521 = 0.4796 - 0.00374 -
+0.01333 + 0.00066 = 0.4632$. Then $w = (16 q_0/\pi^6 D)\times 0.4632 =
+(16\times 3000/(961\times 9380))\times 0.4632 = 5.33\times 10^{-3}
+\times 0.4632 = 2.47\times 10^{-3}\,\text{m}$. The single term alone
+gives $5.33\times 10^{-3}\times 0.4796 = 2.56\,\si{\milli\meter}$, so
+the four-term value $2.47\,\si{\milli\meter}$ is about three percent
+lower; the series converges quickly. Cross-check with
+\repopath{code/navier_plate.py}.
 \end{exercise}
 
 \begin{exercise}
@@ -1103,6 +1938,18 @@ hydrostatic pressure. Estimate the buckling pressure from the
 classical shell-buckling formula, then apply a knock-down factor
 of $0.3$ for imperfection sensitivity. Compare to the
 gauge-pressure equivalent of a $20\,\si{\meter}$ depth of water.
+
+\paragraph{Solution sketch.} For a long cylinder under external
+pressure the classical critical pressure is $p_{\text{cr}} = E h^3/
+[4(1-\nu^2)R^3]$ (the long-cylinder ring formula). With $E = 70\times
+10^9$, $h = 0.003$, $R = 0.8$, $\nu = 0.33$: $p_{\text{cr}} = 70\times
+10^9\times 2.7\times 10^{-8}/[4\times 0.891\times 0.512] = 1890/1.825
+= 1.04\times 10^3\,\text{Pa} \approx 1.0\,\text{kPa}$. After the $0.3$
+knock-down, $\approx 0.31\,\text{kPa}$. The pressure at $20\,\si{\meter}$
+of water is $\rho g h = 1000\times 9.81\times 20 = 1.96\times 10^5\,
+\text{Pa} = 196\,\text{kPa}$, more than two orders of magnitude above
+the buckling capacity: this thin cylinder would collapse almost
+immediately at depth. It needs ring stiffeners or a far thicker wall.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -1111,12 +1958,39 @@ gauge-pressure equivalent of a $20\,\si{\meter}$ depth of water.
 Derive the plate flexural rigidity $D = E h^3/[12(1-\nu^2)]$ from
 the Kirchhoff kinematic assumptions and the plane-stress Hooke's
 law. State which integral is responsible for the $h^3$ dependence.
+
+\paragraph{Solution sketch.} The Kirchhoff kinematics give
+$\epsilon_{xx} = -z\,\partial^2 w/\partial x^2$ (and similarly for
+$yy$, $xy$): strains linear in $z$. Plane-stress Hooke's law makes
+$\sigma_{xx} = [E/(1-\nu^2)](\epsilon_{xx}+\nu\epsilon_{yy})$, also
+linear in $z$. The bending moment is the first moment $M_{xx} =
+\int_{-h/2}^{h/2} z\,\sigma_{xx}\,dz$. Substituting, the integrand
+carries $z\times z = z^2$, and $\int_{-h/2}^{h/2} z^2\,dz = h^3/12$.
+That integral is the source of the cube: one factor of $h$ comes from
+the strain's linear $z$ dependence, one from the moment arm $z$, and
+one from the range of integration. The result is $M_{xx} = -D(\partial^2
+w/\partial x^2 + \nu\,\partial^2 w/\partial y^2)$ with $D = Eh^3/
+[12(1-\nu^2)]$.
 \end{exercise}
 
 \begin{exercise}
 Derive the plate bending equation $D \nabla^4 w = q$ from
 transverse force equilibrium of an infinitesimal plate element
 and the moment-curvature relations.
+
+\paragraph{Solution sketch.} Transverse force balance on a $dx\,dy$
+element gives $\partial Q_x/\partial x + \partial Q_y/\partial y + q =
+0$. Moment balance about the two in-plane axes relates the shears to
+the moment gradients: $Q_x = \partial M_{xx}/\partial x + \partial
+M_{xy}/\partial y$ and $Q_y = \partial M_{yy}/\partial y + \partial
+M_{xy}/\partial x$. Substituting eliminates the shears, leaving
+$\partial^2 M_{xx}/\partial x^2 + 2\,\partial^2 M_{xy}/\partial x
+\partial y + \partial^2 M_{yy}/\partial y^2 = -q$. Now insert the
+moment-curvature relations $M_{xx} = -D(w_{,xx}+\nu w_{,yy})$,
+$M_{yy} = -D(w_{,yy}+\nu w_{,xx})$, $M_{xy} = -D(1-\nu)w_{,xy}$. The
+$\nu$ terms cancel in pairs and the twist term supplies the cross
+derivative, collecting to $D(w_{,xxxx} + 2w_{,xxyy} + w_{,yyyy}) = q$,
+i.e.\ $D\nabla^4 w = q$.
 \end{exercise}
 
 \begin{exercise}
@@ -1124,12 +1998,34 @@ Derive the membrane stresses in a thin spherical pressure vessel
 under internal pressure from force equilibrium on a hemisphere.
 State the assumption about wall thickness that the derivation
 uses.
+
+\paragraph{Solution sketch.} Cut the sphere along a diameter. The
+internal pressure $p$ acting on the projected circular area $\pi R^2$
+gives a net axial force $p\pi R^2$ pushing the two halves apart. The
+wall resists it over the cut circumference $2\pi R$ with thickness $h$,
+carrying membrane stress $\sigma$: resisting force $= \sigma\times 2\pi
+R h$. Equilibrium $p\pi R^2 = \sigma\,2\pi R h$ gives $\sigma = pR/(2h)$.
+By symmetry every great circle gives the same result, so the
+meridional and circumferential stresses are equal. The assumption is
+that $h \ll R$, so the stress is uniform through the wall (membrane,
+no through-thickness bending) and $R$ is taken as the midsurface
+radius.
 \end{exercise}
 
 \begin{exercise}
 Derive the hoop and axial stresses in a thin cylindrical pressure
 vessel from force equilibrium on a half-cylinder slice and on a
 circular end cap, respectively.
+
+\paragraph{Solution sketch.} \emph{Hoop:} slice a length $L$ of the
+cylinder along a diametral plane. The pressure on the projected
+rectangle $2RL$ gives force $p\,2RL$; the two longitudinal cut edges
+(each $Lh$) resist with hoop stress $\sigma_\theta$: resisting force
+$2\sigma_\theta L h$. Equilibrium $p\,2RL = 2\sigma_\theta Lh$ gives
+$\sigma_\theta = pR/h$. \emph{Axial:} cap the cylinder and balance the
+end thrust $p\pi R^2$ against the axial stress over the wall
+cross-section $2\pi R h$: $p\pi R^2 = \sigma_z\,2\pi R h$, so $\sigma_z
+= pR/(2h)$. Hence $\sigma_\theta = 2\sigma_z$.
 \end{exercise}
 
 \begin{exercise}
@@ -1137,6 +2033,20 @@ Show that, for an isotropic linear-elastic material, the
 constitutive law $\sigma_{ij} = C_{ijkl} \epsilon_{kl}$ has only
 two independent elastic constants, by enumerating the symmetries
 of $C_{ijkl}$.
+
+\paragraph{Solution sketch.} Start from $81$ components. Stress
+symmetry $\sigma_{ij}=\sigma_{ji}$ forces $C_{ijkl}=C_{jikl}$ (minor
+symmetry in $ij$), strain symmetry forces $C_{ijkl}=C_{ijlk}$ (minor
+in $kl$); together these reduce $81$ to $36$. The existence of a
+strain-energy potential gives the major symmetry $C_{ijkl}=C_{klij}$,
+reducing $36$ to $21$ (the symmetric $6\times 6$ Voigt matrix).
+Imposing full isotropy, the tensor must be invariant under all
+rotations, and the only isotropic fourth-rank tensors with the right
+symmetries are built from $\delta_{ij}\delta_{kl}$ and $(\delta_{ik}
+\delta_{jl}+\delta_{il}\delta_{jk})$. Their two coefficients are the
+Lam{\'e} parameters $\lambda$ and $\mu$, giving $C_{ijkl}=\lambda
+\delta_{ij}\delta_{kl}+\mu(\delta_{ik}\delta_{jl}+\delta_{il}
+\delta_{jk})$: two independent constants.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -1147,6 +2057,18 @@ glass window pane, $6\,\si{\milli\meter}$ thick, simply supported
 on all four edges, under a uniform wind pressure of $500\,\text{Pa}$.
 State assumptions about glass elastic properties and check that
 the deflection is within the linear-theory range.
+
+\paragraph{Reference estimate.} Take glass $E \approx 70\,\text{GPa}$,
+$\nu \approx 0.22$. $D = 70\times 10^9\times (0.006)^3/[12(1-0.048)] =
+70\times 10^9\times 2.16\times 10^{-7}/11.42 = 1.32\times 10^3\,
+\text{N}\cdot\text{m}$. For a simply supported square plate $w_{\max}
+= 0.00406\,q_0 a^4/D = 0.00406\times 500\times 16/1320 = 0.0246\,
+\text{m} \approx 25\,\si{\milli\meter}$. The ratio $w/h = 25/6 \approx
+4 > 1$, so the pane is already past the linear-theory range and into
+membrane action; the true deflection is smaller than $25\,\si{\milli
+\meter}$ but the linear estimate flags that a $6\,\si{\milli\meter}$
+pane spanning $2\,\si{\meter}$ is marginal and would normally be
+thicker or smaller in practice.
 \end{exercise}
 
 \begin{exercise}
@@ -1155,6 +2077,17 @@ Estimate the burst pressure of a thin-walled aluminium soda can
 \si{\milli\meter}$, ultimate tensile strength $\approx 250\,\text{
 MPa}$). Compare to a typical internal pressure ($\sim 300\,\text{
 kPa}$) for a carbonated drink.
+
+\paragraph{Reference estimate.} Treat the can wall as a thin cylinder;
+the hoop stress governs, $\sigma_\theta = pR/h$. Setting $\sigma_\theta
+= \sigma_{\text{ult}} = 250\,\text{MPa}$ and solving for the burst
+pressure: $p_{\text{burst}} = \sigma_{\text{ult}}\,h/R = 250\times 10^6
+\times 1\times 10^{-4}/0.033 = 2.5\times 10^4/0.033 = 7.6\times 10^5\,
+\text{Pa} \approx 0.76\,\text{MPa}$. The carbonation pressure of about
+$0.3\,\text{MPa}$ is roughly a factor of $2.5$ below burst, which
+matches the lived experience that a shaken can can fail but a normal
+one does not. The estimate also explains why the can ends are domed:
+the flat-end stress would govern instead.
 \end{exercise}
 
 \begin{exercise}
@@ -1162,6 +2095,21 @@ Estimate the natural frequency of a clamped circular drumhead of
 radius $0.15\,\si{\meter}$, thickness $0.2\,\si{\milli\meter}$,
 material density $1400\,\si{\kilogram\per\meter\cubed}$,
 Young's modulus $\sim 3\,\text{GPa}$.
+
+\paragraph{Reference estimate.} The fundamental frequency of a clamped
+circular plate is $f = (\lambda^2/2\pi)\sqrt{D/(\rho h a^4)}$ with
+$\lambda^2 = 10.21$ for the lowest mode. $D = 3\times 10^9\times
+(2\times 10^{-4})^3/[12(1-0.16)] \approx 3\times 10^9\times 8\times
+10^{-12}/10.08 = 2.38\times 10^{-3}\,\text{N}\cdot\text{m}$ (using
+$\nu \approx 0.4$). Mass per area $\rho h = 1400\times 2\times 10^{-4}
+= 0.28\,\si{\kilogram\per\meter\squared}$. Then $D/(\rho h a^4) =
+2.38\times 10^{-3}/(0.28\times 0.15^4) = 2.38\times 10^{-3}/(0.28\times
+5.06\times 10^{-4}) = 16.8\,\text{s}^{-2}$, $\sqrt{\cdot} = 4.1$. So
+$f = (10.21/6.28)\times 4.1 \approx 6.7\,\text{Hz}$ if read as plate
+bending. A real drumhead is membrane-tensioned, which raises this
+substantially; the bending estimate is a lower bound and shows the
+plate stiffness alone gives only a few hertz, so the audible pitch
+must come from tension, not flexural rigidity.
 \end{exercise}
 
 \begin{exercise}
@@ -1169,6 +2117,14 @@ Estimate the buckling pressure of a thin steel hemisphere of
 radius $1\,\si{\meter}$ and wall thickness $5\,\si{\milli\meter}$
 under external pressure. State the linear-theory critical
 pressure and the realistic value after the imperfection knock-down.
+
+\paragraph{Reference estimate.} $p_{\text{cr}} = 2E h^2/[R^2\sqrt{3
+(1-\nu^2)}]$ with $E = 200\,\text{GPa}$, $h = 0.005$, $R = 1$, $\nu =
+0.3$. Numerator $2\times 200\times 10^9\times 2.5\times 10^{-5} =
+1.0\times 10^7$; denominator $\sqrt{3\times 0.91} = 1.65$, so
+$p_{\text{cr}} = 6.05\,\text{MPa}$ (linear). After a $0.3$ knock-down,
+$\approx 1.8\,\text{MPa}$. This is Worked example 5; the factor of
+three between theory and capacity is the imperfection penalty.
 \end{exercise}
 
 \begin{exercise}
@@ -1177,6 +2133,19 @@ square cutout in a flat plate under uniaxial tension. State why
 the geometric singularity produces an unbounded prediction in
 the elastic-theory limit and what design discipline replaces
 the peak-stress check.
+
+\paragraph{Reference estimate.} A truly sharp re-entrant corner (zero
+radius) has a stress that grows as $r^{-\lambda}$ with $\lambda \approx
+0.46$ for a $90^\circ$ notch, so the elastic stress is unbounded as
+$r\to 0$ and the stress-concentration factor is formally infinite. The
+FEM peak rises without bound as the mesh refines, so there is no
+converged number to report. The design discipline that replaces the
+peak-stress check is fracture or notch mechanics: characterise the
+notch by its stress-intensity factor or by a finite notch radius from
+the manufacturing process (a real corner always has a small radius),
+and apply a fatigue or fracture criterion. The practical estimate for
+a fillet of radius $\rho$ at a corner is $K_t \approx 1 + 2\sqrt{t/\rho}$
+for a notch of depth $t$, finite only because $\rho > 0$.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -1187,12 +2156,38 @@ with a central circular hole. Apply uniaxial tension to two
 opposite edges. Run the analysis on three meshes (coarse, medium,
 fine) and tabulate the peak stress at the hole on each mesh.
 Estimate the converged value by Richardson extrapolation.
+
+\paragraph{Solution sketch.} The peak stress should rise from below
+toward $K_t\sigma_\infty$ as the mesh refines; for a small hole and
+remote tension $\sigma_\infty$, the converged value is $3\sigma_\infty$.
+With three results such as the $128$, $139$, $146\,\text{MPa}$ sequence
+of \repopath{data/mesh_convergence.csv} at refinement ratio $r = 2$,
+Richardson extrapolation gives $p = \ln[(f_1-f_2)/(f_2-f_3)]/\ln r =
+\ln(11/7)/\ln 2 \approx 0.65$ and $f_{\text{exact}} = f_3 + (f_3-f_2)/
+(r^p-1) \approx 146 + 7/0.57 \approx 158\,\text{MPa}$ from this coarse
+triple; refining further tightens it toward the analytical $150\,
+\text{MPa}$. The key reported quantities are the converged value, the
+observed order, and the grid-convergence index; see
+\repopath{code/richardson_convergence.py}.
 \end{exercise}
 
 \begin{exercise}
 Implement a hand-coded two-dimensional plane-stress finite-element
 solver using linear triangular elements. Verify on a uniaxial
 tension test against the analytical solution.
+
+\paragraph{Solution sketch.} The solver needs four pieces: the
+plane-stress material matrix $\mathbf{D} = [E/(1-\nu^2)]\,[[1,\nu,0],
+[\nu,1,0],[0,0,(1-\nu)/2]]$; the constant strain-displacement matrix
+$\mathbf{B}$ built from the triangle's nodal coordinates; the element
+stiffness $K_e = t\,A\,\mathbf{B}^{\mathsf T}\mathbf{D}\,\mathbf{B}$;
+and assembly plus a constrained solve $K\vec{u}=\vec{F}$. The patch
+test loads a single (or two-triangle) square in uniaxial tension and
+checks that the recovered strain equals $\sigma/E$ and the stress
+field is uniform. A complete reference implementation that passes this
+test is \repopath{code/cst_fem.py}; a correct solver reproduces $\sigma
+= E\epsilon$ to machine precision on the patch test, which is the
+minimum bar an element formulation must clear.
 \end{exercise}
 
 \begin{exercise}
@@ -1203,6 +2198,20 @@ single-layer brick element model. Compare the tip deflection
 under a $10\,\text{N}$ tip load with the analytical Kirchhoff
 plate prediction. Identify the source of any discrepancy in the
 brick-element model.
+
+\paragraph{Solution sketch.} The Kirchhoff cantilever-strip estimate
+treats the plate as a beam of width $b = 0.2\,\si{\meter}$, second
+moment $I = bh^3/12 = 0.2\times (0.002)^3/12 = 1.33\times 10^{-10}\,
+\text{m}^4$, length $L = 0.2$, $E = 200\,\text{GPa}$: tip deflection
+$\delta = PL^3/(3EI) = 10\times 0.008/(3\times 200\times 10^9\times
+1.33\times 10^{-10}) = 0.08/79.8 = 1.0\times 10^{-3}\,\text{m}\approx
+1\,\si{\milli\meter}$. The shell-element model should match this to a
+few percent. The single-layer brick model returns roughly half to a
+third of it because of shear locking
+(figure~\ref{fig:vol03ch09:shear-locking}): one linear element through
+the thickness cannot bend and manufactures parasitic shear strain. The
+cure is shell elements, several quadratic bricks through the thickness,
+or reduced integration.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1213,6 +2222,21 @@ Design a flat steel plate floor of a small workshop, $3\,\si{
 edges by perimeter beams, to carry a uniform live load of $5\,
 \text{kPa}$. Specify the plate thickness and verify the
 small-deflection assumption.
+
+\paragraph{Model-answer sketch.} The short span $a = 3\,\si{\meter}$
+governs. Set a serviceability deflection limit, say $w \le L/250 =
+12\,\si{\milli\meter}$. For a rectangular plate near the one-way limit
+the deflection coefficient is around $0.01$, so $w \approx 0.01\,q_0
+a^4/D$ and the required $D \ge 0.01\times 5000\times 81/0.012 = 3.4\times
+10^6\,\text{N}\cdot\text{m}$. With steel $D = Eh^3/[12(1-\nu^2)] =
+1.83\times 10^{10}h^3$, this needs $h^3 \ge 1.85\times 10^{-4}$, so
+$h \ge 57\,\si{\milli\meter}$, which is implausibly thick for a bare
+plate. The honest answer is that a flat plate alone is the wrong
+structure for a $3\times 4\,\si{\meter}$ floor; the design adds
+stiffening ribs or a grillage so each plate panel spans under a metre,
+or uses a composite deck. The exercise teaches that the thickness-cubed
+penalty makes large unstiffened plates uneconomic, and verifies $w/h$
+is small only after stiffening reduces the panel span.
 \end{exercise}
 
 \begin{exercise}
@@ -1220,6 +2244,20 @@ Design a thin-walled cylindrical steel pressure vessel of inner
 radius $0.4\,\si{\meter}$ to carry an internal pressure of $4\,
 \text{MPa}$ with a safety factor of $3$ on hoop stress. Specify
 the wall thickness and a code-style longitudinal weld detail.
+
+\paragraph{Model-answer sketch.} Allowable stress $\sigma_{\text{allow}}
+= \sigma_Y/3$. Taking $\sigma_Y = 250\,\text{MPa}$, $\sigma_{\text{
+allow}} = 83.3\,\text{MPa}$. Hoop governs: $h = pR/\sigma_{\text{allow}}
+= 4\times 10^6\times 0.4/83.3\times 10^6 = 19.2\,\si{\milli\meter}$;
+specify $h = 20\,\si{\milli\meter}$. The longitudinal weld sees the
+full hoop stress, so it is the governing seam; a code design specifies
+a full-penetration double-welded butt joint with a joint efficiency
+$E_j$ (ASME applies $E_j \approx 0.85$ for spot-radiographed,
+$1.0$ for fully radiographed), increasing the required thickness to
+$h = pR/(\sigma_{\text{allow}}E_j)$. With $E_j = 0.85$, $h = 22.6\,
+\si{\milli\meter}$; specify $24\,\si{\milli\meter}$ and full
+radiography of the longitudinal seam. The circumferential seam, at
+half the stress, can use a lower joint efficiency.
 \end{exercise}
 
 \begin{exercise}
@@ -1228,6 +2266,19 @@ cylindrical body of inner radius $0.4\,\si{\meter}$, internal
 pressure $4\,\text{MPa}$, with the same safety factor. Specify
 the end-cap thickness and note the comparison to the cylindrical
 wall thickness.
+
+\paragraph{Model-answer sketch.} The hemispherical cap carries $\sigma
+= pR/(2h)$, so $h_{\text{cap}} = pR/(2\sigma_{\text{allow}}) = 4\times
+10^6\times 0.4/(2\times 83.3\times 10^6) = 9.6\,\si{\milli\meter}$;
+specify $10\,\si{\milli\meter}$. This is half the cylinder wall
+($\approx 20\,\si{\milli\meter}$ from the previous exercise), the
+quantitative statement that a hemispherical head is the most efficient
+closure. Note the discontinuity: the thin cap meets the thicker
+cylinder at the junction, where the mismatch in radial growth under
+pressure induces a bending boundary layer. A real design either tapers
+the thickness transition over a few wall thicknesses or uses a knuckle
+radius (a torispherical or ellipsoidal head) to soften the
+discontinuity.
 \end{exercise}
 
 \begin{exercise}
@@ -1237,6 +2288,21 @@ flange, with the fillet radius equal to one-tenth the shaft
 radius. Specify the element type, the minimum element size at
 the fillet, and the criteria for accepting the converged peak
 stress.
+
+\paragraph{Model-answer sketch.} Use quadratic (second-order)
+elements: tetrahedra if the geometry forces an unstructured mesh,
+hexahedra if a swept mesh is possible, because linear elements
+under-predict the fillet peak. The element size at the fillet should
+resolve the radius with several elements across it; with a fillet
+radius $\rho = R_{\text{shaft}}/10$, set the minimum element size to
+about $\rho/4$ to $\rho/6$, giving four to six elements through the
+fillet arc. Accept the peak stress only after a mesh-convergence study
+of three meshes shows the peak changing by less than a chosen tolerance
+(say $2\%$) between the two finest meshes, with the convergence rate
+consistent with the element order. Because a fillet has a finite
+radius, the peak is bounded and converges (unlike a sharp corner), so
+a converged value exists and is the design stress; apply the fatigue
+check from chapter 8 to it.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -1248,6 +2314,18 @@ corner. The mesh refinement is doubled; the predicted peak rises
 to $580\,\text{MPa}$. Identify the underlying issue and the
 diagnostic that catches it. State the engineering criterion that
 should replace the peak-stress check.
+
+\paragraph{Solution sketch.} The peak stress rising with mesh
+refinement is the signature of a geometric stress singularity at the
+sharp re-entrant corner: the elastic stress is unbounded there, so the
+FEM peak diverges and never converges. The diagnostic is the
+mesh-convergence study itself, which shows the peak increasing rather
+than stabilising. The corner stress is not a physical failure
+criterion; the criterion that replaces it is a fracture- or
+notch-mechanics check (stress-intensity factor, the structural-stress
+or notch-stress method, or a finite fillet radius from the actual
+manufactured part). A real corner has a small radius; modelling that
+radius bounds the stress and restores convergence.
 \end{exercise}
 
 \begin{exercise}
@@ -1256,6 +2334,17 @@ under external vacuum loading at a pressure differential
 significantly below the linear-theory critical pressure. Identify
 the dominant cause and state the design discipline that should
 have anticipated the failure.
+
+\paragraph{Solution sketch.} The dominant cause is imperfection
+sensitivity: a real spherical shell buckles at $20$ to $40\%$ of the
+linear-theory critical pressure because small geometric imperfections
+(a dimple, a flat spot, out-of-roundness) destabilise the membrane
+equilibrium. The design discipline that anticipates it is to apply a
+knock-down factor calibrated to test data, never to design against the
+linear value; design codes (ASME Section VIII, the NASA shell-buckling
+monographs) supply the reduced capacities. The fix is a thicker wall,
+ring or stringer stiffeners, or a tighter manufacturing tolerance on
+out-of-roundness.
 \end{exercise}
 
 \begin{exercise}
@@ -1264,6 +2353,16 @@ deflection that is approximately half of the closed-form
 prediction from Kirchhoff plate theory. The model uses linear
 brick elements with one element through the thickness. Identify
 the numerical artifact and the corrective action.
+
+\paragraph{Solution sketch.} The artifact is shear locking. A single
+linear brick through the thickness has straight edges and cannot
+represent the curvature of pure bending; it develops a parasitic
+transverse shear strain that absorbs energy and makes the panel report
+far too stiff, hence a deflection roughly half the Kirchhoff value
+(figure~\ref{fig:vol03ch09:shear-locking}). The corrective action is to
+switch to shell elements, use several quadratic bricks through the
+thickness, or use reduced-integration solid elements with hourglass
+control. A through-thickness mesh-refinement study would also expose it.
 \end{exercise}
 
 \begin{exercise}
@@ -1271,6 +2370,20 @@ A wooden floor beam analysed as isotropic with the wood's
 longitudinal Young's modulus predicts deflections half those
 actually observed. Identify the modelling error and the
 corrective material model.
+
+\paragraph{Solution sketch.} The error is treating wood as isotropic
+with its largest (longitudinal, along-grain) modulus, which overstates
+the bending stiffness when the beam is loaded so that the radial or
+tangential modulus matters, or when shear deformation along the grain
+is significant. Wood is orthotropic: the longitudinal modulus exceeds
+the radial and tangential moduli by a factor of $20$ or more, and the
+shear moduli are smaller still. The corrective model is an orthotropic
+constitutive law with the grain direction aligned to the beam axis and
+the radial and tangential moduli and the relevant shear modulus
+entered correctly; design then follows the grain-direction allowables
+(NDS or Eurocode 5). Doubling of the predicted-versus-observed
+deflection is consistent with a missing shear-deflection contribution
+and an overstated effective modulus.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1283,6 +2396,21 @@ Hubble fabrication and the VVUQ failure modes of section 9.7.
 State the specific verification step that, if applied to the
 reflective null corrector, would have caught the error before
 the mirror was polished to its final figure.
+
+\paragraph{Model-answer sketch.} The parallel is the unverified test
+instrument. In Hubble the reflective null corrector was treated as the
+authoritative figure measurement, exactly as a beginner treats an FEM
+result as authoritative; both are predictions whose trustworthiness
+depends on a verification chain that was skipped. The specific step
+that would have caught it is independent verification of the test
+instrument: an end-to-end check of the null corrector against a second,
+independent metrology method (the auxiliary refractive null corrector
+and the inverse-null test that did show discrepancies but were set
+aside). In FEM terms this is code verification (does the tool solve the
+intended problem) plus anomaly resolution (take every discrepancy
+between the authoritative result and an independent check seriously).
+The discipline is to verify the instrument, not only the part it
+measures.
 \end{exercise}
 
 \begin{exercise}
@@ -1293,6 +2421,23 @@ during pre-service ground testing. Argue, in $200$ to $300$ words,
 which class of FEM error (modelling, discretisation, interpretation)
 is most likely responsible and what verification should have
 caught it.
+
+\paragraph{Model-answer sketch.} The most likely class is a modelling
+error: a linear static plane-stress analysis cannot predict
+out-of-plane buckling, because buckling is a stability (eigenvalue)
+problem, not a stress problem. The flat-plate plane-stress idealisation
+discards the very degree of freedom (transverse displacement) in which
+the panel buckles. A panel can be well below its yield stress and still
+buckle. The verification that should have caught it is a linear
+buckling (eigenvalue) analysis followed by a geometrically nonlinear
+post-buckling analysis with an imperfection seeded, and validation
+against a coupon or sub-component compression test. A converged stress
+plot from a linear static run says nothing about stability; the
+discipline is to recognise the loading as stability-driven and to run
+the buckling analysis the static model omitted. A good answer names the
+class as modelling, identifies the missing physics as stability, and
+prescribes a buckling eigenvalue analysis plus imperfection-sensitive
+nonlinear check.
 \end{exercise}
 
 \begin{exercise}
@@ -1302,6 +2447,22 @@ $1.5$, collapses inward when a vapour-return valve fails closed
 during pump-out. Argue, in $200$ to $300$ words, which factor of
 the design was responsible for the failure and what design
 discipline catches the imperfection-sensitivity issue.
+
+\paragraph{Model-answer sketch.} The responsible factor is designing
+against the linear-theory buckling pressure with only a $1.5$ safety
+factor. Real shells buckle at $20$ to $40\%$ of the linear value, so a
+$1.5$ factor against the linear capacity leaves an actual margin below
+unity once imperfection sensitivity is accounted for; an external
+pressure the design treated as within margin was in fact above the true
+buckling capacity. The valve failing closed during pump-out created an
+unanticipated external pressure differential (partial vacuum inside),
+the loading the inward-buckling mode responds to. The discipline that
+catches it is a calibrated knock-down factor on the linear buckling
+load, per ASME Section VIII or the NASA shell-buckling monographs, plus
+a vacuum-breaker or relief device sized so the credible valve-failure
+pressure cannot exceed the knocked-down capacity. A good answer names
+the linear buckling basis as the fault and the empirical knock-down
+(with a vacuum breaker) as the cure.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1314,6 +2475,20 @@ data. The peak stress is below the material's yield strength,
 and the engineer recommends the design be approved. Write a
 one-paragraph reply that identifies what is missing and what
 verification the design review should require before approval.
+
+\paragraph{Model-answer sketch.} What is missing is the entire
+verification-and-validation chain: a single FEM run on a single mesh
+gives a number whose error is unknown, and a peak stress below yield is
+not a result if it has not been shown to be mesh-independent. The
+review should require, before approval, a mesh-convergence study on the
+quantity of interest with the observed convergence order reported; a
+check that the peak is not at a geometric singularity (where no
+converged value exists); validation against an analytical result or a
+test for at least one representative case; and a proper code-based
+design check applying the right factor of safety, not a bare
+stress-versus-yield comparison. The reply should say plainly that
+"below yield on one mesh" is a colourful screenshot, not an engineering
+claim, and name the convergence study as the minimum gate.
 \end{exercise}
 
 \begin{exercise}
@@ -1322,6 +2497,22 @@ sufficiently mature that engineers no longer need to understand
 the underlying mathematics. Write a one-paragraph reply that
 identifies the specific knowledge a working FEM analyst must
 retain and the failure modes that opaque software use admits.
+
+\paragraph{Model-answer sketch.} The reply should grant that solvers
+and element libraries are mature, then state what no maturity can
+substitute for: the analyst must understand the governing physics
+(stress versus stability, linear versus nonlinear, static versus
+dynamic), the element-formulation pitfalls (shear and volumetric
+locking, singularities at sharp corners, stress accuracy at Gauss
+points versus nodes), the boundary-condition and load idealisations,
+and the verification-and-validation discipline. The failure modes that
+opaque use admits are exactly the ones in section 9.7: an isotropic
+model of an anisotropic material, a linear static run where buckling
+governs, a coarse mesh that under-predicts a concentration, a
+singularity read as a failure stress, unit confusion, and a peak read
+at an inaccurate node. Mature software runs all of these to convincing
+colour plots. The knowledge the analyst retains is the knowledge of
+when the software is solving the wrong problem.
 \end{exercise}
 
 \begin{exercise}
@@ -1333,4 +2524,18 @@ $300$ words, the loads it carries, the dominant deformation mode,
 the relevant simplified theory (plate, shell, membrane, or
 three-dimensional elasticity), and the failure mode you would
 inspect for first.
+
+\paragraph{Model-answer sketch.} A good answer picks one component and
+carries it through the chapter's framework. For a sheet-metal appliance
+casing panel, for instance: the loads are its own weight, the press
+fit of fasteners, and incidental hand pressure; the dominant
+deformation mode is plate bending of the unsupported spans between
+stiffening ribs or fold lines; the relevant theory is Kirchhoff plate
+theory for the flat panels and shell or fold geometry where the metal
+is bent (a fold is a stiffener because it gives the sheet local
+curvature). The failure mode to inspect first is local buckling or
+oil-canning of the largest unsupported flat span under modest pressure,
+since a thin flat panel is far more flexible than the same metal folded.
+The answer is judged on correct identification of the deformation mode
+and the matching simplified theory, not on the specific object.
 \end{exercise}

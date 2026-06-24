@@ -207,12 +207,15 @@ at the centreline),
 u_z(r) = \frac{G(R^2 - r^2)}{4\mu}.
 \]
 This is the \engterm{Hagen-Poiseuille velocity profile}, a
-parabola with the maximum on the axis and zero at the wall. The
+parabola with the maximum on the axis and zero at the wall
+(figure~\ref{fig:vol03ch12:poiseuille-profile}). The
 centreline velocity is $u_{\max} = GR^2/(4\mu)$, and the
 cross-section-averaged velocity is half the maximum:
 \[
 \bar{u} = \frac{GR^2}{8\mu}.
 \]
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-poiseuille-profile}
+
 The volume flow rate is $Q = \pi R^2 \bar{u} = \pi R^4 G/(8\mu)$,
 giving the \engterm{Hagen-Poiseuille law}
 \[
@@ -246,20 +249,44 @@ turbulence above $\text{Re}_D \sim 4000$. In the turbulent regime
 the velocity profile is much flatter than the laminar parabola
 (with the velocity dropping rapidly only in a thin near-wall
 region) and the friction factor depends on the relative pipe-wall
-roughness $\epsilon/D$ in addition to $\text{Re}_D$.
+roughness $\epsilon/D$ in addition to $\text{Re}_D$. The contrast
+between the two profile shapes is drawn in
+figure~\ref{fig:vol03ch12:laminar-turbulent}: the turbulent
+profile fills the core almost uniformly and falls steeply through
+a thin near-wall region, so it carries a far larger wall velocity
+gradient and a larger friction factor than the laminar parabola at
+the same flow rate.
 
-The \engterm{Moody chart} \cite{text:white-fluid-mechanics}
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-laminar-turbulent-profiles}
+
+The \engterm{Moody chart}
+\cite{paper:moody-1944,text:white-fluid-mechanics}, shown
+schematically in figure~\ref{fig:vol03ch12:moody},
 plots $f$ versus $\text{Re}_D$ for various values of $\epsilon/D$,
 condensing decades of empirical and analytical work into a single
-working tool. For fully turbulent flow in a smooth pipe, the
-implicit Colebrook-White equation
+working tool. For fully turbulent flow, the
+implicit Colebrook-White equation \cite{paper:colebrook-1939}
 \[
 \frac{1}{\sqrt{f}} = -2\log_{10}\left(\frac{\epsilon/D}{3.7} +
 \frac{2.51}{\text{Re}_D\sqrt{f}}\right)
 \]
 gives the friction factor; explicit approximations (Swamee-Jain,
-Haaland) are used in practice for direct calculation. The chart
+Haaland) are used in practice for direct calculation. The Haaland
+form
+\[
+\frac{1}{\sqrt{f}} = -1.8\log_{10}\!\left[
+\left(\frac{\epsilon/D}{3.7}\right)^{1.11} +
+\frac{6.9}{\text{Re}_D}\right]
+\]
+is explicit in $f$ and stays within a few percent of the
+Colebrook-White root across the engineering range, which is why it
+is the workhorse for direct calculation; the solver in
+\texttt{code/moody.py} carries both forms and the friction-factor
+table behind figure~\ref{fig:vol03ch12:moody} lives in
+\texttt{data/moody\_friction.csv}. The chart
 shows three regimes:
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-moody-chart}
 
 \begin{itemize}[leftmargin=*]
   \item \engterm{Laminar regime} ($\text{Re}_D < 2300$): $f$
@@ -302,9 +329,13 @@ Poiseuille component. For favourable pressure gradient
 forward-leaning shape with maximum velocity above the moving
 plate's level; for adverse pressure gradient, the profile has a
 reverse-flow region near the stationary plate when the pressure
-gradient is large enough. The adverse-pressure-gradient case is
+gradient is large enough. The three profiles are drawn together in
+figure~\ref{fig:vol03ch12:couette-poiseuille}. The
+adverse-pressure-gradient case is
 the simplest analytical model of \engterm{flow reversal} that
 underlies boundary-layer separation in section 12.6.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-couette-poiseuille-profiles}
 
 \engterm{Stokes's first problem}. An infinite plate impulsively
 accelerated to constant velocity $U$ at $t = 0$ in a fluid at
@@ -326,7 +357,7 @@ experiences a drag
 \[
 F_D = 6\pi \mu a U,
 \]
-the \engterm{Stokes drag law} (Stokes, 1851). The law underlies
+the \engterm{Stokes drag law} \cite{paper:ch02t3b-stokes-1851}. The law underlies
 the design of falling-ball viscometers, the settling velocity of
 small particles in suspensions, and the propulsion of microorganisms.
 The Stokes drag holds for Re $< 1$ on the sphere; for larger Re,
@@ -335,7 +366,29 @@ modify the relation. The drag coefficient $C_D = F_D/(\tfrac{1}{2}
 \rho U^2 \pi a^2) = 24/\text{Re}$ in the Stokes regime, $\sim 0.4$
 at $\text{Re} = 10^5$ (the canonical drag-crisis transition), and
 varies non-monotonically across the transition (the topic of
-section 12.6).
+section 12.6). The full sphere-drag curve across nine decades of
+Reynolds number is drawn in
+figure~\ref{fig:vol03ch12:sphere-drag}; the tabulated standard
+curve is in \texttt{data/sphere\_drag\_curve.csv} and the
+iterative settling-velocity solver that uses it is in
+\texttt{code/sphere\_terminal\_velocity.py}.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-sphere-drag-curve}
+
+A settling or terminal-velocity calculation needs only the part of
+this curve that brackets the answer, and the working device is to
+know which of three regimes the body sits in. The Stokes line
+$C_D = 24/\text{Re}$ holds below $\text{Re}\approx1$; the
+Schiller-Naumann correlation $C_D = (24/\text{Re})(1 + 0.15\,
+\text{Re}^{0.687})$ bridges the intermediate range; and above
+$\text{Re}\approx10^3$ the coefficient settles onto the Newton
+plateau $C_D\approx0.44$ until the drag crisis intervenes. The three
+regimes and their boundaries are drawn in
+figure~\ref{fig:vol03ch12:terminal-velocity-regimes}; the
+regime check that worked examples~3 and~8 carry is a reading of which
+segment of this curve applies.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-terminal-velocity-regimes}
 
 \section{Boundary-layer theory}\pathtag{core}
 
@@ -364,10 +417,13 @@ p/\partial y = 0$ (the pressure does not vary across the layer).
 The pressure inside the boundary layer is therefore set by the
 inviscid outer flow.
 
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-boundary-layer-growth}
+
 For a flat plate at zero pressure gradient ($\partial p/\partial x
 = 0$), Heinrich Blasius (1908) solved the boundary-layer equations
-by a similarity transformation. The boundary-layer thickness
-grows as
+by a similarity transformation
+\cite{text:schlichting-boundary-layer}. The boundary-layer
+thickness grows as
 \[
 \delta(x) \approx 5.0\,\sqrt{\frac{\nu x}{U_\infty}} =
 \frac{5.0\,x}{\sqrt{\text{Re}_x}},
@@ -386,7 +442,47 @@ F_D = \tfrac{1}{2}\rho U_\infty^2 \cdot L \cdot \bar{C}_f, \quad
 \bar{C}_f = \frac{1.328}{\sqrt{\text{Re}_L}}.
 \]
 These are the Blasius solutions; they form the analytical
-foundation of boundary-layer engineering.
+foundation of boundary-layer engineering. The shape of the
+underlying similarity profile is shown in
+figure~\ref{fig:vol03ch12:blasius}: plotting $u/U_\infty$ against
+the similarity variable $\eta = y\sqrt{U_\infty/(\nu x)}$ collapses
+the profile at every streamwise station onto a single curve, with
+the velocity reaching $99\%$ of the freestream at
+$\eta_{99}\approx5.0$. The tabulated profile is in
+\texttt{data/blasius\_profile.csv}, and the shooting-method solver
+that reproduces it (and the wall-shear constant $f''(0)\approx
+0.33206$ that fixes $C_f$) is in \texttt{code/blasius.py}.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-blasius-profile}
+
+\begin{mastery}
+\textbf{The Blasius similarity solution.} For a flat plate at zero
+pressure gradient the boundary-layer equations admit a similarity
+reduction: the streamwise velocity depends on $x$ and $y$ only
+through the combination $\eta = y\sqrt{U_\infty/(\nu x)}$. Introduce
+a stream function $\psi = \sqrt{\nu x\,U_\infty}\,f(\eta)$, so that
+$u = \partial\psi/\partial y = U_\infty f'(\eta)$ and $v =
+-\partial\psi/\partial x$. Substituting into the streamwise
+momentum equation $u\,u_x + v\,u_y = \nu\,u_{yy}$ collapses the
+partial differential equation to the ordinary differential equation
+\[
+2f''' + f f'' = 0,
+\]
+with boundary conditions $f(0) = 0$ (no penetration), $f'(0) = 0$
+(no-slip), and $f'(\infty) = 1$ (match the freestream). The equation
+is third order and nonlinear with a split boundary condition, so no
+elementary closed form exists; it is integrated numerically. The
+standard route is a shooting method: guess the wall curvature
+$f''(0)$, integrate to large $\eta$, and adjust the guess until
+$f'(\infty)\to 1$. The converged value $f''(0) = 0.33206$ fixes the
+wall shear stress $\tau_w = \mu (\partial u/\partial y)_{y=0} =
+0.332\,\rho U_\infty^2/\sqrt{\text{Re}_x}$, and hence the
+skin-friction coefficient $C_f = 0.664/\sqrt{\text{Re}_x}$. The
+$\sqrt{\nu x/U_\infty}$ scaling of the thickness, the
+$1/\sqrt{\text{Re}_x}$ scaling of $C_f$, and the $1/\sqrt{
+\text{Re}_L}$ scaling of the integrated drag all descend from this
+one similarity reduction.
+\end{mastery}
 
 \engterm{Displacement thickness}. The boundary layer reduces the
 mass flux past a surface compared to what an inviscid flow would
@@ -440,7 +536,16 @@ layer} where $u^+ = (1/\kappa)\ln y^+ + B$ (with $\kappa \approx
 0.41$, $B \approx 5.0$), and an \engterm{outer wake region} where
 the profile deviates from the log law. This \engterm{law of the
 wall} structure is one of the few quantitative universals of
-turbulent flow.
+turbulent flow; figure~\ref{fig:vol03ch12:law-of-wall} shows it in
+the customary semilog form, where the viscous sublayer and the log
+layer appear as a straight rising segment and a straight log
+segment bridged by a buffer region. The structure also dictates
+near-wall meshing in turbulence-resolving CFD: a wall-resolved
+calculation needs the first grid point inside the viscous sublayer
+($y^+\lesssim1$), while a wall-function calculation places it in
+the log layer.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-law-of-the-wall}
 
 \engterm{Pressure gradient effects}. A favourable pressure
 gradient (pressure decreasing in the flow direction) thins the
@@ -451,7 +556,13 @@ sign and the flow detaches from the surface, forming a separated
 wake. Separation is the canonical failure mode of boundary-layer
 attached flow, and it underlies airfoil stall, diffuser stall,
 bluff-body wake formation, and many of the high-drag
-configurations the next section enumerates.
+configurations the next section enumerates. The mechanism is drawn
+in figure~\ref{fig:vol03ch12:separation}: the near-wall fluid
+decelerates under the rising pressure, the wall shear stress
+vanishes at the separation point, and the flow reverses and
+detaches downstream.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-separation}
 
 \section{Drag, lift, and the dimensionless numbers}\pathtag{standard}
 
@@ -506,7 +617,15 @@ region), so the wake narrows and the pressure drag decreases
 sharply. The drag crisis is the working basis of golf-ball dimple
 design (the dimples trip the boundary layer to turbulence at lower
 $\text{Re}$, lowering the drag in the operational range) and of
-sandpaper strips on the front of competitive bicycle helmets.
+sandpaper strips on the front of competitive bicycle helmets
+\cite{text:anderson-aerodynamics}. The drop is drawn for both a
+sphere and a circular cylinder in
+figure~\ref{fig:vol03ch12:drag-crisis}: each curve holds a
+subcritical plateau, falls steeply through the crisis near
+$\text{Re}=3\times10^5$, and recovers to a supercritical level
+several times lower than the plateau.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-drag-crisis}
 
 \engterm{The dimensionless numbers of fluid mechanics}. Beyond the
 Reynolds number, several other dimensionless groups carry physical
@@ -584,6 +703,39 @@ mean-field quantities. No universally accurate closure exists; all
 working models (mixing length, $k$-$\epsilon$, $k$-$\omega$,
 Reynolds-stress models, large-eddy simulations) make assumptions
 that are accurate in some flow regimes and inaccurate in others.
+
+\begin{mastery}
+\textbf{Turbulence closures, from mixing length to RANS models.}
+The closure problem is to express the Reynolds stress
+$-\overline{u'_i u'_j}$ in terms of the mean field. The oldest
+device is Boussinesq's \engterm{eddy-viscosity hypothesis}: model
+the Reynolds stress as if it were a viscous stress with an enhanced,
+flow-dependent viscosity $\nu_t$,
+\[
+-\overline{u'_i u'_j} = \nu_t\!\left(\frac{\partial\bar u_i}{
+\partial x_j} + \frac{\partial\bar u_j}{\partial x_i}\right)
+- \tfrac{2}{3}k\,\delta_{ij},
+\]
+with $k = \tfrac12\overline{u'_i u'_i}$ the turbulent kinetic
+energy. Prandtl's \engterm{mixing-length model} sets $\nu_t = \ell_m^2
+|d\bar u/dy|$ with $\ell_m$ a geometry-dependent length; near a
+wall $\ell_m = \kappa y$, which recovers the log law. Two-equation
+models carry transport equations for two turbulence scalars: the
+$k$-$\epsilon$ model solves for $k$ and the dissipation rate
+$\epsilon$ and sets $\nu_t = C_\mu k^2/\epsilon$; the $k$-$\omega$
+model solves for $k$ and a specific dissipation rate $\omega$ and
+behaves better in adverse pressure gradients and near walls. The
+shear-stress-transport (SST) model blends $k$-$\omega$ near the wall
+with $k$-$\epsilon$ in the freestream. All of these are RANS models:
+they predict the time-averaged field and are affordable enough for
+routine design, but their accuracy depends on whether the calibration
+flows match the flow at hand, and every one of them mispredicts
+separation onset under strong adverse pressure gradients to some
+degree. Resolving the eddies directly (LES, DNS) removes the closure
+assumptions at large cost; the cost ratio between RANS and a
+wall-resolved LES at engineering Reynolds numbers runs to several
+orders of magnitude.
+\end{mastery}
 
 \engterm{The energy cascade}. Kolmogorov's 1941 theory of locally
 isotropic turbulence holds that at sufficiently high Reynolds
@@ -682,6 +834,537 @@ manufactured solutions) from \engterm{validation} (the equations
 model the physics correctly, checked against experiment). Both
 are required before a CFD prediction is treated as a design
 basis.
+
+\section{Worked examples}\pathtag{standard}
+
+The relations of the preceding sections become a working method
+only when they are run end to end on numbers. Six worked examples
+follow, each one moving from a stated configuration to a quantity
+an engineer would report.
+
+\subsection*{Worked example 1: regime, friction factor, and pressure drop in a water main}
+
+Water at $15\,\degC$ ($\rho = 999\,\si{\kilogram\per\meter\cubed}$,
+$\mu = 1.14\times10^{-3}\,\si{\pascal\second}$) flows at
+$\bar u = 1.5\,\si{\meter\per\second}$ through a commercial-steel
+main of diameter $D = 100\,\si{\milli\meter}$, length $L = 200\,\si{
+\meter}$, absolute roughness $\epsilon = 0.045\,\si{\milli\meter}$.
+Find the pressure drop.
+
+The Reynolds number is
+\[
+\text{Re}_D = \frac{\rho \bar u D}{\mu} = \frac{999\times1.5\times
+0.1}{1.14\times10^{-3}} \approx 1.31\times10^{5},
+\]
+well into the turbulent regime. The relative roughness is
+$\epsilon/D = 0.045/100 = 4.5\times10^{-4}$. The Haaland correlation
+gives
+\[
+\frac{1}{\sqrt{f}} = -1.8\log_{10}\!\left[
+\left(\frac{4.5\times10^{-4}}{3.7}\right)^{1.11} +
+\frac{6.9}{1.31\times10^{5}}\right]
+= -1.8\log_{10}(3.6\times10^{-5} + 5.3\times10^{-5}) \approx 7.27,
+\]
+so $f \approx 1/7.27^2 \approx 0.0189$. The Darcy-Weisbach pressure
+drop is
+\[
+\Delta p = f\frac{L}{D}\frac{\rho \bar u^2}{2} = 0.0189\times
+\frac{200}{0.1}\times\frac{999\times1.5^2}{2} \approx 4.25\times10^4
+\,\si{\pascal},
+\]
+about $42\,\text{kPa}$, or roughly $4.3\,\si{\meter}$ of water
+head. A laminar estimate ($f = 64/\text{Re}_D \approx 4.9\times
+10^{-4}$) would have under-predicted the drop by a factor near
+$39$; computing the regime first is what keeps the answer right.
+
+\subsection*{Worked example 2: laminar boundary layer on a flat plate}
+
+Air at $20\,\degC$ ($\nu = 1.5\times10^{-5}\,\si{\meter}^2/\si{
+\second}$, $\rho = 1.2\,\si{\kilogram\per\meter\cubed}$) flows at
+$U_\infty = 3\,\si{\meter\per\second}$ over a plate of length
+$L = 0.5\,\si{\meter}$. Find the boundary-layer thickness and the
+total skin-friction drag per unit span.
+
+The trailing-edge Reynolds number is
+\[
+\text{Re}_L = \frac{U_\infty L}{\nu} = \frac{3\times0.5}{1.5\times
+10^{-5}} = 1.0\times10^{5},
+\]
+below the smooth-plate transition value near $5\times10^5$, so the
+layer is laminar over the whole plate. The Blasius thickness at the
+trailing edge is
+\[
+\delta(L) = \frac{5.0\,L}{\sqrt{\text{Re}_L}} = \frac{5.0\times0.5}{
+\sqrt{1.0\times10^{5}}} \approx 7.9\times10^{-3}\,\si{\meter}
+\approx 7.9\,\si{\milli\meter}.
+\]
+The average skin-friction coefficient is $\bar C_f = 1.328/\sqrt{
+\text{Re}_L} = 1.328/316 \approx 4.2\times10^{-3}$, so the
+drag per unit span (counting one side) is
+\[
+\frac{F_D}{b} = \tfrac12\rho U_\infty^2 L\,\bar C_f =
+0.5\times1.2\times3^2\times0.5\times4.2\times10^{-3} \approx
+1.1\times10^{-2}\,\si{\newton\per\meter}.
+\]
+The layer is millimetres thick and the drag is small; both are
+characteristic of low-speed laminar flow over a short plate.
+
+\subsection*{Worked example 3: terminal velocity of a settling particle}
+
+A sand grain of diameter $d = 0.2\,\si{\milli\meter}$ and density
+$\rho_s = 2650\,\si{\kilogram\per\meter\cubed}$ settles in water at
+$20\,\degC$ ($\rho_f = 998\,\si{\kilogram\per\meter\cubed}$,
+$\mu = 1.0\times10^{-3}\,\si{\pascal\second}$). Find the terminal
+velocity.
+
+Assume the Stokes regime and check afterward. Balancing weight minus
+buoyancy against Stokes drag, $\tfrac{\pi}{6}d^3(\rho_s-\rho_f)g =
+3\pi\mu d U$, gives
+\[
+U = \frac{(\rho_s-\rho_f)g\,d^2}{18\mu} = \frac{(2650-998)\times
+9.81\times(2\times10^{-4})^2}{18\times1.0\times10^{-3}} \approx
+3.6\times10^{-2}\,\si{\meter\per\second}.
+\]
+The check on the Reynolds number is $\text{Re} = \rho_f U d/\mu =
+998\times0.036\times2\times10^{-4}/10^{-3} \approx 7.2$, which is
+not below unity. The Stokes assumption is therefore marginal; the
+Schiller-Naumann correlation ($C_D = (24/\text{Re})(1+0.15\,\text{
+Re}^{0.687})$) lowers the answer to roughly $2.4\,\si{\centi\meter
+\per\second}$, and the iterative solver in
+\texttt{code/sphere\_terminal\_velocity.py} returns that value.
+The lesson is the same as in example~1: the regime check is part of
+the calculation, not an afterthought.
+
+\subsection*{Worked example 4: vortex shedding off a chimney}
+
+A steel chimney of diameter $D = 2\,\si{\meter}$ stands in a steady
+wind of $U = 12\,\si{\meter\per\second}$ (air, $\nu = 1.5\times
+10^{-5}\,\si{\meter}^2/\si{\second}$). Its lowest cross-wind natural
+frequency is $f_n = 0.6\,\si{\hertz}$. Is vortex-induced resonance a
+risk?
+
+The Reynolds number is $\text{Re} = UD/\nu = 12\times2/(1.5\times
+10^{-5}) = 1.6\times10^{6}$, in the range where the Strouhal number
+holds near $\text{St}\approx0.2$. The shedding frequency is
+\[
+f_s = \text{St}\,\frac{U}{D} = 0.2\times\frac{12}{2} = 1.2\,\si{
+\hertz}.
+\]
+The lock-in wind speed, where $f_s = f_n$, is $U_{\text{lock}} =
+f_n D/\text{St} = 0.6\times2/0.2 = 6\,\si{\meter\per\second}$. A
+$6\,\si{\meter\per\second}$ wind is a common condition, so the
+chimney will pass through lock-in routinely; helical strakes or a
+stiffening that raises $f_n$ are warranted.
+
+\subsection*{Worked example 5: drag power on a road vehicle}
+
+A car of frontal area $A = 2.2\,\si{\meter}^2$ and drag coefficient
+$C_D = 0.30$ cruises at $U = 100\,\text{km/h} = 27.8\,\si{\meter\per
+\second}$ in air ($\rho = 1.2\,\si{\kilogram\per\meter\cubed}$).
+Find the drag force and the power spent against drag.
+
+The drag force is
+\[
+F_D = \tfrac12\rho U^2 A\,C_D = 0.5\times1.2\times27.8^2\times2.2
+\times0.30 \approx 3.1\times10^{2}\,\si{\newton},
+\]
+and the power is $P = F_D U \approx 306\times27.8 \approx 8.5\,\text{
+kW}$. The cubic dependence on speed is the headline: raising the
+cruise speed to $120\,\text{km/h}$ multiplies the drag power by
+$(120/100)^3 \approx 1.73$, to about $14.7\,\text{kW}$. This is why
+highway fuel economy falls off steeply with speed.
+
+\subsection*{Worked example 6: scale-model similarity}
+
+A $1/10$-scale model of a submarine is to be tested in a water tunnel
+to predict the drag on the full vessel, which cruises at $U_p =
+5\,\si{\meter\per\second}$. At what tunnel speed must the model run
+for dynamic similarity, and what does the measured model drag imply
+for the prototype?
+
+Dynamic similarity in a single-phase, fully submerged, incompressible
+flow requires matching the Reynolds number. With the same fluid
+($\nu_m = \nu_p$) and the model length $L_m = L_p/10$,
+\[
+\frac{U_m L_m}{\nu} = \frac{U_p L_p}{\nu} \implies U_m = U_p
+\frac{L_p}{L_m} = 5\times10 = 50\,\si{\meter\per\second}.
+\]
+A $50\,\si{\meter\per\second}$ water-tunnel speed is demanding, which
+is one practical reason marine testing often accepts a Reynolds-number
+mismatch and corrects for it. If similarity is achieved, the drag
+coefficients match, $C_{D,m} = C_{D,p}$, so the prototype drag is
+\[
+F_{D,p} = F_{D,m}\,\frac{\rho_p U_p^2 A_p}{\rho_m U_m^2 A_m}.
+\]
+With $A_p = 100\,A_m$ and $U_p^2/U_m^2 = (5/50)^2 = 1/100$, the two
+factors cancel and $F_{D,p} = F_{D,m}$: at matched Reynolds number
+with the same fluid, the model and prototype carry the same drag
+force, a result that surprises until the cancellation is seen.
+
+\subsection*{Worked example 7: flat-plate drag from the momentum integral}
+
+The Blasius drag coefficient $\bar C_f = 1.328/\sqrt{\text{Re}_L}$
+can be recovered without the full similarity solution by feeding an
+assumed velocity profile through the Kármán momentum integral. The
+exercise shows how a one-parameter profile guess delivers an answer
+within a few percent of the exact constant, which is the working
+method for boundary layers that the Blasius solution does not cover.
+
+Assume the cubic profile $u/U_\infty = \tfrac32(y/\delta) -
+\tfrac12(y/\delta)^3$ for $0\le y\le\delta$ and $u = U_\infty$
+beyond. The profile satisfies no-slip ($u=0$ at $y=0$), the
+freestream match ($u=U_\infty$ at $y=\delta$), and zero curvature at
+the wall ($\partial^2 u/\partial y^2 = 0$ at $y=0$, the wall
+condition that follows from the momentum equation at zero pressure
+gradient). The momentum thickness of this profile is
+\[
+\theta = \int_0^\delta \frac{u}{U_\infty}\!\left(1 -
+\frac{u}{U_\infty}\right)dy = \frac{39}{280}\,\delta \approx
+0.139\,\delta,
+\]
+and the wall shear is
+\[
+\tau_w = \mu\left(\frac{\partial u}{\partial y}\right)_{y=0} =
+\frac{3\mu U_\infty}{2\delta}.
+\]
+The Kármán relation $d\theta/dx = \tau_w/(\rho U_\infty^2)$ becomes
+\[
+\frac{39}{280}\frac{d\delta}{dx} = \frac{3\mu}{2\rho U_\infty\,
+\delta} \implies \delta\,d\delta = \frac{280}{39}\frac{3\nu}{2
+U_\infty}\,dx.
+\]
+Integrating from $\delta=0$ at $x=0$ gives
+\[
+\delta(x) = \sqrt{\frac{280}{13}\frac{\nu x}{U_\infty}} \approx
+4.64\,\sqrt{\frac{\nu x}{U_\infty}} = \frac{4.64\,x}{\sqrt{\text{Re}_x}},
+\]
+against the Blasius $5.0$, an error of about $7\,\%$ in the thickness.
+The skin-friction coefficient follows from $\tau_w$:
+\[
+C_f(x) = \frac{\tau_w}{\tfrac12\rho U_\infty^2} = \frac{3\nu}{
+U_\infty\,\delta} = \frac{0.646}{\sqrt{\text{Re}_x}},
+\]
+against the Blasius $0.664$, an error of about $2.7\,\%$, and the
+length-averaged value is $\bar C_f = 1.292/\sqrt{\text{Re}_L}$
+against the exact $1.328$. The lesson is that the momentum integral
+turns a plausible profile into a drag estimate accurate to a few
+percent, and the same machinery extends to pressure gradients and to
+turbulent profiles where no Blasius solution exists.
+
+\subsection*{Worked example 8: terminal velocity of a hailstone across drag regimes}
+
+A spherical hailstone of diameter $d = 10\,\si{\milli\meter}$ and
+density $\rho_s = 900\,\si{\kilogram\per\meter\cubed}$ falls through
+air at sea level ($\rho_a = 1.2\,\si{\kilogram\per\meter\cubed}$,
+$\mu = 1.8\times10^{-5}\,\si{\pascal\second}$). Find the terminal
+velocity, carrying the regime check at every step.
+
+A Stokes estimate ($U = (\rho_s-\rho_a)g d^2/(18\mu)$) gives
+$U \approx 900\times9.81\times(10^{-2})^2/(18\times1.8\times10^{-5})
+\approx 2.7\times10^{3}\,\si{\meter\per\second}$, which is absurd; the
+Stokes Reynolds number it implies, $\text{Re} = \rho_a U d/\mu \sim
+1.8\times10^6$, is nine orders of magnitude past the Stokes ceiling
+of unity, so the Stokes law does not apply. The hailstone is a bluff
+body in the Newton-plateau regime
+(figure~\ref{fig:vol03ch12:terminal-velocity-regimes}), where
+$C_D\approx0.44$ is roughly constant. Balance weight minus buoyancy
+against the bluff-body drag,
+\[
+\tfrac{\pi}{6}d^3(\rho_s-\rho_a)g = \tfrac12\rho_a U^2\,
+\tfrac{\pi}{4}d^2\,C_D,
+\]
+and solve for the velocity:
+\[
+U = \sqrt{\frac{4(\rho_s-\rho_a)g\,d}{3\rho_a C_D}} = \sqrt{\frac{
+4\times900\times9.81\times10^{-2}}{3\times1.2\times0.44}} \approx
+15\,\si{\meter\per\second}.
+\]
+The regime check confirms the choice: $\text{Re} = \rho_a U d/\mu =
+1.2\times15\times10^{-2}/(1.8\times10^{-5}) \approx 1.0\times10^4$,
+comfortably inside the $10^3$ to $2\times10^5$ Newton plateau where
+$C_D\approx0.44$ holds. A $15\,\si{\meter\per\second}$ impact speed
+(about $54\,\text{km/h}$) is consistent with the damage a centimetre
+hailstone does to a car roof. The arithmetic is the same as the
+raindrop estimate in the exercises, with the regime check deciding
+which drag law enters the force balance.
+
+\subsection*{Worked example 9: laminar entrance length in a fuel line}
+
+Flow entering a pipe from a reservoir does not have its fully
+developed profile at the inlet; the boundary layers grow from the
+walls and merge over an \engterm{entrance length} $L_e$ before the
+parabolic Hagen-Poiseuille profile is established. A fuel line
+carries diesel ($\rho = 840\,\si{\kilogram\per\meter\cubed}$, $\mu =
+3.0\times10^{-3}\,\si{\pascal\second}$) at $\bar u = 0.4\,\si{\meter
+\per\second}$ through a $D = 8\,\si{\milli\meter}$ tube. Find the
+entrance length and state whether a $0.5\,\si{\meter}$ tube run is
+mostly developing or mostly developed.
+
+The Reynolds number is
+\[
+\text{Re}_D = \frac{\rho\bar u D}{\mu} = \frac{840\times0.4\times
+0.008}{3.0\times10^{-3}} \approx 896,
+\]
+below $2300$, so the flow is laminar and the laminar entrance-length
+correlation $L_e \approx 0.05\,\text{Re}_D\,D$ applies:
+\[
+L_e \approx 0.05\times896\times0.008 \approx 0.36\,\si{\meter}.
+\]
+The entrance length is $0.36\,\si{\meter}$ out of a $0.5\,\si{\meter}$
+run, so most of the tube is in developing flow, where the wall shear
+and the pressure gradient are larger than the fully developed values.
+A pressure-drop calculation that applied Hagen-Poiseuille over the
+whole length would under-predict the drop, because the developing
+region carries an extra pressure loss (the profile is being
+accelerated near the centre and decelerated near the walls). The
+correction is the entrance-loss term: for a laminar developing flow
+the additional drop over the developing region is of order
+$\rho\bar u^2$, comparable here to the fully developed drop, so it
+cannot be neglected. Had the flow been turbulent, the entrance length
+would have been far shorter ($L_e\approx4.4\,\text{Re}_D^{1/6}D$,
+typically ten to forty diameters), which is why entrance effects are
+a laminar-flow concern more than a turbulent one.
+
+\section{End-to-end case study: sizing a pump for a transfer line}\pathtag{standard}
+
+The relations of this chapter become a design method when they are
+run together on one system from the fluid and the geometry through to
+a sized pump and a verdict. We size a centrifugal pump to move water
+from a supply sump to an elevated process tank, working the chain
+Reynolds number $\to$ friction factor $\to$ major loss $\to$ minor
+losses $\to$ system curve $\to$ operating point $\to$ required power
+$\to$ cavitation margin, carrying the numbers at every link. The
+layout is the one drawn in figure~\ref{fig:vol03ch12:pump-layout}.
+
+\paragraph{The duty and the fluid.} The plant requires a delivery of
+$Q = 25\,\si{\liter\per\second} = 0.025\,\si{\meter\cubed\per\second}$
+of water at $20\,\degC$ ($\rho = 998\,\si{\kilogram\per\meter\cubed}$,
+$\mu = 1.0\times10^{-3}\,\si{\pascal\second}$, vapour pressure
+$p_v = 2.34\,\si{\kilo\pascal}$ absolute). The supply sump free
+surface sits $2\,\si{\meter}$ below the pump centreline (a suction
+lift), and the delivery tank free surface sits $18\,\si{\meter}$
+above the sump surface, so the static lift the pump must overcome is
+$H_s = 18\,\si{\meter}$. The pipe is commercial steel of internal
+diameter $D = 150\,\si{\milli\meter}$ and roughness $\epsilon =
+0.045\,\si{\milli\meter}$; the suction run is $6\,\si{\meter}$ and the
+discharge run is $120\,\si{\meter}$, for a total straight length
+$L = 126\,\si{\meter}$.
+
+\paragraph{Velocity and Reynolds number.} The bore area is
+\[
+A = \frac{\pi D^2}{4} = \frac{\pi (0.150)^2}{4} = 1.767\times10^{-2}
+\,\si{\meter\squared},
+\]
+so the mean velocity is
+\[
+\bar u = \frac{Q}{A} = \frac{0.025}{1.767\times10^{-2}} \approx
+1.41\,\si{\meter\per\second},
+\]
+a sensible duty velocity (the usual design band for water in steel is
+$1$ to $3\,\si{\meter\per\second}$). The Reynolds number is
+\[
+\text{Re}_D = \frac{\rho\bar u D}{\mu} = \frac{998\times1.41\times
+0.150}{1.0\times10^{-3}} \approx 2.1\times10^{5},
+\]
+fully turbulent.
+
+\paragraph{Friction factor from Colebrook, checked against Haaland.}
+The relative roughness is $\epsilon/D = 0.045/150 = 3.0\times10^{-4}$.
+The implicit Colebrook-White equation
+\[
+\frac{1}{\sqrt f} = -2\log_{10}\!\left(\frac{\epsilon/D}{3.7} +
+\frac{2.51}{\text{Re}_D\sqrt f}\right)
+\]
+is solved by iteration. Starting from a guess $f_0 = 0.02$
+($\sqrt{f_0}=0.1414$): the right side is $-2\log_{10}(8.1\times10^{-5}
++ 2.51/(2.1\times10^5\times0.1414)) = -2\log_{10}(8.1\times10^{-5} +
+8.45\times10^{-5}) = -2\log_{10}(1.66\times10^{-4}) = 7.56$, giving
+$f_1 = 1/7.56^2 = 0.0175$. One more pass with $\sqrt{f_1}=0.1323$
+gives $-2\log_{10}(8.1\times10^{-5} + 9.03\times10^{-5}) =
+-2\log_{10}(1.71\times10^{-4}) = 7.53$, so $f = 1/7.53^2 \approx
+0.0176$; the iteration has converged. The explicit Haaland form
+returns $f\approx0.0177$, a $0.6\,\%$ difference, which confirms the
+root. Take $f = 0.0176$. The solver behind
+figure~\ref{fig:vol03ch12:moody} carries both forms in
+\texttt{code/moody.py}.
+
+\paragraph{Major loss along the pipe.} The Darcy-Weisbach head loss
+over the straight run is
+\[
+h_{f,\text{major}} = f\frac{L}{D}\frac{\bar u^2}{2g} = 0.0176\times
+\frac{126}{0.150}\times\frac{1.41^2}{2\times9.81} \approx 14.79\times
+0.101 \approx 1.50\,\si{\meter}.
+\]
+(Working in head divides the Darcy-Weisbach pressure drop by $\rho g$;
+the friction head is $1.50\,\si{\meter}$ of water, a pressure drop of
+$\rho g h_f \approx 14.7\,\si{\kilo\pascal}$.)
+
+\paragraph{Minor losses from fittings.} The line carries a
+square-edged entrance ($K=0.5$), four $90^{\circ}$ long-radius elbows
+($K=0.3$ each), one fully open gate valve ($K=0.15$), one swing check
+valve ($K=2.0$), and an exit into the tank ($K=1.0$). The summed loss
+coefficient is
+\[
+\sum K = 0.5 + 4\times0.3 + 0.15 + 2.0 + 1.0 = 4.85,
+\]
+and the minor-loss head is
+\[
+h_{f,\text{minor}} = \left(\sum K\right)\frac{\bar u^2}{2g} = 4.85
+\times\frac{1.41^2}{2\times9.81} \approx 4.85\times0.101 \approx
+0.49\,\si{\meter}.
+\]
+The fitting losses are about a third of the pipe-friction loss here,
+which is typical for a run of this length; on a short, fitting-heavy
+skid the minor losses can dominate, and on a long cross-country line
+they are negligible. The total friction head at the duty flow is
+$h_f = 1.50 + 0.49 \approx 1.99\,\si{\meter}$.
+
+\paragraph{System curve and operating point.} The head the pump must
+supply at flow $Q$ is the static lift plus the friction head, and the
+friction head scales as $\bar u^2 \propto Q^2$:
+\[
+H_{\text{sys}}(Q) = H_s + \left(f\frac{L}{D} + \sum K\right)
+\frac{\bar u^2}{2g} = 18 + k\,Q^2,
+\]
+where, with $\bar u = Q/A$, the coefficient is
+\[
+k = \left(f\frac{L}{D} + \sum K\right)\frac{1}{2gA^2} = (14.79 +
+4.85)\frac{1}{2\times9.81\times(1.767\times10^{-2})^2} \approx 3204\,
+\si{\meter\per(\meter\cubed\per\second)\squared}.
+\]
+At the duty flow $Q = 0.025\,\si{\meter\cubed\per\second}$ this gives
+$H_{\text{sys}} = 18 + 3204\times0.025^2 = 18 + 2.00 = 20.0\,\si{
+\meter}$, consistent with the static lift plus the $1.99\,\si{\meter}$
+friction head computed above. A candidate pump has the falling
+characteristic $H_{\text{pump}}(Q) = 55 - b\,Q^2$ with $b \approx
+1.97\times10^4$ in the same units (a typical single-stage end-suction
+curve; the manufacturer supplies it as a chart, here reduced to a
+parabola for the algebra). The operating point is where supply meets
+demand, $H_{\text{pump}} = H_{\text{sys}}$:
+\[
+55 - 1.97\times10^4\,Q^2 = 18 + 3204\,Q^2 \implies Q^2 = \frac{37}{
+2.29\times10^4} \implies Q \approx 0.0402\,\si{\meter\cubed\per
+\second}.
+\]
+The unthrottled pump would run at about $40\,\si{\liter\per\second}$,
+above the $25\,\si{\liter\per\second}$ duty, so the operating point is
+trimmed back to the duty flow by closing a control valve (raising
+$\sum K$ until the system curve steepens to cross the pump curve at
+$25\,\si{\liter\per\second}$) or, more efficiently, by reducing the
+impeller speed. The crossing is drawn in
+figure~\ref{fig:vol03ch12:pump-system-curve}. At the duty flow the
+pump head is read from the curve as $H = 20\,\si{\meter}$ once it is
+trimmed to the duty point.
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-pump-layout}
+
+\input{volumes/03-force/ch12-viscous-flow-boundary-layers/figures/fig-pump-system-curve}
+
+\paragraph{Required power.} The hydraulic power delivered to the fluid
+at the duty point is
+\[
+P_{\text{hyd}} = \rho g Q H = 998\times9.81\times0.025\times20.0
+\approx 4.90\times10^{3}\,\si{\watt} \approx 4.9\,\si{\kilo\watt}.
+\]
+A single-stage water pump of this size runs at an efficiency near
+$\eta\approx0.75$, so the shaft power is $P_{\text{shaft}} =
+P_{\text{hyd}}/\eta \approx 4.9/0.75 \approx 6.5\,\si{\kilo\watt}$,
+and a motor is selected one standard size above that ($7.5\,\si{\kilo
+\watt}$) to carry the duty with margin. The cubic-in-speed lesson of
+worked example~5 recurs here as a square-in-flow lesson: the friction
+head, and with it the power spent against friction, grows as $Q^2$, so
+oversizing the duty flow is expensive.
+
+\paragraph{Cavitation margin (NPSH).} The suction side is the
+hazard. The net positive suction head available is the absolute
+pressure head at the pump inlet above the vapour-pressure head:
+\[
+\text{NPSH}_a = \frac{p_{\text{atm}} - p_v}{\rho g} - z_s -
+h_{f,\text{suction}},
+\]
+where $z_s = 2\,\si{\meter}$ is the suction lift and
+$h_{f,\text{suction}}$ is the friction head in the suction run. With
+$p_{\text{atm}} = 101.3\,\si{\kilo\pascal}$ and $p_v = 2.34\,\si{
+\kilo\pascal}$,
+\[
+\frac{p_{\text{atm}} - p_v}{\rho g} = \frac{(101.3 - 2.34)\times10^3}{
+998\times9.81} \approx 10.1\,\si{\meter}.
+\]
+The suction-run friction head is the major plus minor loss over the
+$6\,\si{\meter}$ suction pipe with its entrance and one elbow
+($\sum K_s \approx 0.5 + 0.3 = 0.8$):
+\[
+h_{f,\text{suction}} = \left(f\frac{L_s}{D} + \sum K_s\right)\frac{
+\bar u^2}{2g} = \left(0.0176\frac{6}{0.150} + 0.8\right)\times0.101
+\approx (0.70 + 0.8)\times0.101 \approx 0.15\,\si{\meter}.
+\]
+So
+\[
+\text{NPSH}_a = 10.1 - 2.0 - 0.15 \approx 7.9\,\si{\meter}.
+\]
+The pump's required suction head $\text{NPSH}_r$ is read from the
+manufacturer's curve at the duty flow; for a pump of this size and
+speed it is typically $3$ to $4\,\si{\meter}$. Take $\text{NPSH}_r =
+3.5\,\si{\meter}$. The margin is
+\[
+\text{NPSH}_a - \text{NPSH}_r \approx 7.9 - 3.5 = 4.4\,\si{\meter},
+\]
+comfortably positive. The standard hydraulic-design practice is a
+margin of at least $0.5$ to $1\,\si{\meter}$, or a ratio
+$\text{NPSH}_a/\text{NPSH}_r \gtrsim 1.3$, so this installation is
+safe against cavitation \cite{text:ch02t3-karassik-pumps}. Were the
+sump drawn down in service, or the suction line fouled, the margin
+would shrink, which is why the suction side is kept short, large in
+bore, and free of throttling fittings.
+
+\paragraph{Verdict.} The transfer line carries $25\,\si{\liter\per
+\second}$ of water at $\bar u = 1.41\,\si{\meter\per\second}$,
+$\text{Re}_D = 2.1\times10^5$, with a friction factor $f = 0.0176$, a
+total friction head of $2.0\,\si{\meter}$ on a static lift of
+$18\,\si{\meter}$, met by a single-stage pump trimmed to a duty head
+of $20\,\si{\meter}$, drawing $6.5\,\si{\kilo\watt}$ at the shaft
+behind a $7.5\,\si{\kilo\watt}$ motor, with a cavitation margin of
+$4.4\,\si{\meter}$. Every number in the verdict was carried from the
+fluid property and the geometry through the chain of relations, and
+each link is a relation from earlier in the chapter. A design that
+skips the regime check picks the wrong friction law; a design that
+skips the minor losses underestimates the head on a fitting-heavy
+line; a design that skips the NPSH check installs a pump that
+cavitates and erodes its impeller within a season. The end-to-end
+discipline is to carry the chain unbroken.
+
+\begin{mastery}
+\textbf{The Falkner-Skan family: boundary layers with pressure
+gradient.} The Blasius solution is the zero-pressure-gradient member
+of a one-parameter family of similarity solutions discovered by
+Falkner and Skan (1931). For an external flow whose edge velocity
+varies as a power of distance, $U_e(x) = C x^m$, the boundary-layer
+equations still admit a similarity reduction. With the similarity
+variable $\eta = y\sqrt{(m+1)U_e/(2\nu x)}$ and stream function
+$\psi = \sqrt{2\nu x\,U_e/(m+1)}\,f(\eta)$, the partial differential
+equation collapses to the Falkner-Skan ordinary differential
+equation
+\[
+f''' + f f'' + \beta\,[1 - (f')^2] = 0,
+\]
+with $\beta = 2m/(m+1)$ the dimensionless pressure-gradient parameter
+and boundary conditions $f(0) = f'(0) = 0$, $f'(\infty) = 1$. The
+edge velocity of an inviscid flow over a wedge of total opening angle
+$\pi\beta$ has exactly this power-law form, so $\beta$ is the wedge
+parameter; $\beta = 0$ ($m=0$) recovers the flat-plate Blasius case,
+$\beta = 1$ is plane stagnation-point flow, and positive $\beta$ is a
+favourable (accelerating) gradient that thins the layer and fills the
+profile. Negative $\beta$ is an adverse (decelerating) gradient that
+thins the wall shear; the wall shear $f''(0)$ falls with decreasing
+$\beta$ and reaches zero at $\beta \approx -0.1988$, the point of
+incipient separation. Below that value no attached similarity
+solution exists, which is the analytical statement that a strong
+enough adverse pressure gradient separates the boundary layer. The
+single parameter $\beta$ thus carries the whole qualitative story of
+section~12.5: favourable gradients stabilise and thin, adverse
+gradients thicken and separate, and the separation threshold is a
+definite number.
+\end{mastery}
 
 \section{Failure: separation, stall, and unexpected drag}\pathtag{core}
 
@@ -877,7 +1560,7 @@ the air kinematic viscosity $\nu \approx 4\times 10^{-5}\,\si{\meter
 \text{Re}_L = \frac{U_\infty L}{\nu} = \frac{230 \times 38}{4
 \times 10^{-5}} \approx 2.2\times 10^8.
 \]
-The boundary layer is fully turbulent over essentially the entire
+The boundary layer is fully turbulent over nearly the entire
 fuselage; the average skin-friction coefficient is
 \[
 \bar{C}_f \approx \frac{0.074}{\text{Re}_L^{1/5}} \approx
@@ -992,6 +1675,13 @@ Water at $20\,\degC$ ($\rho = 998\,\si{\kilogram\per\meter\cubed}$,
 $\mu = 1.0\times 10^{-3}\,\si{\pascal\second}$) flows through a
 $25\,\si{\milli\meter}$ diameter pipe at $0.5\,\si{\meter\per
 \second}$. Find the Reynolds number and identify the flow regime.
+
+\paragraph{Solution sketch.} $\text{Re}_D = \rho\bar u D/\mu =
+998\times0.5\times0.025/(1.0\times10^{-3}) \approx 1.25\times10^{4}$.
+This is well above $4000$, so the flow is turbulent. (The laminar
+ceiling $\text{Re}_D\approx2300$ would correspond here to
+$\bar u\approx0.09\,\si{\meter\per\second}$, so any ordinary tap
+flow in this pipe is turbulent.)
 \end{exercise}
 
 \begin{exercise}
@@ -1001,6 +1691,29 @@ compute the pressure drop in turbulent flow at $\bar{u} = 3\,\si{
 \meter\per\second}$ for a smooth pipe ($\epsilon \approx 0$), using
 a friction factor from the explicit Haaland correlation
 $f^{-1/2} = -1.8\log_{10}[(\epsilon/(3.7D))^{1.11} + 6.9/\text{Re}_D]$.
+
+\paragraph{Solution sketch.} Laminar at $\bar u = 0.5\,\si{\meter
+\per\second}$: $\text{Re}_D \approx 1.25\times10^4$ is actually
+turbulent, so the laminar formula does not apply at this speed. Take
+the laminar case at a speed inside the laminar range; the cleaner
+reading of the prompt is to compute the Hagen-Poiseuille drop that
+the laminar law \emph{would} give and the turbulent drop at
+$3\,\si{\meter\per\second}$, then compare. Hagen-Poiseuille:
+$\Delta p/L = 128\mu Q/(\pi D^4)$ with $Q = \bar u\,\pi D^2/4 =
+0.5\times\pi\times0.025^2/4 = 2.45\times10^{-4}\,\text{m}^3/\text{s}$,
+giving $\Delta p/L = 128\times10^{-3}\times2.45\times10^{-4}/(\pi
+\times0.025^4) \approx 2.55\,\si{\pascal\per\meter}$ (equivalently
+$f = 64/\text{Re}_D \approx 5.1\times10^{-3}$ with $\Delta p/L =
+f\rho\bar u^2/(2D)$). Turbulent at $\bar u = 3\,\si{\meter\per
+\second}$: $\text{Re}_D = 998\times3\times0.025/10^{-3} \approx
+7.5\times10^{4}$; with $\epsilon\approx0$, Haaland gives
+$f^{-1/2} = -1.8\log_{10}(6.9/7.5\times10^{4}) \approx 7.40$, so
+$f \approx 0.0183$ and $\Delta p/L = f\rho\bar u^2/(2D) =
+0.0183\times998\times9/(2\times0.025) \approx 3.3\times10^{3}\,\si{
+\pascal\per\meter}$. The turbulent drop per metre is roughly three
+orders of magnitude larger, partly because $\Delta p\propto\bar u^2$
+turbulent versus $\bar u$ laminar, and partly the $36\times$ speed-
+squared factor.
 \end{exercise}
 
 \begin{exercise}
@@ -1010,6 +1723,19 @@ A flat plate of length $1\,\si{\meter}$ is in a freestream of air
 \second}$. Find $\text{Re}_L$, the Blasius boundary-layer thickness
 $\delta$ at the trailing edge, and the average skin-friction
 coefficient.
+
+\paragraph{Solution sketch.} $\text{Re}_L = U_\infty L/\nu =
+20\times1/(1.5\times10^{-5}) = 1.33\times10^{6}$. This exceeds the
+smooth-plate transition near $5\times10^5$, so most of the plate is
+turbulent; the laminar Blasius formulas are an approximation valid
+only over the front. Using the laminar relations as the prompt asks:
+$\delta = 5.0\,L/\sqrt{\text{Re}_L} = 5.0/\sqrt{1.33\times10^6}
+\approx 4.3\times10^{-3}\,\si{\meter}$ and $\bar C_f = 1.328/\sqrt{
+\text{Re}_L} = 1.328/1153 \approx 1.15\times10^{-3}$. (For the
+turbulent estimate one would use $\delta = 0.37\,L\,\text{Re}_L^{-1/5}
+\approx 0.022\,\si{\meter}$ and $\bar C_f = 0.074\,\text{Re}_L^{-1/5}
+\approx 4.4\times10^{-3}$, several times the laminar values; the
+honest answer notes the plate is past transition.)
 \end{exercise}
 
 \begin{exercise}
@@ -1018,6 +1744,17 @@ A sphere of $5\,\si{\milli\meter}$ diameter falls through glycerin
 \pascal\second}$) under gravity. Find the terminal velocity using
 the Stokes drag law. Check that the resulting Reynolds number is
 in the Stokes regime ($\text{Re} < 1$).
+
+\paragraph{Solution sketch.} Need the sphere density; take a steel
+sphere $\rho_s \approx 7800\,\si{\kilogram\per\meter\cubed}$.
+Balance weight minus buoyancy against Stokes drag:
+$U = (\rho_s - \rho_f)g\,d^2/(18\mu)$ with $d = 5\,\si{\milli\meter}$.
+$U = (7800-1260)\times9.81\times(5\times10^{-3})^2/(18\times1.5)
+= 6540\times9.81\times2.5\times10^{-5}/27 \approx 5.9\times10^{-2}
+\,\si{\meter\per\second}$. Check: $\text{Re} = \rho_f U d/\mu =
+1260\times0.059\times0.005/1.5 \approx 0.25 < 1$, so the Stokes
+regime holds and the answer stands. (Glycerin's high viscosity is
+what keeps such a fast-settling steel ball in the creeping regime.)
 \end{exercise}
 
 \begin{exercise}
@@ -1026,6 +1763,14 @@ $10\,\si{\meter\per\second}$ past a circular cylinder of
 $50\,\si{\milli\meter}$ diameter. Compute the Reynolds number, the
 Strouhal number ($\approx 0.21$ in this range), and the vortex-
 shedding frequency.
+
+\paragraph{Solution sketch.} $\text{Re} = UD/\nu = 10\times0.05/
+(1.5\times10^{-5}) \approx 3.3\times10^{4}$, in the range where the
+Strouhal number is roughly constant at $\text{St}\approx0.21$. The
+shedding frequency is $f_s = \text{St}\,U/D = 0.21\times10/0.05 =
+42\,\si{\hertz}$. (At $\text{Re}\approx3\times10^4$ the wake is a
+fully turbulent vortex street; the $42\,\si{\hertz}$ tone is audible
+as the aeolian whistle of a wire in wind.)
 \end{exercise}
 
 \begin{exercise}
@@ -1033,6 +1778,15 @@ A diffuser expands a $50\,\si{\milli\meter}$ diameter pipe to
 $100\,\si{\milli\meter}$ diameter over a length of $300\,\si{\milli
 \meter}$. Find the divergence half-angle and state whether the
 diffuser is likely to suffer separation.
+
+\paragraph{Solution sketch.} The radius grows from $25\,\si{\milli
+\meter}$ to $50\,\si{\milli\meter}$ over $300\,\si{\milli\meter}$,
+so the half-angle is $\theta = \arctan[(50-25)/300] = \arctan(0.0833)
+\approx 4.8^{\circ}$. This is below the rule-of-thumb threshold of
+about $7^{\circ}$ per side, so the boundary layer is expected to stay
+attached and the diffuser should recover pressure reasonably well.
+The margin is modest, so a non-uniform or already-thickened inlet
+profile could still trigger local separation.
 \end{exercise}
 
 \begin{exercise}
@@ -1041,12 +1795,28 @@ the road; the boundary layer on its outer surface is turbulent.
 Estimate the boundary-layer thickness at a streamwise distance of
 $0.3\,\si{\meter}$ on the tyre's leading face (assume air, sea-
 level conditions).
+
+\paragraph{Solution sketch.} Surface speed $U = 200\,\text{km/h} =
+55.6\,\si{\meter\per\second}$; air $\nu = 1.5\times10^{-5}\,\si{
+\meter}^2/\si{\second}$. Local Reynolds number at $x = 0.3\,\si{
+\meter}$: $\text{Re}_x = Ux/\nu = 55.6\times0.3/(1.5\times10^{-5})
+\approx 1.1\times10^{6}$, turbulent (consistent with the prompt).
+Turbulent thickness $\delta = 0.37\,x\,\text{Re}_x^{-1/5} = 0.37
+\times0.3\times(1.1\times10^6)^{-0.2} \approx 0.111\times0.0615
+\approx 6.8\times10^{-3}\,\si{\meter}$, about $7\,\si{\milli\meter}$.
 \end{exercise}
 
 \begin{exercise}
 A car of frontal area $2.2\,\si{\meter}^2$ travels at $30\,\si{
 \meter\per\second}$ in still air. Its drag coefficient is $0.32$.
 Find the drag force and the power dissipated against drag.
+
+\paragraph{Solution sketch.} With $\rho = 1.2\,\si{\kilogram\per
+\meter\cubed}$, $F_D = \tfrac12\rho U^2 A\,C_D = 0.5\times1.2\times
+30^2\times2.2\times0.32 \approx 3.8\times10^{2}\,\si{\newton}$. Power
+$P = F_D U = 380\times30 \approx 1.1\times10^{4}\,\si{\watt} =
+11.4\,\text{kW}$. The cube-of-speed scaling means a $10\%$ speed
+rise raises this power by about $33\%$.
 \end{exercise}
 
 \begin{exercise}
@@ -1055,6 +1825,19 @@ is in a $15\,\si{\meter\per\second}$ wind. Compute the Reynolds
 number, the vortex-shedding frequency, and compare to a typical
 cable natural frequency (state your assumption about the cable's
 fundamental mode).
+
+\paragraph{Solution sketch.} Air $\nu = 1.5\times10^{-5}\,\si{\meter
+}^2/\si{\second}$. $\text{Re} = UD/\nu = 15\times0.5/(1.5\times
+10^{-5}) = 5\times10^{5}$, in the range where $\text{St}\approx0.2$.
+Shedding frequency $f_s = \text{St}\,U/D = 0.2\times15/0.5 = 6\,\si{
+\hertz}$. A long suspension-bridge main cable has a low fundamental,
+often a fraction of a hertz to a few hertz; assume $f_n\approx
+0.5\,\si{\hertz}$ for a $100\,\si{\meter}$ free length. Then $f_s =
+6\,\si{\hertz}\gg f_n$, so this wind speed excites a higher cable
+mode rather than the fundamental; lock-in would occur at a lower
+wind speed for the fundamental ($U_{\text{lock}} = f_n D/\text{St} =
+0.5\times0.5/0.2 = 1.25\,\si{\meter\per\second}$) and at successively
+higher speeds for higher modes.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -1063,24 +1846,70 @@ fundamental mode).
 Derive the Hagen-Poiseuille velocity profile $u_z(r) = G(R^2 -
 r^2)/(4\mu)$ from the steady cylindrical-coordinates Navier-Stokes
 equation, stating the assumptions used.
+
+\paragraph{Solution sketch.} Assume steady, incompressible,
+axisymmetric, fully developed flow: $u_r = u_\theta = 0$,
+$\partial u_z/\partial z = 0$, no swirl, constant properties, and a
+constant axial pressure gradient $dp/dz = -G$. The $z$-momentum
+Navier-Stokes equation in cylindrical coordinates collapses to
+$\mu\,\tfrac1r\,\tfrac{d}{dr}(r\,du_z/dr) = -G$. Integrate once:
+$r\,du_z/dr = -Gr^2/(2\mu) + C_1$. Symmetry at the axis,
+$du_z/dr|_{r=0} = 0$, forces $C_1 = 0$. Integrate again:
+$u_z = -Gr^2/(4\mu) + C_2$. No-slip at the wall, $u_z(R) = 0$,
+gives $C_2 = GR^2/(4\mu)$, so $u_z(r) = G(R^2 - r^2)/(4\mu)$, the
+parabola claimed.
 \end{exercise}
 
 \begin{exercise}
 Show that the average velocity in Hagen-Poiseuille flow is half
 the centreline velocity, and that the laminar friction factor is
 $f = 64/\text{Re}_D$.
+
+\paragraph{Solution sketch.} Average over the area:
+$\bar u = \tfrac{1}{\pi R^2}\int_0^R u_z(r)\,2\pi r\,dr =
+\tfrac{2}{R^2}\int_0^R \tfrac{G}{4\mu}(R^2 - r^2)\,r\,dr =
+\tfrac{G}{2\mu R^2}[R^2 r^2/2 - r^4/4]_0^R = \tfrac{G}{2\mu R^2}
+\cdot R^4/4 = GR^2/(8\mu)$. Since $u_{\max} = GR^2/(4\mu)$, indeed
+$\bar u = \tfrac12 u_{\max}$. For the friction factor, write the
+Hagen-Poiseuille drop as $\Delta p = 32\mu L\bar u/D^2$ (from
+$G = 8\mu\bar u/R^2 = 32\mu\bar u/D^2$). Set this equal to the
+Darcy-Weisbach form $\Delta p = f\tfrac{L}{D}\tfrac{\rho\bar u^2}{2}$
+and solve: $f = 64\mu/(\rho\bar u D) = 64/\text{Re}_D$.
 \end{exercise}
 
 \begin{exercise}
 Derive the Blasius scaling $\delta(x) \sim \sqrt{\nu x/U_\infty}$
 by setting the inertial and viscous terms equal in the boundary-
 layer equation.
+
+\paragraph{Solution sketch.} In the boundary-layer momentum equation
+the streamwise convective term scales as $u\,\partial u/\partial x
+\sim U_\infty^2/x$ and the viscous term as $\nu\,\partial^2 u/
+\partial y^2 \sim \nu U_\infty/\delta^2$. The boundary layer is the
+region where these two balance, so $U_\infty^2/x \sim \nu U_\infty/
+\delta^2$, giving $\delta^2 \sim \nu x/U_\infty$ and
+$\delta \sim \sqrt{\nu x/U_\infty} = x/\sqrt{\text{Re}_x}$. The
+order-one constant ($5.0$ for the $99\%$ thickness) comes from the
+full Blasius solution, but the scaling is fixed by this balance.
 \end{exercise}
 
 \begin{exercise}
 Derive the Kármán momentum integral relation $d\theta/dx = C_f/2$
 (for zero pressure gradient) by integrating the boundary-layer
 momentum equation across the layer.
+
+\paragraph{Solution sketch.} Integrate the steady boundary-layer
+momentum equation $u\,u_x + v\,u_y = \nu\,u_{yy}$ across the layer
+from $y=0$ to $y\to\infty$, using continuity $u_x + v_y = 0$ to
+eliminate $v$ and integrating by parts. With zero pressure gradient
+and the no-slip and freestream boundary conditions, the left side
+reduces to $\tfrac{d}{dx}\int_0^\infty u(U_\infty - u)\,dy =
+U_\infty^2\,d\theta/dx$, where $\theta$ is the momentum thickness;
+the right side is the wall shear $\tau_w/\rho = \nu\,(u_y)_{y=0}$.
+Dividing by $U_\infty^2$ and using $C_f = \tau_w/(\tfrac12\rho
+U_\infty^2)$ gives $d\theta/dx = C_f/2$. (With a pressure gradient
+extra terms in $\delta^*$ and $dU_\infty/dx$ appear; this is the
+zero-gradient special case.)
 \end{exercise}
 
 \begin{exercise}
@@ -1088,12 +1917,38 @@ Show that the Reynolds number is the only dimensionless parameter
 governing the steady incompressible Navier-Stokes equation in a
 geometry of fixed shape, by non-dimensionalisation with a
 characteristic velocity and length.
+
+\paragraph{Solution sketch.} Scale $\vec u$ by $U$, lengths by $L$,
+pressure by $\rho U^2$, time by $L/U$. Substituting into the steady
+incompressible Navier-Stokes equation $\rho(\vec u\cdot\nabla)\vec u
+= -\nabla p + \mu\nabla^2\vec u$ and dividing through by $\rho U^2/L$
+gives $(\vec u^*\cdot\nabla^*)\vec u^* = -\nabla^* p^* + (1/\text{Re})
+\nabla^{*2}\vec u^*$ with $\text{Re} = \rho U L/\mu$. The only
+parameter surviving the scaling is $\text{Re}$ (gravity, if retained,
+would add $1/\text{Fr}^2$). The boundary conditions on a fixed-shape
+geometry are themselves dimensionless once positions are scaled by
+$L$, so two flows with the same shape and the same $\text{Re}$ have
+identical non-dimensional solutions, which is the similarity
+principle.
 \end{exercise}
 
 \begin{exercise}
 Derive Stokes's drag law $F_D = 6\pi\mu a U$ from the creeping-
 flow form of the Navier-Stokes equations around a sphere. Sketch
 the derivation; the full algebra is in any standard reference.
+
+\paragraph{Solution sketch.} At $\text{Re}\ll1$ drop the inertial
+term, leaving the Stokes equations $\nabla p = \mu\nabla^2\vec u$,
+$\nabla\cdot\vec u = 0$. Taking the divergence shows the pressure is
+harmonic, $\nabla^2 p = 0$. With the boundary conditions $\vec u =
+\vec 0$ on the sphere and $\vec u\to\vec U$ at infinity, the solution
+is a Stokeslet plus a potential dipole; the resulting surface stress
+integrates to a force along $\vec U$. Two-thirds of the force is
+viscous skin friction and one-third is pressure drag, summing to
+$F_D = 6\pi\mu a U$. The drag coefficient is then $C_D = F_D/(\tfrac12
+\rho U^2\pi a^2) = 24/\text{Re}$ with $\text{Re} = \rho U(2a)/\mu$.
+The full angular dependence of $\vec u$ and $p$ is in
+\cite{paper:ch02t3b-stokes-1851}.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -1102,12 +1957,37 @@ the derivation; the full algebra is in any standard reference.
 Estimate the Reynolds number of human blood flow in the aorta.
 State assumptions about blood density, viscosity, aortic diameter,
 and mean flow velocity.
+
+\paragraph{Reference estimate.} Take blood $\rho \approx 1060\,\si{
+\kilogram\per\meter\cubed}$, $\mu \approx 3.5\times10^{-3}\,\si{
+\pascal\second}$ (about $3.5\times$ water), aortic diameter $D
+\approx 25\,\si{\milli\meter}$, mean velocity $\bar u\approx0.2\,\si{
+\meter\per\second}$ (averaged over the cardiac cycle; peak systolic
+is several times higher). Then $\text{Re}_D = \rho\bar u D/\mu =
+1060\times0.2\times0.025/(3.5\times10^{-3}) \approx 1.5\times10^{3}$.
+The mean-flow Reynolds number is just below the pipe-transition value,
+so aortic flow is nominally laminar on average; peak-systolic
+Reynolds numbers reach several thousand, producing transient,
+disturbed flow near the valve, which is one reason aortic flow is
+not cleanly laminar throughout the cycle.
 \end{exercise}
 
 \begin{exercise}
 Estimate the boundary-layer thickness on a sailing yacht hull at
 its trailing edge while sailing at $5\,\si{\meter\per\second}$.
 State assumptions about hull length and water properties.
+
+\paragraph{Reference estimate.} Take a waterline length $L\approx
+10\,\si{\meter}$ and water $\nu\approx1.0\times10^{-6}\,\si{\meter}^2/
+\si{\second}$. $\text{Re}_L = U L/\nu = 5\times10/(1.0\times10^{-6}) =
+5\times10^{7}$, far above the transition value, so the layer is
+turbulent over nearly the whole hull. Turbulent thickness at the
+stern: $\delta = 0.37\,L\,\text{Re}_L^{-1/5} = 0.37\times10\times
+(5\times10^7)^{-0.2} \approx 3.7\times0.0182 \approx 6.7\times10^{-2}
+\,\si{\meter}$, about $7\,\si{\centi\meter}$. A boundary layer of
+several centimetres at the stern is consistent with the observation
+that the rearmost hull region sits in a thick, slow-moving sheath of
+water.
 \end{exercise}
 
 \begin{exercise}
@@ -1115,6 +1995,16 @@ Estimate the drag force on a road cyclist at $10\,\si{\meter\per
 \second}$ in still air. State assumptions about the cyclist's
 frontal area, drag coefficient, and air density. Compare to a
 typical cyclist's sustainable power output.
+
+\paragraph{Reference estimate.} Take frontal area $A\approx0.4\,\si{
+\meter}^2$, $C_D\approx0.9$ (upright rider plus bike), $\rho\approx
+1.2\,\si{\kilogram\per\meter\cubed}$. Drag $F_D = \tfrac12\rho U^2 A
+C_D = 0.5\times1.2\times10^2\times0.4\times0.9 \approx 21.6\,\si{
+\newton}$. Drag power $P = F_D U \approx 216\,\si{\watt}$. A trained
+amateur sustains roughly $200$ to $300\,\si{\watt}$, so $10\,\si{
+\meter\per\second}$ ($36\,\text{km/h}$) is near the limit of what an
+upright rider holds against air drag alone, which is why aerodynamic
+position and clothing matter so much in time trials.
 \end{exercise}
 
 \begin{exercise}
@@ -1122,6 +2012,20 @@ Estimate the terminal velocity of a raindrop of $2\,\si{\milli
 \meter}$ diameter falling in still air. State whether the relevant
 drag regime is Stokes or beyond, and choose the appropriate
 correlation.
+
+\paragraph{Reference estimate.} A Stokes estimate, $U = (\rho_w-
+\rho_a)g d^2/(18\mu) = 1000\times9.81\times(2\times10^{-3})^2/(18
+\times1.8\times10^{-5}) \approx 121\,\si{\meter\per\second}$, gives a
+Reynolds number $\text{Re} = \rho_a U d/\mu = 1.2\times121\times
+0.002/(1.8\times10^{-5}) \approx 1.6\times10^{4}$, far outside Stokes
+($\text{Re}<1$). The drag is in the constant-$C_D$ bluff-body range,
+so balance weight against $F_D = \tfrac12\rho_a U^2 (\tfrac\pi4 d^2)
+C_D$ with $C_D\approx0.5$: $U = \sqrt{\tfrac{4\rho_w g d}{3\rho_a
+C_D}} = \sqrt{4\times1000\times9.81\times0.002/(3\times1.2\times0.5)}
+\approx 6.6\,\si{\meter\per\second}$. (Real $2\,\si{\milli\meter}$
+drops deform and fall near $6.5\,\si{\meter\per\second}$, so the
+bluff-body estimate is the right one; Stokes overshoots by twenty
+times.)
 \end{exercise}
 
 \begin{exercise}
@@ -1129,6 +2033,19 @@ Estimate the friction-related power dissipation in a $50\,\si{
 \meter}$ section of household water-supply pipe of $20\,\si{\milli
 \meter}$ diameter carrying $0.2\,\text{L/s}$. State the relevant
 Reynolds number and friction factor.
+
+\paragraph{Reference estimate.} $Q = 0.2\times10^{-3}\,\text{m}^3/
+\text{s}$, $D = 0.02\,\si{\meter}$, area $= \pi D^2/4 = 3.14\times
+10^{-4}\,\si{\meter}^2$, so $\bar u = Q/A \approx 0.64\,\si{\meter
+\per\second}$. Water $\rho=998$, $\mu=10^{-3}$: $\text{Re}_D =
+998\times0.64\times0.02/10^{-3} \approx 1.27\times10^{4}$, turbulent.
+Smooth-pipe Haaland gives $f\approx0.029$. Pressure drop over
+$L=50\,\si{\meter}$: $\Delta p = f\tfrac{L}{D}\tfrac{\rho\bar u^2}{2}
+= 0.029\times2500\times998\times0.41/2 \approx 1.5\times10^{4}\,\si{
+\pascal}$. Dissipated power $P = \Delta p\,Q = 1.5\times10^4\times
+2\times10^{-4} \approx 3\,\si{\watt}$. A few watts lost to pipe
+friction in a long household run is small but not negligible over a
+building's lifetime of pumping.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -1138,6 +2055,19 @@ Implement a finite-difference solver for the boundary-layer
 equations on a flat plate with zero pressure gradient. Verify the
 Blasius profile by comparing the computed wall shear and
 displacement thickness to the analytical values.
+
+\paragraph{Solution sketch.} The cleanest route reuses the similarity
+reduction: solve the Blasius ordinary differential equation $2f'''
++ ff'' = 0$ by shooting, as in \texttt{code/blasius.py}, and recover
+$f''(0) = 0.33206$ (wall shear) and $\delta^*/\delta\approx0.345$
+(displacement thickness). A direct marching finite-difference solver
+of the boundary-layer partial differential equations discretises in
+$y$, marches in $x$ with the freestream as the initial profile, and
+should reproduce $C_f(x) = 0.664/\sqrt{\text{Re}_x}$ to within the
+grid-refinement error; a wall-normal spacing fine near $y=0$ is
+needed to resolve the steep wall gradient. Verification is a
+convergence study: halve $\Delta y$ and confirm $f''(0)$ approaches
+$0.332$ at the expected order.
 \end{exercise}
 
 \begin{exercise}
@@ -1145,6 +2075,22 @@ Implement a panel method for two-dimensional incompressible viscous
 flow past a circular cylinder, including a thin-boundary-layer
 correction (Thwaites' method for laminar, Head's method for
 turbulent). Verify against published $C_D$ vs.\ $\text{Re}$ data.
+
+\paragraph{Solution sketch.} Build the inviscid potential flow from a
+distribution of source or vortex panels on the cylinder, giving the
+pressure distribution $C_p(\theta)$. Feed the resulting edge velocity
+into a boundary-layer integral method (Thwaites for the laminar
+portion, Head for the turbulent portion after a transition criterion)
+to locate the separation point where the wall shear vanishes.
+Pressure drag follows from integrating $C_p$ over the attached
+surface up to separation; skin-friction drag follows from the
+boundary-layer shear. Validate against
+\texttt{data/sphere\_drag\_curve.csv} (or a cylinder equivalent): the
+method should reproduce the subcritical plateau and, with a tripped
+transition, the drag-crisis drop. A panel method without the
+boundary-layer coupling returns the d'Alembert zero drag, which is
+the negative control that shows why the viscous correction is the
+whole point.
 \end{exercise}
 
 \begin{exercise}
@@ -1152,6 +2098,20 @@ Run a simple LES of channel flow at $\text{Re}_\tau \approx 200$
 using an existing open-source CFD code. Compare the mean velocity
 profile in the log layer to the law-of-the-wall prediction
 $u^+ = (1/\kappa)\ln y^+ + B$.
+
+\paragraph{Solution sketch.} Set up a periodic channel at friction
+Reynolds number $\text{Re}_\tau = u_\tau h/\nu\approx200$ with a
+sub-grid-scale model (Smagorinsky or dynamic), driven by a constant
+mean pressure gradient that fixes $u_\tau$. Run until the statistics
+are stationary, then time-average the streamwise velocity, scale by
+$u_\tau$ and $\nu$ to wall units, and overplot against
+figure~\ref{fig:vol03ch12:law-of-wall}. The mean profile should show
+$u^+ = y^+$ in the viscous sublayer and $u^+\approx(1/0.41)\ln y^+ +
+5.0$ in the log region; the verification check is that the constants
+$\kappa$ and $B$ come out near the standard values and that the
+wall-normal resolution places several points inside $y^+<5$. A
+coarse grid that misses the sublayer over-predicts the wall velocity
+and is the diagnostic for insufficient near-wall resolution.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -1162,6 +2122,25 @@ delivering $0.5\,\text{L/s}$ to each of $20$ fixtures across a
 $30\,\si{\meter}$ run. Specify the pipe diameter at the trunk and
 at the branches, and check the pressure drop against a maximum
 allowable of $50\,\text{kPa}$.
+
+\paragraph{Model-answer sketch.} Trunk flow if all fixtures draw at
+once is $20\times0.5 = 10\,\text{L/s}$, but a diversity factor of
+$0.3$ to $0.5$ is standard, so size the trunk for roughly $4\,\text{
+L/s}$. Pick a target velocity near $1.5\,\si{\meter\per\second}$ to
+limit noise and erosion: $A = Q/\bar u = 4\times10^{-3}/1.5 =
+2.7\times10^{-3}\,\si{\meter}^2$, so $D\approx0.058\,\si{\meter}$;
+choose a $54\,\si{\milli\meter}$ or $63\,\si{\milli\meter}$ standard
+size. Branches carry $0.5\,\text{L/s}$ at the same velocity:
+$D\approx0.02\,\si{\meter}$ ($20\,\si{\milli\meter}$). Check the
+trunk drop with \texttt{code/pipe\_pressure\_drop.py}:
+$\text{Re}_D = \rho\bar u D/\mu\approx
+998\times1.5\times0.06/10^{-3}\approx9\times10^{4}$, turbulent,
+$f\approx0.02$, $\Delta p = f(L/D)\tfrac{\rho\bar u^2}{2}\approx
+0.02\times(30/0.06)\times998\times1.5^2/2\approx1.1\times10^{4}\,\si{
+\pascal}$, well under $50\,\text{kPa}$. Add fitting and elevation
+losses; if the margin is comfortable, a smaller trunk may be
+acceptable. The deliverable states diameters, velocities, the
+computed drop, and the margin to the limit.
 \end{exercise}
 
 \begin{exercise}
@@ -1170,6 +2149,25 @@ Design a settling tank for separating sand ($\rho_s = 2650\,\si{
 ^3\text{/s}$. Specify the tank's depth, length, and width, given
 that all particles larger than $0.5\,\si{\milli\meter}$ must
 settle out before exiting.
+
+\paragraph{Model-answer sketch.} The settling velocity of a
+$0.5\,\si{\milli\meter}$ sand grain sets the design. A Stokes
+estimate gives $U_s = (\rho_s-\rho_f)g d^2/(18\mu) = 1650\times9.81
+\times(5\times10^{-4})^2/(18\times10^{-3})\approx0.22\,\si{\meter\per
+\second}$, but $\text{Re}=\rho_f U_s d/\mu\approx110$ is well past
+Stokes, so use the intermediate-range drag and the iterative solver,
+which lowers $U_s$ to roughly $0.07\,\si{\meter\per\second}$. The
+ideal-settling criterion is that the overflow rate (flow divided by
+plan area) not exceed $U_s$: $Q/(LW)\le U_s$, so $LW\ge0.01/0.07
+\approx0.14\,\si{\meter}^2$. Pick depth so the horizontal residence
+time exceeds the settling time from the surface: with depth $H$,
+$t_{\text{settle}}=H/U_s$ and $t_{\text{residence}}=L W H/Q$, which
+reduces to the same plan-area criterion. Choose, for example,
+$L=2\,\si{\meter}$, $W=0.5\,\si{\meter}$ (plan area $1\,\si{\meter}
+^2$, comfortably above the minimum), depth $H\approx0.5\,\si{\meter}$,
+and keep the inlet velocity low to avoid re-suspension. The
+deliverable states the settling velocity with its regime check, the
+plan-area criterion, and the chosen dimensions with margin.
 \end{exercise}
 
 \begin{exercise}
@@ -1178,6 +2176,23 @@ Design an exhaust stack of $50\,\si{\meter}$ height and $3\,\si{
 without vortex-induced resonance. Estimate the Strouhal frequency
 and the stack's fundamental natural frequency; specify any
 aerodynamic spoilers or structural changes needed.
+
+\paragraph{Model-answer sketch.} Shedding frequency at the design
+wind: $\text{Re} = UD/\nu = 25\times3/(1.5\times10^{-5}) =
+5\times10^{6}$, so $\text{St}\approx0.2$ and $f_s = \text{St}\,U/D =
+0.2\times25/3\approx1.7\,\si{\hertz}$. A $50\,\si{\meter}$ cantilever
+stack has a low fundamental, on the order of $0.3$ to $1\,\si{\hertz}$
+depending on wall thickness and base fixity; estimate it from
+$f_n\approx(1.875)^2/(2\pi)\sqrt{EI/(\rho_L L^4)}$ for a uniform
+cantilever. Lock-in occurs at $U_{\text{lock}} = f_n D/\text{St}$; if
+the fundamental is near $0.5\,\si{\hertz}$, lock-in falls at $U
+\approx7.5\,\si{\meter\per\second}$, a frequent wind, so vortex-
+induced vibration is a real risk across the operating range. Remedies:
+helical strakes over the top third of the stack (the standard fix,
+disrupting coherent shedding), a tuned mass damper, or stiffening to
+move $f_n$ out of the common-wind lock-in band. The deliverable
+states $f_s$, the estimated $f_n$, the lock-in speed, and the chosen
+countermeasure with its rationale.
 \end{exercise}
 
 \begin{exercise}
@@ -1186,6 +2201,22 @@ reduce its drag coefficient from a baseline $C_D = 0.35$ to a
 target $0.28$. State the principal mechanisms (rear-spoiler shape,
 underbody flatness, wheel housing, trailing-edge taper) and
 estimate the contribution of each.
+
+\paragraph{Model-answer sketch.} The target is a $20\%$ reduction in
+$C_D$, of which the largest single share usually comes from managing
+rear separation: a tapered rear (boat-tail) or a properly sized
+spoiler delays or organises separation and narrows the wake, worth
+perhaps $0.03$ to $0.04$ in $C_D$. A flat, sealed underbody with a
+rear diffuser reduces underbody turbulence and pressure drag, worth
+another $0.01$ to $0.02$. Wheel-housing treatment and partial wheel
+shrouding cut the disturbed flow around the wheels, worth around
+$0.01$. Smoothing the front (rounded leading edges, managed cooling-
+air path) trims a further $0.005$ to $0.01$. Summing the central
+estimates gives roughly $0.06$ to $0.08$, enough to move $0.35$ to
+$0.28$ if the measures combine without too much interaction. The
+deliverable lists each mechanism, its estimated contribution, and the
+caveat that the contributions are not strictly additive and need
+wind-tunnel or CFD confirmation.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -1195,6 +2226,22 @@ A pump is delivering only $60\,\%$ of its rated flow at the rated
 discharge pressure. Identify three viscous-flow mechanisms (pipe
 fouling, partial valve closure, cavitation in the pump) that could
 produce this and the diagnostic that would distinguish among them.
+
+\paragraph{Solution sketch.} Fouling raises the effective roughness
+and lowers the diameter, shifting the system curve up; the diagnostic
+is to inspect or borescope the line and to compare the measured
+pressure drop at known flow with the new-pipe Moody prediction (a
+drop larger than predicted points to fouling). A partially closed
+valve adds a localised loss; the diagnostic is to check valve
+position and to look for a large, concentrated pressure drop across
+the valve rather than distributed along the run. Cavitation in the
+pump shows as a flow-and-head deficit accompanied by noise and
+vibration, worsening as suction pressure falls; the diagnostic is to
+raise the net positive suction head (lower the pump, raise the supply
+level, or throttle the discharge rather than the suction) and see
+whether the deficit clears. The three are distinguished by where the
+loss is concentrated (distributed, at the valve, or at the pump) and
+by the acoustic and suction-pressure signatures.
 \end{exercise}
 
 \begin{exercise}
@@ -1202,6 +2249,19 @@ An exhaust stack on a power station has begun to oscillate
 visibly under moderate winds. Identify the most probable
 mechanism, the test that would confirm it, and one immediate and
 one permanent remedial measure.
+
+\paragraph{Solution sketch.} The most probable mechanism is vortex-
+induced vibration: at the prevailing wind speed the Strouhal shedding
+frequency has come into lock-in with one of the stack's natural
+frequencies. The confirming test is to measure the oscillation
+frequency and the wind speed, compute $f_s = \text{St}\,U/D$, and
+check that the observed motion frequency matches both $f_s$ and a
+modal frequency of the stack (an instrumented modal survey settles
+it). Immediate measure: restrict operation or temporarily attach
+guy cables or a perimeter rope-and-chain spoiler to break the
+shedding coherence. Permanent measure: fit helical strakes over the
+upper third of the stack, or install a tuned mass damper, or stiffen
+the structure to move $f_n$ out of the common-wind lock-in band.
 \end{exercise}
 
 \begin{exercise}
@@ -1210,6 +2270,20 @@ $C_D = 0.42$, but full-scale road testing gives $C_D = 0.32$.
 Identify the most probable cause of the discrepancy, given that
 the wind tunnel was operated at a freestream velocity matching
 the full-scale highway speed.
+
+\paragraph{Solution sketch.} The probable cause is a Reynolds-number
+mismatch. At $1/5$ scale with the same speed, the model Reynolds
+number is one-fifth of the full-scale value, $\text{Re}_m =
+\text{Re}_p/5$. If that lower Reynolds number leaves the model in a
+subcritical regime (laminar separation, wider wake) while the full-
+scale vehicle runs supercritical (turbulent boundary layer, delayed
+separation, narrower wake), the model reads a higher $C_D$. The fix
+for similarity is to match Reynolds number, which would require a
+tunnel speed of five times the road speed (often impractical) or a
+pressurised or cryogenic tunnel; the practical fix is to trip the
+model boundary layer to turbulence with roughness strips so it
+separates like the full-scale flow. The discrepancy is the everyday
+reason model drag must be Reynolds-corrected before it is trusted.
 \end{exercise}
 
 \begin{exercise}
@@ -1217,6 +2291,19 @@ A water-supply pipe section has measured pressure drop $20\,\%$
 larger than the Moody-chart prediction for new pipe of its
 material. Identify what physical change in the pipe could account
 for this and the inspection that would confirm or refute it.
+
+\paragraph{Solution sketch.} A $20\%$ excess pressure drop at fixed
+flow points to increased roughness or reduced bore: scale or
+corrosion deposits raise $\epsilon/D$ and shrink $D$, both of which
+raise the friction factor (and the $D^{-5}$ sensitivity of
+Darcy-Weisbach makes even a small bore reduction strong). Back out the
+implied roughness: solve Colebrook for the $\epsilon/D$ that
+reproduces the measured $f$ at the operating Reynolds number, and
+compare to the new-pipe handbook value. The confirming inspection is
+a borescope or an ultrasonic wall-thickness and deposit survey of the
+inner wall; a cut sample settles it. If the bore and wall are clean,
+revisit the flow-rate measurement and the temperature (hence
+viscosity) before blaming the pipe.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1229,6 +2316,23 @@ the boundary-layer physics of high-altitude stall constrains the
 recovery procedure, and what design discipline (cockpit
 indication, autoflight handoff, crew training) the case
 illuminates.
+
+\paragraph{Solution sketch.} A strong answer ties the recovery
+constraint to the separated-flow physics: in a deep stall the wing
+boundary layer is massively separated, lift has collapsed and drag is
+several times its attached value, so the only way to reattach the
+flow is to lower the angle of attack, which at altitude demands a
+nose-down attitude and a large loss of altitude to rebuild airspeed.
+The thin air at $35{,}000\,\text{ft}$ leaves little margin between
+stall and overspeed, and the separated wake degrades control
+authority. The case illuminates three disciplines: unambiguous
+cockpit indication of the stalled state (angle-of-attack display,
+stall warning that stays valid under unreliable airspeed), clean
+autoflight handoff that does not drop the crew into manual control at
+a high workload moment, and crew training in high-altitude upset and
+unreliable-airspeed recovery \cite{acc:bea-af447}. The
+boundary-layer point is that stall is a flight-envelope boundary set
+by separation, not a recoverable nuisance.
 \end{exercise}
 
 \begin{exercise}
@@ -1237,6 +2341,20 @@ intermittently at off-design flow rates, producing surge cycles.
 Identify the boundary-layer mechanism, the parameter (typically
 diffuser flow angle or diffuser area ratio) that controls it, and
 the design countermeasure.
+
+\paragraph{Solution sketch.} The mechanism is boundary-layer
+separation in the diffuser (vaned or vaneless) under the adverse
+pressure gradient that the diffuser imposes to recover dynamic
+pressure. At off-design flow the incidence onto the diffuser changes,
+the local pressure gradient steepens, the boundary layer separates,
+and the stage cannot sustain the pressure rise, which couples into the
+cyclic charge-and-discharge of surge. The controlling parameter is the
+diffuser inlet flow angle (equivalently the area ratio and divergence),
+which sets whether the gradient stays within the attached limit.
+Countermeasures: variable-geometry diffuser vanes that re-aim with
+flow, bleed or recirculation to widen the stable range, and a surge
+or stall margin built into the operating line so the machine does not
+run near the separation boundary.
 \end{exercise}
 
 \begin{exercise}
@@ -1247,6 +2365,23 @@ the boundary-layer / vortex-shedding mechanism most likely
 responsible, distinguishing it from the larger-amplitude
 aeroelastic flutter that destroyed the original Tacoma Narrows
 bridge \cite{acc:tacoma-narrows-1941}.
+
+\paragraph{Solution sketch.} The low-amplitude, narrow-wind-speed-band
+oscillation is the signature of vortex-induced vibration: the Kármán
+shedding frequency $f_s = \text{St}\,U/D$ has come into lock-in with a
+deck or cable mode, and the response self-limits because the shedding
+forcing is bounded and the lock-in range is narrow. The mechanism is
+forced resonance by a bounded aerodynamic load. Torsional flutter, the
+larger-amplitude phenomenon that destroyed the original Tacoma Narrows
+deck, is different in kind: it is a self-excited aeroelastic
+instability in which the deck motion feeds energy into itself, so the
+amplitude grows without bound above a critical wind speed rather than
+locking to a shedding frequency. The distinguishing observations are
+amplitude (bounded versus divergent), the wind-speed dependence (a
+narrow lock-in band versus a critical-speed threshold above which it
+grows), and whether the motion frequency tracks $\text{St}\,U/D$
+(vortex shedding) or sits at a structural torsional mode independent
+of $U$ (flutter).
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1258,6 +2393,20 @@ because the typical design Reynolds number is well below $2300$.
 Write a one-paragraph reply that takes the argument seriously,
 identifies the operating-range conditions under which it is true,
 and identifies the conditions under which it fails.
+
+\paragraph{Solution sketch.} A fair reply grants the case where it
+holds: for genuinely viscous-dominated flows (very low velocity, small
+bore, or high-viscosity fluid) the Reynolds number stays below $2300$
+across the operating range, and Hagen-Poiseuille is then exact, not
+approximate. The argument fails wherever the operating range reaches
+the transition: most water and air distribution systems run at
+$\text{Re}_D$ of $10^4$ to $10^6$, where the flow is turbulent and the
+friction factor follows the Moody chart, not $64/\text{Re}_D$. The
+test is to compute $\text{Re}_D$ at the highest design flow, not the
+nominal one; a system that is laminar at average flow can be turbulent
+at peak draw. The honest position is that Hagen-Poiseuille is the right
+tool only after the regime check confirms laminar flow at the worst-
+case operating point.
 \end{exercise}
 
 \begin{exercise}
@@ -1266,6 +2415,20 @@ significant figures when the underlying turbulence closure
 introduces uncertainties of $10$ to $30\,\%$. Write a one-paragraph
 reply that distinguishes verification from validation and the
 status of CFD predictions absent experimental anchoring.
+
+\paragraph{Solution sketch.} The reply separates two things. The three
+significant figures report the precision with which the code solved its
+discretised equations, which is a verification question answered by
+mesh refinement and order-of-accuracy checks; a converged solver can
+report many digits. Those digits say nothing about whether the
+equations and the turbulence closure model the real flow, which is the
+validation question, answered only by comparison with experiment. A
+closure carrying $10$ to $30\%$ model uncertainty means the prediction
+is accurate to that band regardless of how many digits the solver
+prints. The honest report states the converged value with its
+discretisation error and, separately, the model-form uncertainty from
+the closure; an unvalidated CFD result is a precise solution of an
+approximate model, not a prediction of the flow.
 \end{exercise}
 
 \begin{exercise}
@@ -1274,6 +2437,21 @@ a wind-turbine blade because the operating Reynolds number is in
 the fully turbulent range. Write a one-paragraph response
 addressing whether transition still matters and, if so, on what
 parts of the blade.
+
+\paragraph{Solution sketch.} Transition still matters. The chord-based
+Reynolds number on a wind-turbine blade falls sharply toward the root,
+where the chord and local speed are small, so the inboard sections can
+sit in a transitional or even laminar regime even when the tip is
+fully turbulent. The blade also carries a laminar run near the leading
+edge before transition, and the transition location moves with angle
+of attack and with surface contamination (insect debris, erosion,
+rain), which shifts the drag and the separation behaviour. The
+practical consequences are a measurable drag and annual-energy penalty
+from leading-edge roughness and a sensitivity of stall behaviour to
+transition. The response is that transition analysis is warranted on
+the inboard sections and on the leading-edge region, and that surface
+cleanliness and erosion protection are part of keeping the assumed
+transition behaviour valid.
 \end{exercise}
 
 \begin{exercise}
@@ -1282,4 +2460,20 @@ where the boundary-layer regime controls observable behaviour.
 State, in $200$ to $300$ words, the Reynolds number you estimate,
 the regime it corresponds to, the dominant viscous mechanism, and
 the consequence you observe.
+
+\paragraph{Solution sketch.} Open-ended; a complete answer names a
+concrete situation, estimates its Reynolds number with stated length
+and velocity scales, places it in a regime, names the mechanism, and
+ties it to an observation. One worked example: honey dripping from a
+spoon, length scale $\sim10\,\si{\milli\meter}$, velocity $\sim
+0.1\,\si{\meter\per\second}$, $\nu\sim10^{-2}\,\si{\meter}^2/\si{
+\second}$, so $\text{Re}\sim0.1\ll1$, the creeping-flow regime
+dominated by viscosity, which is why the thread is smooth and slow and
+does not break into droplets the way water does. Another: cigarette
+smoke rising in still air, $\text{Re}$ of a few hundred near the
+source, where the laminar plume is visibly smooth before it transitions
+to a turbulent, chaotically mixing column a short distance up, a
+direct sighting of the laminar-to-turbulent transition. The grading
+point is that the estimate, the regime, the mechanism, and the
+observation hang together.
 \end{exercise}

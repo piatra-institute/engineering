@@ -10,7 +10,7 @@ Per-volume state:
 
 - **Volume I (Quantity)** — 9 of 9 chapters at **Stage 5**, carried to a **Tier 3 second pass** (2026-05-31 / 06-02). All carry Codex reviews at `docs/reviews/vol01-chNN-review.md` resolved with G fixes applied. The most advanced volume in the book; ~674 pp against a ~720 pp target.
 - **Volume II (Form)** — 18 of 18 chapters at **Stage 4** awaiting Codex review. **Tier 3 first AND second pass complete across ALL 18 chapters** (2026-06-05/06). First pass (Waves 1-5) deepened every chapter to ~55-65% of target; the second pass (Waves A-E, gap-prioritized) added a multi-page end-to-end CASE STUDY to most chapters plus more worked examples, figures, and mastery boxes. Representative case studies: geodetic levelling-network adjustment (Ch 9), machine-availability Markov chain (Ch 10), steel-plate quench (Ch 12), battery Coulomb-counting (Ch 6), Markowitz portfolio + truss sizing (Ch 15), error-budget cantilever (Ch 16), fatigue S-N inference (Ch 14), RLC + van der Pol + shooting method (Ch 7), load-strength reliability (Ch 13), M/M/c staffing under random demand (Ch 18), Hamming(7,4) codes (Ch 17), Machin's-formula pi to 10 digits (Ch 4), Welford running variance (Ch 1), machined-plate inertia (Ch 11), coaxial-cable field/capacitance (Ch 8), single-phase AC power-factor network (Ch 3), load-cell characterisation (Ch 2). A **third pass** (Waves F-I, 2026-06-06) then added a SECOND distinct multi-page case study to most chapters plus advanced worked examples and mastery boxes (e.g. Reed-Solomon over GF(16), symmetrical-components fault analysis, repairable-system CTMC availability, Peng-Robinson globalized Newton, FFT/spectral methods + convection-diffusion MMS, SIR + Robertson stiff kinetics, bridge structural-health PCA, FEM direct-stiffness truss + Leontief, network-contagion + feedback-control modelling, control-volume drag/lift). Ch 1 (~92%) and Ch 11 (~87%) were left after the second pass; the other 16 chapters got the third pass. Vol II now **~82% of dossier target (~1506 of ~1830 pp)** and compiles with **zero errors in the build**. Exercise counts held exactly throughout all three passes; no new bibliography entries required (all citations reuse existing keys); Ch 16 wired in the Vancouver Stock Exchange case using the existing registry entry. One more focused pass on the largest chapters (Ch 9, 10, 12) would reach Vol I's ~94% density.
-- **Volume III (Force)** — 13 of 13 chapters at **Stage 4** awaiting Codex review.
+- **Volume III (Force)** — 13 of 13 chapters at **Stage 4** awaiting Codex review. **Tier 1+2 baseline pass complete across ALL 13 chapters** (2026-06-24, three parallel-agent waves). Each chapter started as text-plus-exercises only (no figures, code, data, or solutions) and gained: a full `\paragraph{Solution sketch.}` inside every exercise (446 solutions across the volume), 6-10 TikZ/pgfplots figures (113 new figure files), 3-6 code files, 2-4 datasets, expanded worked-examples sections, estimation blocks where missing, and 1-2 mastery boxes per chapter. Then a **Tier 3 deepening pass across ALL 13 chapters** (2026-06-24, three more parallel-agent waves of 4-5) added to every chapter a substantial multi-page END-TO-END CASE STUDY (numbers carried through), 3-4 more multi-step worked examples, 2-4 more figures, and another mastery box. Representative case studies: lifting-padeye stress + Goodman fatigue check (Ch 3), rotating-machinery FFT diagnosis + isolation-mount design (Ch 6), steel floor-beam design to deflection/LTB checks (Ch 8), air-receiver pressure-vessel sizing (Ch 9), two-vehicle accident reconstruction (Ch 4), industrial noise-control enclosure to OSHA dose (Ch 7), penstock water-hammer surge + surge-tank sizing (Ch 11), pipeline pump sizing with NPSH margin (Ch 12), supersonic rocket-nozzle design chamber-to-plume (Ch 13), jib-crane load-path FBD (Ch 1), Howe roof-truss full analysis (Ch 2), Castigliano frame deflection + drop-impact factor (Ch 5), gravity-dam stability (Ch 10). Vol III went from ~274 pp to **~610 pp (~47% of the ~1300 pp dossier target)** and now carries **165 figures** (zero at session start). Exercise counts held exactly throughout; no new bibliography entries required (all citations reuse existing keys); the de Havilland Comet (1954) failure case was wired into Ch 9 using the existing registry entry. Three agent-authored figures shipped with a missing `\end{axis}` (`ch10` rotating-paraboloid + atmosphere) and were repaired; the per-wave verification now includes an axis/tikz balance scan. Next: a further Tier 3 pass to close from ~47% toward Vol I/II density (~80-94%), or commission Codex reviews (Stage 4 -> 5).
 - **Volume IV (Energy)** — 14 of 14 chapters at **Stage 4** awaiting Codex review.
 - **Volume V (Matter)** — 12 of 12 chapters at **Stage 4** awaiting Codex review.
 - **Volume VI (Life)** — 13 of 13 chapters at **Stage 4** awaiting Codex review. Ch 11-13 drafted from Stage 1 in Wave 1 (2026-06-03); Ch 1-5 expanded to a Tier 3 baseline in Wave 2 (2026-06-03).
@@ -57,7 +57,7 @@ Run `make stats` for live numbers. Snapshot (2026-06-05):
 | Vol I chapters at Stage 5 | 9 of 9 |
 | Vols II-XII chapters at Stage 4 | 165 awaiting review |
 | Chapters at Stage 1 | 0 |
-| `main.pdf` page count (last build) | 4727 |
+| `main.pdf` page count (last build) | 5063 |
 
 Per-volume page spans against target (figures approximate; from the per-chapter ledger in `CLAUDE.md`):
 
@@ -65,7 +65,7 @@ Per-volume page spans against target (figures approximate; from the per-chapter 
 | --- | --- | --- | --- | --- |
 | I Quantity | ~674 | ~720 | ~94% | 5 (Tier 3 2nd pass) |
 | II Form | ~1506 | ~1830 | ~82% | 4 (Tier 3 third pass: 16 of 18 ch) |
-| III Force | ~274 | ~1300 | ~21% | 4 |
+| III Force | ~610 | ~1300 | ~47% | 4 (Tier 1+2 baseline + Tier 3 pass: all 13 ch) |
 | IV Energy | ~234 | ~1400 | ~17% | 4 |
 | V Matter | ~238 | ~1200 | ~20% | 4 |
 | VI Life | ~370 | ~1200 | ~31% | 4 |
@@ -144,11 +144,20 @@ The diagnostic identified three top risks (`docs/diagnostic.md`).
 make distclean && make
 ```
 
-Produces `main.pdf` at 4727 pages. `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above.
+Produces `main.pdf` at 5063 pages (latexmk exit 2: 66 recoverable Vol VI Ch 10-13 errors remain, see below; PDF builds despite them). `make check`, `make audit-docs`, `make accidents`, and `make exercise-counts` all report `PASS`. `make stats` reports the at-a-glance counts above. The build requires the enlarged TeX `main_memory` described below; without it the run aborts in Vol IV with `TeX capacity exceeded`.
 
 Always build with `make distclean && make` (a fresh build). Incremental `latexmk` runs intermittently corrupt `main.bbl` (biber emits a runaway-argument bbl, symptom: "Paragraph ended before \name was complete" / "Loading a class or package in a group" at `\begin{document}`, no PDF). A `make distclean` clears the bad `.bbl`/`.bcf` (and any `*-SAVE-ERROR` files) and regenerates the bibliography cleanly.
 
 Resolved build issues (2026-06-05): the Vol II Ch 11 PGF negative-sqrt figure error is fixed (`max(0,...)` clamp); the Vol VI Ch 6 cardiovascular figure path syntax is fixed; Vol VI Ch 9 was truncated (unclosed `exercise`, seven never-created figure `\input`s) and is now structurally valid (figures commented with a TODO for the Vol VI pass); Vol VI Ch 10 `engorange` color added to the preamble and the reserved `cells` TikZ key renamed.
+
+TeX main-memory ceiling (2026-06-24): once Vol III gained 113 TikZ/pgfplots figures the whole-book build began failing with `! TeX capacity exceeded, sorry [main memory size=5000000]` partway through (Vol IV Ch 10), because pdftex's default arena is fixed at format-dump time and the accumulating per-document tables (labels, hyperref destinations, biblatex data) crossed it. Fix is **machine-local, no sudo, no repo change**: a user-level `texmf.cnf` at `$TEXMFCONFIG/web2c/texmf.cnf` (`~/Library/texlive/2025/texmf-config/web2c/texmf.cnf` on this machine) sets `main_memory = 12000000`, then a user-local `pdflatex` format is rebuilt so the larger arena is baked in:
+
+```
+# write ~/Library/texlive/2025/texmf-config/web2c/texmf.cnf containing: main_memory = 12000000
+TEXMFCNF="$(kpsewhich -var-value TEXMFCONFIG)/web2c:" fmtutil-user --byfmt pdflatex
+```
+
+`main_memory` is read only at format-dump time, so the `TEXMFCNF` override is needed for that one command; afterwards normal `make` runs use the baked-in 12M format automatically (the user `pdflatex.fmt` in TEXMFVAR precedes the system tree). Do not also raise `pool_size`/`save_size` in the same file: the combination tripped `Ouch---my internal constants have been clobbered!---case 14` and the dump failed; `main_memory` alone dumps cleanly. To revert, delete the line and rerun the `fmtutil-user` command. 12M clears the current ~4955 pp book with headroom; raise further (re-dump) if a future volume overflows again.
 
 Known residual (deferred to the Vol VI production pass): ~66 recoverable "Missing $" / "Undefined control sequence" errors in Vol VI Ch 10-13 prose, caused by markdown-style backtick code spans with raw underscores (e.g. a bare `monod_growth_fit.py`). They do not stop the build (the PDF reaches 4205 pp) and are confined to Vol VI; the fix is to convert those spans to `\texttt{...}` / `\repopath{}` with escaped underscores when Vol VI is drafted to Tier 3.
 

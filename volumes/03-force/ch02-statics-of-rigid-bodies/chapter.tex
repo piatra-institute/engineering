@@ -51,6 +51,33 @@ take moments about a pin: the pin's two reaction components contribute
 no moment about themselves, leaving only the other forces in the
 moment equation. The arithmetic is shorter; the answer is the same.
 
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-fbd-conventions.tex}
+
+The reactions a support can supply are set by what the support
+prevents. A pin prevents translation in both planar directions and
+allows rotation, so it supplies two force components and no moment. A
+roller prevents translation along one direction only, so it supplies a
+single force normal to its running surface. A fixed (built-in) support
+prevents translation in both directions and rotation, so it supplies
+two force components and a moment, three reactions in all. A cable or
+tie supplies a single tensile force along its own line and nothing in
+compression. Reading the reactions off the supports before writing any
+equation is the first act of a static analysis, and
+figure~\ref{fig:vol03ch02:fbd-conventions} shows the catalogue applied
+to one body: a pin at $A$, a roller at $B$, and the moment arm $L$ used
+when summing moments about the pin.
+
+A worked count fixes the determinacy idea. A planar simply-supported
+beam carries a pin at one end (two reactions) and a roller at the other
+(one reaction): three reactions, three equations, determinate. Add a
+second roller in the middle and the count becomes four reactions
+against three equations: the beam is once indeterminate, and its middle
+reaction depends on how the beam bends, not on equilibrium alone.
+Remove the roller from the simply-supported beam and the count drops to
+two reactions against three equations: the beam is a mechanism, free to
+rotate about the pin. The same arithmetic, $r$ versus three, classifies
+every planar rigid body before any force is solved.
+
 A statically determinate problem has as many independent equilibrium
 equations as it has unknowns. A two-dimensional rigid body has three
 equations; if its constraints produce exactly three unknowns, the
@@ -60,6 +87,25 @@ three and the body is statically indeterminate, and the equilibrium
 equations alone cannot resolve the redundant reactions. Indeterminate
 systems require the body's elastic response, which is the subject of
 chapter 3 of this volume.
+
+The count of reactions against equations classifies a body into one of
+three states, and the engineer reads the state before solving. A body
+with fewer independent reactions than equations is \engterm{unstable}: it
+has a degree of freedom along which no support resists motion, so it is a
+mechanism and equilibrium has no solution for a general load. A body with
+exactly as many independent reactions as equations is \engterm{statically
+determinate}: equilibrium has a unique solution. A body with more
+reactions than equations is \engterm{statically indeterminate} to the
+degree of the excess, and equilibrium has infinitely many solutions until
+the body's stiffness picks one. The arithmetic is necessary but not
+sufficient for stability, and the gap matters: three reactions whose
+lines of action are concurrent, or whose lines are all parallel, leave
+the body free to rotate about the concurrency point or to translate
+across the parallel lines, so the body is a mechanism despite having the
+determinate count. A three-legged stool with all three legs in a line is
+the everyday instance. Reading the count and then checking that the
+reactions are neither concurrent nor parallel is the full determinacy
+test, and the case study below runs it before solving a single joint.
 
 \begin{principle}[The three equilibrium conditions]
 For a planar rigid body in static equilibrium, $\sum F_x = 0$, $\sum
@@ -143,6 +189,36 @@ joints can be ordered so each one introduces only two new unknowns.
 Some determinate trusses cannot be ordered that way; for those, the
 method of sections fills the gap.
 
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-method-of-joints.tex}
+
+The bookkeeping convention that prevents most sign errors is to draw
+every unknown member force as tension, pulling away from the joint
+along the member's axis, as in
+figure~\ref{fig:vol03ch02:method-of-joints}. The two equilibrium
+equations are then written with consistent signs and solved; a member
+that returns a negative number is in compression by exactly the
+magnitude returned, and no diagram needs redrawing. The alternative,
+guessing tension or compression member by member and flipping arrows,
+multiplies the chances of a dropped sign. The same figure shows the
+graphical reading: three concurrent forces in equilibrium close into a
+triangle, the force polygon, whose closure is the equilibrium statement
+drawn rather than computed. The polygon is the quickest independent
+check on a hand calculation.
+
+\engterm{Zero-force members} are worth spotting before any equation is
+written, because they fall out of two recurring geometries. First, at a
+joint where only two non-collinear members meet and no external load
+acts, both members carry zero force. Second, at a joint where three
+members meet, two of them collinear and the third not, and no external
+load acts, the non-collinear member carries zero force. A truss
+analysed by eye for its zero-force members shrinks to a smaller problem
+before the first equation, and the zero-force members are not useless:
+they brace compression members against buckling and carry load under a
+different loading case than the one analysed. The chapter's worked Pratt
+truss has one zero-force member, the central vertical $U_3L_3$, which
+the numerical solver in
+\texttt{code/method\_of\_joints.py} returns as $0\,\text{kN}$.
+
 \subsection{Method of sections}
 
 Cut the truss with an imaginary plane that passes through at most
@@ -159,6 +235,16 @@ deep truss in which the chord forces grow with the bending moment;
 a single section near midspan gives the maximum chord force in one
 calculation, where the method of joints would require working
 inward from a support.
+
+The three cut-member forces can each be isolated by choosing the
+moment point well. To find a chord force, take moments about the joint
+where the other two cut members meet, which removes them and leaves one
+equation in the chord force. To find a diagonal force, the two chords
+are usually parallel; sum forces perpendicular to the chords and the
+chord contributions vanish, leaving the diagonal alone. The method of
+sections rewards the same tactical thinking as the choice of moment
+point in a global analysis: choose the equation that isolates the
+unknown wanted.
 
 \subsection{Assumptions and their corrections}
 
@@ -189,6 +275,47 @@ A truss whose loads do not act at the joints, or whose members
 carry transverse load between joints, cannot be analysed as a truss.
 The structure is a \engterm{frame}, and frames are the subject of
 the next section.
+
+\begin{mastery}
+The method of joints, written as a single linear system, is the matrix
+method that every truss-analysis program runs. Assign each joint two
+equilibrium equations and stack them into a column vector of length $2j$.
+Each unknown, the $m$ member forces and the $r$ reactions, gets a column.
+A member running from joint $a$ to joint $b$ has unit vector
+$\hat{u} = (p_b - p_a)/\lVert p_b - p_a \rVert$; carrying its force as
+tension, it contributes $+\hat{u}$ to joint $a$'s two rows and $-\hat{u}$
+to joint $b$'s. A reaction contributes its own unit direction to the one
+joint it acts on. Collecting the contributions builds the equilibrium
+matrix $\mathbf{A}$ of size $2j \times (m + r)$, and the system is
+\[
+\mathbf{A}\, \vec{x} = -\vec{p},
+\]
+where $\vec{x}$ holds the member forces and reactions and $\vec{p}$ holds
+the applied joint loads. For a determinate truss, $m + r = 2j$,
+$\mathbf{A}$ is square, and the single solve $\vec{x} = -\mathbf{A}^{-1}
+\vec{p}$ returns every member force and reaction at once, with a positive
+entry meaning tension and a negative meaning compression, the same sign
+convention the hand method uses.
+
+The matrix carries diagnostics the hand method hides. If $\mathbf{A}$ is
+singular, the truss is a mechanism (its geometry admits a motion that no
+member resists), and the singularity flags the defect that the
+determinacy count $m + r = 2j$ alone cannot: a truss can satisfy the
+count and still be a mechanism if its members are badly arranged, for
+instance four members forming a parallelogram that shears. The condition
+number of $\mathbf{A}$ measures how close the truss sits to such a
+mechanism; a condition number that spikes as a design is tweaked warns
+that the truss is approaching a geometry in which small load changes
+produce large member-force changes, the numerical signature of a
+near-mechanism. The solver in \texttt{code/method\_of\_joints.py}
+assembles exactly this $\mathbf{A}$, checks the count, reports the
+condition number, and solves; the chapter's Pratt and Howe results are
+its output. The same assembly, with member stiffnesses $EA/L$ replacing
+unit equilibrium and displacements replacing forces as the unknowns, is
+the direct stiffness method of chapter 8, which carries the analysis from
+determinate trusses to indeterminate frames by adding the members'
+elastic response.
+\end{mastery}
 
 \section{Frames and machines}\pathtag{standard}
 
@@ -239,6 +366,25 @@ historical reference for the empirical corrections from idealised
 to real machines, the largest of which is rope-and-pulley friction
 \cite{hist:coulomb1781}.
 
+The \engterm{mechanical advantage} of a machine is the ratio of output
+force to input force, and statics reads it straight off the moment
+equation. For a lever, equilibrium about the fulcrum gives $F_{\text{out}}
+\, a_{\text{out}} = F_{\text{in}}\, a_{\text{in}}$, so the advantage is the
+ratio of arms $a_{\text{in}}/a_{\text{out}}$: a crowbar with a long handle
+and a short toe multiplies a hand force into a prying force many times
+larger. The same balance governs the others. A pulley block of $n$
+supporting rope falls carries each fall at the load tension divided by
+$n$, an ideal advantage of $n$. A screw of pitch $p$ and mean thread
+radius $r$ converts a turning torque into an axial thrust with ideal
+advantage $2\pi r/p$, which is large because the pitch is small. The
+common thread is that an ideal machine trades force for distance with the
+product conserved, so the work in equals the work out, and the mechanical
+advantage is the geometric ratio the moment equation returns. Real
+machines lose part of the trade to friction, the loss Coulomb's memoir
+quantified, and the band brake worked later in this chapter shows the
+opposite use of the same friction, turned from a loss into the machine's
+whole purpose.
+
 \section{Distributed loads}\pathtag{standard}
 
 A distributed load is a force per unit length (a line load), per
@@ -269,6 +415,17 @@ Two common cases: a uniform line load $w(x) = w_0$ has $W = w_0 L$
 at midspan; a triangular line load growing linearly from zero to
 $w_{\max}$ has $W = \tfrac{1}{2} w_{\max} L$ at two-thirds span
 from the zero end.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-distributed-loads.tex}
+
+Figure~\ref{fig:vol03ch02:distributed-loads} collects the three cases
+the working engineer meets daily. Any piecewise-linear distribution is
+a sum of rectangles and triangles; replace each piece by its own
+resultant at its own centroid, then combine the pieces with the same
+area-weighting that combines composite centroids. The trapezoid in the
+figure is the canonical instance: split it into a rectangle of height
+$w_1$ and a triangle of peak $w_2 - w_1$, locate each resultant, and
+sum. The decomposition turns an integral into mental arithmetic.
 
 The integral can be done geometrically. The total load is the
 area under the loading diagram; the centroid is the centroid of
@@ -344,7 +501,26 @@ Standard tables of centroids and second moments of area for common
 shapes appear in mechanics textbooks and engineering handbooks
 \cite[appendices]{text:meriam-kraige2018}. The working engineer
 internalises a handful of the most common (rectangle, triangle,
-circle, semicircle, I-section) and computes the rest as needed.
+circle, semicircle, I-section) and computes the rest as needed. A
+compact table of the five most common shapes ships with this chapter
+as \texttt{data/section\_table.csv}, and the composite-section routine
+\texttt{code/section\_properties.py} applies the parallel-axis theorem
+automatically to any stack of rectangles.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-centroid-composite.tex}
+
+Figure~\ref{fig:vol03ch02:centroid-composite} shows the parallel-axis
+theorem at work on an I-section. The section's stiffness is dominated by
+the two flanges, each carrying a transfer term $A_i d_i^2$ that grows
+with the square of its distance from the centroidal axis. The web,
+sitting on the centroidal axis, contributes its small $bh^3/12$ and no
+transfer term. This is why an I-beam is the standard bending shape: it
+spends material where the transfer term pays the most, at the extreme
+fibres, and leaves only a thin web to carry the shear and hold the
+flanges apart. The numerical routine returns
+$I_x \approx 1.04 \times 10^{-4}\,\si{\meter\tothe{4}}$ for the
+$200/20$ flange, $200/10$ web section, which the I-section exercise
+checks against a hand calculation.
 
 \begin{estimation}
 \textbf{Estimate the second moment of area of a $300 \,\si{\milli
@@ -457,6 +633,38 @@ $M_{\max} = PL/4$ at midspan; with uniform line load $w_0$ it is
 $M_{\max} = w_0 L^2 / 8$ at midspan. The two cases come up
 constantly and are worth memorising.
 
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-shear-moment.tex}
+
+Figure~\ref{fig:vol03ch02:shear-moment} draws the central-point-load
+case in full: the rectangular shear diagram, the triangular moment
+diagram, and the peak $PL/4$ located exactly where the shear crosses
+zero. The accompanying routine
+\texttt{code/shear\_moment.py} integrates $-w$ to shear and shear to
+moment numerically for any combination of point loads, distributed
+loads, and applied couples, and reproduces both memorised peaks to
+within the discretisation error.
+
+\begin{mastery}
+The differential relations $dV/dx = -w$ and $dM/dx = V$ are the beam's
+form of a conservation law, and they hold piecewise between
+discontinuities. At a concentrated point load the shear jumps and the
+relation $dV/dx = -w$ holds in the distributional sense, with the point
+load a Dirac delta in $w(x)$; integrating across the load recovers the
+finite jump. At a concentrated applied couple the moment jumps while the
+shear is continuous, the couple appearing as a delta in the second
+derivative. Treating point loads and couples as singular distributions
+unifies the discrete and continuous cases under one pair of equations,
+which is the form a finite-element formulation generalises: the element
+load vector is the integral of $w(x)$ against the element shape
+functions, and a point load is the special case where $w$ is a delta and
+the integral picks out the shape-function value at the load. The reader
+who carries the relations forward to Volume V's continuum mechanics will
+recognise $dV/dx = -w$ as the one-dimensional restriction of the
+equilibrium of stresses, $\nabla \cdot \boldsymbol{\sigma} +
+\vec{b} = \vec{0}$, with the shear playing the role of the stress
+resultant and $w$ the body force per unit length.
+\end{mastery}
+
 \section{Worked examples}\pathtag{standard}
 
 \subsection{A Pratt truss under uniform deck load}
@@ -468,6 +676,8 @@ load of $P = 20\,\text{kN}$ to each of the five interior bottom
 chord joints. Find the support reactions, the maximum chord force,
 and the force in the diagonal in the third bay from the left
 support.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-pratt-truss.tex}
 
 \textbf{Reactions.} Symmetry gives equal vertical reactions at the
 two supports. The total downward load is $5P = 100\,\text{kN}$,
@@ -510,7 +720,155 @@ confirms the diagonal is in tension.
 
 A full analysis would proceed joint by joint to verify; the
 section's value is that it gives one member's force in one
-calculation.
+calculation. The numerical solver
+\texttt{code/method\_of\_joints.py} resolves all twenty-one members at
+once and confirms the section result: it returns the diagonal $U_2L_3$
+as $14.14\,\text{kN}$ in tension, the maximum compressive chord force as
+$90\,\text{kN}$ in the two central top-chord members, and the central
+vertical $U_3L_3$ as a zero-force member. The full member-force table is
+shipped as \texttt{data/pratt\_truss\_forces.csv}.
+
+\textbf{Maximum chord force by section.} The same section gives the
+chord forces directly. Take moments of the left free body about the top
+joint $U_2$, where the diagonal and top chord both pass and so drop out.
+Only the bottom chord $L_2L_3$ and the known loads remain. With $U_2$ at
+$x = 4\,\si{\meter}$ and height $2\,\si{\meter}$,
+\[
+F_{L_2L_3} \cdot h = V_A \cdot 4 - 20 \cdot 2,\quad
+F_{L_2L_3} = \frac{50 \cdot 4 - 20 \cdot 2}{2} = 80\,\text{kN},
+\]
+in tension, matching the solver. Taking moments about the bottom joint
+$L_3$ instead isolates the top chord $U_2U_3$ and returns
+$90\,\text{kN}$ in compression, the maximum chord force, in one line.
+
+\subsection{Case study: a Howe roof truss carried end to end}
+
+The Pratt example demonstrated each method on its own member. A second
+truss, carried from raw geometry to a design verdict without skipping a
+step, shows how the pieces assemble into a complete analysis, the form an
+engineer's calculation package actually takes. We analyse a Howe roof
+truss: the gable-profile truss that carries pitched-roof loads in timber
+and light steel construction across much of the world.
+
+\textbf{Geometry and loads.} The truss spans $L = 16\,\si{\meter}$
+between a pin support at the left and a roller at the right, divided into
+eight bottom-chord bays of $2\,\si{\meter}$. It rises to a ridge
+$4\,\si{\meter}$ above the supports, so each rafter climbs
+$4\,\si{\meter}$ over a horizontal run of $8\,\si{\meter}$, a slope of
+$\arctan(4/8) = \arctan(0.5) \approx 26.57^{\circ}$. The bottom chord
+runs level along the eight joints $L_0$ through $L_8$; the top chord
+follows the gable through the seven interior apex joints $T_1$ through
+$T_7$, with $T_4$ at the ridge. Verticals drop from each top-chord joint
+to the bottom chord beneath it; the Howe diagonals slope down toward
+midspan. Purlins deliver an equal downward load $P = 10\,\text{kN}$ to
+each of the seven top-chord joints, the lumped tributary of the roof
+sheathing, snow, and self-weight.
+Figure~\ref{fig:vol03ch02:howe-roof-truss} fixes the geometry.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-howe-roof-truss.tex}
+
+\textbf{Determinacy check, first.} The truss has $j = 16$ joints (nine
+bottom, seven top), $m = 29$ members, and $r = 3$ reactions (two at the
+pin, one at the roller). The count $m + r = 29 + 3 = 32$ equals
+$2j = 32$, so the truss is statically determinate and the method of
+joints will resolve it. Running the count before any force is solved
+catches a mis-drawn truss while the error is still cheap: a missing
+diagonal would have given $m + r = 31 < 32$, the signature of a
+mechanism, and an extra member would have given $33 > 32$, the signature
+of internal indeterminacy that equilibrium alone cannot resolve.
+
+\textbf{Support reactions.} The loading is symmetric about the ridge, and
+the supports sit at equal heights, so the two vertical reactions are
+equal. The total downward load is $7P = 70\,\text{kN}$, so
+\[
+R_A = R_B = \tfrac{1}{2}(7P) = 35\,\text{kN} \text{ upward}.
+\]
+The pin also supplies a horizontal reaction, which the horizontal
+equilibrium $\sum F_x = 0$ sets to zero because no external load has a
+horizontal component. The roller carries no horizontal force by
+construction.
+
+\textbf{Zero-force members, spotted by eye.} Joint $L_1$ carries the
+end of the bottom chord, the first diagonal, and the vertical $T_1L_1$.
+The bottom chord and the diagonal are the two members whose forces have
+to balance the horizontal direction at $L_1$; the vertical $T_1L_1$ is
+the odd member out, and with no external load at $L_1$ its force is
+zero. The mirror joint $L_7$ gives the second zero-force member $T_7L_7$
+by the same reasoning. Both verticals carry no force under this
+symmetric gravity case; they earn their place by bracing the rafters
+against buckling and by carrying load under the unbalanced snow cases the
+roof code also requires.
+
+\textbf{Member forces by joints.} Begin at the pin $L_0$, where only two
+members meet: the bottom chord $L_0L_1$ (horizontal) and the end rafter
+$L_0T_1$ (climbing at $26.57^{\circ}$). The two equilibrium equations
+resolve both. Vertical equilibrium balances the reaction against the
+rafter's vertical component:
+\[
+R_A + F_{L_0T_1}\sin 26.57^{\circ} = 0, \quad
+F_{L_0T_1} = \frac{-35}{0.4472} = -78.26\,\text{kN},
+\]
+negative, so the end rafter is in compression at $78.26\,\text{kN}$.
+Horizontal equilibrium then gives the bottom chord:
+\[
+F_{L_0L_1} + F_{L_0T_1}\cos 26.57^{\circ} = 0, \quad
+F_{L_0L_1} = -(-78.26)(0.8944) = 70.0\,\text{kN},
+\]
+positive, the bottom chord in tension at $70\,\text{kN}$. Moving joint by
+joint inward, each new joint introducing at most two unknowns, resolves
+the rest. The bottom chord falls from $70\,\text{kN}$ at the supports to
+$50\,\text{kN}$ in the two panels flanking the ridge; the rafters fall
+from $78.26\,\text{kN}$ at the ends to $44.72\,\text{kN}$ at the ridge;
+the tension verticals run from zero at the ends through $5$, $10$, and
+$30\,\text{kN}$ at the ridge vertical $T_4L_4$; and the compression
+diagonals run from $11.18\,\text{kN}$ to $18.03\,\text{kN}$ toward
+midspan.
+Figure~\ref{fig:vol03ch02:howe-force-map} maps the full result, tension
+in green, compression in red, the two zero-force members dashed.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-howe-force-map.tex}
+
+\textbf{Spot-check by sections.} A single calculation confirms the
+joint-by-joint march on the most-loaded interior panel. Cut a vertical
+section between $L_3$ and $L_4$; it crosses the top chord $T_3T_4$, the
+diagonal $T_3L_4$, and the bottom chord $L_3L_4$. Take the left free
+body, which carries the reaction $R_A = 35\,\text{kN}$ at $L_0$ and the
+three purlin loads of $10\,\text{kN}$ at $T_1$, $T_2$, $T_3$. To isolate
+the bottom chord, sum moments about $T_3$ at $(6, 3)$, where the top
+chord and diagonal both pass and so drop out. The bottom chord, acting
+horizontally at height zero, has moment arm $3\,\si{\meter}$ about
+$T_3$:
+\[
+F_{L_3L_4}\cdot 3 = R_A \cdot 6 - 10 \cdot 4 - 10 \cdot 2
+= 210 - 40 - 20 = 150,\quad
+F_{L_3L_4} = 50\,\text{kN},
+\]
+in tension, matching the joint march exactly. Summing moments instead
+about $L_4$ at $(8, 0)$, where the bottom chord and diagonal both pass,
+isolates the top chord and returns $44.72\,\text{kN}$ in compression,
+again matching. The section gives two of the panel's three member forces
+in two lines, the independent check that the joint-by-joint bookkeeping
+did not drift.
+
+\textbf{Governing members and the verdict.} Two findings set the design.
+The end rafters carry $78.26\,\text{kN}$ in compression over an unbraced
+length of one rafter panel, $\sqrt{2^2 + 1^2} = 2.24\,\si{\meter}$; they
+are the buckling-critical members and size the rafter section through
+$P_{cr} = \pi^2 EI / L_e^2$ (chapter 8 of this volume). The four
+support-adjacent bottom-chord panels carry $70\,\text{kN}$ in tension;
+they are net-section-critical at their bolted splices and size the bottom
+chord through the net-section and block-shear checks of this chapter's
+failure section. The interior diagonals and verticals carry well under
+half the governing forces and are sized by minimum-member rules and
+buckling of the compression diagonals, not by strength. The verdict: a
+designer who sizes the end rafters for $78\,\text{kN}$ compression with a
+buckling check and the support bottom chord for $70\,\text{kN}$ tension
+with a connection check has caught the two members that govern, and the
+remaining twenty-seven follow. The numerical solver of
+\texttt{code/method\_of\_joints.py} reproduces every force in this
+analysis when given the Howe connectivity; the analysis above is what the
+solver automates, carried by hand so the reader sees where each number
+comes from.
 
 \subsection{A wall-mounted bracket crane}
 
@@ -520,6 +878,8 @@ by a diagonal tie running from a point $B$ on the wall, $1\,\si{
 \meter}$ above $A$, to the jib's outer end $C$. A load of $W =
 500\,\si{\kilogram} \times 9.81 \,\si{\meter\per\second\squared}
 \approx 4{,}900\,\text{N}$ hangs from $C$.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-bracket-crane.tex}
 
 \textbf{FBD of the jib $AC$.} Pin reaction at $A$ ($A_x$, $A_y$);
 tension $T$ in the tie along $BC$; load $W$ downward at $C$. The
@@ -553,6 +913,245 @@ of the tie, not only on the load. A crane redesigned to put the tie
 closer to horizontal (smaller $\theta$) increases the tie tension
 and the pin reaction without changing the load.
 
+\subsection{A beam under combined point and distributed load}
+
+A simply-supported beam spans $L = 8\,\si{\meter}$. It carries a
+uniform line load $w_0 = 6\,\text{kN}/\text{m}$ over its full length
+plus a point load $P = 40\,\text{kN}$ at $x = 3\,\si{\meter}$ from the
+left support. Find the reactions, the maximum bending moment, and its
+location. This combination, a deck self-weight plus a concentrated
+equipment load, is the everyday case the memorised single-load formulas
+do not cover, and it shows the diagram rules carrying their full weight.
+
+\textbf{Reactions.} The total distributed load is $w_0 L = 48\,\text{kN}$
+acting at midspan ($x = 4\,\si{\meter}$). Sum moments about the left
+support $A$:
+\[
+R_B \cdot 8 = 48 \cdot 4 + 40 \cdot 3 = 192 + 120 = 312,\quad
+R_B = 39\,\text{kN}.
+\]
+Vertical equilibrium gives $R_A = 48 + 40 - 39 = 49\,\text{kN}$.
+
+\textbf{Shear and the zero crossing.} Just right of $A$ the shear is
+$+49\,\text{kN}$. The distributed load sheds shear at $6\,\text{kN}$ per
+metre, so over the first $3\,\si{\meter}$ the shear falls to
+$49 - 6 \cdot 3 = 31\,\text{kN}$. The point load then drops the shear by
+$40\,\text{kN}$ to $-9\,\text{kN}$. The shear therefore crosses zero
+inside the point load's jump, at $x = 3\,\si{\meter}$, which by the rule
+$dM/dx = V$ locates the maximum moment.
+
+\textbf{Maximum moment.} Evaluate $M$ at $x = 3\,\si{\meter}$ from the
+left free body: the left reaction acts at arm $3\,\si{\meter}$, and the
+distributed load over the first $3\,\si{\meter}$ is
+$6 \cdot 3 = 18\,\text{kN}$ at its own centroid $1.5\,\si{\meter}$ from
+the cut:
+\[
+M_{\max} = 49 \cdot 3 - 18 \cdot 1.5 = 147 - 27 = 120\,\text{kN}\cdot\text{m}.
+\]
+The routine \texttt{code/shear\_moment.py}, run with this load case,
+returns the same peak and confirms the zero crossing at the point load.
+The lesson the diagram rules teach is that the maximum moment of a mixed
+load sits where the shear crosses zero, which is not midspan and not
+under the point load by reflex but at whichever point the running shear
+sum reaches zero.
+
+\subsection{A frame with a multi-force member}
+
+The crane resolved into a two-force tie and a pin reaction because the
+jib carried its load and its tie pull at the same two points the pin and
+the load occupied. A frame whose load lands between a member's supports
+forces that member to bend, and the analysis has to disassemble the frame
+to see it.
+
+Consider the frame of figure~\ref{fig:vol03ch02:frame-multiforce}. A
+horizontal member $AC$ is pinned to a wall at $A = (0, 0)$, runs out to a
+free end $C = (3, 0)\,\si{\meter}$ where a load $W = 6\,\text{kN}$ hangs,
+and is held up by a tie $BD$ running from a wall anchor $D = (0, 2)$ down
+to the midspan point $B = (1.5, 0)$ of $AC$. The tie carries force only
+at its two ends, so it is a two-force member and its force lies along its
+own axis $DB$. The member $AC$ carries three non-collinear forces (the
+pin reaction at $A$, the tie force at $B$, the load at $C$), so it bends
+and is a genuine multi-force member.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-frame-multiforce.tex}
+
+\textbf{Tie geometry.} The tie runs from $D = (0, 2)$ to $B = (1.5, 0)$,
+a horizontal run of $1.5\,\si{\meter}$ and a vertical drop of
+$2\,\si{\meter}$, length $\sqrt{1.5^2 + 2^2} = 2.5\,\si{\meter}$, the
+familiar $3$-$4$-$5$ proportions scaled by one half. The unit vector from
+$B$ toward $D$ is $(0 - 1.5,\, 2 - 0)/2.5 = (-0.6,\, 0.8)$. A tension in
+the tie pulls $B$ toward $D$ along this direction.
+
+\textbf{Tie force by one moment equation.} Isolate $AC$. Take moments
+about the pin $A$, which removes both pin-reaction components. The tie
+force at $B$ contributes only through its vertical component $0.8\,S$
+acting at the $1.5\,\si{\meter}$ arm; the load $W$ acts down at the
+$3\,\si{\meter}$ arm:
+\[
+0.8\,S \cdot 1.5 - W \cdot 3 = 0, \quad
+S = \frac{6 \cdot 3}{0.8 \cdot 1.5} = \frac{18}{1.2} = 15\,\text{kN},
+\]
+positive, so the tie is in tension at $15\,\text{kN}$, two and a half
+times the load it holds. The shallow tie angle is the cause, the same
+geometry penalty the crane showed.
+
+\textbf{Pin reaction by force balance.} With $S$ known, the two force
+equations on $AC$ give the pin reaction. The tie pulls $B$ along
+$(-0.6, 0.8)$, so its force on $AC$ is $15 \cdot (-0.6, 0.8) =
+(-9,\, +12)\,\text{kN}$. Horizontal equilibrium:
+\[
+A_x + (-9) = 0, \quad A_x = 9\,\text{kN},
+\]
+and vertical equilibrium:
+\[
+A_y + 12 - 6 = 0, \quad A_y = -6\,\text{kN}.
+\]
+The pin reaction is $(9,\, -6)\,\text{kN}$, magnitude
+$\sqrt{9^2 + 6^2} = 10.8\,\text{kN}$. The vertical component is
+negative: the pin pulls $AC$ \emph{down}, because the tie's vertical pull
+of $12\,\text{kN}$ at $B$ exceeds the $6\,\text{kN}$ load, and the pin
+holds the surplus down. An analyst who assumed the pin must push up to
+hold a downward load would have the sign backward, and a foundation
+detailed only for downward pin load would be wrong for this geometry. The
+lesson the frame adds to the crane: disassembly is the price of an
+internal force, and the pin reaction of a tied member can reverse
+direction from the naive expectation.
+
+\subsection{A beam reaction under a trapezoidal distributed load}
+
+A distributed load that varies along the span is handled by replacing it
+with a single resultant at the load's centroid, and the centroid is found
+by the composite-area decomposition the chapter has already used for
+piecewise-linear distributions. A
+simply-supported beam spans $L = 6\,\si{\meter}$ and carries a
+trapezoidal line load growing from $w_1 = 4\,\text{kN}/\text{m}$ at the
+left support to $w_2 = 10\,\text{kN}/\text{m}$ at the right. Find the
+reactions and the maximum bending moment.
+
+\textbf{Resultant by decomposition.} Split the trapezoid into a rectangle
+of height $w_1 = 4\,\text{kN}/\text{m}$ over the full span and a triangle
+rising from zero at the left to $w_2 - w_1 = 6\,\text{kN}/\text{m}$ at the
+right. The rectangle's resultant is
+\[
+W_r = w_1 L = 4 \cdot 6 = 24\,\text{kN} \text{ at } \bar{x}_r = 3\,\si{\meter},
+\]
+the midspan. The triangle's resultant is
+\[
+W_t = \tfrac{1}{2}(w_2 - w_1) L = \tfrac{1}{2}\cdot 6 \cdot 6 = 18\,\text{kN}
+\text{ at } \bar{x}_t = \tfrac{2}{3} L = 4\,\si{\meter},
+\]
+two-thirds of the way toward the deep end, where the triangle's area
+piles up. The combined resultant is $W = 24 + 18 = 42\,\text{kN}$, acting
+at the area-weighted centroid
+\[
+\bar{x} = \frac{W_r \bar{x}_r + W_t \bar{x}_t}{W}
+= \frac{24 \cdot 3 + 18 \cdot 4}{42}
+= \frac{72 + 72}{42} = \frac{144}{42} = 3.43\,\si{\meter}.
+\]
+
+\textbf{Reactions.} Sum moments about the left support $A$:
+\[
+R_B \cdot 6 = W \bar{x} = 42 \cdot 3.43 = 144, \quad R_B = 24\,\text{kN},
+\]
+and vertical equilibrium gives $R_A = 42 - 24 = 18\,\text{kN}$. The
+deeper end carries the larger reaction, as the off-centre centroid
+requires.
+
+\textbf{Maximum moment.} The shear runs $V(x) = R_A - \int_0^x w\,ds$,
+where $w(x) = w_1 + (w_2 - w_1)x/L = 4 + x$. Integrating,
+$V(x) = 18 - 4x - x^2/2$, which crosses zero at
+$x = -4 + \sqrt{16 + 36} = \sqrt{52} - 4 \approx 3.21\,\si{\meter}$, just
+right of the centroid. The moment there, $M = R_A x - \int_0^x
+w(s)(x - s)\,ds$, evaluates to $31.7\,\text{kN}\cdot\text{m}$, the maximum.
+The routine \texttt{code/shear\_moment.py}, given a ramp load, returns the
+same peak and zero-crossing. The decomposition turned a varying load into
+two textbook shapes and an integral into the area-weighting that combines
+their centroids.
+
+\subsection{A band brake and the capstan relation}
+
+Friction is the one statics force whose magnitude the equilibrium
+equations do not set on their own: it takes whatever value, up to the
+limit $\mu N$, that equilibrium requires. The band brake shows the
+exponential gain in grip that friction develops when it acts over a
+wrapped surface.
+
+A band brake (figure~\ref{fig:vol03ch02:band-brake}) wraps a flexible
+band around a drum of radius $r = 0.2\,\si{\meter}$ through a wrap angle
+$\beta = 270^{\circ} = 3\pi/2$, with a friction coefficient
+$\mu = 0.35$ between band and drum. The two ends of the band carry
+different tensions: the side the drum's rotation drags taut carries the
+tight tension $T_1$, the other the slack tension $T_2$. Belt friction,
+integrated around the wrap, relates them by the capstan (Euler-Eytelwein)
+equation
+\[
+\frac{T_1}{T_2} = e^{\mu\beta} = e^{0.35 \cdot 3\pi/2}
+= e^{1.649} = 5.20.
+\]
+The tight side carries five times the slack side, an exponential payoff
+from the wrap angle alone.
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-band-brake.tex}
+
+\textbf{Braking torque.} The net tangential drag the band applies to the
+drum is the tension difference acting at the drum radius:
+\[
+M = (T_1 - T_2)\, r.
+\]
+To deliver a braking torque $M = 300\,\text{N}\cdot\text{m}$, the tension
+difference must be $T_1 - T_2 = M/r = 300/0.2 = 1500\,\text{N}$. With
+$T_1 = 5.20\, T_2$, the slack tension is
+\[
+T_2 = \frac{1500}{5.20 - 1} = \frac{1500}{4.20} = 357\,\text{N},
+\quad T_1 = 5.20 \cdot 357 = 1857\,\text{N}.
+\]
+
+\textbf{Lever force.} The slack end attaches to a brake lever pivoted at
+$O$, at a short arm $a = 0.1\,\si{\meter}$ from the pivot, while the
+operator presses at a long arm $\ell = 0.6\,\si{\meter}$, the tight end
+anchored at the pivot so it exerts no moment. Moment equilibrium of the
+lever about $O$:
+\[
+F \cdot \ell = T_2 \cdot a, \quad
+F = \frac{T_2\, a}{\ell} = \frac{357 \cdot 0.1}{0.6} = 59.5\,\text{N}.
+\]
+A hand force of about $60\,\text{N}$ produces a braking torque of
+$300\,\text{N}\cdot\text{m}$. The wrap's exponential and the lever's ratio
+multiply: this is why a few turns of rope around a capstan let one sailor
+hold a line a winch could barely move, and why a small band brake stops a
+heavy drum.
+
+\begin{estimation}
+\textbf{Estimate the bolt shear capacity needed to hang the bracket
+crane's load through a single bolt at pin $A$.}
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The horizontal pin reaction came out near $9{,}800\,\text{N}$, so a
+single bolt at $A$ must carry roughly $10\,\text{kN}$ in shear. Order
+the bolt by the rule $V_u \approx 0.6 F_u A_b$. For a common
+grade with $F_u \approx 800\,\text{MPa} = 8 \times 10^{8}\,\text{Pa}$,
+the area needed for ultimate capacity equal to the load is
+\[
+A_b \approx \frac{V_u}{0.6 F_u} =
+\frac{10^{4}}{0.6 \times 8 \times 10^{8}}
+\approx 2.1 \times 10^{-5}\,\si{\meter\squared}
+= 21\,\si{\milli\meter\squared}.
+\]
+A bolt of that area has diameter $d = \sqrt{4 A_b / \pi}
+\approx 5\,\si{\milli\meter}$. That is the bolt at the breaking point;
+applying a factor of safety of three on a static connection pushes the
+required area to $63\,\si{\milli\meter\squared}$ and the diameter to
+about $9\,\si{\milli\meter}$, so a standard $\text{M10}$ bolt is the
+estimate. The postmortem: the load is $4{,}900\,\text{N}$ but the bolt
+is sized for $9{,}800\,\text{N}$, twice the load, because the geometry
+of the tie doubled the pin reaction. Sizing the bolt from the hung
+weight rather than the computed reaction would have under-specified it
+by a factor of two, the recurring trap this chapter names.
+\end{estimation}
+
 \section{Failure: pin connections, bolted joints, missed load paths}
 \pathtag{core}
 
@@ -564,7 +1163,8 @@ bolt passes. The bolt transfers the member's axial force to the
 adjoining plate by shear in the bolt and bearing between the bolt
 shank and the hole's edge. The plate transfers the force into the
 joint by tension in the net section between the hole and the
-plate's edge. The joint's failure modes are correspondingly several:
+plate's edge. The joint's failure modes are correspondingly several,
+drawn together in figure~\ref{fig:vol03ch02:bolt-failure-modes}:
 
 \begin{itemize}[leftmargin=*]
   \item \engterm{Bolt shear.} The bolt fails in shear across its
@@ -602,6 +1202,8 @@ plate's edge. The joint's failure modes are correspondingly several:
     sensitivity. Shigley's design handbook covers the preload
     analysis in detail \cite[ch.~8]{text:shigley2020}.
 \end{itemize}
+
+\input{volumes/03-force/ch02-statics-of-rigid-bodies/figures/fig-bolt-failure-modes.tex}
 
 The chapter's discipline is statics, and statics catches each of
 these failure modes only if the analyst draws the right free-body
@@ -734,6 +1336,14 @@ with their reader-path tier.
 A simply-supported beam of span $6\,\si{\meter}$ carries a uniform
 line load of $5\,\text{kN}/\text{m}$. Find the support reactions, the
 maximum bending moment, and the location of the maximum.
+
+\paragraph{Solution sketch.} Total load $W = w_0 L = 5 \times 6 =
+30\,\text{kN}$, symmetric, so each reaction is $R = W/2 =
+15\,\text{kN}$. The maximum moment of a uniformly loaded
+simply-supported beam is $M_{\max} = w_0 L^2 / 8 = 5 \times 36 / 8 =
+22.5\,\text{kN}\cdot\text{m}$ at midspan ($x = 3\,\si{\meter}$), where
+the shear $V(x) = R - w_0 x = 15 - 5x$ crosses zero. The routine
+\texttt{code/shear\_moment.py} returns the same peak.
 \end{exercise}
 
 \begin{exercise}
@@ -741,6 +1351,20 @@ A simply-supported beam of span $4\,\si{\meter}$ carries a centred
 point load of $10\,\text{kN}$ plus a uniform line load of $2\,
 \text{kN}/\text{m}$. Sketch the shear and bending moment diagrams,
 and find the maximum bending moment.
+
+\paragraph{Solution sketch.} Superpose the two cases. The point load
+contributes reactions of $5\,\text{kN}$ each and a midspan moment of
+$PL/4 = 10 \times 4 / 4 = 10\,\text{kN}\cdot\text{m}$. The uniform load
+contributes reactions of $w_0 L / 2 = 2 \times 4 / 2 = 4\,\text{kN}$
+each and a midspan moment of $w_0 L^2 / 8 = 2 \times 16 / 8 =
+4\,\text{kN}\cdot\text{m}$. Both maxima sit at midspan, so they add:
+$R = 9\,\text{kN}$ each and $M_{\max} = 10 + 4 =
+14\,\text{kN}\cdot\text{m}$ at $x = 2\,\si{\meter}$. The shear diagram
+slopes from $+9$ down through $+5$ just left of midspan (losing
+$2\,\text{kN}/\text{m}$), jumps by $-10$ at the load to $-5$, and slopes
+to $-9$ at the right support; it crosses zero at midspan, confirming the
+moment peak there. The moment diagram is a parabola with a kink at
+midspan.
 \end{exercise}
 
 \begin{exercise}
@@ -749,6 +1373,20 @@ equal joint loads $P$ at each interior bottom joint. State the
 midspan top-chord force as a function of $L$, $h$, $n$, and $P$.
 Verify by checking the case $L = 12\,\si{\meter}$, $h = 2\,\si{\meter}$,
 $n = 6$, $P = 20\,\text{kN}$ against the worked example.
+
+\paragraph{Solution sketch.} Treat the truss as a simply-supported
+beam carrying $n-1$ equal interior loads $P$ at the bay stations, with
+bay width $a = L/n$. By symmetry each reaction is $(n-1)P/2$. Summing
+moments of the left half about midspan for an even number of bays gives
+the midspan moment $M_{\max} = n^2 P a / 8 = n P L / 8$. The chord force
+resists this moment as a couple over the depth $h$:
+\[
+F_{\text{chord}} = \frac{M_{\max}}{h} = \frac{n P L}{8 h}.
+\]
+Check: $n = 6$, $L = 12$, $h = 2$, $P = 20$ gives
+$F = (6)(20)(12)/(8 \times 2) = 1440/16 = 90\,\text{kN}$, matching the
+worked example exactly. The top chord carries this in compression and
+the bottom chord in tension.
 \end{exercise}
 
 \begin{exercise}
@@ -756,6 +1394,16 @@ A cantilever beam of length $L$ has a fixed support at one end and
 carries a uniform line load $w_0$ over its full length. Find the
 fixed-end reactions (vertical force and moment) and the maximum
 bending moment.
+
+\paragraph{Solution sketch.} The total load $W = w_0 L$ acts at the
+centroid $L/2$ from the fixed end. Vertical equilibrium gives the
+fixed-end reaction $R = w_0 L$ upward. Moment equilibrium about the
+fixed end gives the reaction moment $M_{\text{fix}} = w_0 L \cdot (L/2)
+= w_0 L^2 / 2$. The bending moment is maximum at the fixed end and
+equals the reaction moment in magnitude, $M_{\max} = w_0 L^2 / 2$
+(hogging, the beam concave down). This is four times the
+simply-supported midspan moment $w_0 L^2/8$ for the same span and load,
+the quantitative reason cantilevers are the demanding case.
 \end{exercise}
 
 \begin{exercise}
@@ -764,6 +1412,26 @@ $h = 50\,\si{\milli\meter}$ has a circular hole of diameter $d =
 20\,\si{\milli\meter}$ at its centroid. Find the centroid of the
 plate-with-hole and its second moment of area about the centroidal
 axis perpendicular to $h$.
+
+\paragraph{Solution sketch.} The hole sits at the centroid of the
+gross rectangle, so by symmetry the centroid of the plate-with-hole is
+unchanged, at the geometric centre. For the second moment about the
+horizontal centroidal axis (bending about the axis parallel to $b$),
+subtract the hole's contribution from the gross:
+\[
+I = \frac{b h^3}{12} - \frac{\pi d^4}{64}
+= \frac{0.1 \times 0.05^3}{12} - \frac{\pi (0.02)^4}{64}.
+\]
+The gross term is $0.1 \times 1.25 \times 10^{-4} / 12 =
+1.042 \times 10^{-6}\,\si{\meter\tothe{4}}$. The hole term is
+$\pi \times 1.6 \times 10^{-7} / 64 = 7.85 \times 10^{-9}\,
+\si{\meter\tothe{4}}$, under one percent of the gross. So
+$I \approx 1.034 \times 10^{-6}\,\si{\meter\tothe{4}}$. The hole
+removes little stiffness because it sits on the neutral axis, where the
+material was contributing least; the same hole near the extreme fibre
+would cost far more. The routine
+\texttt{code/section\_properties.py} reproduces the result with a
+negative-area rectangle approximating the hole.
 \end{exercise}
 
 \begin{exercise}
@@ -773,6 +1441,26 @@ A standard rolled I-section has flanges $200\,\si{\milli\meter} \times
 the section's second moment of area about its centroidal axis
 parallel to the flanges. Compare to a solid rectangular section of
 the same total area.
+
+\paragraph{Solution sketch.} By symmetry the centroid is at
+mid-height. Decompose into web plus two flanges and apply the
+parallel-axis theorem. Web: $I_w = b_w h_w^3 / 12 =
+0.01 \times 0.2^3 / 12 = 6.67 \times 10^{-6}\,\si{\meter\tothe{4}}$,
+with no transfer term (web centred). Each flange:
+$I_{f,\text{self}} = 0.2 \times 0.02^3/12 = 1.33 \times 10^{-7}$, plus a
+transfer term $A_f d^2$ where $A_f = 0.2 \times 0.02 = 4 \times
+10^{-3}\,\si{\meter\squared}$ and $d = (0.2 + 0.02)/2 = 0.11\,\si{
+\meter}$, giving $A_f d^2 = 4 \times 10^{-3} \times 0.0121 =
+4.84 \times 10^{-5}$. Two flanges contribute
+$2(1.33 \times 10^{-7} + 4.84 \times 10^{-5}) = 9.71 \times 10^{-5}$.
+Total $I = 6.67 \times 10^{-6} + 9.71 \times 10^{-5} \approx
+1.04 \times 10^{-4}\,\si{\meter\tothe{4}}$, matching
+\texttt{code/section\_properties.py}. The total area is
+$2(4 \times 10^{-3}) + 0.01 \times 0.2 = 1.0 \times 10^{-2}\,\si{
+\meter\squared}$; a solid square of that area is $0.1\,\si{\meter}$ on a
+side with $I = 0.1^4/12 = 8.3 \times 10^{-6}\,\si{\meter\tothe{4}}$. The
+I-section is about twelve times stiffer for the same material, the whole
+case for the shape.
 \end{exercise}
 
 \begin{exercise}
@@ -781,6 +1469,19 @@ A wall-mounted bracket has a horizontal jib of length $1.5\,\si{
 wall to the jib's outer end. The jib carries a $200\,\si{\kilogram}$
 load at its outer end. Find the tie tension and the pin reaction at
 the wall.
+
+\paragraph{Solution sketch.} The load is $W = 200 \times 9.81 =
+1{,}962\,\text{N}$. The tie makes $\theta = 30^{\circ}$ with horizontal
+and attaches at the jib's outer end. Take moments about the wall pin
+$A$: the load acts at arm $L = 1.5\,\si{\meter}$ and the tie's vertical
+component $T \sin\theta$ acts at the same arm, so
+$T \sin 30^{\circ} \cdot L = W \cdot L$, giving
+$T = W / \sin 30^{\circ} = 1{,}962 / 0.5 = 3{,}924\,\text{N}$. The tie
+tension is twice the load. Vertical equilibrium gives the pin's vertical
+reaction $A_y = W - T \sin\theta = 0$; horizontal equilibrium gives
+$A_x = T \cos 30^{\circ} = 3{,}924 \times 0.866 = 3{,}398\,\text{N}$,
+pulling the jib toward the wall. The pin reaction is therefore about
+$3.4\,\text{kN}$, horizontal, larger than the hung weight.
 \end{exercise}
 
 \begin{exercise}
@@ -788,6 +1489,15 @@ A two-force member runs from $A = (0, 0)$ to $B = (3, 4)$ (in
 metres) and carries a tensile force of $50\,\text{kN}$. State the
 $x$- and $y$-components of the force the member exerts on the joint
 at $B$.
+
+\paragraph{Solution sketch.} The member length is
+$\sqrt{3^2 + 4^2} = 5\,\si{\meter}$, so the unit vector from $A$ to
+$B$ is $(3/5, 4/5) = (0.6, 0.8)$. A tension member pulls the joint at
+$B$ back toward $A$, that is, along $-\hat{u} = (-0.6, -0.8)$. The force
+on joint $B$ is therefore $50 \times (-0.6, -0.8) = (-30, -40)\,\text{kN}$:
+$F_x = -30\,\text{kN}$, $F_y = -40\,\text{kN}$. The signs encode that a
+member in tension pulls its end joints inward toward the member's
+interior.
 \end{exercise}
 
 \begin{exercise}
@@ -797,6 +1507,20 @@ exerted by the water on the wall, and the height above the base at
 which the equivalent point force acts. Water density $\rho =
 1000\,\si{\kilogram\per\meter\cubed}$, $g = 9.81\,\si{\meter\per\second
 \squared}$.
+
+\paragraph{Solution sketch.} Hydrostatic pressure grows linearly with
+depth, $p(z) = \rho g z$, reaching $p_{\max} = \rho g h$ at the base.
+Per unit length of wall this is a triangular line load. The resultant
+per unit length is the area of the pressure triangle:
+\[
+F = \tfrac12 \rho g h^2 = \tfrac12 \times 1000 \times 9.81 \times 25
+= 1.23 \times 10^{5}\,\text{N/m} = 123\,\text{kN/m}.
+\]
+The centroid of a triangle sits one-third of its height from the base,
+so the resultant acts at $h/3 = 5/3 \approx 1.67\,\si{\meter}$ above the
+base. The one-third rule is the recurring fact of hydrostatic loading:
+the resultant of a triangular pressure distribution always acts at the
+third-point nearest the deepest water.
 \end{exercise}
 
 \begin{exercise}
@@ -806,6 +1530,21 @@ in single shear. The bolt's ultimate tensile strength is $F_u =
 approximation $V_u = 0.6 F_u A_b$ with $A_b$ the gross
 cross-sectional area. State the assumption that makes this an
 estimate rather than a design value.
+
+\paragraph{Solution sketch.} Gross area $A_b = \pi d^2 / 4 =
+\pi (0.016)^2 / 4 = 2.01 \times 10^{-4}\,\si{\meter\squared} =
+201\,\si{\milli\meter\squared}$. Shear capacity
+$V_u = 0.6 F_u A_b = 0.6 \times 830 \times 10^{6} \times
+2.01 \times 10^{-4} = 1.00 \times 10^{5}\,\text{N} \approx
+100\,\text{kN}$. The result is an estimate, not a design value, for
+several reasons: it uses the gross area rather than the reduced threaded
+(tensile-stress) area that governs if the shear plane crosses the
+threads; it omits the resistance factor (or factor of safety) that code
+applies to reach an allowable load; and the $0.6$ coefficient is an
+approximation to the shear-to-tension strength ratio rather than a
+measured property of this lot. A design value would use the threaded
+area, the code resistance factor, and the specified rather than nominal
+strength.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -814,11 +1553,41 @@ estimate rather than a design value.
 Prove that the moment of a force about any point in a plane depends
 only on the force's line of action, not on the point of application
 along that line. State the analogous result in three dimensions.
+
+\paragraph{Solution sketch.} Let the force $\vec{F}$ act at a point
+$P$, and let $O$ be the moment centre. The moment is $\vec{M}_O =
+\vec{r}_{OP} \times \vec{F}$. Slide the application point to $P'$ along
+the line of action, so $\vec{r}_{OP'} = \vec{r}_{OP} + s\vec{F}/|\vec{F}|$
+for some scalar $s$ (the displacement is parallel to $\vec{F}$). Then
+$\vec{M}_O' = \vec{r}_{OP'} \times \vec{F} = \vec{r}_{OP} \times \vec{F}
++ (s/|\vec{F}|)(\vec{F} \times \vec{F})$. The cross product of a vector
+with itself vanishes, so $\vec{M}_O' = \vec{M}_O$. The moment is
+unchanged: this is the principle of transmissibility, and it is why a
+force may be represented by its magnitude, direction, and line of
+action alone. In three dimensions the same argument holds verbatim with
+$\vec{M}_O = \vec{r} \times \vec{F}$ a vector; the moment is invariant
+to sliding the force along its line of action, and the moment vector is
+perpendicular to the plane containing $O$ and the line.
 \end{exercise}
 
 \begin{exercise}
 Derive the centroid of a right triangle with legs $a$ and $b$ along
 the coordinate axes. Show that the centroid is at $(a/3, b/3)$.
+
+\paragraph{Solution sketch.} Place the right angle at the origin, with
+legs along the axes and the hypotenuse running from $(a, 0)$ to
+$(0, b)$. The bounding line is $y = b(1 - x/a)$. The area is $A = ab/2$.
+The first moment about the $y$-axis:
+\[
+\int_A x\, dA = \int_0^a x \, y(x)\, dx
+= \int_0^a x\, b\Big(1 - \frac{x}{a}\Big) dx
+= b\Big[\frac{a^2}{2} - \frac{a^2}{3}\Big] = \frac{a^2 b}{6}.
+\]
+Then $\bar{x} = (a^2 b / 6)/(ab/2) = a/3$. By the symmetric argument
+with the roles of $x$ and $y$ exchanged, $\bar{y} = b/3$. The centroid
+of a triangle sits one-third of the way from each side toward the
+opposite vertex, the geometric fact behind the two-thirds-span rule for
+triangular distributed loads.
 \end{exercise}
 
 \begin{exercise}
@@ -826,6 +1595,20 @@ Derive the second moment of area of a rectangular section of width
 $b$ and depth $h$ about its centroidal axis parallel to $b$. Show
 that $I = bh^3 / 12$. State explicitly which axis the formula
 refers to.
+
+\paragraph{Solution sketch.} Take the centroidal axis parallel to the
+width $b$ (the axis about which the section bends when the depth $h$ is
+vertical). Measure $y$ from this axis, so $y$ runs from $-h/2$ to
+$+h/2$, and a strip of area $dA = b\, dy$. Then
+\[
+I = \int_A y^2\, dA = \int_{-h/2}^{h/2} y^2\, b\, dy
+= b\Big[\frac{y^3}{3}\Big]_{-h/2}^{h/2}
+= b\cdot \frac{2}{3}\Big(\frac{h}{2}\Big)^3 = \frac{b h^3}{12}.
+\]
+The cube on $h$ is the whole point: the formula refers to bending about
+the axis perpendicular to the depth direction, and stiffness scales with
+the cube of the dimension in the plane of bending. About the orthogonal
+centroidal axis the roles swap and $I = h b^3 / 12$.
 \end{exercise}
 
 \begin{exercise}
@@ -833,12 +1616,41 @@ Prove the parallel-axis theorem: for a planar region with second
 moment of area $I_C$ about a centroidal axis, the second moment
 about a parallel axis at perpendicular distance $d$ is $I = I_C + A
 d^2$.
+
+\paragraph{Solution sketch.} Let the centroidal axis be $y = 0$ and the
+parallel axis be $y = -d$, so distance to the parallel axis is $y + d$.
+The second moment about the parallel axis is
+\[
+I = \int_A (y + d)^2\, dA
+= \int_A y^2\, dA + 2d \int_A y\, dA + d^2 \int_A dA.
+\]
+The first integral is $I_C$ by definition. The middle integral is the
+first moment of area about the centroidal axis, which vanishes by the
+definition of the centroid. The last integral is $A$. Therefore
+$I = I_C + A d^2$. The cross term dropping out is the only subtlety, and
+it drops out precisely because the reference axis passes through the
+centroid; the theorem fails if the starting axis is not centroidal.
 \end{exercise}
 
 \begin{exercise}
 Derive the differential relations $dV/dx = -w(x)$ and $dM/dx = V(x)$
 for a planar beam under distributed load $w(x)$. State the sign
 conventions explicitly.
+
+\paragraph{Solution sketch.} Take $x$ along the beam, $w(x)$ the
+distributed load per unit length positive downward, $V$ positive when it
+shears the right face downward, and $M$ positive sagging. Isolate an
+element of length $dx$ between $x$ and $x + dx$, carrying $V$ and $M$ on
+the left face and $V + dV$, $M + dM$ on the right. Vertical equilibrium:
+$V - (V + dV) - w\, dx = 0$, which gives $dV = -w\, dx$, hence
+$dV/dx = -w(x)$. Moment equilibrium about the right face:
+$M + V\, dx - (M + dM) - w\, dx \cdot (dx/2) = 0$. The last term is
+second order in $dx$ and drops in the limit, leaving $V\, dx = dM$, hence
+$dM/dx = V(x)$. Differentiating the second and substituting the first
+gives $d^2M/dx^2 = -w(x)$. The sign conventions are the load of the
+result: a different shear convention flips the sign on the first
+relation, which is why every beam analysis must state its conventions
+before drawing a single diagram.
 \end{exercise}
 
 \begin{exercise}[\textit{deferred to Chapter 8}]
@@ -848,6 +1660,22 @@ theorems. Identify the second moment of area of the cross-section
 and the elastic modulus as the only material and geometric
 quantities needed. Chapter 8 of this volume develops the
 moment-area machinery.
+
+\paragraph{Solution sketch.} The deflection is deferred because it
+requires the elastic relation $M = EI\, \kappa$ that chapter 8 develops;
+statics alone gives the moment diagram but not the displacement. The
+moment-area route, for completeness: the $M/EI$ diagram of a uniformly
+loaded simply-supported beam is a parabola peaking at $w_0 L^2/(8EI)$.
+The second moment-area theorem gives the midspan deflection as the
+moment of the $M/EI$ area between support and midspan, taken about the
+midspan, worked out to the standard result
+\[
+\delta_{\text{mid}} = \frac{5 w_0 L^4}{384\, EI}.
+\]
+The only material and geometric inputs are the elastic modulus $E$ and
+the second moment of area $I$; the statics fixes everything else. The
+$L^4$ dependence is the reason deflection, not strength, governs the
+design of long slender spans.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -857,6 +1685,19 @@ Estimate the maximum bending moment in a $4\,\si{\meter}$
 simply-supported wooden floor joist carrying a uniform live load
 representative of a residential bedroom. State assumptions and
 factor-of-three bracket.
+
+\paragraph{Solution sketch.} Residential live load runs near
+$1.5\text{ to }2\,\text{kPa}$. Assume joists at $400\,\si{\milli\meter}$
+spacing, so each joist carries a tributary strip $0.4\,\si{\meter}$
+wide: $w_0 \approx 2 \times 10^{3} \times 0.4 = 800\,\text{N/m}$. The
+maximum moment of a simply-supported joist is $w_0 L^2/8 =
+800 \times 16 / 8 = 1{,}600\,\text{N}\cdot\text{m} \approx
+1.6\,\text{kN}\cdot\text{m}$. Bracketing the live load and spacing over
+a factor of three each way puts the estimate between roughly
+$0.6$ and $4\,\text{kN}\cdot\text{m}$. The reference value sits near
+$1.5\,\text{kN}\cdot\text{m}$ for a code bedroom load, inside the
+bracket. A dead-load allowance for the floor itself would add perhaps
+twenty percent.
 \end{exercise}
 
 \begin{exercise}
@@ -864,12 +1705,40 @@ Estimate the tension in the main rope of a swing supporting an adult
 swinging at the bottom of an arc, given the rope length and the
 swing speed at the bottom. State which force component is the
 weight and which is the centripetal contribution.
+
+\paragraph{Solution sketch.} At the bottom of the arc the rope tension
+supplies both the weight and the centripetal force: $T = mg + m v^2 / r$.
+Take an adult of $m = 75\,\si{\kilogram}$, rope length $r = 3\,\si{
+\meter}$, and a brisk bottom-of-arc speed $v \approx 4\,\si{\meter\per
+\second}$. The weight term is $mg = 75 \times 9.81 \approx 740\,\text{N}$;
+the centripetal term is $m v^2 / r = 75 \times 16 / 3 \approx 400\,
+\text{N}$. The tension is about $1{,}100\,\text{N}$, roughly $1.5$ times
+the rider's weight. The weight term is the static part, present even at
+rest; the centripetal term is the dynamic surcharge from the curved
+path. The swing rope, like the crane tie, carries more than the load it
+holds, here because the motion adds to gravity rather than because of
+geometry.
 \end{exercise}
 
 \begin{exercise}
 Estimate the force on the keel of a small sailboat held at heel
 by wind on a tight beat. State assumptions about boat geometry,
 wind speed, and sail area; bracket the answer.
+
+\paragraph{Solution sketch.} The keel's side force balances the sail's
+side force in steady heel, so estimate the aerodynamic side force on the
+sail. Dynamic pressure at wind speed $U$ is $q = \tfrac12 \rho_{\text{air}}
+U^2$; with $\rho_{\text{air}} = 1.2\,\si{\kilogram\per\meter\cubed}$ and
+$U \approx 8\,\si{\meter\per\second}$ (a stiff breeze), $q \approx 38\,
+\text{Pa}$. For a sail area $A \approx 15\,\si{\meter\squared}$ and an
+effective side-force coefficient near $1$, the side force is $q A
+\approx 570\,\text{N}$. The keel must supply roughly this side force in
+the water, so the lateral hydrodynamic load on the keel is of order
+$0.5\text{ to }1\,\text{kN}$. Bracketing wind speed and sail area over a
+factor of three each spreads the estimate from about $0.2$ to
+$3\,\text{kN}$. The heeling moment, keel-to-sail centre-of-effort arm
+times this force, is the design driver for the hull and rigging, not the
+force alone.
 \end{exercise}
 
 \begin{exercise}
@@ -877,6 +1746,25 @@ Estimate the bolt diameter required to secure a $5\,\si{\meter}$
 extension ladder's top against the wind acting on its sail area.
 State the ladder geometry, the wind speed, and the assumed bolt
 strength.
+
+\paragraph{Solution sketch.} Take the ladder's projected sail area as
+its two rails plus rungs, roughly $0.3\,\si{\meter}$ wide over
+$5\,\si{\meter}$, so $A \approx 1.5\,\si{\meter\squared}$. A storm wind
+$U \approx 25\,\si{\meter\per\second}$ gives dynamic pressure
+$q = \tfrac12 \times 1.2 \times 625 \approx 375\,\text{Pa}$ and a drag
+force $F \approx C_d q A \approx 1.2 \times 375 \times 1.5 \approx
+675\,\text{N}$, call it $700\,\text{N}$. A single retaining bolt at the
+top must carry this in shear. With $V_u = 0.6 F_u A_b$ and
+$F_u \approx 400\,\text{MPa}$ for a plain steel bolt, the area for
+ultimate capacity equal to the load is
+$A_b = 700/(0.6 \times 4 \times 10^{8}) \approx 3\,\si{\milli\meter
+\squared}$, a $2\,\si{\milli\meter}$ bolt. Applying a factor of safety
+of five against gusts and stress concentration lifts the required area
+to $15\,\si{\milli\meter\squared}$ and the diameter to about
+$4.5\,\si{\milli\meter}$, so an $\text{M5}$ or $\text{M6}$ bolt. The
+bracket spans wind speed and area over a factor of three each, which
+swings the force by an order of magnitude and the diameter by about
+three.
 \end{exercise}
 
 \begin{exercise}
@@ -884,6 +1772,21 @@ Estimate the bending moment at the base of a $2\,\si{\meter}$
 free-standing road sign in a $30\,\si{\meter\per\second}$ wind.
 State assumptions about the sign's frontal area and drag
 coefficient.
+
+\paragraph{Solution sketch.} Take a square sign $2\,\si{\meter}$ on a
+side, so frontal area $A = 4\,\si{\meter\squared}$, mounted with its
+centre at height $H \approx 3\,\si{\meter}$. Dynamic pressure
+$q = \tfrac12 \times 1.2 \times 30^2 = 540\,\text{Pa}$. A flat plate
+normal to the flow has drag coefficient $C_d \approx 1.2$, so the wind
+force is $F = C_d q A = 1.2 \times 540 \times 4 \approx 2{,}600\,
+\text{N}$. The bending moment at the base is the force times the height
+of its line of action (the sign's centroid):
+$M_{\text{base}} = F \times H \approx 2{,}600 \times 3 \approx
+7{,}800\,\text{N}\cdot\text{m} \approx 8\,\text{kN}\cdot\text{m}$. The
+post and its foundation must resist this overturning moment, which is
+why sign posts are sized by wind moment, not by the sign's weight. A
+factor-of-three bracket on area and wind puts the moment between roughly
+$3$ and $25\,\text{kN}\cdot\text{m}$.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -894,6 +1797,23 @@ specified by joint coordinates, member connectivity, applied loads,
 and support types. Output: member forces and support reactions.
 Verify on the worked-example Pratt truss; verify on a textbook
 Warren truss.
+
+\paragraph{Solution sketch.} The reference implementation is
+\texttt{code/method\_of\_joints.py}: assemble the $2j$ joint-equilibrium
+equations into a matrix whose columns are the $m$ member unit vectors and
+the $r$ reaction components, then solve the linear system $A\vec{x} =
+\vec{b}$ where $\vec{b}$ holds the negated applied loads. A tension
+member contributes its unit vector to one joint and its negative to the
+other. The solver checks determinacy ($m + r = 2j$) before solving and
+raises if the system is singular, which flags a mechanism or a
+mislabelled support. Verification on the Pratt truss reproduces the
+worked example: reactions $50\,\text{kN}$, maximum chord force
+$90\,\text{kN}$ compression, third-bay diagonal $14.14\,\text{kN}$
+tension, and central vertical zero. A Warren truss (alternating
+diagonals, no verticals) is checked the same way against a textbook
+answer; the only change is the connectivity list. A careful solver also
+returns the condition number of $A$, which spikes as the truss
+approaches a mechanism geometry.
 \end{exercise}
 
 \begin{exercise}
@@ -903,6 +1823,19 @@ distributed loads, and applied moments, and returns $V(x)$ and
 $M(x)$ as discretised arrays. Verify the maximum bending moment
 of a simply-supported beam under uniform line load against $w_0 L^2
 / 8$.
+
+\paragraph{Solution sketch.} The reference implementation is
+\texttt{code/shear\_moment.py}: compute the reactions from global
+equilibrium, sample the distributed load on a grid, integrate $-w$ to
+shear by a running sum, subtract point loads at the stations they cross,
+then integrate the shear to moment by the trapezoidal rule and subtract
+applied couples at their stations. The closure check is that the shear
+plus the right reaction returns to zero at the far support. Verification:
+a uniform $w_0$ over span $L$ returns $M_{\max} = w_0 L^2/8$ at midspan
+to within the discretisation error, and the central-point-load case
+returns $PL/4$. The discretised maximum approaches the closed form as the
+grid refines; with two thousand points the error is under a tenth of a
+percent.
 \end{exercise}
 
 \begin{exercise}
@@ -912,6 +1845,23 @@ predicted maximum load (where any member's axial stress exceeds the
 material's ultimate strength) to the predicted joint-failure load
 (where any joint's pin-shear or block-shear capacity is exceeded).
 State which mode the simulation predicts will govern.
+
+\paragraph{Solution sketch.} Run the truss solver of the first
+simulation exercise on the project geometry to get member forces per
+unit applied load; member force scales linearly with the applied load in
+a linear-elastic model, so the failure load for each mode is the
+capacity divided by the per-unit force. For each member compute the
+member-failure load (ultimate stress times area, divided by per-unit
+axial force) separately for tension members and compression members
+(compression members may buckle first, $P_{cr} = \pi^2 EI/L_e^2$). For
+each joint compute the joint-failure load (the smallest of bolt-shear,
+bearing, net-section, and block-shear capacities, divided by the
+per-unit member force into that joint). The governing load is the
+smallest over all members and joints, and the governing mode is whichever
+produced it. For a glued-gusset wooden truss the joint typically governs,
+as the sample test data in \texttt{data/truss\_load\_test.csv} show: the
+recorded failure was gusset shear-out at a lower joint, a joint mode, not
+a member fracture.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -922,6 +1872,23 @@ carrying a $2.5\,\text{kN}/\text{m}$ residential live load. Specify
 the joist's cross-section and identify the dominant failure mode
 (bending, shear, or deflection). State the analysis and the
 governing criterion.
+
+\paragraph{Solution sketch.} The maximum moment is $w_0 L^2/8 =
+2.5 \times 16 / 8 = 5\,\text{kN}\cdot\text{m}$. Required section modulus
+$S = M/\sigma_{\text{allow}}$; for sawn softwood
+$\sigma_{\text{allow}} \approx 8\,\text{MPa}$ gives $S =
+5000/(8 \times 10^{6}) = 6.25 \times 10^{-4}\,\si{\meter\cubed}$. A
+rectangle has $S = bh^2/6$, so a $50 \times 250\,\si{\milli\meter}$
+joist gives $S = 0.05 \times 0.25^2/6 = 5.2 \times 10^{-4}$, marginal;
+a $50 \times 300\,\si{\milli\meter}$ gives $7.5 \times 10^{-4}$, ample.
+Check deflection: $\delta = 5 w_0 L^4/(384 EI)$ with $E \approx
+10\,\text{GPa}$ and $I = bh^3/12$; for the $50 \times 300$ section
+$I = 1.1 \times 10^{-4}\,\si{\meter\tothe{4}}$ and $\delta \approx
+5 \times 2500 \times 256/(384 \times 10^{10} \times 1.1 \times 10^{-4})
+\approx 8\,\si{\milli\meter}$, about $L/500$, inside the usual $L/360$
+limit. Shear is rarely critical for slender wooden joists. The governing
+criterion is bending strength for the section selection and deflection
+as the serviceability check; specify $50 \times 300\,\si{\milli\meter}$.
 \end{exercise}
 
 \begin{exercise}
@@ -930,6 +1897,23 @@ fixture from a structural beam $3\,\si{\meter}$ above the floor.
 Specify the rod's diameter, the bolt and nut at each end, and the
 factor of safety against tension fracture and against the beam's
 own local-bearing failure at the rod's attachment.
+
+\paragraph{Solution sketch.} The load is $W = 500 \times 9.81 \approx
+4{,}900\,\text{N}$. Choose a target factor of safety of, say, four
+against the rod's ultimate tensile strength
+$F_u \approx 400\,\text{MPa}$, so the design stress is
+$100\,\text{MPa}$ and the required area is $A = 4900/(10^{8}) =
+4.9 \times 10^{-5}\,\si{\meter\squared} = 49\,\si{\milli\meter\squared}$,
+diameter $d = \sqrt{4A/\pi} \approx 8\,\si{\milli\meter}$. Specify an
+$\text{M10}$ rod (tensile-stress area $58\,\si{\milli\meter\squared}$,
+giving margin over the threaded section). The nut bearing area on the
+beam flange must keep bearing stress below the beam material's limit:
+for a steel beam this is rarely critical with a standard washer; for a
+timber beam add a plate washer to spread the $4.9\,\text{kN}$ over an
+area large enough to keep the perpendicular-to-grain bearing stress
+under a few megapascals, roughly $10^{3}\,\si{\milli\meter\squared}$, a
+$35\,\si{\milli\meter}$ square washer. State both factors of safety:
+four on rod tension and the bearing check governed by the beam material.
 \end{exercise}
 
 \begin{exercise}
@@ -938,6 +1922,22 @@ $5\,\text{kN}/\text{m}$ of uniform live load plus the truss's own
 weight. Specify the truss depth, bay spacing, and the maximum
 axial force in any member. State the dominant failure mode for the
 critical member.
+
+\paragraph{Solution sketch.} Choose a depth around span/10 to span/8,
+say $h = 1.2\,\si{\meter}$, and six bays of $a = 1.67\,\si{\meter}$. The
+distributed deck load of $5\,\text{kN}/\text{m}$ over $10\,\si{\meter}$
+totals $50\,\text{kN}$ delivered as joint loads of roughly
+$8.3\,\text{kN}$ at the five interior joints; add the truss self-weight,
+perhaps ten percent, and round joint loads to $9\,\text{kN}$. The
+maximum chord force, by the formula derived in the calculation block,
+is $F_{\text{chord}} = nPL/(8h) = 6 \times 9 \times 10/(8 \times 1.2)
+\approx 56\,\text{kN}$. The most-loaded compression member is the top
+chord at $56\,\text{kN}$; its dominant failure mode is buckling, checked
+by $P_{cr} = \pi^2 EI/L_e^2$ against the bay length, so the top chord is
+sized for buckling resistance rather than crushing. The tension bottom
+chord is sized for net-section tension at its bolted splices. A deeper
+truss lowers the chord force at the cost of more material in the
+diagonals and verticals, the design trade the depth choice resolves.
 \end{exercise}
 
 \begin{exercise}
@@ -946,6 +1946,27 @@ two-force member carrying a tensile load of $80\,\text{kN}$. Specify
 the pin diameter and the connecting plates' thickness and width.
 Check against bolt shear, bearing, net-section tension, and block
 shear.
+
+\paragraph{Solution sketch.} Design load $80\,\text{kN}$ in tension.
+\emph{Pin shear} (double shear through two plates): required area per
+shear plane $A = V/(2 \times 0.6 F_u)$; with $F_u = 800\,\text{MPa}$,
+$A = 80000/(2 \times 0.6 \times 8 \times 10^{8}) = 8.3 \times 10^{-5}\,
+\si{\meter\squared}$, diameter about $10\,\si{\milli\meter}$, so choose
+$\text{M16}$ for margin and a factor of safety. \emph{Bearing} on the
+plate: stress $= V/(d\,t)$ must stay below the plate bearing limit
+(roughly $2 F_y$); for a $16\,\si{\milli\meter}$ pin and a target stress
+of $500\,\text{MPa}$, $t \geq 80000/(0.016 \times 5 \times 10^{8})
+= 10\,\si{\milli\meter}$. \emph{Net-section tension}: net area
+$(w - d)t$ times plate $F_u$ must exceed the load with a factor of
+safety; for $t = 12\,\si{\milli\meter}$ and $F_u = 400\,\text{MPa}$,
+net width needed is $80000/(0.012 \times 4 \times 10^{8}) +
+0.016 = 33\,\si{\milli\meter}$, so a $60\,\si{\milli\meter}$ plate width
+gives ample net section. \emph{Block shear}: provide edge distance of at
+least $1.5d \approx 24\,\si{\milli\meter}$ behind the pin so the
+tear-out planes carry more than the load. Specify $\text{M16}$ pin,
+$12\,\si{\milli\meter}$ plates, $60\,\si{\milli\meter}$ wide, with
+$25\,\si{\milli\meter}$ end distance; the governing check is bearing,
+which set the plate thickness.
 \end{exercise}
 
 \begin{exercise}
@@ -954,6 +1975,23 @@ mass $20\,\si{\kilogram}$ at a horizontal offset of $400\,\si{
 \milli\meter}$ from a wall. Specify the bracket's section, the
 attachment to the wall, and the factor of safety. State the
 worst-case loading scenario you have considered.
+
+\paragraph{Solution sketch.} The static load is
+$W = 20 \times 9.81 \approx 196\,\text{N}$ at offset
+$0.4\,\si{\meter}$, giving a wall moment $M = 196 \times 0.4 \approx
+78\,\text{N}\cdot\text{m}$. The worst case is not the static light but a
+worker leaning on or hanging from the bracket: assume an accidental
+$1\,\text{kN}$ at the tip, raising the moment to $400\,\text{N}\cdot
+\text{m}$. Size the bracket section for this: required section modulus
+$S = M/\sigma_{\text{allow}}$; for steel at $150\,\text{MPa}$ allowable,
+$S = 400/(1.5 \times 10^{8}) = 2.7 \times 10^{-6}\,\si{\meter\cubed}$, met
+by a modest angle or rectangular tube. The wall attachment carries the
+moment as a couple: with two bolts spaced $100\,\si{\milli\meter}$
+vertically, the tension in the upper bolt is $M/\text{spacing} =
+400/0.1 = 4\,\text{kN}$, which sets the bolt and anchor. Specify a
+factor of safety of about three on the accidental load. The worst-case
+scenario stated: a person treating the bracket as a handhold, an order
+of magnitude above the design light load.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -965,6 +2003,20 @@ with two longitudinal timbers under the deck. The deck is $50\,\si{
 \milli\meter}$ thick. Draw the FBD of one longitudinal under live
 load, identify the critical section, and state whether the dominant
 deflection mode is bending or shear.
+
+\paragraph{Solution sketch.} Model one longitudinal as a
+simply-supported beam on the two abutments carrying half the deck's live
+load as a uniform line load. The FBD shows the two abutment reactions
+upward and the distributed foot traffic downward; the critical section
+for moment is midspan, where $M = w_0 L^2/8$, and for shear at the
+supports, where $V = w_0 L/2$. For a span-to-depth ratio of
+$5000/50 = 100$, the beam is slender, and slender beams deflect almost
+entirely in bending: the bending deflection scales as $L^4$ while the
+shear deflection scales as $L^2$, so at this slenderness bending
+dominates by orders of magnitude. The visible sag is a bending
+deflection, and the cure is more depth (the cube law on $I$), not a
+thicker deck. A rule of thumb: shear deflection matters only for stubby
+beams with span-to-depth ratios below about ten.
 \end{exercise}
 
 \begin{exercise}
@@ -973,6 +2025,21 @@ developed a visible crack along the line between the bolt and the
 plate edge. Identify which of the four bolted-joint failure modes
 the crack indicates is in progress, and what the next inspection
 finding would distinguish it from the alternative.
+
+\paragraph{Solution sketch.} A crack running from the bolt hole toward
+the nearest plate edge, along the line of the load, points to
+net-section tension failure: the plate is tearing across its reduced
+section. The alternative reading is block shear, where the crack would
+not run straight to the edge but would turn and run parallel to the load
+along two shear planes behind the bolt, defining a block about to tear
+out. The distinguishing inspection finding is the crack's geometry: a
+single transverse crack across the net section indicates net-section
+tension; a pair of cracks parallel to the load joined by a transverse
+crack behind the bolt indicates block shear. A secondary tell is
+deformation: bearing-driven hole elongation (the hole stretched into an
+oval ahead of the bolt) would point instead toward a bearing problem
+that has not yet cracked. The next step is to measure the hole and map
+the crack path before deciding which capacity was exceeded.
 \end{exercise}
 
 \begin{exercise}
@@ -981,6 +2048,22 @@ the bottom-chord joints. Identify what loading change or what
 construction defect could have produced the gap, and which truss
 members now carry a different force than the original design
 intended.
+
+\paragraph{Solution sketch.} A gap at a bottom-chord joint means the
+joint has slipped or pulled apart, which happens when the joint's
+fastening (a gusset plate, splice, or nailed connection) yields under
+the tension the bottom chord carries. Candidate causes: under-nailed or
+under-bolted splice, a fastener that backed out or sheared, wood
+shrinkage opening a glued joint, or an overload from a heavier roof
+covering than designed. Once the bottom chord splice slips, the chord can
+no longer carry its full tension across the gap, so the load redistributes:
+the diagonals and the top chord pick up more, and the truss begins to act
+partly as a mechanism, with deflections growing. The members most
+affected are the bottom-chord segments adjacent to the gap (now carrying
+reduced or zero tension) and the diagonals nearest the gap (now carrying
+more, as they take over the load path the chord dropped). The inspection
+priority is the integrity of the remaining bottom-chord connections,
+because a second slip turns a degraded truss into a collapsed one.
 \end{exercise}
 
 \begin{exercise}
@@ -988,6 +2071,20 @@ A shelf bracket has rotated visibly from its original alignment.
 Draw the FBD of the bracket and identify which connection (the
 wall attachment or the shelf-to-bracket connection) is most likely
 to have failed. State the failure mode you would inspect for first.
+
+\paragraph{Solution sketch.} The FBD of an L-bracket loaded by a shelf
+shows a downward load at the shelf's centre of gravity, offset from the
+wall, which the wall attachment must resist as a couple: the upper fixing
+in tension (pulling out of the wall) and the lower in compression
+(bearing into the wall). A bracket that has rotated has lost the tension
+fixing: the upper anchor has pulled out, letting the bracket pivot about
+its lower edge. The wall attachment is the likely failure, not the
+shelf-to-bracket connection, because the shelf-to-bracket joint carries
+mostly shear while the wall attachment carries the full overturning
+couple amplified by the short vertical spacing of its fixings. Inspect
+first for upper-anchor pull-out: a plug that has worked loose in
+drywall, a stripped screw, or a fixing that was never set into a stud.
+The rotation is the geometric signature of a tension fixing that let go.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -1000,6 +2097,26 @@ modes (bolt shear, bearing, net-section tension, block shear). State
 which mode the NBS report identifies as the actual mechanism, and
 which of the other three modes would have governed had the actual
 mode not.
+
+\paragraph{Solution sketch (rubric).} The strong response draws the
+modified upper connection at full scale: the box-beam, the hanger rod
+passing through it, the nut and washer bearing on the lower flange, and
+the doubled load the modification imposed (the redesign put the
+fourth-floor walkway's load onto the same nut that the original single
+rod was to share). The FBD shows the nut-and-washer reaction bearing on
+the box-beam's lower flange, and the four bolted-joint modes are checked
+at that interface. The NBS report identifies the mechanism as the nut
+and washer pulling through the box-beam lower flange, a local tear-out
+that is the block-shear and bearing family of failure
+\cite{acc:nbs-hyatt-1982}. The response should state which of the
+remaining modes would have governed next had the flange held: the rod's
+own net-section tension at its thread is the natural runner-up. The
+load-bearing point of the exercise is that the doubled load and the
+absent joint-level FBD, not any exotic mechanism, produced the collapse;
+a routine connection check at stamp time would have caught it. The
+grader looks for an explicit full-scale connection drawing, all four
+mode capacities computed or estimated, and the correct identification of
+the actual mechanism.
 \end{exercise}
 
 \begin{exercise}
@@ -1010,6 +2127,25 @@ by the design. State, in $200$ to $300$ words, which joint failure
 mode the under-bolted splice most likely produced, and what
 calculation a stamp-time review should have done to catch the
 discrepancy.
+
+\paragraph{Solution sketch (rubric).} Thirty people at roughly
+$750\,\text{N}$ each is about $22\,\text{kN}$ of live load, which the
+bottom chord carries in tension and the splice must transfer across its
+discontinuity. Halving the bolt count from eight to four halves the
+splice's bolt-shear and bearing capacities, so a splice with a design
+factor of safety near two now sits near unity and fails under a full
+crowd. The likely mode is bolt shear or bearing at the splice, the two
+that scale directly with bolt count; a strong answer names bolt shear as
+the most probable, since four bolts in shear is the capacity most
+obviously halved. The stamp-time calculation that should have caught it
+is the connection capacity check: compute the splice tension from the
+crowd load, compute the four-bolt shear and bearing capacities, and
+confirm the smaller exceeds the demand with the required factor of
+safety. The check is a five-minute calculation that the reviewer either
+never did or did against the specified eight bolts rather than the four
+built. The grader looks for the load estimate, the recognition that
+halving bolts halves the count-dependent capacities, the correct mode,
+and the specific stamp-time check named.
 \end{exercise}
 
 \begin{exercise}
@@ -1019,6 +2155,23 @@ distribution in the truss after the modification (which members now
 carry forces they did not, and which carry different forces from the
 original analysis) and identify the failure mode you would inspect
 for during the next snow load.
+
+\paragraph{Solution sketch (rubric).} The collar tie ties the two
+rafters together near the ridge and carries tension under gravity load,
+keeping the rafters from spreading. Removing it removes that tension
+restraint: the rafters now push their feet outward at the wall plates,
+the wall plates and the bottom chord (ceiling joist, if it is acting as
+a tension tie) pick up the spreading thrust, and the rafters carry
+increased bending because they have lost an intermediate support point.
+Members that change: the bottom-chord tie now carries more tension (or,
+if it was never detailed as a tie, the wall connections now carry an
+outward thrust they were not designed for); the rafters carry more
+midspan bending. The failure mode to inspect for during the next snow
+load is rafter sag and wall-plate spreading, visible as the roof
+ridge dropping and the walls bowing outward at the top. A strong answer
+identifies the collar tie as a tension member, traces the lost tension
+into rafter thrust and bottom-chord tension, and names ridge sag plus
+wall spread as the inspection target.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -1030,6 +2183,22 @@ without disassembling it. Write a one-paragraph reply that takes
 the question seriously, states the conditions under which the
 shortcut is acceptable, and states the conditions under which it
 fails.
+
+\paragraph{Solution sketch (rubric).} The reply takes the question
+seriously: treating the whole frame as one rigid body and summing forces
+and moments is a valid and useful first step, and it does give the
+support reactions whenever the frame is statically determinate
+externally, that is, when the external reactions number three or fewer in
+the plane. What the whole-frame analysis cannot give is the internal pin
+forces between members, which is the whole reason a frame is harder than
+a single body. Those require disassembling the frame and writing
+equilibrium for each member, using Newton's third law to pair the pin
+forces. The shortcut therefore is acceptable when the only quantities
+wanted are the external reactions and the frame is externally
+determinate; it fails the moment the engineer needs an internal member
+force, a pin reaction, or the analysis of an indeterminate frame. A
+strong reply states both halves: the shortcut works for external
+reactions, and disassembly is required for internal forces.
 \end{exercise}
 
 \begin{exercise}
@@ -1038,6 +2207,22 @@ axial-only loading, no member weight) are too conservative for a
 modern welded steel truss and that the analysis should be a rigid
 frame from the start. Write a one-paragraph reply that takes the
 argument seriously and states when each model is appropriate.
+
+\paragraph{Solution sketch (rubric).} The colleague is partly right: a
+welded steel truss does have rigid joints, and a full rigid-frame
+analysis captures the secondary bending the pin-jointed model ignores.
+The reply grants this and then states the trade. The pin-jointed truss
+model is appropriate for member sizing and overall force flow because the
+axial forces dominate and the secondary bending moments at welded joints
+are usually small (the so-called secondary stresses, a few percent to
+perhaps fifteen percent of the axial stress for well-proportioned
+members). The rigid-frame analysis is appropriate when the secondary
+stresses are not small: short stocky members, large joint eccentricities,
+fatigue-critical details, or cases where the secondary bending governs a
+connection. The mature practice is to size with the truss model and check
+the secondary stresses, escalating to a frame analysis only where they
+matter. A strong reply rejects the false choice between the two models
+and states the regime where each earns its keep.
 \end{exercise}
 
 \begin{exercise}
@@ -1047,6 +2232,25 @@ as a pin (no moment). Argue, in $200$ to $300$ words, whether the
 analysis is acceptable, what additional check the bolt requires,
 and whether the single-bolt connection is appropriate for the
 loading.
+
+\paragraph{Solution sketch (rubric).} The pin idealisation is wrong
+for a cantilever, and a strong answer says so directly. A cantilever
+transmits its load to the wall as a moment, not just a force, so the
+attachment must resist an overturning couple. A single bolt analysed as a
+pin (two force components, no moment) cannot carry that couple: a single
+fastener has no moment arm against rotation, so the connection is a
+mechanism that pivots about the bolt unless something else (bearing of
+the bracket plate against the wall) supplies the resisting couple. The
+additional check the bolt requires is its tension under the overturning
+moment, computed from the moment divided by the effective lever arm
+between the bolt and the bracket's bearing edge, plus the direct shear
+from the vertical load, combined. The single-bolt connection is
+inappropriate for a balcony cantilever: it provides no redundancy, and a
+single bolt failure drops the balcony. The standard detail uses at least
+two bolts vertically separated so the couple is carried as a bolt-tension
+pair. A strong reply names the moment the pin model hides, the
+tension-plus-shear check, and the inadequacy of a single fastener for a
+life-safety cantilever.
 \end{exercise}
 
 \begin{exercise}
@@ -1055,4 +2259,20 @@ internal load path you have never traced explicitly. State, in
 $200$ to $300$ words, the chosen body, the support type at each
 end, the dominant internal force (axial, shear, or moment) at the
 critical section, and the failure mode you would inspect for first.
+
+\paragraph{Solution sketch (rubric).} The exercise is open by design;
+the rubric grades the discipline of the trace, not the structure chosen.
+A strong answer picks a concrete object (a shelf, a doorway lintel, a
+balcony rail, a bike frame's top tube), states the support at each end in
+the chapter's vocabulary (pin, roller, fixed, cable), identifies the
+dominant internal force at the critical section with a reason (a lintel
+over an opening carries bending, peaking at midspan; a hanging shelf rod
+carries axial tension; a railing post carries bending from a lateral
+push at its base), and names the failure mode that the dominant force
+drives (bending fracture or excessive deflection for the lintel,
+fastener pull-out for the shelf, base-connection failure for the post).
+The grader looks for a coherent FBD-to-failure chain: support types,
+load path, dominant internal force, and a failure mode that follows from
+that force rather than a generic worry. The point of the exercise is to
+turn the chapter's machinery on the reader's own surroundings.
 \end{exercise}
