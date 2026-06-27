@@ -1213,6 +1213,208 @@ The same \path{code/fft_modal.py} half-power routine that processed the
 cantilever decay reads these three frequencies off an FRF and returns
 the same $\zeta$.
 
+\subsection{A three-degree-of-freedom shear frame by eigenvalue}
+
+A three-storey shear building idealises as three lumped floor masses
+joined by storey springs that carry the lateral shear. Take equal floor
+masses $m = 1\,\si{\kilogram}$ (normalised; multiply through by the real
+floor mass at the end) and equal storey stiffnesses $k = 1\,\si{\newton
+\per\meter}$, with the top floor free. The shear-frame mass and
+stiffness matrices are
+\[
+M = \begin{pmatrix} 1 & 0 & 0 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{pmatrix},
+\qquad
+K = \begin{pmatrix} 2 & -1 & 0 \\ -1 & 2 & -1 \\ 0 & -1 & 1
+\end{pmatrix}.
+\]
+Find the three natural frequencies and mode shapes.
+
+\textbf{Characteristic equation.} With $M = I$ the generalised problem
+collapses to the ordinary eigenvalue problem $\det(K - \lambda I) = 0$,
+$\lambda = \omega^2$:
+\[
+\det\begin{pmatrix} 2 - \lambda & -1 & 0 \\ -1 & 2 - \lambda & -1 \\ 0 &
+-1 & 1 - \lambda \end{pmatrix} = 0.
+\]
+Expanding along the first row,
+\[
+(2 - \lambda)\big[(2 - \lambda)(1 - \lambda) - 1\big] - (-1)\big[-(1 -
+\lambda)\big] = 0,
+\]
+which multiplies out to the cubic
+\[
+\lambda^3 - 5\lambda^2 + 6\lambda - 1 = 0.
+\]
+
+\textbf{Roots.} The cubic has three real positive roots, the squared
+natural frequencies. Solving numerically (or by the trigonometric
+solution of a depressed cubic),
+\[
+\lambda_1 = 0.198, \quad \lambda_2 = 1.555, \quad \lambda_3 = 3.247.
+\]
+The natural frequencies are $\omega_1 = 0.445$, $\omega_2 = 1.247$,
+$\omega_3 = 1.802\,\si{\radian\per\second}$ in the normalised units, and
+scale as $\sqrt{k/m}$ once the real floor mass and storey stiffness are
+restored.
+
+\textbf{Mode shapes.} For each $\lambda$, solve $(K - \lambda I)\vec\phi
+= \vec0$ with the first floor set to one of its computed value. Taking
+the first two rows of the system,
+\[
+(2 - \lambda)\phi_1 - \phi_2 = 0 \implies \phi_2 = (2 - \lambda)\phi_1,
+\]
+\[
+-\phi_1 + (2 - \lambda)\phi_2 - \phi_3 = 0 \implies \phi_3 = (2 -
+\lambda)\phi_2 - \phi_1.
+\]
+For $\lambda_1 = 0.198$: $\phi_2 = 1.802\phi_1$, $\phi_3 = 2.247\phi_1$,
+giving $\vec\phi_1 = [0.445, 0.802, 1.000]^T$ after scaling the top
+floor to unity. All three floors move the same way, the top farthest:
+the fundamental sway. For $\lambda_2 = 1.555$: $\vec\phi_2 = [1.000,
+0.445, -0.802]^T$, one sign change. For $\lambda_3 = 3.247$:
+$\vec\phi_3 = [1.000, -1.247, 0.555]^T$, two sign changes. The mode
+shapes appear in Figure~\ref{fig:vol03ch06:3dof-modes}; the rising count
+of internal sign changes is the discrete version of the half-wave count
+that orders the modes of the continuous string.
+
+\input{volumes/03-force/ch06-vibrations/figures/fig-3dof-modes.tex}
+
+\textbf{Orthogonality check.} With $M = I$ the modes should be plain
+orthogonal: $\vec\phi_1\cdot\vec\phi_2 = (0.445)(1.000) +
+(0.802)(0.445) + (1.000)(-0.802) = 0.445 + 0.357 - 0.802 = 0.000$ to
+three figures, confirming the eigenvectors are orthogonal. The same
+\path{code/modal_2dof.py} solver, given these $3\times3$ matrices,
+returns the three frequencies and mass-normalised mode shapes directly.
+
+\subsection{Forced response by modal superposition}
+
+The decoupling of the previous example pays off when the frame is
+driven. Apply a harmonic lateral force $F_0\cos\omega t$ at the top
+floor of the three-storey frame, with $F_0 = 10\,\text{N}$, real floor
+mass $m = 2000\,\si{\kilogram}$, storey stiffness $k = 8\times 10^6\,\si{
+\newton\per\meter}$, and a uniform modal damping $\zeta_k = 0.03$ in
+every mode. Find the steady-state top-floor amplitude when the drive
+sits at the first natural frequency.
+
+\textbf{Restore the physical frequencies.} The normalised eigenvalues
+scale by $k/m = 8\times 10^6/2000 = 4000\,\si{\per\second\squared}$, so
+$\omega_k = \sqrt{4000\,\lambda_k}$. The first natural frequency is
+$\omega_1 = \sqrt{4000\times 0.198} = 28.1\,\si{\radian\per\second}$
+($f_1 = 4.48\,\si{\hertz}$), and the drive is set there.
+
+\textbf{Modal force and modal mass.} Project the physical force
+$\vec F = [0, 0, F_0]^T$ onto each mode. For mode one, the modal force
+is $\vec\phi_1^T\vec F = (1.000)F_0 = 10\,\text{N}$ (the top-floor entry
+of $\vec\phi_1$ is unity). The modal mass is $m_1 = \vec\phi_1^T M
+\vec\phi_1 = m(0.445^2 + 0.802^2 + 1.000^2) = 2000\times 1.841 =
+3682\,\si{\kilogram}$.
+
+\textbf{Modal response at resonance.} Mode one is driven at its own
+natural frequency, so its modal coordinate amplitude is the resonant
+SDOF result
+\[
+\eta_1 = \frac{\vec\phi_1^T\vec F}{m_1\omega_1^2}\cdot\frac{1}{2\zeta_1}
+= \frac{10}{3682\times 790}\cdot\frac{1}{0.06} = \frac{10}{2.91\times
+10^6}\cdot 16.7 = 5.73\times 10^{-5}\,\si{\meter}.
+\]
+The other two modes are driven far from their own resonances, so their
+modal amplitudes are near the static values $\vec\phi_k^T\vec
+F/(m_k\omega_k^2)$ and contribute little; mode two adds about $3\times
+10^{-6}\,\si{\meter}$ and mode three less still.
+
+\textbf{Back to physical coordinates.} The top-floor displacement is
+$x_3 = \sum_k \phi_{3,k}\,\eta_k$. The mode-one contribution dominates:
+$x_3 \approx \phi_{3,1}\eta_1 = (1.000)(5.73\times 10^{-5}) =
+5.7\times 10^{-5}\,\si{\meter}$, about $0.057\,\si{\milli\meter}$. The
+worked point is the method: an $n$-degree-of-freedom forced problem
+becomes $n$ independent SDOF problems, of which only the resonant one
+matters here, and the physical answer is the mode-weighted sum. The same
+projection underlies every response-spectrum seismic analysis and every
+finite-element modal-superposition run.
+
+\subsection{The half-power method read off a real curve}
+
+A floor-vibration test sweeps a shaker across a suspended walkway and
+records the displacement amplitude against frequency. The peak sits at
+$f_n = 5.40\,\si{\hertz}$. The amplitude there is $A_{\text{peak}} =
+180\,\si{\micro\meter}$. The frequencies at which the amplitude has
+fallen to $A_{\text{peak}}/\sqrt2 = 127\,\si{\micro\meter}$ are read off
+the curve as $f_1 = 5.29\,\si{\hertz}$ and $f_2 = 5.52\,\si{\hertz}$.
+Extract the damping ratio and state the resonant amplification.
+
+\textbf{Half-power bandwidth.} The two frequencies bracket the
+resonance at the points where the response power has halved (the
+amplitude has dropped by $1/\sqrt2$). For a lightly damped resonance the
+fractional bandwidth equals twice the damping ratio,
+\[
+2\zeta = \frac{f_2 - f_1}{f_n} = \frac{5.52 - 5.29}{5.40} = \frac{0.23}{
+5.40} = 0.0426,
+\]
+so $\zeta = 0.0213$, near two percent, in the range of a composite floor
+on bolted connections.
+
+\textbf{Why the half-power points sit at $1/\sqrt2$.} The amplification
+is $1/\sqrt{(1 - r^2)^2 + (2\zeta r)^2}$, with peak value near
+$1/(2\zeta)$ at $r \approx 1$. Setting the amplification to its peak
+divided by $\sqrt2$ means the radicand has doubled from its minimum
+$(2\zeta)^2$, that is $(1 - r^2)^2 + (2\zeta r)^2 = 2(2\zeta)^2$. Near
+$r = 1$, write $r = 1 + \epsilon$ with small $\epsilon$, so $1 - r^2
+\approx -2\epsilon$ and the condition is $4\epsilon^2 = (2\zeta)^2$,
+giving $\epsilon = \pm\zeta$. The two half-power frequencies sit at
+$r = 1 \pm \zeta$, a fractional spacing of $2\zeta$, the result used
+above.
+
+\textbf{Resonant amplification.} The quality factor is $Q = 1/(2\zeta)
+= 23.5$, so a static load placed on this walkway would deflect $23.5$
+times less than the dynamic resonance produces from the same force
+amplitude at $5.4\,\si{\hertz}$. A walking pace whose second harmonic
+lands near $5.4\,\si{\hertz}$ (a brisk $2.7\,\si{\hertz}$ step rate)
+would drive this resonance, the reason lively-floor design targets a
+fundamental clear of the walking-harmonic band or adds damping to pull
+$Q$ down.
+
+\subsection{A string's tension from its pitch, and the bending-stiffness
+correction}
+
+A piano-wire sample of length $L = 0.62\,\si{\meter}$ and diameter
+$d = 1.0\,\si{\milli\meter}$ (steel, density $\rho_m = 7850\,\si{
+\kilogram\per\meter\cubed}$) sounds a fundamental of $f_1 = 196\,\si{
+\hertz}$ (the G below middle C). Find the tension, then estimate how
+much the wire's own bending stiffness sharps the tenth harmonic above
+the ideal-string value.
+
+\textbf{Mass per unit length.} The cross-section is $A = \pi d^2/4 =
+\pi(10^{-3})^2/4 = 7.85\times 10^{-7}\,\si{\meter\squared}$, so the
+linear density is $\rho = \rho_m A = 7850\times 7.85\times 10^{-7} =
+6.16\times 10^{-3}\,\si{\kilogram\per\meter}$.
+
+\textbf{Tension from the ideal-string law.} The fundamental of a string
+fixed at both ends is $f_1 = (1/2L)\sqrt{T/\rho}$, so
+\[
+T = \rho(2Lf_1)^2 = 6.16\times 10^{-3}\times (2\times 0.62\times 196)^2
+= 6.16\times 10^{-3}\times (243.0)^2 = 364\,\text{N}.
+\]
+A single wire pulls with the weight of a $37\,\si{\kilogram}$ mass, the
+reason a piano frame carries tens of tonnes of total string tension.
+
+\textbf{Bending-stiffness correction.} A real wire is a thin beam under
+tension, so its restoring force has a flexural term that an ideal string
+lacks. The standard inharmonicity result gives the $n$th partial as
+$f_n = n f_1\sqrt{1 + B n^2}$ with the inharmonicity coefficient $B =
+\pi^2 E I/(T L^2)$, where $E = 200\,\text{GPa}$ and $I = \pi d^4/64 =
+\pi(10^{-3})^4/64 = 4.91\times 10^{-14}\,\si{\meter\tothe{4}}$. Then
+\[
+B = \frac{\pi^2\times 2\times 10^{11}\times 4.91\times 10^{-14}}{364
+\times (0.62)^2} = \frac{9.69\times 10^{-2}}{139.9} = 6.9\times 10^{-4}.
+\]
+The tenth partial is sharped by the factor $\sqrt{1 + B\cdot 100} =
+\sqrt{1.069} = 1.034$, that is by $3.4\,\%$, roughly half a semitone.
+The correction grows as $n^2$, so the low partials stay nearly harmonic
+while the high partials drift sharp, the measured signature of real
+piano strings and the reason piano tuners stretch the octaves. The ideal
+harmonic series of Section 6.5 is the leading term; the bending-stiffness
+term is the first correction.
+
 \begin{mastery}
 \textbf{State-space form and why it carries non-classical damping.} The
 second-order modal decoupling of the previous section works only when
@@ -1245,6 +1447,41 @@ superposition and state-space are the two standard routes through a
 many-degree-of-freedom system; the first is cheaper and assumes
 classical damping, the second is general and is the one finite-element
 solvers fall back to when the damping will not diagonalise.
+\end{mastery}
+
+\begin{mastery}
+\textbf{Parametric resonance and the Mathieu equation.} The forced
+oscillator of Section 6.3 gains energy from a force added to the
+right-hand side. A second route to large response feeds energy in
+through a time-varying coefficient on the left-hand side, a periodic
+modulation of the stiffness or the mass rather than an applied force.
+The model equation is the Mathieu equation,
+\[
+\ddot{x} + \omega_n^2\big(1 + \varepsilon\cos\Omega t\big)x = 0,
+\]
+in which the stiffness itself oscillates at the pump frequency $\Omega$
+with depth $\varepsilon$. A child pumping a swing by rising and crouching
+twice per swing, a ship rolling under the periodic buoyancy change of a
+following sea, and a column under a pulsating axial load all obey an
+equation of this form. The signature that separates parametric from
+ordinary resonance is the frequency at which the response blows up. The
+strongest parametric instability sits at $\Omega = 2\omega_n$, twice the
+natural frequency, not at $\Omega = \omega_n$, and weaker instability
+tongues open at $\Omega = 2\omega_n/n$ for integer $n$. Inside an
+instability tongue the homogeneous solution grows exponentially even
+with no applied force, because the periodic stiffness pumps energy in
+once per half-cycle of the motion, exactly the twice-per-swing pumping a
+child uses. Damping does not merely cap the growth as it does at ordinary
+resonance; it raises a threshold the modulation depth $\varepsilon$ must
+clear before the tongue opens at all, so a lightly modulated system with
+enough damping stays bounded while the same modulation on an
+undamped system grows without limit. The stability boundaries are the
+edges of the Mathieu equation's tongues in the $(\Omega, \varepsilon)$
+plane, charted in the standard treatments of the equation; the
+engineering use is to keep any periodic stiffness variation, from a
+gear-mesh stiffness that cycles with tooth engagement to the axial load
+on a slender member, out of the $\Omega = 2\omega_n$ band where the
+parametric instability is broadest.
 \end{mastery}
 
 \begin{estimation}
@@ -1577,6 +1814,205 @@ body-mode swell. The same transmissibility algebra that sized this
 corner is the cost function those controllers minimise, and
 \path{code/transmissibility.py} tabulates the body curve for any
 $\zeta$ the reader wants to compare.
+
+\section{Case study: a tuned mass damper for a slender stack under
+vortex shedding}\pathtag{standard}
+
+The first two case studies sized passive isolators against a known
+disturbance frequency. The third turns to the harder problem of a
+disturbance the structure creates for itself. A slender steel chimney in
+a steady wind sheds vortices that drive it across the wind at its own
+natural frequency, and the only knob that helps once the geometry is
+fixed is added damping. We carry a welded steel stack from its wind
+environment through the lock-in check to a tuned mass damper sized by the
+Den Hartog optimum, and end with the deflection the damper buys.
+
+\subsection{The structure and the wind}
+
+A welded steel flue stack stands $H = 45\,\si{\meter}$ tall with an outer
+diameter $D = 1.6\,\si{\meter}$ and a wall thickness $t = 12\,\si{\milli
+\meter}$. Its first across-wind bending mode, measured on commissioning,
+sits at $f_n = 1.1\,\si{\hertz}$ with a structural damping ratio
+$\zeta_s = 0.012$, the very light value of an all-welded cylinder with no
+joints to rub. The generalised (modal) mass of the first mode, the mass
+that the tip displacement sees, is $M = 9.0\times 10^3\,\si{\kilogram}$,
+roughly a quarter of the bare shell mass for a uniform cantilever's
+first mode. The mechanism that threatens it is vortex shedding: a steady
+crosswind peels alternating vortices off the two sides of the cylinder,
+and the alternating side force they leave behind drives the stack across
+the wind.
+
+\subsection{The lock-in check}
+
+Alternating vortices shed at the Strouhal frequency
+\[
+f_s = \frac{\mathit{St}\,U}{D},
+\]
+with the Strouhal number $\mathit{St}\approx 0.2$ for a circular
+cylinder in the relevant Reynolds range and $U$ the wind speed. The
+shedding frequency equals the stack's natural frequency at the critical
+wind speed
+\[
+U_{\text{cr}} = \frac{f_n D}{\mathit{St}} = \frac{1.1\times 1.6}{0.2} =
+8.8\,\si{\meter\per\second},
+\]
+a moderate wind that the site sees often, not a storm. At wind speeds
+near $U_{\text{cr}}$ the shedding abandons the Strouhal line and
+synchronises with the structure's motion across a band of wind speeds,
+the lock-in range of Figure~\ref{fig:vol03ch06:lock-in}, where the
+forcing and the motion reinforce one another and the across-wind
+amplitude peaks. A storm at $30\,\si{\meter\per\second}$ sheds at $3.75\,
+\si{\hertz}$, far above the natural frequency and harmless across-wind;
+the everyday $8.8\,\si{\meter\per\second}$ breeze is the dangerous wind.
+
+\input{volumes/03-force/ch06-vibrations/figures/fig-lock-in.tex}
+
+\textbf{The Scruton number sets the severity.} Whether lock-in produces
+a tolerable wobble or a damaging oscillation is governed by a single
+dimensionless group, the Scruton number,
+\[
+\mathit{Sc} = \frac{2 M \zeta_s}{\rho_a D^2},
+\]
+the ratio of the structure's mass-damping to the air's inertia, with
+$\rho_a = 1.2\,\si{\kilogram\per\meter\cubed}$ the air density. For the
+bare stack,
+\[
+\mathit{Sc} = \frac{2\times 9.0\times 10^3\times 0.012}{1.2\times
+(1.6)^2} = \frac{216}{3.07} = 70.
+\]
+A common rule of thumb holds that a Scruton number above roughly $10$ to
+$20$ keeps vortex-induced response modest, while a low Scruton number
+invites large lock-in amplitudes. At $\mathit{Sc} = 70$ the bare stack
+looks adequate on the rule, but the structural damping that carries it
+there is an estimate, not a guarantee, and welded steel is at the bottom
+of the damping range. A field measurement that returned $\zeta_s =
+0.004$ rather than $0.012$ would cut the Scruton number to $23$, at the
+edge of the rule, which is the case that motivates fitting a damper that
+does not depend on the uncertain structural value.
+
+\subsection{The unmitigated amplitude}
+
+Take the conservative damping, $\zeta_s = 0.004$, and estimate the
+lock-in tip amplitude. A simple harmonic-balance model equates the
+energy the vortex force feeds in per cycle to the energy structural
+damping removes, and gives a steady across-wind tip amplitude on the
+order of
+\[
+\frac{y_{\text{tip}}}{D}\sim \frac{C}{\mathit{Sc}},
+\]
+with $C$ an aerodynamic constant of order unity for a bare cylinder.
+Taking $C \approx 1.2$ and the reduced Scruton number $\mathit{Sc} =
+23$,
+\[
+y_{\text{tip}}\approx \frac{1.2}{23}\times 1.6 = 0.083\,\si{\meter},
+\]
+a tip sway of order $80\,\si{\milli\meter}$, near five percent of the
+diameter. A sway of that size at $1.1\,\si{\hertz}$, repeated for the
+many hours per year the wind sits near $8.8\,\si{\meter\per\second}$,
+drives high-cycle fatigue at the base weld: $1.1\,\si{\hertz}$ is
+$3.5\times 10^7$ cycles a year, so a stack that spends even a tenth of
+its time in lock-in accumulates millions of fully reversed stress cycles
+at the base. Vortex-induced fatigue, not a single overload, is the
+failure mode the damper exists to prevent.
+
+\subsection{Sizing the tuned mass damper}
+
+A tuned mass damper hangs an auxiliary mass $m_d$ on its own spring and
+dashpot near the stack tip, where the first mode's motion is largest.
+The Den Hartog optimum, derived for an undamped primary structure,
+chooses the damper frequency and damping that make the two response
+peaks of Figure~\ref{fig:vol03ch06:tmd-chimney} equal in height, the
+minimum worst-case response for a given mass ratio.
+
+\textbf{Mass ratio.} Pick a mass ratio $\mu = m_d/M = 0.02$ against the
+modal mass, so
+\[
+m_d = 0.02\times 9.0\times 10^3 = 180\,\si{\kilogram}.
+\]
+A $180\,\si{\kilogram}$ block, a manageable pendulum or spring-mounted
+mass near the tip, controls a $9$-tonne modal mass.
+
+\textbf{Optimum tuning.} The Den Hartog optimum tuning ratio is
+\[
+\frac{f_d}{f_n} = \frac{1}{1 + \mu} = \frac{1}{1.02} = 0.980,
+\]
+so the damper is tuned slightly below the stack frequency, to $f_d =
+0.980\times 1.1 = 1.078\,\si{\hertz}$. The damper spring stiffness
+follows from its own mass and frequency,
+\[
+k_d = m_d(2\pi f_d)^2 = 180\times (2\pi\times 1.078)^2 = 180\times
+45.9 = 8.26\times 10^3\,\si{\newton\per\meter}.
+\]
+
+\textbf{Optimum damper damping.} The Den Hartog optimum damper damping
+ratio is
+\[
+\zeta_d = \sqrt{\frac{3\mu}{8(1 + \mu)^3}} = \sqrt{\frac{3\times 0.02}{
+8\times (1.02)^3}} = \sqrt{\frac{0.06}{8.49}} = 0.0841,
+\]
+so the damper dashpot is
+\[
+c_d = 2\zeta_d m_d(2\pi f_d) = 2\times 0.0841\times 180\times 6.77 =
+205\,\si{\newton\second\per\meter}.
+\]
+These three numbers, $m_d = 180\,\si{\kilogram}$, $k_d = 8.3\times
+10^3\,\si{\newton\per\meter}$, $c_d = 205\,\si{\newton\second\per\meter}$,
+fully specify the damper \cite{text:den-hartog-vibrations}.
+
+\subsection{What the damper buys}
+
+The Den Hartog result for the peak magnification of the primary
+structure fitted with the optimum damper is
+\[
+\left(\frac{y}{y_{\text{static}}}\right)_{\text{peak}} = \sqrt{1 +
+\frac{2}{\mu}} = \sqrt{1 + \frac{2}{0.02}} = \sqrt{101} = 10.0.
+\]
+This replaces the bare-structure resonant magnification of $1/(2\zeta_s)
+= 1/(2\times 0.012) = 42$ (and $125$ at the conservative $\zeta_s =
+0.004$). The damper holds the worst-case response near a magnification
+of $10$ regardless of the uncertain structural damping, which is the
+decisive advantage: the bare-stack response scaled inversely with a
+damping ratio nobody can pin down, while the damped response is fixed by
+the mass ratio, a number the designer controls. The two equal peaks of
+Figure~\ref{fig:vol03ch06:tmd-chimney} sit at the magnification the
+formula predicts.
+
+\textbf{Effective added damping.} It is common to quote the damper's
+benefit as an equivalent damping ratio added to the structure. Matching
+the damped peak magnification $\sqrt{1 + 2/\mu}$ to an equivalent
+$1/(2\zeta_{\text{eff}})$ gives $\zeta_{\text{eff}} = 1/(2\sqrt{1 +
+2/\mu}) = 1/(2\times 10.0) = 0.050$, so the $2\,\%$ damper acts like
+roughly $5\,\%$ of critical damping added to the first mode, a fourfold
+improvement over the bare $1.2\,\%$. The Scruton number rises with it,
+from $70$ (or $23$ at the conservative structural value) to well above
+$200$, far clear of the lock-in-severity threshold.
+
+\textbf{The damper's own stroke.} At the operating condition the damper
+mass moves much farther than the structure, the price of its leverage.
+Its stroke is roughly $1/\mu = 50$ times the tip motion it cancels, so a
+target tip motion of a few millimetres demands a damper stroke of order
+$100$ to $200\,\si{\milli\meter}$, and the housing near the tip must give
+the mass that clearance. A damper that bottoms out against its travel
+limit stops working at the moment it is needed, the standard failure of
+an undersized-stroke design.
+
+\subsection{The arc, closed}
+
+The chain ran from a wind environment to a fatigue threat to a passive
+fix. The Strouhal relation found the dangerous wind at $8.8\,\si{\meter
+\per\second}$, a moderate everyday breeze rather than a storm; the
+Scruton number flagged that the lightly damped welded stack sat too near
+the severity threshold once the optimistic structural damping was
+discounted; and a $180\,\si{\kilogram}$ Den Hartog-tuned damper, two
+percent of the modal mass, cut the worst-case across-wind magnification
+from forty-two (or one hundred twenty-five) down to ten and fixed it
+there independent of the structural damping. The discipline is the same
+one the chapter has carried throughout: identify the natural frequency,
+find the excitation that lands on it, and either move the frequency, kill
+the excitation, or add damping. For a self-excited vortex problem the
+first two are closed off by the fixed geometry and the everyday wind, so
+damping is the only move, and the tuned mass damper is the way to add it
+without depending on a structural damping value nobody can certify.
 
 \section{Failure: Tacoma Narrows, Millennium Bridge, machinery
 resonance}\pathtag{core}
