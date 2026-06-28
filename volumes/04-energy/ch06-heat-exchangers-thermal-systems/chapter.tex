@@ -47,6 +47,8 @@ mechanical-design conventions: tube pitch, baffle cut, shell-side
 clearances, nozzle locations, and the three-letter codes (front-
 head, shell, rear-head) that uniquely specify a configuration.
 
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-shell-and-tube-schematic.tex}
+
 \engterm{Plate-and-frame exchangers} consist of corrugated metal
 plates clamped together with gaskets, forming alternating channels
 for the two fluids. Plate-and-frame designs offer high effectiveness
@@ -58,6 +60,8 @@ or EPDM) and pressure ($\sim 25\,\text{bar}$), restricting plate-and-
 frame to moderate-condition services. Gasket-free plate exchangers
 (welded plate pairs, brazed plate exchangers, plate-and-fin) extend
 the operating envelope at the cost of cleanability.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-plate-exchanger.tex}
 
 \engterm{Compact exchangers} use small hydraulic diameters and
 extended-surface geometries to achieve high heat-transfer area per
@@ -129,6 +133,8 @@ T_{c,i}$ and $\Delta T_2 = T_{h,o} - T_{c,o}$; the resulting LMTD is
 smaller than the counter-flow value for the same external
 temperatures.
 
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-flow-temperature-profiles.tex}
+
 For exchangers that are neither pure counter-flow nor pure parallel-
 flow (shell-and-tube with multiple tube passes, cross-flow with both
 streams unmixed, plate-and-frame), a \engterm{correction factor} $F
@@ -143,6 +149,22 @@ The correction factor must be $\geq 0.75$ for a practical design; a
 lower value indicates the exchanger configuration cannot achieve the
 specified terminal temperatures and either more tube passes (for
 shell-and-tube) or a different exchanger type is needed.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-lmtd-correction-factor.tex}
+
+A worked sizing fixes the method. Take a counter-flow exchanger that
+must cool $3\,\text{kg/s}$ of water from $90\,\degC$ to $50\,\degC$
+against $4\,\text{kg/s}$ of water entering at $20\,\degC$, with $U =
+1200\,\si{\watt\per\meter\squared\per\kelvin}$. The duty is $\dot{Q}
+= \dot{m}_h c_p \Delta T_h = 3 \times 4180 \times 40 = 501.6\,\text{kW}$.
+The cold outlet follows from the cold-side balance: $T_{c,o} = 20 +
+\dot{Q}/(\dot{m}_c c_p) = 20 + 501{,}600/(4 \times 4180) = 50.0\,\degC$.
+The two end differences are $\Delta T_1 = 90 - 50 = 40\,\si{\kelvin}$
+and $\Delta T_2 = 50 - 20 = 30\,\si{\kelvin}$, so $\Delta
+T_{\text{LMTD}} = (40 - 30)/\ln(40/30) = 34.8\,\si{\kelvin}$. The area
+is $A = \dot{Q}/(U \Delta T_{\text{LMTD}}) = 501{,}600/(1200 \times
+34.8) = 12.0\,\text{m}^2$. The routine \texttt{lmtd\_sizing.py} carries
+out this arithmetic and the parallel-flow comparison.
 
 \section{NTU-effectiveness method}\pathtag{core}
 
@@ -186,6 +208,8 @@ $\varepsilon$, NTU, and $C_r$ depends on the exchanger configuration:
     standard $\varepsilon$-NTU expression with intermediate complexity.
 \end{itemize}
 
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-effectiveness-ntu.tex}
+
 For an evaporator or condenser (where one fluid undergoes phase
 change at constant temperature), $C_{\max} \to \infty$ on that side
 and $C_r \to 0$, giving $\varepsilon = 1 - e^{-\text{NTU}}$ regardless
@@ -208,6 +232,58 @@ quantities are specified in the design problem: LMTD for sizing a
 new exchanger to meet a specified duty, NTU-effectiveness for
 rating an existing exchanger under new operating conditions.
 \end{principle}
+
+\section{Worked examples}\pathtag{standard}
+
+Two worked rating problems show the NTU method end to end and expose
+the points where a calculation goes wrong.
+
+\textbf{Rating an air-cooled oil exchanger.} An existing fin-fan cooler
+has $A = 200\,\text{m}^2$ and $U = 50\,\si{\watt\per\meter\squared\per
+\kelvin}$. It cools $5\,\text{kg/s}$ of oil ($c_p = 2.1\,\text{kJ}/
+(\text{kg}\cdot\si{\kelvin})$) entering at $140\,\degC$ with $20\,
+\text{kg/s}$ of air ($c_p = 1.005\,\text{kJ}/(\text{kg}\cdot\si{
+\kelvin})$) entering at $30\,\degC$. The capacity rates are $C_{\text{oil}}
+= 5 \times 2100 = 10{,}500\,\si{\watt\per\kelvin}$ and $C_{\text{air}}
+= 20 \times 1005 = 20{,}100\,\si{\watt\per\kelvin}$, so $C_{\min} =
+10{,}500$ (the oil), $C_r = 10{,}500/20{,}100 = 0.52$, and $\text{NTU}
+= UA/C_{\min} = 50 \times 200/10{,}500 = 0.95$. For a cross-flow
+exchanger with both streams unmixed the correlation gives $\varepsilon
+\approx 0.53$. The duty is $\dot{Q} = \varepsilon C_{\min}(T_{h,i} -
+T_{c,i}) = 0.53 \times 10{,}500 \times 110 = 610\,\text{kW}$. The oil
+leaves at $140 - 610{,}000/10{,}500 = 82\,\degC$ and the air at $30 +
+610{,}000/20{,}100 = 60\,\degC$. The trap here is the choice of
+$C_{\min}$: the smaller capacity rate sets both the NTU denominator and
+the maximum possible duty, and using the oil's value (not the air's) is
+what makes the answer correct. The routine
+\texttt{ntu\_effectiveness.py} reproduces these numbers.
+
+\textbf{When LMTD and NTU disagree on effort.} For the same exchanger,
+suppose instead that the four temperatures were specified and the area
+were the unknown. The LMTD route would need the outlet temperatures
+first, which here are exactly what the NTU route produces, so solving
+for area from specified temperatures would require iterating the
+unknown outlet, computing the LMTD, and back-solving the area until the
+energy balance closed. The NTU route gives the outlets in one pass.
+The lesson is to read the problem before choosing the method: area
+unknown and temperatures known favours LMTD; area known and
+temperatures unknown favours NTU.
+
+\begin{mastery}
+The cross-flow effectiveness correlation
+$\varepsilon = 1 - \exp\{[\exp(-\text{NTU}^{0.78} C_r) - 1]
+\text{NTU}^{0.22}/C_r\}$ is not an exact solution. The exact treatment
+of cross-flow with both streams unmixed is a two-dimensional partial
+differential equation whose solution is an infinite series of modified
+Bessel functions, worked out for the single-pass case in the
+mid-twentieth century. The compact closed form above reproduces the
+exact series to within about one percent over the engineering range of
+NTU and $C_r$, which is why design practice uses it and reserves the
+series for verification. The deeper point is that effectiveness
+relations are geometry-specific: every flow arrangement has its own
+$\varepsilon(\text{NTU}, C_r)$, and substituting the counter-flow
+relation for a cross-flow unit is a common and quietly large error.
+\end{mastery}
 
 \section{Pressure drop and pumping power}\pathtag{standard}
 
@@ -249,6 +325,18 @@ faster than the pumping-power saving below some critical velocity.
 The optimal velocity for engineering services is typically in the
 range $1$ to $3\,\text{m/s}$ for liquids in tubes and $10$ to $30\,
 \text{m/s}$ for gases.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-pressure-drop-tradeoff.tex}
+
+The minimum is set by the balance of the two exponents. Writing the
+total annualised cost as $C(u) = k_{\text{cap}} u^{-0.8} +
+k_{\text{pump}} u^{3}$ and setting $dC/du = 0$ gives the optimum
+velocity $u^\star = [0.8 k_{\text{cap}}/(3 k_{\text{pump}})]^{1/3.8}$.
+The exponent $1/3.8$ flattens the dependence on the cost ratio: a
+tenfold error in the assumed cost ratio moves the optimum velocity by
+less than a factor of two. The routine
+\texttt{pressure\_drop\_optimum.py} evaluates both the scan and the
+analytic optimum and confirms that they agree.
 
 The optimisation may be done explicitly through a cost function that
 combines capital cost (a function of area) and operating cost (a
@@ -296,7 +384,30 @@ change material melting at $30\,\degC$ with latent heat $200\,\text{kJ/kg}$
 stores $\sim 50\,\text{kWh}$ as latent heat. A $1\,\text{m}^3$ block
 of concrete at $60\,\degC$ in $20\,\degC$ ambient stores $\sim 24\,
 \text{kWh}$. The choice between modes is set by the temperature range,
-the duty cycle, and the cost.
+the duty cycle, and the cost. The dataset
+\texttt{storage\_media.csv} collects the density, specific heat,
+latent heat, and usable temperature swing behind these numbers.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-storage-comparison.tex}
+
+\begin{mastery}
+A sensible-heat water store is worth more than its bulk energy content
+suggests when it holds thermal stratification. Hot water is less dense
+than cold, so a well-designed tank keeps a sharp thermocline between a
+hot layer at the top and a cold layer at the bottom, and the store
+delivers water at the full hot temperature until the thermocline
+reaches the outlet. A fully mixed tank of the same size delivers water
+at the average temperature throughout, which falls steadily and may
+drop below the load's required supply temperature long before the
+energy is spent. The figure of merit is the degree of stratification,
+degraded by inlet jet mixing, by conduction across the thermocline, and
+by standing heat loss through the walls. Diffuser inlets that spread
+the incoming flow at low velocity, tall narrow tank geometries that
+limit the thermocline area, and short cycle times all preserve
+stratification. The same physics governs the pit thermal stores of
+district networks, where the thermocline can be metres thick and still
+small against a tank tens of metres deep.
+\end{mastery}
 
 \section{District heating and cooling}\pathtag{mastery}
 
@@ -406,13 +517,33 @@ cooling water, $R_f \approx 0.0002$ to $0.001\,\text{m}^2\cdot\si{
 products, $0.0002$ to $0.0007$. The fouling resistance is added on
 both sides of the exchanger when both are subject to fouling.
 
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-thermal-network.tex}
+
 A typical clean overall coefficient of $500\,\text{W}/(\text{m}^2
 \cdot\si{\kelvin})$ has $1/U_{\text{clean}} = 0.002\,\text{m}^2\cdot
 \si{\kelvin}/\text{W}$. A fouling resistance of $0.001$ on each side
 adds $0.002$, doubling the total resistance and halving the heat-
 transfer rate. Designers typically over-size the exchanger by a
 factor that allows for fouling at the end of a cleaning cycle (six
-months to two years between cleanings, depending on service).
+months to two years between cleanings, depending on service). The
+tabulated fouling resistances used in design appear in
+\texttt{fouling\_resistances.csv}; the routine
+\texttt{overall\_coefficient.py} assembles the series network and
+returns the clean and dirty coefficients.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-fouling-decline.tex}
+
+The fouling layer does not grow without bound. Deposition lays material
+down while the shear of the flowing fluid scours it away, and the two
+rates come into balance at an asymptotic deposit thickness. The
+overall coefficient therefore falls fast at first and then levels off,
+which is the curve plotted in figure
+\ref{fig:vol04ch06:fouling-decline}. The dataset
+\texttt{condenser\_U\_decline.csv} carries a two-cycle record of
+coefficient and pressure drop against service month; the residual loss
+after the second cleaning is the hard scale that mechanical cleaning
+does not remove, and tracking it is how a plant decides when retubing
+beats further cleaning.
 
 \subsection{Corrosion}
 
@@ -600,11 +731,36 @@ from $80\,\degC$ to $40\,\degC$ using cold water entering at $20\,
 \degC$ at $4\,\text{kg/s}$. Find the cold-water exit temperature, the
 LMTD, and the area required for $U = 1500\,\text{W}/(\text{m}^2\cdot
 \si{\kelvin})$.
+
+\paragraph{Solution sketch.} The duty is $\dot{Q} = \dot{m}_h c_p \Delta
+T_h = 2 \times 4180 \times 40 = 334\,\text{kW}$. The cold-side balance
+gives $T_{c,o} = 20 + \dot{Q}/(\dot{m}_c c_p) = 20 + 334{,}400/(4
+\times 4180) = 40\,\degC$. The end differences are $\Delta T_1 = 80 -
+40 = 40\,\si{\kelvin}$ and $\Delta T_2 = 40 - 20 = 20\,\si{\kelvin}$,
+so $\Delta T_{\text{LMTD}} = (40 - 20)/\ln(40/20) = 28.9\,\si{\kelvin}$.
+The area is $A = \dot{Q}/(U\,\Delta T_{\text{LMTD}}) = 334{,}400/(1500
+\times 28.9) = 7.7\,\text{m}^2$.
 \end{exercise}
 
 \begin{exercise}
 Repeat the previous exercise as parallel flow. Compare the area
 required and identify the second-law cost of the parallel arrangement.
+
+\paragraph{Solution sketch.} The duty and outlet temperatures are
+unchanged ($\dot{Q} = 334\,\text{kW}$, $T_{c,o} = 40\,\degC$), because
+the energy balance does not depend on the flow arrangement. The end
+differences become $\Delta T_1 = T_{h,i} - T_{c,i} = 80 - 20 = 60\,
+\si{\kelvin}$ and $\Delta T_2 = T_{h,o} - T_{c,o} = 40 - 40 = 0\,
+\si{\kelvin}$. The log-mean is indeterminate as $\Delta T_2 \to 0$ and
+in fact drives the area to infinity: a parallel-flow exchanger cannot
+bring the two streams to the same outlet temperature, so this exact
+duty is unreachable in parallel flow. Backing the cold outlet off to,
+say, $38\,\degC$ gives a finite but much larger area than the
+counter-flow $7.7\,\text{m}^2$. The second-law cost is the larger
+entropy generation of mixing across the steeply varying temperature
+difference of the parallel arrangement; counter-flow keeps the
+difference small and uniform, transferring the same heat across a
+smaller average gap.
 \end{exercise}
 
 \begin{exercise}
@@ -614,6 +770,19 @@ $1\,\text{kg/s}$ of oil ($c_p = 2.1\,\text{kJ}/(\text{kg}\cdot\si{
 water entering at $20\,\degC$. Find the water exit temperature, the
 correction factor $F$, the LMTD, and the area for $U = 800\,\text{W}/
 (\text{m}^2\cdot\si{\kelvin})$.
+
+\paragraph{Solution sketch.} The duty is $\dot{Q} = 1 \times 2100 \times
+(150 - 50) = 210\,\text{kW}$. The water outlet is $T_{c,o} = 20 +
+210{,}000/(3 \times 4180) = 36.7\,\degC$. The counter-flow LMTD uses
+$\Delta T_1 = 150 - 36.7 = 113.3\,\si{\kelvin}$ and $\Delta T_2 = 50 -
+20 = 30\,\si{\kelvin}$: $\Delta T_{\text{LMTD,CF}} = (113.3 -
+30)/\ln(113.3/30) = 62.7\,\si{\kelvin}$. The correction-factor
+parameters are $P = (T_{c,o} - T_{c,i})/(T_{h,i} - T_{c,i}) = 16.7/130
+= 0.13$ and $R = (T_{h,i} - T_{h,o})/(T_{c,o} - T_{c,i}) = 100/16.7 =
+6.0$. From the one-shell-pass, two-tube-pass chart these values give
+$F \approx 0.97$ (the low $P$ keeps $F$ near unity despite the high
+$R$). The area is $A = \dot{Q}/(U F \Delta T_{\text{LMTD,CF}}) =
+210{,}000/(800 \times 0.97 \times 62.7) = 4.3\,\text{m}^2$.
 \end{exercise}
 
 \begin{exercise}
@@ -622,6 +791,18 @@ An air-cooled exchanger has $A = 200\,\text{m}^2$ and $U = 50\,
 oil ($c_p = 2.1\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$) entering at
 $140\,\degC$ with air at $30\,\degC$ supplied at $20\,\text{kg/s}$.
 Use the NTU-effectiveness method to find the outlet temperatures.
+
+\paragraph{Solution sketch.} The capacity rates are $C_{\text{oil}} = 5
+\times 2100 = 10{,}500\,\si{\watt\per\kelvin}$ and $C_{\text{air}} = 20
+\times 1005 = 20{,}100\,\si{\watt\per\kelvin}$, so $C_{\min} = 10{,}500$
+(oil), $C_r = 0.52$, and $\text{NTU} = UA/C_{\min} = 50 \times
+200/10{,}500 = 0.95$. The cross-flow-both-unmixed correlation gives
+$\varepsilon \approx 0.53$, so $\dot{Q} = \varepsilon C_{\min}(T_{h,i}
+- T_{c,i}) = 0.53 \times 10{,}500 \times 110 = 610\,\text{kW}$. The oil
+leaves at $140 - 610{,}000/10{,}500 = 82\,\degC$; the air leaves at $30
++ 610{,}000/20{,}100 = 60\,\degC$. The matching value is the smaller
+capacity rate setting both NTU and $\dot{Q}_{\max}$. The routine
+\texttt{ntu\_effectiveness.py} returns these values.
 \end{exercise}
 
 \begin{exercise}
@@ -630,6 +811,17 @@ $50\,\text{kg/s}$. Saturated steam at $50\,\degC$ condenses on the tube
 exterior at $0.5\,\text{kg/s}$ with latent heat $2382\,\text{kJ/kg}$.
 The exchanger has $U = 2500\,\text{W}/(\text{m}^2\cdot\si{\kelvin})$.
 Find the water outlet temperature and the area required.
+
+\paragraph{Solution sketch.} The duty is set by the condensing side:
+$\dot{Q} = \dot{m}_{\text{steam}} h_{fg} = 0.5 \times 2382 = 1191\,
+\text{kW}$. The water outlet is $T_{c,o} = 25 + 1{,}191{,}000/(50
+\times 4180) = 30.7\,\degC$. The steam is at constant $50\,\degC$, so
+$\Delta T_1 = 50 - 30.7 = 19.3\,\si{\kelvin}$ and $\Delta T_2 = 50 -
+25 = 25\,\si{\kelvin}$: $\Delta T_{\text{LMTD}} = (19.3 -
+25)/\ln(19.3/25) = 22.0\,\si{\kelvin}$. The area is $A = 1{,}191{,}000/
+(2500 \times 22.0) = 21.7\,\text{m}^2$. Because one stream changes
+phase, $C_r = 0$ and the LMTD method and the NTU method agree without a
+correction factor.
 \end{exercise}
 
 \begin{exercise}
@@ -639,6 +831,20 @@ $\dot{m}_h c_{p,h} = 10\,\text{kW}/\si{\kelvin}$, $\dot{m}_c c_{p,c}
 = 12\,\text{kW}/\si{\kelvin}$. Inlets are $T_{h,i} = 90\,\degC$ and
 $T_{c,i} = 20\,\degC$. Compute NTU, $C_r$, the effectiveness, and the
 outlet temperatures.
+
+\paragraph{Solution sketch.} Here $C_{\min} = 10\,\text{kW}/\si{\kelvin}$
+(hot side), $C_{\max} = 12\,\text{kW}/\si{\kelvin}$, $C_r = 10/12 =
+0.83$, and $\text{NTU} = UA/C_{\min} = 5000 \times 50/10{,}000 = 25$.
+A plate exchanger runs counter-current, so $\varepsilon = (1 - e^{-
+\text{NTU}(1 - C_r)})/(1 - C_r e^{-\text{NTU}(1 - C_r)})$. With
+$\text{NTU}(1 - C_r) = 25 \times 0.17 = 4.25$, the exponential is
+$e^{-4.25} = 0.0143$, giving $\varepsilon = (1 - 0.0143)/(1 - 0.83
+\times 0.0143) = 0.986/0.988 = 0.998$. The very high NTU drives the
+effectiveness to its ceiling, which is the close approach
+plate exchangers are bought for. The duty is $\dot{Q} = \varepsilon
+C_{\min}(T_{h,i} - T_{c,i}) = 0.998 \times 10 \times 70 = 698\,\text{kW}$.
+The hot outlet is $90 - 698/10 = 20.2\,\degC$; the cold outlet is $20 +
+698/12 = 78.2\,\degC$.
 \end{exercise}
 
 \begin{exercise}
@@ -648,6 +854,25 @@ $25\,\si{\milli\meter}$ and length $5\,\text{m}$. Hot water at $80\,
 $20\,\degC$ flows in the annulus at $0.1\,\text{kg/s}$. Estimate the
 inside, outside, and overall heat-transfer coefficients, the LMTD,
 and the heat-transfer rate.
+
+\paragraph{Solution sketch.} For the inner tube the velocity is $u =
+\dot{m}/(\rho A) = 0.2/(990 \times \pi/4 \times 0.025^2) = 0.41\,
+\text{m/s}$, the Reynolds number is $Re = \rho u D/\mu \approx 990
+\times 0.41 \times 0.025/(5 \times 10^{-4}) \approx 2.0 \times 10^4$
+(turbulent), and Dittus-Boelter $Nu = 0.023 Re^{0.8} Pr^{0.4}$ with
+$Pr \approx 3.5$ gives $Nu \approx 95$, so $h_i = Nu\,k/D \approx 95
+\times 0.63/0.025 \approx 2400\,\si{\watt\per\meter\squared\per
+\kelvin}$. The annulus flow is slower and gives a similar
+order, $h_o \approx 1500\,\si{\watt\per\meter\squared\per\kelvin}$.
+Neglecting wall resistance, $1/U \approx 1/2400 + 1/1500$, so $U
+\approx 920\,\si{\watt\per\meter\squared\per\kelvin}$. With outlet
+temperatures unknown, iterate or use NTU: the area is $A = \pi D L =
+\pi \times 0.025 \times 5 = 0.39\,\text{m}^2$, $C_{\min} = 0.1 \times
+4180 = 418\,\si{\watt\per\kelvin}$, $\text{NTU} = 920 \times 0.39/418 =
+0.86$, $C_r = 418/836 = 0.5$, $\varepsilon \approx 0.52$, so $\dot{Q} =
+0.52 \times 418 \times 60 = 13\,\text{kW}$. The exact coefficients
+depend on property values and the answer is an order-of-magnitude
+estimate.
 \end{exercise}
 
 \begin{exercise}
@@ -656,6 +881,15 @@ A clean shell-and-tube exchanger has $U_{\text{clean}} = 700\,\text{W}/
 $0.0005\,\text{m}^2\cdot\si{\kelvin}/\text{W}$ on each side. Compute
 the dirty $U$ and the fraction of the heat-transfer capacity lost
 to fouling.
+
+\paragraph{Solution sketch.} The clean resistance is $1/U_{\text{clean}} =
+1/700 = 0.00143\,\text{m}^2\si{\kelvin}/\text{W}$. Two fouling
+resistances add $2 \times 0.0005 = 0.001$, so $1/U_{\text{dirty}} =
+0.00143 + 0.001 = 0.00243$ and $U_{\text{dirty}} = 412\,\si{\watt\per
+\meter\squared\per\kelvin}$. At a fixed driving difference the duty
+scales with $U$, so the capacity lost is $1 - 412/700 = 41\,\%$. The
+fouling allowance the designer must build in to keep meeting the duty
+at end-of-cycle is this same $41\,\%$ of extra clean capacity.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -665,22 +899,79 @@ Derive the LMTD expression by integrating the differential heat-
 balance $-d(T_h - T_c)/(T_h - T_c) = U \,dA/C^*$ across the exchanger
 length, where $1/C^* = 1/C_h \pm 1/C_c$ for counter-flow and parallel-
 flow respectively.
+
+\paragraph{Solution sketch.} Write $\theta = T_h - T_c$. The local heat
+transfer across an element of area $dA$ is $d\dot{Q} = U\theta\,dA$,
+and this heats the cold stream and cools the hot stream, so $dT_h = -d
+\dot{Q}/C_h$ and $dT_c = \pm d\dot{Q}/C_c$ (the sign distinguishing
+counter-flow from parallel-flow). Then $d\theta = dT_h - dT_c = -d
+\dot{Q}(1/C_h \pm 1/C_c) = -U\theta\,dA/C^*$. Separating, $d\theta/
+\theta = -(U/C^*)\,dA$, and integrating over the whole exchanger gives
+$\ln(\theta_2/\theta_1) = -UA/C^*$. The endpoints fix $C^*$: since
+$\theta_1 - \theta_2 = \dot{Q}/C^* \cdot (\text{constant})$, one
+eliminates $C^*$ using $\dot{Q} = C^*(\theta_1 - \theta_2)$ and the
+overall balance $\dot{Q} = UA\,\Delta T_{\text{LMTD}}$, which forces
+$\Delta T_{\text{LMTD}} = (\theta_1 - \theta_2)/\ln(\theta_1/\theta_2)$.
+The constant-$U$ and constant-$c_p$ assumptions are what make $C^*$
+constant along the length.
 \end{exercise}
 
 \begin{exercise}
 Derive the counter-flow effectiveness-NTU formula $\varepsilon = (1
 - e^{-\text{NTU}(1 - C_r)})/(1 - C_r e^{-\text{NTU}(1 - C_r)})$.
+
+\paragraph{Solution sketch.} Start from the integrated balance of the
+previous exercise, $\theta_2/\theta_1 = e^{-UA(1/C_h - 1/C_c)} =
+e^{-\text{NTU}(1 - C_r)}$ when $C_{\min} = C_h$ (so that $UA/C_h =
+\text{NTU}$ and $C_h/C_c = C_r$). Call this ratio $X$. Write the two
+end differences in terms of the effectiveness: $\theta_1 = T_{h,i} -
+T_{c,o}$ and $\theta_2 = T_{h,o} - T_{c,i}$, and use $\dot{Q} =
+\varepsilon C_{\min}(T_{h,i} - T_{c,i})$ to express $T_{h,o}$ and
+$T_{c,o}$ as $T_{h,i} - \varepsilon(T_{h,i} - T_{c,i})$ and $T_{c,i} +
+\varepsilon C_r(T_{h,i} - T_{c,i})$ respectively. Substituting into
+$\theta_2 = X\theta_1$ and dividing through by $(T_{h,i} - T_{c,i})$
+gives $1 - \varepsilon = X(1 - \varepsilon C_r)$. Solving for
+$\varepsilon$ yields $\varepsilon = (1 - X)/(1 - C_r X)$, which is the
+stated formula with $X = e^{-\text{NTU}(1 - C_r)}$. The $C_r = 1$ case
+is the limit $X \to e^{0} = 1$, evaluated by l'Hopital's rule to give
+$\varepsilon = \text{NTU}/(1 + \text{NTU})$.
 \end{exercise}
 
 \begin{exercise}
 Show that for an evaporator or condenser, $\varepsilon = 1 -
 e^{-\text{NTU}}$ regardless of the exchanger configuration.
+
+\paragraph{Solution sketch.} A phase-changing stream holds constant
+temperature, which is the limit $C_{\max} \to \infty$ on that side, so
+$C_r = C_{\min}/C_{\max} \to 0$. Set $C_r = 0$ in any of the
+configuration relations. Counter-flow: $\varepsilon = (1 - e^{-
+\text{NTU}})/(1 - 0) = 1 - e^{-\text{NTU}}$. Parallel-flow: $(1 - e^{-
+\text{NTU}})/(1 + 0) = 1 - e^{-\text{NTU}}$. Cross-flow: the exponent
+$[\exp(-\text{NTU}^{0.78}C_r) - 1]\text{NTU}^{0.22}/C_r$ tends to
+$-\text{NTU}$ as $C_r \to 0$ (since $(\exp(-aC_r) - 1)/C_r \to -a$),
+giving $1 - e^{-\text{NTU}}$ again. All configurations collapse because
+with one temperature fixed there is no upstream-versus-downstream
+distinction for the driving difference, which is why condensers and
+evaporators are easier to rate than sensible-heat exchangers.
 \end{exercise}
 
 \begin{exercise}
 Derive the optimal flow velocity for a fixed heat-transfer area
 (minimum of total cost = capital + pumping cost), assuming $h \propto
 u^{0.8}$ and $\Delta p \propto u^2$.
+
+\paragraph{Solution sketch.} For a fixed duty the required area scales as
+$A \propto 1/h \propto u^{-0.8}$, so the capital cost is $C_{\text{cap}}
+= k_1 u^{-0.8}$. The pumping power scales as $\dot{V}\,\Delta p \propto
+u \cdot u^2 = u^3$, so the operating cost is $C_{\text{pump}} = k_2
+u^{3}$. The total is $C(u) = k_1 u^{-0.8} + k_2 u^{3}$. Setting
+$dC/du = -0.8 k_1 u^{-1.8} + 3 k_2 u^{2} = 0$ gives $u^{3.8} = 0.8
+k_1/(3 k_2)$, so the optimum is $u^\star = [0.8 k_1/(3 k_2)]^{1/3.8}$.
+The exponent $1/3.8 \approx 0.26$ makes the optimum insensitive to the
+cost coefficients: the cost curve is flat near the minimum, so any
+velocity within roughly a factor of two of $u^\star$ is near-optimal.
+The routine \texttt{pressure\_drop\_optimum.py} confirms the analytic
+result against a numerical scan.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -689,18 +980,58 @@ u^{0.8}$ and $\Delta p \propto u^2$.
 Estimate the heat-transfer area required to condense $1\,\text{kg/s}$
 of saturated steam at $40\,\degC$ using $25\,\degC$ cooling water with
 a $10\,\si{\kelvin}$ temperature rise. State the assumed $U$.
+
+\paragraph{Solution sketch.} The latent heat of steam near $40\,\degC$ is
+about $2400\,\text{kJ/kg}$, so $\dot{Q} \approx 1 \times 2400 = 2.4\,
+\text{MW}$. The water enters at $25\,\degC$ and leaves at $35\,\degC$,
+so $\Delta T_1 = 40 - 35 = 5\,\si{\kelvin}$, $\Delta T_2 = 40 - 25 =
+15\,\si{\kelvin}$, and $\Delta T_{\text{LMTD}} = (5 - 15)/\ln(5/15) =
+9.1\,\si{\kelvin}$. Assume $U = 2500\,\si{\watt\per\meter\squared\per
+\kelvin}$ for a steam-to-water condenser. Then $A = \dot{Q}/(U \Delta
+T_{\text{LMTD}}) = 2.4 \times 10^6/(2500 \times 9.1) = 105\,\text{m}^2$.
+The small approach at the cold end ($5\,\si{\kelvin}$) is what inflates
+the area; condensers near the cooling-water inlet temperature are
+area-hungry.
 \end{exercise}
 
 \begin{exercise}
 Estimate the pumping power for the cooling-water side of a $1\,\text{MW}$
 condenser, assuming $5\,\text{kg/s}$ of cooling water through tubes
 of $25\,\si{\milli\meter}$ diameter at $2\,\text{m/s}$.
+
+\paragraph{Solution sketch.} One tube at $2\,\text{m/s}$ carries $\rho u
+A_{\text{tube}} = 990 \times 2 \times \pi/4 \times 0.025^2 = 0.97\,
+\text{kg/s}$, so $5\,\text{kg/s}$ needs about five tubes (or a single
+pass of five tubes). Take a tube length of $\sim 4\,\text{m}$. The
+Reynolds number is $Re = \rho u D/\mu \approx 990 \times 2 \times
+0.025/(8 \times 10^{-4}) \approx 6 \times 10^4$, giving a friction
+factor $f \approx 0.02$. The pressure drop is $\Delta p = f(L/D)\rho
+u^2/2 = 0.02 \times (4/0.025) \times 990 \times 2^2/2 \approx 6.3\,
+\text{kPa}$. The volumetric flow is $\dot{V} = 5/990 = 5.0 \times
+10^{-3}\,\text{m}^3/\text{s}$, so the hydraulic power is $\dot{V}\Delta
+p \approx 32\,\text{W}$; with a pump efficiency of $0.6$ and adding
+nozzle and header losses (roughly doubling the tube-only drop), the
+shaft power is of order $100\,\text{W}$. Tube-side pumping for a
+condenser of this size is small against the heat duty, which is the
+usual finding for water service at sensible velocities.
 \end{exercise}
 
 \begin{exercise}
 Estimate the volume of a hot-water thermal storage tank that holds
 enough energy to heat a $200\,\text{m}^2$ house for $12\,\text{hours}$
 in winter, with the tank cycling between $80\,\degC$ and $50\,\degC$.
+
+\paragraph{Solution sketch.} A reasonably insulated house loses on the
+order of $50\,\text{W/m}^2$ of floor area in cold weather, so a $200\,
+\text{m}^2$ house has a heating load of about $10\,\text{kW}$. Over
+$12\,\text{hours}$ the energy needed is $10 \times 12 = 120\,\text{kWh}
+= 4.3 \times 10^8\,\text{J}$. A water tank cycling $\Delta T = 30\,
+\si{\kelvin}$ stores $\rho c_p \Delta T$ per cubic metre $= 990 \times
+4180 \times 30 = 1.24 \times 10^8\,\text{J/m}^3 \approx 34\,\text{kWh/m}^3$.
+The tank volume is $120/34 \approx 3.5\,\text{m}^3$, a tank roughly
+$1.5\,\text{m}$ on a side. The result scales directly with the assumed
+heat-loss rate, so a leakier house or a colder night would push the
+tank toward $5$ to $6\,\text{m}^3$.
 \end{exercise}
 
 \begin{exercise}
@@ -708,6 +1039,19 @@ Estimate the surface area of a district-heating distribution pipe of
 $200\,\si{\milli\meter}$ diameter and the heat loss per metre at
 $80\,\degC$ internal, $5\,\degC$ external, with $100\,\si{\milli\meter}$
 of polyurethane insulation.
+
+\paragraph{Solution sketch.} The pipe outer radius is $r_1 = 0.1\,\text{m}$
+and the insulation outer radius is $r_2 = 0.1 + 0.1 = 0.2\,\text{m}$.
+The surface area per metre at the insulation surface is $2\pi r_2 =
+1.26\,\text{m}^2/\text{m}$. Heat loss is dominated by conduction through
+the insulation, $\dot{Q}/L = 2\pi k (T_{\text{in}} - T_{\text{out}})/
+\ln(r_2/r_1)$ with polyurethane $k \approx 0.025\,\si{\watt\per\meter
+\per\kelvin}$: $\dot{Q}/L = 2\pi \times 0.025 \times (80 - 5)/\ln(0.2/
+0.1) = 11.8/0.693 = 17\,\text{W/m}$. The internal film and the pipe
+wall add negligible resistance against the insulation, so the estimate
+stands. Over a kilometre of supply main this is $17\,\text{kW}$ of
+standing loss, which is why fourth- and fifth-generation networks push
+the supply temperature down.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -716,6 +1060,21 @@ of polyurethane insulation.
 Implement a one-dimensional finite-difference solver for a counter-
 flow heat exchanger. Compare the simulated outlet temperatures to
 the LMTD-method prediction for a test case.
+
+\paragraph{Solution sketch.} Discretise the length into $N$ cells. March
+the hot stream from its inlet end, $T_h^{i+1} = T_h^{i} - U\,\Delta A
+(T_h^{i} - T_c^{i})/C_h$, and the cold stream from its inlet end (the
+opposite end for counter-flow), $T_c^{i-1} = T_c^{i} + U\,\Delta A
+(T_h^{i} - T_c^{i})/C_c$. Because the cold inlet boundary sits at the
+far end, sweep the pair of marches repeatedly until the profiles stop
+changing (a relaxation iteration), or assemble and solve the linear
+system directly. The reference routine
+\texttt{counterflow\_fd.py} implements the relaxation form and prints
+both the finite-difference outlets and the closed-form effectiveness
+prediction; for the supplied test case ($U = 1500$, $A = 3\,\text{m}^2$,
+$C_h = 8400$, $C_c = 16{,}800$, hot in $80\,\degC$, cold in $20\,\degC$)
+the two agree to better than $0.05\,\si{\kelvin}$, with the small
+residual being the truncation error that shrinks as $N$ grows.
 \end{exercise}
 
 \begin{exercise}
@@ -723,6 +1082,21 @@ Implement an iterative LMTD-based sizing routine: given the inlet
 temperatures, mass flows, and one outlet temperature, compute the
 other outlet temperature and the area required. Verify against a
 textbook example.
+
+\paragraph{Solution sketch.} The second outlet follows in closed form from
+the energy balance: $\dot{Q} = C_{\text{known}}\,\Delta T_{\text{known}}$,
+then the other stream's outlet from $\dot{Q} = C_{\text{other}}\,\Delta
+T_{\text{other}}$. With all four temperatures in hand the LMTD is direct
+and the area is $A = \dot{Q}/(U F \Delta T_{\text{LMTD}})$, so no
+iteration is needed when both outlets reduce to balances. An iteration
+is required only when $U$ depends on the (unknown) wall temperatures or
+when the correction factor $F$ depends on terminal temperatures that
+are themselves being solved; then loop: guess outlets, compute $F$ and
+$U$, recompute the area and outlets, repeat to convergence. The routine
+\texttt{lmtd\_sizing.py} performs the non-iterative core; verify it on
+the $1\,\text{MW}$ steam-condenser example of the estimation block,
+which it reproduces at $\Delta T_{\text{LMTD}} = 19.6\,\si{\kelvin}$ and
+$A = 25.5\,\text{m}^2$.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -732,6 +1106,23 @@ Specify the geometry of a shell-and-tube preheater to recover heat
 from a $5\,\text{kg/s}$ stream of hot exhaust gas ($200\,\degC$
 inlet) to preheat $3\,\text{kg/s}$ of inlet air from $20\,\degC$.
 Target a thermal effectiveness of $\varepsilon \geq 0.7$.
+
+\paragraph{Solution sketch.} The capacity rates (air $c_p \approx 1005\,
+\text{J/(kg K)}$) are $C_{\text{exhaust}} = 5 \times 1005 = 5025\,
+\si{\watt\per\kelvin}$ and $C_{\text{air}} = 3 \times 1005 = 3015\,
+\si{\watt\per\kelvin}$, so $C_{\min} = 3015$ (the inlet air), $C_r =
+3015/5025 = 0.6$. For a counter-flow arrangement at $\varepsilon =
+0.7$, invert the relation: $\text{NTU} = \frac{1}{C_r - 1}\ln\frac{
+\varepsilon - 1}{\varepsilon C_r - 1} = \frac{1}{-0.4}\ln\frac{-0.3}{
+-0.58} = \frac{1}{-0.4}\ln(0.517) = 1.65$. Then $UA = \text{NTU}\,
+C_{\min} = 1.65 \times 3015 = 4975\,\text{W/K}$. Gas-to-gas
+coefficients are low, $U \approx 25\,\si{\watt\per\meter\squared\per
+\kelvin}$, so the area is $A = 4975/25 \approx 200\,\text{m}^2$, which
+points to a finned cross-flow or compact recuperator rather than a bare
+shell-and-tube. State the geometry: extended (finned) surface, a
+counter-flow-biased arrangement to hold the inverted $F$, and tube
+velocities chosen to keep the gas-side pressure drop within the
+available draft.
 \end{exercise}
 
 \begin{exercise}
@@ -739,6 +1130,23 @@ Design a domestic hot-water-to-radiant-floor distribution loop. The
 floor area is $80\,\text{m}^2$ with $50\,\text{W/m}^2$ heat-loss
 rate; the supply water is at $45\,\degC$ and the return water at
 $35\,\degC$. Specify the loop spacing, pipe diameter, and flow rate.
+
+\paragraph{Solution sketch.} The total heat delivered is $\dot{Q} = 80
+\times 50 = 4\,\text{kW}$. The supply-to-return drop is $\Delta T =
+45 - 35 = 10\,\si{\kelvin}$, so the water flow is $\dot{m} = \dot{Q}/
+(c_p \Delta T) = 4000/(4180 \times 10) = 0.096\,\text{kg/s} \approx
+0.1\,\text{kg/s}$, about $0.35\,\text{m}^3/\text{h}$. Radiant floor
+practice spaces the tubing $150$ to $200\,\si{\milli\meter}$ on centre;
+at $200\,\si{\milli\meter}$ spacing the $80\,\text{m}^2$ floor needs
+roughly $80/0.2 = 400\,\text{m}$ of tube, which exceeds the length one
+loop can carry at acceptable pressure drop, so split into about three
+loops of $130\,\text{m}$ on a manifold. Use $16\,\si{\milli\meter}$
+inner-diameter cross-linked polyethylene tube; at $0.1\,\text{kg/s}$
+split three ways the per-loop velocity is modest ($\sim 0.2\,\text{m/s}$)
+and the per-loop pressure drop stays within the circulator's head. The
+binding constraints are the maximum floor surface temperature (comfort
+and finish limits, near $29\,\degC$) and the per-loop length that keeps
+the pressure drop pumpable.
 \end{exercise}
 
 \begin{exercise}
@@ -747,6 +1155,23 @@ power plant: $100\,\text{MW}_e$ output, $6\,\text{hours}$ of storage,
 molten-salt working fluid at $290$/$565\,\degC$. State the tank
 volume, the heat-exchanger duty, and the temperature stratification
 assumed.
+
+\paragraph{Solution sketch.} Assume a power-block thermal efficiency of
+about $0.4$, so $100\,\text{MW}_e$ for $6\,\text{hours}$ needs thermal
+energy $E = (100/0.4) \times 6 = 1500\,\text{MWh}_{\text{th}} = 5.4
+\times 10^{12}\,\text{J}$. Solar-salt stores $\rho c_p \Delta T = 1850
+\times 1500 \times (565 - 290) = 7.6 \times 10^{8}\,\text{J/m}^3$. The
+salt volume is $5.4 \times 10^{12}/7.6 \times 10^{8} = 7100\,\text{m}^3$.
+Commercial plants use a two-tank arrangement (a cold tank at $290\,
+\degC$ and a hot tank at $565\,\degC$), so two tanks of about $7000\,
+\text{m}^3$ each, or roughly $40\,\text{m}$ diameter by $14\,\text{m}$
+tall, rather than relying on stratification within a single
+thermocline tank. The discharge heat-exchanger (salt-to-steam) duty is
+the thermal rate, $100/0.4 = 250\,\text{MW}_{\text{th}}$. Two-tank
+storage sidesteps the stratification question by physically separating
+hot and cold inventories; a single-tank thermocline design would assume
+a thermocline a metre or two thick and accept a few percent of usable
+capacity lost to it.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{core}
@@ -756,12 +1181,41 @@ A cooling-water-to-process-fluid heat exchanger has shown a
 declining $U$ over the past year, from $1200$ to $700\,\text{W}/(
 \text{m}^2\cdot\si{\kelvin})$. Identify the most probable fouling
 mechanism and the diagnostic measurement.
+
+\paragraph{Solution sketch.} A cooling-water service that loses $42\,\%$
+of its coefficient over a year, on a roughly asymptotic decline, points
+to crystallisation (scale) fouling on the water side, with biological
+fouling as the second candidate if the water is warm and the velocity
+low. The diagnostic is to track the coefficient and the pressure drop
+together: scale raises the pressure drop modestly while it cuts $U$
+sharply, whereas a step change in $U$ without a pressure-drop change
+suggests an air or gas blanket rather than a deposit. Confirm by pulling
+a tube at the next shutdown and identifying the deposit (calcium
+carbonate scale versus biofilm versus silt), and check the water
+chemistry (hardness, temperature, biocide residual). The dataset
+\texttt{condenser\_U\_decline.csv} shows the matching coefficient and
+pressure-drop signatures of a scaling service.
 \end{exercise}
 
 \begin{exercise}
 A shell-and-tube exchanger in a refinery has begun to leak after
 $15\,\text{years}$ of service. Identify the most probable corrosion
 mode, the diagnostic, and the corrective action.
+
+\paragraph{Solution sketch.} A leak appearing after long service, rather
+than early, suggests a progressive wall-thinning or cracking mode
+rather than a manufacturing defect. The leading candidates in refinery
+service are erosion-corrosion at flow disturbances (inlet nozzles,
+U-bends), under-deposit pitting beneath fouling, and, in chloride or
+sulphide environments with stainless tubes, stress-corrosion cracking.
+The diagnostic is eddy-current or, for ferromagnetic tubes,
+remote-field testing of the full bundle to map wall loss and crack
+indications, combined with locating the leaking tube by pressure-decay
+or helium testing. The corrective action is to plug or sleeve the failed
+tubes if few, retube if many, and address the root cause: a material
+upgrade (for example to a duplex or titanium tube), an inlet-erosion
+sleeve, or a fouling-control change to remove the under-deposit
+mechanism.
 \end{exercise}
 
 \begin{exercise}
@@ -769,6 +1223,21 @@ A district-heating substation's return temperature has risen from
 $45\,\degC$ to $55\,\degC$ over a heating season. Identify what the
 change indicates about the consumer-side hydraulic balance and the
 diagnostic that distinguishes the possibilities.
+
+\paragraph{Solution sketch.} A rising return temperature means the
+substation is extracting less temperature drop from the network water
+for the same heat, which is a fault, because high return temperature
+raises distribution losses and limits the network's capacity. The
+candidate causes are a fouled or undersized consumer heat exchanger
+(too little area to cool the return), a control valve stuck open or
+hunting (excess flow, short residence time), or a bypass left open that
+returns hot supply water unused. Distinguish them by reading flow and
+both temperatures at the substation: a fouled exchanger shows a falling
+overall coefficient with normal flow; an open control valve or bypass
+shows excess flow at low temperature drop. The fix follows the cause:
+clean or enlarge the exchanger, re-tune or replace the valve, or close
+the bypass. This is the consumer-side counterpart of the network
+hydraulic design of section 6.6.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -779,6 +1248,22 @@ primary-to-secondary tube leak (detected by activity monitors). The
 tube material is Inconel 600. Identify the most probable failure
 mode (stress-corrosion cracking, denting, wastage) and state how the
 detection method establishes which.
+
+\paragraph{Solution sketch.} Inconel 600 in pressurised-water steam
+generators is historically prone to primary-water stress-corrosion
+cracking, especially at the tube-sheet expansion transitions and the
+U-bend apexes where residual stress is highest, so cracking is the
+leading mode over denting (caused by support-plate corrosion product
+growth) and wastage (caused by phosphate water chemistry, now largely
+designed out). The activity monitors establish only that a
+primary-to-secondary leak exists, not its mechanism; the mechanism is
+established by eddy-current inspection, which images crack-like
+indications at the high-stress locations and distinguishes axial and
+circumferential cracking from the volumetric metal loss of wastage and
+the geometry change of denting. The corrective action is to plug or
+sleeve the affected tubes and, for a fleet problem, to replace the
+steam generator with thermally treated Inconel 690 tubing, which is far
+more resistant to the cracking mode.
 \end{exercise}
 
 \begin{exercise}
@@ -786,6 +1271,20 @@ A municipal cooling-tower system has suffered Legionnaires' disease
 outbreaks among nearby residents. Identify the heat-transfer system
 component responsible and the engineering controls that should have
 prevented the outbreak.
+
+\paragraph{Solution sketch.} The responsible component is the open
+recirculating cooling tower, an evaporative direct-contact exchanger
+whose warm water and drift aerosol are an ideal vector for
+\emph{Legionella} bacteria carried on the drift droplets to nearby
+people. The water sits in the temperature band ($25$ to $45\,\degC$)
+that favours bacterial growth, the basin and packing offer biofilm and
+nutrient surfaces, and the fan disperses fine droplets beyond the
+tower. The engineering controls that should have been in place are a
+maintained biocide dosing programme, regular cleaning and inspection of
+the basin and fill to remove biofilm and sediment, high-efficiency
+drift eliminators to cut the aerosol carried out of the tower, and a
+water-management plan with periodic \emph{Legionella} sampling. The
+case is described here by mechanism; no named registry entry is cited.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -795,6 +1294,19 @@ A junior engineer argues that an exchanger ``with greater area is
 always better.'' Write a one-paragraph reply that identifies the
 costs of over-sized area (capital, pressure drop, fouling rate,
 weight, installation).
+
+\paragraph{Solution sketch.} A model reply: more area costs more metal,
+more shell, and more support steel, so capital and installed weight
+rise directly. If the extra area comes from more or longer tubes at the
+same flow, the per-pass velocity may fall, which lowers the
+heat-transfer coefficient and, worse, lets particulate and biological
+fouling settle faster, so the over-sized unit can foul sooner and lose
+the very margin it was bought for. Larger frontal area or more passes
+also changes the pressure drop, raising pumping cost on one side or
+forcing a velocity compromise. The right amount of area is the duty
+plus a justified fouling allowance, not the largest unit that fits; the
+junior engineer is optimising one variable while ignoring the four it
+trades against.
 \end{exercise}
 
 \begin{exercise}
@@ -803,4 +1315,20 @@ shell-and-tube cooling exchanger from six months to eighteen.
 Write a one-paragraph reply that identifies the trade-off between
 cleaning cost and degraded-performance cost and the data needed to
 make the decision.
+
+\paragraph{Solution sketch.} A model reply: extending the interval saves
+direct cleaning cost (labour, the cost of taking the unit out of
+service, chemicals) but lets the coefficient decline further along the
+asymptotic-fouling curve, so the exchanger runs longer at degraded
+duty, which costs lost throughput, higher pumping power against a rising
+pressure drop, and a greater risk of under-deposit corrosion that
+shortens tube life. The decision needs the fouling-decline data for
+this unit (the coefficient and pressure-drop history that fixes how
+fast performance falls), the marginal value of the lost duty, the
+cleaning cost and outage duration, and the corrosion risk of leaving
+deposits in place longer. The honest answer is to set the interval
+where the marginal degraded-performance cost over the next month equals
+the amortised cleaning cost, which the unit's own decline curve and the
+plant's value of throughput determine; eighteen months may be right or
+reckless depending on those numbers.
 \end{exercise}
