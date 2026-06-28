@@ -6,7 +6,7 @@ must do a lot.}{David J.\ C.\ MacKay, \emph{Sustainable Energy without
 the Hot Air} (UIT Cambridge, 2009), p.~3
 \cite[p.~3]{gen:mackay2009}.}
 
-\chapmeta{Half-life: medium. Archetypes: balance, transport, scaling, control. Exercise target: 34. Project track: simulation plus household-data analysis (hybrid). Hazard class: low (analytical and modelling work; hands-on rooftop solar work is hazard class medium-to-high and outside the chapter's scope). Reader path default: standard, with sections explicitly tagged. Named cases: Three Mile Island (1979) as a reactor outage exemplar; large grid blackouts (Northeast 2003, Texas 2021) described by mechanism without naming as registry-anchored cases (registry entries not yet written).}
+\chapmeta{Half-life: medium. Archetypes: balance, transport, scaling, control. Exercise target: 34. Project track: simulation plus household-data analysis (hybrid). Hazard class: low (analytical and modelling work; hands-on rooftop solar work is hazard class medium-to-high and outside the chapter's scope). Reader path default: standard, with sections explicitly tagged. Named cases: Three Mile Island (1979) as a reactor outage exemplar (cited); large grid blackouts (Northeast 2003, Texas 2021) described by mechanism without invoking the named case (Texas 2021 has a registry entry, Northeast 2003 does not; battery-storage fire cases McMicken 2019 and Moss Landing 2021/2024 have no registry entry).}
 
 \noindent
 The energy system is the integration of generation, transmission,
@@ -91,10 +91,39 @@ to avoid catastrophic equipment failure; the consequence is a
 cascading separation of the grid into electrically isolated
 ``islands.''
 
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-frequency-response.tex}
+
+Figure \ref{fig:vol04ch14:frequency-response} traces the frequency
+trajectory after a sudden loss of generation. The rotor inertia of the
+synchronous fleet sets the initial rate of fall, primary governor
+response arrests the decline at the nadir within seconds, and secondary
+control restores the nominal value over the following minute. The
+nadir is the quantity that decides whether automatic under-frequency
+load shedding fires. The single-bus swing-equation model in
+\texttt{code/frequency\_response.py} integrates the linearised dynamics
+and shows the nadir deepening as the inertia constant $H$ falls, the
+regime that high-inverter-penetration grids are moving into; a measured
+event trajectory is tabulated in \texttt{data/grid\_frequency\_event.csv}.
+
 \section{Power generation: thermal, hydro, wind, solar, nuclear, geothermal}\pathtag{standard}
 
 A modern grid mixes generation from several primary sources, each
-with its own working physics and operational characteristics.
+with its own working physics and operational characteristics. Two
+numbers characterise any generator before its physics: its
+\engterm{capacity factor}, the ratio of the energy it actually produces
+in a year to the energy it would produce running at rated power
+continuously, and its \engterm{levelized cost of energy}, the constant
+per-unit price that makes lifetime discounted revenue equal lifetime
+discounted cost. Figure \ref{fig:vol04ch14:capacity-factor} compares
+capacity factors across technologies and Figure
+\ref{fig:vol04ch14:lcoe-bars} compares the levelized costs; the
+\texttt{code/capacity\_factor.py} and \texttt{code/lcoe.py} routines
+compute both from the inputs tabulated in
+\texttt{data/generation\_mix.csv}.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-capacity-factor.tex}
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-lcoe-bars.tex}
 
 \engterm{Thermal generation} from fossil fuels (coal, natural gas,
 fuel oil) burns the fuel to raise steam (Rankine cycle, Chapter 3 of
@@ -135,6 +164,17 @@ rated power $\sim 4\,\si{\mega\watt}$, and capacity factors of $\sim
 30\,\%$ onshore, $\sim 45\,\%$ offshore. The cube dependence on wind
 speed means a doubling of average wind speed multiplies the power
 yield by $8$; siting matters enormously.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-betz-curve.tex}
+
+The power coefficient $C_p$ is bounded above by the Betz limit, derived
+in the exercises by treating the rotor as an actuator disc that slows
+the wind from upstream to downstream. Figure
+\ref{fig:vol04ch14:betz-curve} plots $C_p = 4a(1-a)^2$ against the
+axial induction factor $a$; the maximum at $a = 1/3$ gives the famous
+$16/27 \approx 0.593$. Real turbines reach $C_p \approx 0.45$ to
+$0.50$ at their best operating point, below the ideal because of tip
+losses, drag, and wake rotation.
 
 \engterm{Solar photovoltaic generation} converts sunlight directly to
 electricity through pn-junction cells (Chapter 12). At standard
@@ -186,6 +226,27 @@ makes energy storage essential; without storage, the grid must
 either curtail generation when supply exceeds demand or maintain
 high-capital-cost dispatchable backup generators.
 
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-renewable-variability.tex}
+
+Figure \ref{fig:vol04ch14:renewable-variability} shows the source of
+the problem: wind and solar output vary on time scales from minutes to
+days, and the variation is only partly predictable. Solar follows a
+clean daily cycle modulated by cloud; wind swings on the multi-day
+scale of weather systems. The two are partly anti-correlated (wind
+often rises when a front blocks the sun), so a mixed portfolio is
+smoother than either alone, but neither removes the need to move energy
+in time. The storage technologies in \texttt{data/storage\_technologies.csv}
+span the range from minute-scale to seasonal.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-storage-profile.tex}
+
+Figure \ref{fig:vol04ch14:storage-profile} shows the daily cycle a
+grid-scale or household battery performs to flatten the net load:
+charge from the midday surplus, discharge into the early-evening peak.
+The state of charge is the running integral of power, bounded above by
+the usable capacity, and the discharged energy falls below the charged
+energy by the round-trip loss.
+
 \engterm{Pumped-storage hydroelectricity} is the dominant grid-scale
 storage technology by energy capacity. Water is pumped from a lower
 reservoir to an upper reservoir during periods of cheap electricity
@@ -235,6 +296,27 @@ the round-trip-efficiency cost, and to industrial-feedstock uses
 (ammonia synthesis, steelmaking) where hydrogen replaces fossil
 methane or coke.
 
+\begin{mastery}
+\textbf{Power and energy are priced separately.} A storage system has
+two capacities that scale and cost independently: the power rating
+(how fast it can charge or discharge, $\si{\mega\watt}$) and the energy
+rating (how much it can hold, $\si{\mega\watt\hour}$). Their ratio is
+the discharge duration. Lithium-ion costs are dominated by the energy
+(the cells), so a $4\,\si{\hour}$ system is roughly twice the cost of a
+$2\,\si{\hour}$ system of the same power; pumped hydro and hydrogen
+have a high fixed power cost (turbines, electrolysers) and a low
+marginal energy cost (a bigger reservoir, a bigger tank), so their
+cost-per-hour falls with duration. The crossover is why lithium-ion
+wins the minutes-to-hours market and pumped hydro or hydrogen win the
+hours-to-seasons market. A round-trip chain compounds its losses
+multiplicatively: the green-hydrogen path of electrolysis,
+compression, transport, and fuel cell multiplies to $\sim 0.65 \times
+0.90 \times 0.95 \times 0.55 \approx 0.31$, so roughly two thirds of
+the input electricity is lost. The \texttt{code/storage\_sizing.py}
+routine computes both the chain efficiency and the energy a multi-day
+shortfall demands.
+\end{mastery}
+
 \section{Demand-side management and grid control}\pathtag{standard}
 
 The classical grid was generation-following-load: generation was
@@ -244,6 +326,26 @@ shifted in time to align with available generation (especially
 intermittent renewables). The mechanisms are collectively known as
 \engterm{demand-side management} (DSM) and \engterm{demand response}
 (DR).
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-daily-load-duck.tex}
+
+The operational case for demand-side management is written in the shape
+of the net load. Figure \ref{fig:vol04ch14:duck-curve} shows the
+``duck curve'' that high solar penetration imposes: subtracting midday
+solar from gross demand hollows out the middle of the day and steepens
+the early-evening ramp, when the sun sets while demand peaks. The
+dispatchable fleet must follow that ramp, and the steeper it grows, the
+more flexible (and expensive) the generation and storage that serve it.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-dispatch-stack.tex}
+
+Figure \ref{fig:vol04ch14:dispatch-stack} shows the complementary
+picture from the generation side: the dispatch stack, in which
+low-marginal-cost must-run and variable sources fill the bottom and
+flexible gas fills the gap to the demand curve. The gas layer ramps
+hardest exactly where the duck's neck is steepest. Demand-side
+management attacks the same problem from the load side, flattening the
+net-load curve so the stack needs less flexible generation at the top.
 
 The simplest DSM mechanism is \engterm{time-of-use pricing}: the
 retail electricity tariff varies with the wholesale supply-demand
@@ -330,6 +432,28 @@ demonstration (2022) was the first utility-scale demonstration of
 this capability at a state-grid scale; rollout is ongoing in
 high-renewable jurisdictions.
 
+\begin{mastery}
+\textbf{Where the inertia goes.} A synchronous grid stores kinetic
+energy in the spinning mass of every generator and motor, and that
+stored energy is what slows the rate of frequency change after a trip.
+The inertia constant $H$ measures it: the seconds of rated output the
+stored kinetic energy could supply, typically $H \approx 2$ to $9\,\si{
+\second}$ for a thermal fleet. The initial rate of change of frequency
+after losing a block $\Delta P$ of generation is $df/dt = -f_0\,\Delta
+P/(2H S)$ with $S$ the system rating, so halving the inertia doubles the
+initial slope and deepens the nadir (Figure
+\ref{fig:vol04ch14:frequency-response}). Replacing synchronous
+generators with inverter-coupled wind and solar removes their physical
+inertia, because the inverter decouples the source from the grid
+frequency. A high-renewable grid must therefore manufacture the
+stabilising response it used to get for free: synthetic (virtual)
+inertia and fast frequency response programmed into grid-forming
+inverters, faster primary control, and a cap on the size of the largest
+single in-feed. The integration question for the energy transition is
+not only how to generate the energy but how to keep the whole machine
+stable once the spinning mass that used to stabilise it is gone.
+\end{mastery}
+
 \section{The energy transition}\pathtag{standard}
 
 The defining infrastructure question of the early twenty-first
@@ -347,6 +471,18 @@ geothermal, marine), according to Ember and IEA reporting current as
 of 2024. Electricity is approximately $20\,\%$ of total final energy
 consumption; the remainder is direct fuel use (transport, heating,
 industrial heat).
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-energy-sankey.tex}
+
+Figure \ref{fig:vol04ch14:energy-sankey} sets out the whole-system
+balance the transition must rework. Primary sources feed two carriers,
+electricity and direct fuel; the carriers feed end uses, with a large
+fraction lost as rejected energy in conversion and transmission. The
+transition shifts flow from the direct-fuel band into the electricity
+band (electrification of transport and heat) while decarbonising the
+electricity band itself, and it shrinks the rejected-energy sink
+because electric drives and heat pumps reject far less than the
+combustion processes they replace.
 
 The engineering content of the transition is fivefold:
 \begin{itemize}[leftmargin=*]
@@ -374,7 +510,7 @@ The engineering content of the transition is fivefold:
     sustainable aviation fuels, and battery-electric for short-haul
     are the candidate solutions.
   \item Decarbonisation of industry: chemical-industry feedstocks
-    (notably ammonia and steel) are produced from natural gas and
+    (ammonia and steel in particular) are produced from natural gas and
     coke today; low-carbon hydrogen and direct-reduced-iron processes
     are the engineered alternatives.
 \end{itemize}
@@ -386,6 +522,86 @@ maintenance, and the policy framework. The book takes no normative
 position on whether the transition is occurring fast enough; it states
 that the engineering of each component is well understood and the
 integration questions are the working open problems.
+
+\section{Worked examples: sizing the system}\pathtag{core}
+
+The chapter's quantities combine into a handful of recurring
+calculations. We work three that recur in practice: the capacity factor
+to annual energy bridge, the storage energy to ride through a
+shortfall, and the levelized cost comparison that decides what to
+build.
+
+\paragraph{From capacity factor to annual energy.} A $1\,\si{\giga
+\watt}$ nameplate wind farm with a capacity factor of $35\,\%$ produces
+\[
+E = P_{\text{rated}}\,\text{CF}\,(8760\,\si{\hour})
+  = (1000\,\si{\mega\watt})(0.35)(8760\,\si{\hour})
+  \approx 3.07\,\text{TWh}/\text{yr}.
+\]
+A $1\,\si{\giga\watt}$ nuclear plant at a $92\,\%$ capacity factor
+produces $\approx 8.06\,\text{TWh}/\text{yr}$, so matching the nuclear
+plant's energy with wind needs $8.06/3.07 \approx 2.6\,\si{\giga\watt}$
+of wind nameplate. Nameplate capacity and delivered energy are not the
+same currency, and the capacity factor is the exchange rate; the
+\texttt{code/capacity\_factor.py} routine carries the conversion both
+ways.
+
+\paragraph{Storage to ride through a shortfall.} Suppose a grid with a
+$45\,\si{\giga\watt}$ peak demand and an average load of $\sim 70\,\%$
+of peak must ride through a ten-day still-and-cloudy event entirely on
+storage. The energy is
+\[
+E = (0.70)(45\,\si{\giga\watt})(24\,\si{\hour})(10) \approx 7.6\,
+\text{TWh},
+\]
+which at a lithium-ion energy cost of $\$140\,\si{\per\kilo\watt\hour}$
+(current as of 2024) costs $\sim \$1.06$ trillion. The number is the
+quickest argument that lithium-ion is the wrong tool for multi-day
+storage at national scale; long-duration chemistries with low
+energy-cost (pumped hydro, hydrogen) or firm low-carbon generation
+carry that role. The arithmetic is in \texttt{code/storage\_sizing.py}.
+
+\paragraph{Levelized cost comparison.} The levelized cost of energy
+discounts a plant's lifetime cost and lifetime energy to a single
+per-unit price. For utility solar with a capital cost of $\sim \$900\,
+\si{\per\kilo\watt}$, a fixed running cost of $\sim \$15\,\si{\per\kilo
+\watt}$ per year, no fuel, an $18\,\%$ capacity factor, a 30-year life,
+and a $7\,\%$ discount rate, the calculation in \texttt{code/lcoe.py}
+returns $\sim \$56\,\si{\per\mega\watt\hour}$, in the range of Figure
+\ref{fig:vol04ch14:lcoe-bars}. The levelized cost is a first-order
+screen, not the whole decision: it omits the system cost of
+intermittency, which is where the storage and dispatch of the rest of
+this chapter re-enter.
+
+\begin{estimation}
+\textbf{Question.} How much land would the United States need to cover
+with solar panels to supply its entire electricity demand, ignoring
+storage and transmission?
+
+\textbf{Working.} US electricity demand is $\sim 4000\,\text{TWh}/
+\text{yr}$ (current as of 2024). Average insolation over the
+contiguous US is $\sim 200\,\si{\watt\per\meter\squared}$ averaged over
+day and night and over the year; a utility solar farm converts at
+$\sim 20\,\%$ panel efficiency but packs panels at $\sim 40\,\%$ ground
+coverage and loses $\sim 15\,\%$ in conversion and downtime, so the
+delivered areal power is roughly $200 \times 0.20 \times 0.40 \times
+0.85 \approx 14\,\si{\watt\per\meter\squared}$. The annual energy per
+square metre is $14\,\si{\watt} \times 8760\,\si{\hour} \approx 120\,
+\si{\kilo\watt\hour}/\si{\meter\squared}$. The area is
+\[
+A \approx \frac{4000 \times 10^{9}\,\si{\kilo\watt\hour}}
+{120\,\si{\kilo\watt\hour}/\si{\meter\squared}}
+\approx 3.3 \times 10^{10}\,\si{\meter\squared}
+= 3.3 \times 10^{4}\,\si{\kilo\meter\squared},
+\]
+a square about $180\,\si{\kilo\meter}$ on a side, around $0.4\,\%$ of
+the contiguous US land area. The order-of-magnitude verdict, that the
+land is available, holds under every reasonable assumption; the binding
+constraints are storage (the calculation ignored night and winter),
+transmission, and the spread of the resource, not the raw area. The
+estimate also shows why ``solar cannot power a country because it would
+cover the country'' is wrong by two orders of magnitude.
+\end{estimation}
 
 \section{Failure: grid blackouts, runaway batteries, generation outages}\pathtag{core}
 
@@ -412,10 +628,11 @@ million customers without power for up to four days after natural-
 gas-fired generators failed in extreme cold weather, while wind and
 solar generation were also reduced; the ERCOT grid is not
 synchronously connected to the rest of the United States and could
-not import emergency capacity. Neither event has a registry entry in
-this book yet, so they are described by mechanism rather than as
-named cases; the registry entries should be written before either is
-named in any subsequent chapter.
+not import emergency capacity. The 2003 event is described here by
+mechanism; the 2021 Texas event is recorded in the named-case registry,
+and this chapter narrates it by mechanism rather than invoking the
+named case, deferring the formal citation to a chapter that frames the
+case directly.
 
 The engineering content of blackout prevention is twofold: build the
 grid with operational margin (the $N-1$ contingency standard, in
@@ -511,7 +728,10 @@ and estimate the grid dependence.
   \item Subtract the hourly load from the hourly generation to
     compute the hourly surplus (positive) or deficit (negative).
   \item Apply battery dispatch: charge from surplus until full,
-    discharge from deficit until empty.
+    discharge from deficit until empty. The greedy dispatch in
+    \texttt{code/household\_dispatch.py}, run on the sample profile in
+    \texttt{data/household\_load\_pv.csv}, implements exactly this loop
+    and reports the annual fractions.
   \item Sum the residual surplus (sold back to grid or curtailed)
     and the residual deficit (imported from grid).
   \item Repeat for a year of data; report the annual grid-import
@@ -541,6 +761,15 @@ A $400\,\si{\kilo\volt}$ three-phase transmission line carries
 $1\,\si{\giga\watt}$ of real power at power factor $0.95$. Compute
 the line current and the $I^{2}R$ loss in a $200\,\si{\kilo\meter}$
 line of resistance $0.03\,\si{\ohm\per\kilo\meter}$ per phase.
+\paragraph{Solution sketch.}
+From $P = \sqrt{3}\,V_L I_L \cos\phi$, the line current is $I_L =
+P/(\sqrt{3}\,V_L\cos\phi) = 10^9/(\sqrt{3}\cdot 4\times10^5\cdot 0.95)
+\approx 1519\,\si{\ampere}$. The per-phase resistance is $R = 0.03
+\times 200 = 6\,\si{\ohm}$. The three-phase loss is $P_{\text{loss}} =
+3 I_L^2 R = 3(1519)^2(6) \approx 41.5\,\si{\mega\watt}$, about $4.2\,\%$
+of the transmitted power. The point is the $1/V^2$ scaling of loss at
+fixed power: doubling the voltage quarters the current and the loss,
+which is why bulk power moves at hundreds of kilovolts.
 \end{exercise}
 
 \begin{exercise}
@@ -548,6 +777,14 @@ A wind turbine has a rotor diameter of $120\,\si{\meter}$ and operates
 at $C_{p} = 0.45$ in wind of $10\,\si{\meter\per\second}$ at sea-
 level air density. Compute the mechanical power available at the
 rotor shaft.
+\paragraph{Solution sketch.}
+The swept area is $A = \pi(60)^2 \approx 1.13\times10^4\,\si{\meter
+\squared}$. With $\rho = 1.225\,\si{\kilogram\per\meter\cubed}$ and
+$v = 10\,\si{\meter\per\second}$, $P = \tfrac{1}{2}C_p\rho A v^3 =
+0.5(0.45)(1.225)(1.13\times10^4)(10^3) \approx 3.1\,\si{\mega\watt}$.
+Note the cube law: dropping the wind to $8\,\si{\meter\per\second}$
+would cut the power to $(8/10)^3 = 0.51$ of this, about $1.6\,\si{\mega
+\watt}$.
 \end{exercise}
 
 \begin{exercise}
@@ -555,6 +792,18 @@ A pumped-storage plant has an upper reservoir at $500\,\si{\meter}$
 elevation above the lower reservoir, $80\,\%$ round-trip efficiency,
 and stores $2\,\si{\giga\watt\hour}$ of electrical energy. Compute
 the volume of water cycled at full discharge.
+\paragraph{Solution sketch.}
+The recoverable electrical energy is $E = \eta_{\text{gen}}\,\rho g V H$.
+Splitting the $80\,\%$ round trip evenly gives a generation-leg
+efficiency $\eta_{\text{gen}} \approx \sqrt{0.80} \approx 0.89$ (or take
+the stated value as the discharge efficiency directly; either reading is
+acceptable if stated). Using $\eta_{\text{gen}} = 0.89$, $E = 2\,\si{
+\giga\watt\hour} = 7.2\times10^{12}\,\si{\joule}$, so $V = E/(\eta\rho g
+H) = 7.2\times10^{12}/(0.89\cdot1000\cdot9.81\cdot500) \approx 1.65
+\times10^{6}\,\si{\meter\cubed}$, roughly $1.6\,\si{\milli\meter}$ of
+depth over a square kilometre, or a reservoir a few hundred metres on a
+side and several metres deep. The head, not the volume, is what makes
+pumped storage compact.
 \end{exercise}
 
 \begin{exercise}
@@ -562,6 +811,16 @@ A residential rooftop PV system has $6\,\si{\kilo\watt
 \textsubscript{p}}$ rated DC, $85\,\%$ DC-to-AC efficiency, and a
 $22\,\%$ capacity factor. Compute the annual electricity production
 in kilowatt-hours.
+\paragraph{Solution sketch.}
+Read the capacity factor as applying to the AC nameplate after the
+inverter, so $P_{\text{AC,rated}} = 0.85\times 6 = 5.1\,\si{\kilo\watt}$
+and $E = P_{\text{AC,rated}}\,\text{CF}\,(8760) = 5.1\times0.22\times
+8760 \approx 9830\,\si{\kilo\watt\hour}/\text{yr}$. If instead the
+$22\,\%$ already refers to the DC rating, $E = 6\times0.22\times8760
+\approx 11600\,\si{\kilo\watt\hour}$ before the AC conversion. Either
+convention gives $\sim 10\,\si{\mega\watt\hour}/\text{yr}$; state which
+capacity the capacity factor is referenced to, since that choice is the
+common source of disagreement between quotes.
 \end{exercise}
 
 \begin{exercise}
@@ -569,6 +828,14 @@ A lithium-iron-phosphate battery has a nominal capacity of $200\,\si{
 \ampere\hour}$ at $3.2\,\si{\volt}$ per cell and a $90\,\%$ round-
 trip efficiency. Compute the energy stored and the charging energy
 required from the grid.
+\paragraph{Solution sketch.}
+Per cell, $E = QV = 200\,\si{\ampere\hour}\times3.2\,\si{\volt} = 640\,
+\si{\watt\hour} = 0.64\,\si{\kilo\watt\hour}$. The energy delivered on
+discharge is what the cell holds; the charging energy drawn from the
+grid to return that much to load over a full cycle is $E_{\text{in}} =
+E_{\text{out}}/\eta_{\text{rt}} = 0.64/0.90 \approx 0.71\,\si{\kilo\watt
+\hour}$. The $\sim 11\,\%$ difference is the round-trip loss, dissipated
+as heat in the cell internal resistance and the power electronics.
 \end{exercise}
 
 \begin{exercise}
@@ -576,6 +843,16 @@ A grid is supplying $80\,\si{\giga\watt}$ of demand from a generator
 pool with a primary frequency response of $20\,\si{\giga\watt\per
 \hertz}$. A $1\,\si{\giga\watt}$ generator trips. Compute the
 steady-state frequency dip.
+\paragraph{Solution sketch.}
+The primary response stiffness relates the steady-state power deficit
+to the frequency error: $\Delta P = K\,\Delta f$, so $\Delta f =
+\Delta P / K = 1\,\si{\giga\watt}/20\,\si{\giga\watt\per\hertz} = 0.05\,
+\si{\hertz}$. The grid settles at $49.95\,\si{\hertz}$ (or $59.95$ on a
+$60\,\si{\hertz}$ grid), inside the $\pm 0.05\,\si{\hertz}$ steady-state
+band; secondary control then trims the small residual back to nominal.
+This is the steady-state value, not the transient nadir, which is deeper
+and depends on inertia (the swing-equation model of Figure
+\ref{fig:vol04ch14:frequency-response}).
 \end{exercise}
 
 \begin{exercise}
@@ -583,6 +860,15 @@ A combined-cycle gas turbine plant achieves $60\,\%$ thermal-to-
 electric efficiency. Compute the natural-gas consumption in $\si{
 \meter\cubed\per\second}$ for a $500\,\si{\mega\watt}$ output, given
 a lower heating value of $36\,\si{\mega\joule\per\meter\cubed}$.
+\paragraph{Solution sketch.}
+The fuel thermal input is $\dot{Q} = P_{\text{out}}/\eta = 500/0.60
+\approx 833\,\si{\mega\watt}$. Dividing by the volumetric heating value,
+$\dot{V} = \dot{Q}/\text{LHV} = 833\,\si{\mega\watt}/36\,\si{\mega\joule
+\per\meter\cubed} \approx 23\,\si{\meter\cubed\per\second}$ of gas, or
+about $2\times10^{6}\,\si{\meter\cubed}$ per day. The same plant as a
+simple-cycle unit at $\eta \approx 0.38$ would burn $\sim 60\,\%$ more
+gas for the same output, which is the case for the bottoming Rankine
+cycle.
 \end{exercise}
 
 \begin{exercise}
@@ -591,6 +877,16 @@ of compressed hydrogen at $70\,\si{\mega\pascal}$, and a fuel cell
 operating at $55\,\%$ chemical-to-electric efficiency. Compute the
 total energy stored in the tank and the equivalent driving range at
 $200\,\si{\watt\hour\per\kilo\meter}$ road-load.
+\paragraph{Solution sketch.}
+Hydrogen's lower heating value is $\sim 120\,\si{\mega\joule\per\kilogram}
+\approx 33.3\,\si{\kilo\watt\hour\per\kilogram}$, so the chemical energy
+is $5\times33.3 \approx 167\,\si{\kilo\watt\hour}$. The electrical
+energy at the wheels (through the $55\,\%$ fuel cell) is $0.55\times167
+\approx 92\,\si{\kilo\watt\hour}$. At $200\,\si{\watt\hour\per\kilo
+\meter}$, the range is $92000/200 \approx 460\,\si{\kilo\meter}$. The
+$5\,\si{\kilogram}$ of hydrogen carries roughly the usable energy of a
+$60\,\si{\kilo\watt\hour}$ battery pack but at a fraction of the mass,
+which is the case for hydrogen in heavy long-range transport.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -599,18 +895,57 @@ $200\,\si{\watt\hour\per\kilo\meter}$ road-load.
 Derive the Betz limit $C_{p,\max} = 16/27$ for the power extracted
 from a horizontal-axis wind turbine, by treating the rotor as a
 disc actuator that decelerates the upstream-to-downstream flow.
+\paragraph{Solution sketch.}
+Let the upstream speed be $v_1$ and the far-downstream speed $v_2$, and
+define the axial induction factor $a$ so the disc speed is $v_1(1-a)$.
+Mass conservation gives the disc velocity as the average $\tfrac12(v_1
++v_2)$, so $v_2 = v_1(1-2a)$. The power extracted equals the kinetic-
+energy flux lost by the air, $P = \tfrac12\dot{m}(v_1^2 - v_2^2)$ with
+$\dot{m} = \rho A v_1(1-a)$. Substituting $v_2 = v_1(1-2a)$ and
+factoring out $\tfrac12\rho A v_1^3$ gives $P = \tfrac12\rho A
+v_1^3\,[\,4a(1-a)^2\,]$, so $C_p = 4a(1-a)^2$. Differentiating,
+$dC_p/da = 4(1-a)(1-3a) = 0$ at $a = 1/3$, where $C_p = 4(\tfrac13)
+(\tfrac23)^2 = 16/27 \approx 0.593$. Figure
+\ref{fig:vol04ch14:betz-curve} is this curve.
 \end{exercise}
 
 \begin{exercise}
 Derive the optimum tilt angle for a fixed-tilt solar panel as a
 function of latitude, given simple geometric arguments about
 average noon solar elevation over the year.
+\paragraph{Solution sketch.}
+At solar noon the sun's elevation above the horizon is $90^\circ -
+\phi + \delta$, where $\phi$ is the latitude and $\delta$ is the solar
+declination, swinging $\pm 23.4^\circ$ over the year and averaging zero.
+A panel collects most when its normal points at the sun, that is when
+its tilt from horizontal equals the sun's zenith angle $\phi - \delta$.
+Averaging over the year ($\langle\delta\rangle = 0$) gives the
+first-order rule $\beta_{\text{opt}} \approx \phi$: tilt the panel at
+the latitude angle, facing the equator. The refinement is that
+energy-weighting toward the brighter summer months and accounting for
+diffuse light pulls the optimum a few degrees below $\phi$ (empirically
+$\beta \approx 0.76\phi + 3.1^\circ$ is a common fit); the geometric
+$\beta = \phi$ is the defensible starting point.
 \end{exercise}
 
 \begin{exercise}
 Derive the relationship between battery state of charge and
 open-circuit voltage for a lithium-iron-phosphate cell, using a
 simplified one-zone thermodynamic model. State the assumptions.
+\paragraph{Solution sketch.}
+The open-circuit voltage is the Gibbs-energy change per unit charge of
+the cell reaction, $V_{\text{oc}} = -\Delta G/(nF)$. Writing $\Delta G
+= \Delta G^\circ + RT\ln Q$ with $Q$ the reaction quotient gives a
+Nernst form $V_{\text{oc}} = V^\circ - (RT/nF)\ln Q$, and modelling the
+electrode as a single solid-solution zone whose lithium activity tracks
+the state of charge $s$ as $Q \sim s/(1-s)$ yields $V_{\text{oc}}(s) =
+V^\circ - (RT/F)\ln[s/(1-s)]$, a sigmoid that is steep near the ends and
+flat in the middle. The flat middle is exactly what LFP shows: a long
+voltage plateau near $3.2\,\si{\volt}$ that makes state-of-charge
+estimation from voltage alone hard, forcing coulomb-counting instead.
+Assumptions: single-phase solid solution (LFP is really two-phase, which
+flattens the plateau further), uniform temperature, no kinetic
+overpotential, equilibrium measurement.
 \end{exercise}
 
 \begin{exercise}
@@ -618,6 +953,18 @@ Derive the $\sqrt{3}$ factor in three-phase power: $P = \sqrt{3}V_{L}
 I_{L}\cos\phi$, by summing the per-phase contributions and
 applying the line-to-phase voltage and current relationships for a
 wye-connected load.
+\paragraph{Solution sketch.}
+Total power is three times the per-phase power, $P = 3 V_{\text{ph}}
+I_{\text{ph}}\cos\phi$, where the per-phase quantities are the
+phase-to-neutral voltage and the phase current. In a wye connection the
+line current equals the phase current, $I_L = I_{\text{ph}}$, while the
+line-to-line voltage is the phasor difference of two phase voltages
+$120^\circ$ apart, whose magnitude is $V_L = \sqrt{3}\,V_{\text{ph}}$
+(the chord of two unit vectors at $120^\circ$ is $\sqrt{3}$). Substitute
+$V_{\text{ph}} = V_L/\sqrt{3}$ and $I_{\text{ph}} = I_L$ into $P = 3
+V_{\text{ph}}I_{\text{ph}}\cos\phi$ to get $P = 3(V_L/\sqrt3)I_L\cos\phi
+= \sqrt{3}\,V_L I_L\cos\phi$. The $\sqrt3$ is the geometry of three
+phasors at $120^\circ$, not a property of power.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -627,6 +974,19 @@ Estimate the rooftop solar capacity required to meet the global
 electricity demand if no other generation were used. State
 assumptions about average insolation, panel efficiency, and the
 load factor.
+\paragraph{Solution sketch.}
+Global electricity demand is $\sim 30000\,\text{TWh}/\text{yr}$
+(current as of 2024). With a solar capacity factor of $\sim 15\,\%$
+(a global rooftop average), the required nameplate is $P =
+E/(\text{CF}\times8760) = 30000\times10^9/(0.15\times8760) \approx
+2.3\times10^{13}\,\si{\watt} \approx 23\,\si{\tera\watt}$ of panels,
+roughly twenty times the $\sim 1.5\,\si{\tera\watt}$ installed by 2024.
+At $\sim 200\,\si{\watt\per\meter\squared}$ peak, that is $\sim 1.1
+\times10^{11}\,\si{\meter\squared} \approx 1.1\times10^{5}\,\si{\kilo
+\meter\squared}$ of panel area. The estimate ignores storage; supplying
+demand at night and in winter from daytime summer sun is the real
+constraint, and it multiplies the storage and overbuild requirement
+several-fold.
 \end{exercise}
 
 \begin{exercise}
@@ -636,18 +996,55 @@ $10$-day still-and-cloudy weather event, given national peak demand
 of $\sim 45\,\si{\giga\watt}$. State the capital cost at $\$140\,\si{
 \per\kilo\watt\hour}$ and compare to the UK's annual electricity
 expenditure.
+\paragraph{Solution sketch.}
+Take the average load over the event as $\sim 70\,\%$ of peak, $\sim
+31\,\si{\giga\watt}$. The energy is $31\,\si{\giga\watt}\times24\,\si{
+\hour}\times10 \approx 7.6\,\text{TWh} = 7.6\times10^{9}\,\si{\kilo\watt
+\hour}$. At $\$140\,\si{\per\kilo\watt\hour}$ the capital cost is
+$\sim \$1.06$ trillion (current as of 2024), several times the UK's
+annual electricity expenditure of order $\$50$ to $\$100$ billion. The
+verdict is that lithium-ion is the wrong technology for multi-day
+seasonal buffering; the role belongs to firm low-carbon generation,
+interconnection, or long-duration storage with a low energy cost. The
+\texttt{code/storage\_sizing.py} routine returns these numbers.
 \end{exercise}
 
 \begin{exercise}
 Estimate the land area required for a wind farm to produce the same
 annual energy as a $1\,\si{\giga\watt}$ nuclear plant, given turbine
 spacing of $5$ rotor diameters and a capacity factor of $35\,\%$.
+\paragraph{Solution sketch.}
+The nuclear plant at a $92\,\%$ capacity factor delivers $\sim 8.1\,
+\text{TWh}/\text{yr}$. Matching this with $35\,\%$-capacity-factor
+wind needs $8.1/(0.35\times8760)\times10^6 \approx 2.6\,\si{\giga\watt}$
+nameplate. Take $4\,\si{\mega\watt}$ turbines of $150\,\si{\meter}$
+rotor, so $\sim 660$ turbines. At $5$-diameter spacing each occupies
+$\sim (5\times150)^2 = 5.6\times10^{5}\,\si{\meter\squared}$, giving a
+gross farm area $\sim 660\times5.6\times10^{5} \approx 370\,\si{\kilo
+\meter\squared}$, a square $\sim 19\,\si{\kilo\meter}$ on a side. The
+land between turbines remains usable for farming or grazing, so the
+exclusive footprint is far smaller than the gross area; the nuclear
+plant's own site is $\sim 1\,\si{\kilo\meter\squared}$. The contrast in
+land intensity is one of the standard trade-offs.
 \end{exercise}
 
 \begin{exercise}
 Estimate the round-trip efficiency of a green-hydrogen storage chain
 from electricity through electrolysis, compression, transport, and
 fuel-cell conversion. State the dominant loss at each stage.
+\paragraph{Solution sketch.}
+Multiply the stage efficiencies: electrolysis $\sim 0.65$ (the
+overpotential needed to split water faster than equilibrium),
+compression to $70\,\si{\mega\pascal}$ $\sim 0.90$ (the compressor work,
+$\sim 10\,\%$ of the hydrogen's energy), transport and storage $\sim
+0.95$ (boil-off and leakage), fuel cell $\sim 0.55$ (the activation and
+ohmic losses, plus the thermodynamic ceiling). The product is $0.65
+\times0.90\times0.95\times0.55 \approx 0.31$, so roughly two thirds of
+the input electricity is lost. The electrolyser and the fuel cell are
+the two dominant losses. The low figure is why hydrogen storage is
+reserved for long-duration and hard-to-electrify uses where the
+round-trip penalty is paid rarely; \texttt{code/storage\_sizing.py}
+computes the chain product.
 \end{exercise}
 
 \begin{exercise}
@@ -655,6 +1052,20 @@ Estimate the timing requirement of grid-frequency protection relays
 to ride through a $50\,\si{\hertz}\pm 0.5\,\si{\hertz}$ excursion in
 a synchronous-AC grid. State the consequence of a poorly chosen
 trip-time for grid resilience.
+\paragraph{Solution sketch.}
+A relay must distinguish a recoverable transient excursion from a
+genuine collapse. The nadir of a normal trip is reached in $\sim 5$ to
+$10\,\si{\second}$ and recovers over tens of seconds (Figure
+\ref{fig:vol04ch14:frequency-response}), so an under-frequency relay set
+to trip at $49.5\,\si{\hertz}$ should carry a deliberate time delay of
+order seconds (or be set well below the expected nadir) to ride through.
+Set the trip too fast or too shallow and the relay sheds generation on a
+survivable dip, deepening the very imbalance it was meant to protect
+against and turning a transient into a cascade; set it too slow and
+equipment is exposed to damaging off-frequency operation. The working
+compromise is a frequency-time characteristic: progressively faster
+tripping the further the frequency strays, the under-frequency
+load-shedding schedule that protects the grid as a whole.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -665,6 +1076,23 @@ electricity system for a temperate-climate country, with a mix of
 wind, solar, and pumped-storage hydropower. Vary the wind:solar:
 storage ratio and identify the minimum-cost mix subject to a
 $99.95\,\%$ reliability constraint.
+\paragraph{Solution sketch.}
+Reuse the dispatch loop of \texttt{code/household\_dispatch.py} at
+national scale: at each hour compute generation $G_t = w\cdot
+\text{wind}_t + s\cdot\text{solar}_t$ from normalised wind and solar
+traces (the shape of Figure \ref{fig:vol04ch14:renewable-variability}),
+subtract demand, and charge or discharge a storage reservoir bounded by
+its energy and power ratings. Count the hours of unserved energy; the
+reliability is one minus the unserved fraction. Sweep the
+wind:solar:storage triple on a grid, keep the points meeting $99.95\,\%$,
+and minimise total annualised cost (capital times capacity-recovery
+factor plus running cost) over that feasible set. The recurring finding
+is that a wind-heavy mix needs less storage in temperate climates
+(wind's winter strength matches winter demand), that the last fraction
+of a percent of reliability is expensive (a long tail of rare
+simultaneous low-wind, low-sun events), and that a small dispatchable
+backup is far cheaper than the storage to reach $100\,\%$ on renewables
+alone.
 \end{exercise}
 
 \begin{exercise}
@@ -673,6 +1101,19 @@ synchronous AC grid to a sudden generator trip. Vary the
 inertia constant $H$ (kinetic energy in rotating machinery per
 megawatt of generation capacity) and identify the regime in which
 under-frequency load shedding is necessary.
+\paragraph{Solution sketch.}
+Integrate the swing equation with a governor lag, $2H\,d(\Delta f)/dt =
+P_g - \Delta P - D\,\Delta f$ with $P_g$ relaxing toward $-\Delta f/R$
+on a time constant $T_g$, exactly the model in
+\texttt{code/frequency\_response.py}. Apply a step generation loss
+$\Delta P$ and record the nadir. Sweeping $H$ shows the nadir deepening
+as inertia falls: with $H = 8\,\si{\second}$ the dip is shallow, and as
+$H$ drops toward $2\,\si{\second}$ (a high-inverter-penetration grid)
+the nadir crosses the under-frequency load-shedding threshold for a
+given $\Delta P$. The regime in which load shedding is necessary is the
+low-inertia, large-trip corner; the engineering responses are synthetic
+inertia from inverters, faster primary response, and limits on the size
+of the largest single in-feed.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -682,6 +1123,21 @@ Design a microgrid for a remote village of $200$ households with
 average daily demand of $5\,\si{\kilo\watt\hour}$ per household.
 Specify the solar capacity, battery capacity, backup-generator size,
 and the working operational reserve. Identify the LCOE.
+\paragraph{Solution sketch.}
+Daily energy is $200\times5 = 1000\,\si{\kilo\watt\hour}/\text{day}$.
+At a $\sim 18\,\%$ solar capacity factor the PV nameplate is $1000/
+(0.18\times24) \approx 230\,\si{\kilo\watt\textsubscript{p}}$; oversize
+to $\sim 300\,\si{\kilo\watt\textsubscript{p}}$ to cover cloudy days and
+charge storage. Size the battery for one to two days of autonomy,
+$\sim 1$ to $2\,\si{\mega\watt\hour}$ usable. Specify a diesel backup at
+the peak load ($\sim 1000\,\si{\kilo\watt\hour}/\text{day}$ implies an
+evening peak of perhaps $150\,\si{\kilo\watt}$, so a $\sim 150\,\si{\kilo
+\watt}$ genset) for the rare multi-day deficit, with a reserve margin of
+$\sim 20\,\%$. The LCOE combines the annualised PV, battery, and genset
+capital with the diesel fuel and O\&M over the delivered energy; for a
+PV-battery-diesel hybrid it typically lands at $\$0.20$ to $\$0.40\,\si{
+\per\kilo\watt\hour}$ (current as of 2024), well below diesel-only
+generation. The \texttt{code/lcoe.py} structure carries the calculation.
 \end{exercise}
 
 \begin{exercise}
@@ -689,6 +1145,22 @@ Design a residential-scale heat pump for a $150\,\si{\meter\squared}$
 house at a $-10\,\si{\celsius}$ design outdoor temperature. Specify
 the rated capacity, the COP at design conditions, the auxiliary
 electric resistance backup, and the working refrigerant.
+\paragraph{Solution sketch.}
+Estimate the design heat loss from a specific load of $\sim 50\,\si{
+\watt\per\meter\squared}$ for a moderately insulated house at a
+$\sim 30\,\si{\kelvin}$ indoor-outdoor difference, giving $\sim 7.5\,\si{
+\kilo\watt}$. Size the heat pump at $\sim 8\,\si{\kilo\watt}$ thermal
+output at design conditions. The Carnot ceiling between $T_h = 293\,\si{
+\kelvin}$ and $T_c = 263\,\si{\kelvin}$ is $293/30 \approx 9.8$; real
+air-source units reach $\sim 40$ to $50\,\%$ of Carnot, so a COP of
+$\sim 2.5$ to $3$ at $-10\,\si{\celsius}$, drawing $\sim 3\,\si{\kilo
+\watt}$ electrical. Provide $\sim 5\,\si{\kilo\watt}$ of resistance
+backup for the coldest hours and defrost cycles. Modern units use
+low-global-warming-potential refrigerants such as R-32 or R-290
+(propane); the choice trades efficiency, flammability, and regulatory
+phase-down. The lesson is that the COP makes the heat pump deliver more
+thermal energy than it consumes electrically, which is what makes
+electrified heat efficient.
 \end{exercise}
 
 \begin{exercise}
@@ -697,6 +1169,24 @@ fleet that returns to depot at $18{:}00$ and departs at $07{:}00$
 the following morning. Specify the per-vehicle charging power, the
 total facility capacity, the demand-side management strategy, and the
 working interconnection requirements.
+\paragraph{Solution sketch.}
+Suppose each vehicle needs $\sim 60\,\si{\kilo\watt\hour}$ overnight. The
+window is $13\,\si{\hour}$, so the energy-limited per-vehicle power is
+$60/13 \approx 4.6\,\si{\kilo\watt}$, and $100$ vehicles charging flat
+out at once would demand $\sim 460\,\si{\kilo\watt}$. The naive design
+sizes every charger at, say, $11\,\si{\kilo\watt}$ and the service at
+$1.1\,\si{\mega\watt}$, an expensive interconnection. The
+demand-side-management design instead uses smart charging: stagger and
+modulate the chargers so the aggregate stays near the $\sim 460\,\si{
+\kilo\watt}$ energy floor, flattening the depot's load and shrinking the
+interconnection to $\sim 0.5\,\si{\mega\watt}$. Add managed charging to
+shift load to off-peak tariff hours and, where available,
+vehicle-to-grid discharge for grid services. Interconnection
+requirements include the service transformer rating, the metering and
+protection per the local standard (IEEE 1547 for any export), and
+coordination with the utility for the new load. The design lesson is
+that coincident peak, not total energy, sets the cost, and management
+controls the coincident peak.
 \end{exercise}
 
 \begin{exercise}
@@ -704,6 +1194,21 @@ Design a pumped-storage facility of $1\,\si{\giga\watt}/8\,\si{\hour}$
 duration. Specify the reservoir volume, the elevation difference, the
 turbine type and size, and the round-trip efficiency at full
 operation.
+\paragraph{Solution sketch.}
+The energy capacity is $1\,\si{\giga\watt}\times8\,\si{\hour} = 8\,\si{
+\giga\watt\hour} = 2.88\times10^{13}\,\si{\joule}$. Choose a head: at
+$H = 400\,\si{\meter}$ and a generation efficiency $\sim 0.90$, the
+usable volume is $V = E/(\eta\rho g H) = 2.88\times10^{13}/(0.90\cdot
+1000\cdot9.81\cdot400) \approx 8.2\times10^{6}\,\si{\meter\cubed}$,
+roughly a reservoir $\sim 600\,\si{\meter}$ square and $\sim 23\,\si{
+\meter}$ deep, replicated as the lower reservoir. The flow at full
+$1\,\si{\giga\watt}$ output is $Q = P/(\eta\rho g H) \approx 283\,\si{
+\meter\cubed\per\second}$. At this head a Francis pump-turbine is the
+standard choice (Pelton above $\sim 600\,\si{\meter}$, Kaplan below
+$\sim 50\,\si{\meter}$); size for $\sim 283\,\si{\meter\cubed\per\second}$
+across one or more units. Round-trip efficiency is the product of the
+pumping and generating legs, $\sim 0.90\times0.88 \approx 0.79$. The
+head sets the compactness; the volume scales as $1/H$.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{standard}
@@ -713,6 +1218,19 @@ A residential solar-PV system shows annual energy production $30\,\%$
 below the predicted yield. Identify three candidate causes (shading,
 inverter degradation, panel soiling) and the supplementary
 measurement that distinguishes them.
+\paragraph{Solution sketch.}
+Each cause leaves a distinct signature. Shading produces
+time-of-day-dependent losses (a notch at the hours when a tree or
+chimney casts a shadow) and, on string inverters, a large drop when one
+shaded panel pulls down its string; the distinguishing measurement is
+per-string or per-panel output versus time of day, or a shading survey.
+Inverter degradation or clipping shows as a flat-topped midday curve or
+elevated inverter temperature and fault logs; read the inverter
+efficiency and DC-versus-AC power. Soiling produces a slow uniform
+decline that resets after rain or cleaning; the distinguishing test is a
+clean-panel-versus-dirty-panel comparison or the step recovery after a
+wash. Compare measured plane-of-array irradiance with output to
+separate a resource shortfall from a system fault.
 \end{exercise}
 
 \begin{exercise}
@@ -721,6 +1239,19 @@ two years of operation when the warranty specification is $20\,\%$
 over ten years. Identify candidate causes (excessive cycling, depth
 of discharge beyond specification, thermal-management failure) and
 the working diagnostic measurements for each.
+\paragraph{Solution sketch.}
+A five-fold-fast fade points at the operating envelope. Excessive
+cycling: count the equivalent full cycles in the energy-throughput logs
+and compare to the warranted cycle count; fade scales with throughput.
+Depth of discharge beyond specification: read the state-of-charge
+histogram, since deep cycling to near $0\,\%$ or charging to near
+$100\,\%$ accelerates degradation far more than mid-range cycling.
+Thermal-management failure: read the cell-temperature logs, since
+sustained operation above $\sim 35\,\si{\celsius}$ roughly doubles the
+calendar-fade rate per $\sim 10\,\si{\kelvin}$ (an Arrhenius
+dependence). The single most useful measurement is a controlled
+capacity test (full slow charge-discharge) to confirm the fade, plus
+the temperature and state-of-charge histories to assign the cause.
 \end{exercise}
 
 \begin{exercise}
@@ -728,6 +1259,21 @@ A wind turbine produces $20\,\%$ less power than its rated curve at
 the same wind speed. Identify three candidate causes (rotor pitch
 miscalibration, blade contamination, gearbox slip) and the
 maintenance procedure for each.
+\paragraph{Solution sketch.}
+Pitch miscalibration moves the blades off their optimum angle of
+attack, lowering $C_p$ across the whole curve; check the pitch-encoder
+calibration against a reference and re-zero the actuators. Blade
+contamination (insect or ice accretion, leading-edge erosion)
+roughens the aerofoil and degrades lift, worst at high wind; inspect
+and clean or repair the leading edge. Gearbox or generator slip and
+control faults show as a mismatch between rotor speed and electrical
+output or as rising drivetrain temperature and vibration; read the
+SCADA speed-versus-power data and the condition-monitoring vibration
+spectrum. The discriminating step is to plot the measured power curve
+against the manufacturer's reference and look at where in the
+wind-speed range the deficit sits: a uniform shift suggests pitch, a
+high-wind shift suggests aerodynamic degradation, and a speed-power
+mismatch suggests the drivetrain.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -738,6 +1284,19 @@ Summarise the failure mechanism of Three Mile Island Unit 2
 working language at \cite{acc:kemeny-tmi-1979}. Identify the human-
 factors lesson that has shaped subsequent nuclear-plant control-room
 design.
+\paragraph{Solution sketch.}
+A model answer follows the registry's reconstruction. A loss of
+feedwater raised primary pressure, the pilot-operated relief valve
+opened as designed and then stuck open, and primary coolant escaped
+while the control-room indicator showed only the valve's command signal
+(closed) rather than its actual position (open). Reading the rising
+pressuriser level as the system ``going solid'' with water, operators
+reduced emergency-core-cooling flow, allowing the core to be partially
+uncovered and damaged over several hours. The human-factors lesson is
+that control rooms must display actual plant state rather than commanded
+state, with clearer alarms and training in diagnosing multiple
+simultaneous abnormalities; this reshaped subsequent control-room design
+and operator training.
 \end{exercise}
 
 \begin{exercise}
@@ -745,6 +1304,20 @@ A grid-tied PV inverter trips during a brief grid frequency
 excursion to $50.3\,\si{\hertz}$. Identify whether the trip is
 consistent with the IEEE 1547 frequency-tolerance specification
 and the operational implication for high-PV-penetration grids.
+\paragraph{Solution sketch.}
+A trip at $50.3\,\si{\hertz}$ (a $0.3\,\si{\hertz}$ over-frequency, on a
+$50\,\si{\hertz}$ grid) is well inside the normal operating band, and a
+modern inverter built to the current IEEE 1547 ride-through requirements
+should not trip there; it should remain connected and, under the newer
+standard, provide frequency-watt response by curtailing output. A trip
+at that excursion is consistent with an older fixed-threshold setting,
+not with the present ride-through specification. The operational
+implication is the case for ride-through and grid-supporting functions:
+on a high-PV grid, a narrow trip setting means a small frequency
+disturbance can disconnect a large block of generation at once,
+converting a minor excursion into a large imbalance, the inverter
+analogue of the cascading-trip mechanism. The fix is mandated
+ride-through and frequency-responsive curtailment.
 \end{exercise}
 
 \begin{exercise}
@@ -754,6 +1327,21 @@ modules. Identify the engineering controls that should have
 prevented propagation (thermal isolation, gas venting, sprinkler
 suppression, module-level shutdown) and the IEC 62933 standard that
 defines them.
+\paragraph{Solution sketch.}
+Propagation means the defence-in-depth failed at the module-to-module
+boundary. The controls that should have contained the event: thermal
+isolation (fire-rated barriers and spacing between modules so a runaway
+cell cannot heat its neighbours past the SEI-decomposition threshold);
+gas venting and deflagration management (lithium-ion runaway releases
+flammable gas, so the enclosure must vent or inert it to prevent
+explosion); suppression (water or clean-agent systems sized for the
+energy released); and module-level electrical shutdown and current
+limiting on the first sign of over-temperature. The relevant
+safety-design framework is the IEC 62933 series for electrical
+energy-storage systems (with IEC 62933-5-2 on safety), alongside the
+installation-fire standards. The lesson is that single-cell runaway is
+treated as a certainty to be contained, not an event to be prevented;
+the design goal is to stop the cascade at the module boundary.
 \end{exercise}
 
 \begin{exercise}
@@ -761,6 +1349,22 @@ A regional grid experiences a cascading blackout during a
 heat wave when one transmission line trips on overload and adjacent
 lines trip in succession. Identify the failure mechanism and the
 $N-1$-and-beyond planning standard that should have prevented it.
+\paragraph{Solution sketch.}
+The mechanism is load redistribution under overload. When the first
+line trips, its power redistributes onto parallel paths; if those are
+already near their thermal limits (worsened by the heat wave, which both
+raises demand and lowers conductor ampacity through sag and reduced
+cooling), the next line overloads and trips, redistributing again, and
+the cascade accelerates past the operators' ability to intervene. The
+$N-1$ standard requires the grid to survive the loss of any single
+element with all others within limits; the heat wave violated the
+assumptions behind it by stressing many elements simultaneously and
+correlating their margins. The prevention is operating with real
+contingency margin (not just nominal $N-1$ on a hot day), dynamic line
+ratings that account for weather, and protection schemes that shed load
+in a controlled way before uncontrolled cascading begins. This is the
+mechanism behind the 2003 Northeast event described in the failure
+section.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -771,6 +1375,21 @@ A consulting client must decide whether to invest in $1\,\si{\giga
 plus $400\,\si{\mega\watt}/4\,\si{\hour}$ of battery storage.
 Identify the trade-off in terms of LCOE, dispatchability, carbon
 emissions, capital cost, and operational flexibility.
+\paragraph{Solution sketch.}
+The gas plant is dispatchable: it delivers $1\,\si{\giga\watt}$ on
+demand whenever fuel is available, with a moderate capital cost and a
+levelized cost set largely by gas price and carbon cost, and it emits
+$\sim 350$ to $450\,\si{\kilogram}\,\text{CO}_2$ per MWh. The
+wind-plus-battery option has a lower energy LCOE and near-zero
+operating emissions, but the $1\,\si{\giga\watt}$ of wind delivers only
+$\sim 35\,\%$ of nameplate on average and the $400\,\si{\mega\watt}/4\,
+\si{\hour}$ battery firms only a few hours, so it is not equivalent
+firm capacity. The decision turns on what the client is buying: energy
+(wind-plus-storage wins on cost and carbon) or firm dispatchable
+capacity for the rare multi-day low-wind event (gas, or a much larger
+storage build, is needed). The defensible answer names the system
+context, the carbon price, and the role the asset must play, rather
+than declaring one option universally better.
 \end{exercise}
 
 \begin{exercise}
@@ -780,6 +1399,23 @@ tariff on the renewable generators, or to charge a market premium
 based on actual grid services delivered. Identify the trade-off and
 the experience of the European and Texas markets in implementing
 each approach.
+\paragraph{Solution sketch.}
+A fixed mandated reserve is simple and predictable but blunt: it
+charges every renewable generator the same, regardless of how much
+variability it actually imposes, and it can over- or under-provision as
+the fleet changes. A market for the actual services (frequency
+response, ramping, firm capacity) prices the need where it arises and
+rewards the resources that best supply it (batteries, demand response,
+flexible plant), but it is more complex to design and can be gamed or
+produce volatile prices. The European experience leans toward
+service-based ancillary markets coordinated across interconnected
+systems; the Texas (ERCOT) energy-only market historically relied on
+scarcity pricing rather than a mandated capacity reserve, and the 2021
+event drove changes toward stronger reserve and weatherisation
+requirements. The judgement is that price-based mechanisms allocate
+efficiently when markets are well designed and liquid, while mandates
+provide a floor of reliability when they are not; most systems blend
+the two.
 \end{exercise}
 
 \begin{exercise}
@@ -788,6 +1424,23 @@ heating (a network of insulated pipes carrying hot water from a
 central plant to consumers) or in distributed heat pumps for
 residential heating. Identify the engineering, economic, and
 political trade-offs.
+\paragraph{Solution sketch.}
+District heating concentrates the heat source, so it can use waste heat
+from industry, data centres, or combined heat-and-power, and it suits
+dense urban areas where the pipe length per customer is short; the
+capital is large, lumpy, and front-loaded (digging up streets), and it
+locks in a single supplier. Distributed heat pumps are modular and
+deployable house by house, exploit the COP to deliver more heat than
+they consume electrically, and need no shared network, but they load
+the electricity grid in winter and depend on each building's
+insulation and retrofit. The economic trade-off is shared
+high-utilisation infrastructure (district heat in dense areas) versus
+incremental low-coordination investment (heat pumps in dispersed
+areas). The political dimension is that district heating requires
+collective commitment and right-of-way, while heat pumps devolve the
+choice to individual owners. The defensible answer maps the choice to
+density, available waste heat, grid capacity, and the local policy
+appetite for coordinated infrastructure.
 \end{exercise}
 
 \begin{exercise}
@@ -796,4 +1449,22 @@ fleet of large nuclear plants beyond their original $40$-year
 operating licence or to replace them with renewables-plus-storage.
 Identify the trade-off in terms of LCOE, decommissioning cost,
 schedule, and grid reliability.
+\paragraph{Solution sketch.}
+Life-extending an existing nuclear plant has a low marginal LCOE: the
+capital is sunk, so the running cost (fuel, O\&M, the refurbishment to
+extend the licence) buys reliable, high-capacity-factor, low-carbon
+firm power, and it defers the large decommissioning liability. New
+renewables-plus-storage has a lower energy LCOE but does not deliver
+equivalent firm capacity without a large (expensive) storage build, and
+it takes time to permit and construct. On schedule, retention keeps
+existing low-carbon capacity online now, while replacement risks a gap
+filled by fossil generation if the build lags. On reliability, the
+nuclear fleet provides inertia and firm output that a
+renewables-plus-storage system must reproduce through other means
+(synthetic inertia, firm backup, interconnection). The judgement
+usually favours life extension of a safe, performing plant as the
+cheaper near-term low-carbon option, with new renewables added in
+parallel rather than as a like-for-like swap; the answer should weigh
+the plant's safety margin, the decommissioning timing, and the credible
+build rate of the alternative.
 \end{exercise}
