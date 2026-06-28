@@ -461,6 +461,80 @@ $\Delta f = f_0/Q$.
 
 \input{volumes/04-energy/ch09-circuits/figures/fig-bandpass-resonance.tex}
 
+\begin{mastery}
+Above the lumped band the two-port view replaces the loop-and-node view.
+A linear two-port is described by a $2\times 2$ matrix relating its port
+voltages and currents: the impedance ($Z$), admittance ($Y$), hybrid
+($h$), or transmission ($ABCD$) parameters, each convenient for a
+different connection (series, parallel, cascade). At radio frequencies,
+where open and short terminations are hard to realise without parasitic
+reactance, engineers switch to scattering ($S$) parameters, which
+describe the two-port by the ratios of reflected to incident travelling
+waves at a reference impedance (usually $50\,\si{\ohm}$). The $S$-matrix
+is what a vector network analyser measures directly, and it connects
+this chapter's impedance language to the transmission-line analysis of
+Chapter 10: $S_{11}$ is the input reflection coefficient, and a
+well-matched port has $|S_{11}|$ small.
+\end{mastery}
+
+\section{Worked examples}\pathtag{standard}
+
+Three worked examples carry the machinery from formula to number. Each
+is the kind of calculation that recurs daily at a bench or in a SPICE
+deck.
+
+\paragraph{Node voltage by inspection.}
+A $12\,\si{\volt}$ source drives a $100\,\si{\ohm}$ resistor into a
+node, and a $50\,\si{\ohm}$ resistor returns that node to ground. The
+single non-reference node voltage $v_{1}$ follows from one KCL
+equation,
+\[
+\frac{v_{1}-12}{100} + \frac{v_{1}}{50} = 0
+\quad\Longrightarrow\quad
+v_{1}\left(\frac{1}{100}+\frac{1}{50}\right) = \frac{12}{100},
+\]
+so $v_{1} = 12\cdot(1/100)/(3/100) = 4\,\si{\volt}$, the voltage
+divider result. The companion script
+\texttt{code/nodal\_solver.py} stamps the
+same circuit into a modified-nodal-analysis matrix and returns
+$v_{1}=4.0\,\si{\volt}$, the procedure every simulator uses on
+networks too large to solve by hand.
+
+\paragraph{Th\'evenin reduction of a bridge leg.}
+Take a $10\,\si{\volt}$ source in series with $1\,\si{\kilo\ohm}$
+feeding the parallel pair $2\,\si{\kilo\ohm}\parallel 4\,\si{\kilo
+\ohm}$, with terminal $a$ at the far end of the $4\,\si{\kilo\ohm}$
+resistor. The open-circuit voltage is the voltage across the parallel
+pair, $V_{\text{Th}} = 10\cdot R_{p}/(1\,\text{k}+R_{p})$ with $R_{p} =
+(2)(4)/(2+4) = 1.33\,\si{\kilo\ohm}$, giving $V_{\text{Th}} =
+10\cdot 1.33/2.33 = 5.71\,\si{\volt}$. The Th\'evenin resistance is the
+source resistance deactivated and seen from $a$-$b$: $R_{\text{Th}} =
+1\,\text{k}\parallel(2\,\text{k}\parallel 4\,\text{k})$ wait, the
+$4\,\si{\kilo\ohm}$ resistor is in series to terminal $a$, so
+$R_{\text{Th}} = 4\,\text{k} + (2\,\text{k}\parallel 1\,\text{k}) =
+4\,\text{k}+0.67\,\text{k} = 4.67\,\si{\kilo\ohm}$. The reduction
+replaces a four-element network with one source and one resistor for
+every downstream calculation.
+
+\paragraph{Bandpass numbers from a sweep.}
+The project filter ($L=10\,\si{\milli\henry}$, $C=24\,\si{\nano\farad}$,
+$R=126\,\si{\ohm}$) has
+$f_{0}=1/(2\pi\sqrt{LC})=10.3\,\si{\kilo\hertz}$ and
+$Q=\omega_{0}L/R\approx 5$, so the $-3\,\si{\decibel}$ bandwidth is
+$f_{0}/Q\approx 2\,\si{\kilo\hertz}$. The script
+\texttt{code/ac\_sweep.py} computes the
+complex transfer function over a logarithmic sweep and confirms these
+figures; a synthetic measured sweep with bench-style scatter is in
+\texttt{data/bandpass\_sweep.csv} for the
+reader who wants to practise fitting the resonance from noisy data. The
+transient script
+\texttt{code/rlc\_transient.py} integrates
+the same second-order circuit in the time domain and agrees with the
+closed-form step response to under a millivolt at
+$\omega_{n}\Delta t = 0.01$, while
+\texttt{data/rc\_step\_measured.csv} tabulates
+a first-order charging transient against theory.
+
 \section{Power: real, reactive, apparent}\pathtag{standard}
 
 In sinusoidal steady state the instantaneous power $p(t) = v(t)i(t)$
@@ -498,6 +572,21 @@ reducing the apparent power
 to $10\,\si{\kilo\volt\ampere}$ and the line current by $20\,\%$. The
 capacitor pays for itself in reduced distribution losses and demand
 charges within a typical industrial-billing cycle.
+
+\begin{mastery}
+Complex power has a structural property worth carrying: Tellegen's
+theorem states that for any network satisfying KCL and KVL, the sum of
+the complex powers delivered to all branches is zero, regardless of the
+elements' constitutive laws. Conservation of complex power follows as a
+corollary, separating into conservation of real power $P$ and
+conservation of reactive power $Q$. The reactive-power balance is the
+formal basis of power-factor correction: a capacitor supplies the
+reactive power an inductor demands, so installing the capacitor next to
+the inductive load lets the reactive power circulate locally instead of
+loading the whole distribution path. The same balance underlies the
+reactive-power dispatch that grid operators run continuously to hold bus
+voltages within tolerance.
+\end{mastery}
 
 \section{Three-phase introduction}\pathtag{standard}
 
@@ -647,6 +736,14 @@ designed $R$ at audio frequencies).
 A series circuit has a $12\,\si{\volt}$ source, a $100\,\si{\ohm}$
 resistor, and a $50\,\si{\ohm}$ resistor. Compute the current, the
 voltage across each resistor, and the power dissipated by each.
+\paragraph{Solution sketch.}
+The series resistance is $150\,\si{\ohm}$, so the current is
+$I = 12/150 = 80\,\si{\milli\ampere}$. The voltages divide in
+proportion to resistance: $V_{100} = 0.08\cdot 100 = 8\,\si{\volt}$,
+$V_{50} = 0.08\cdot 50 = 4\,\si{\volt}$, summing to the source as KVL
+requires. The dissipated powers are $P_{100} = I^{2}R = 0.0064\cdot
+100 = 0.64\,\si{\watt}$ and $P_{50} = 0.32\,\si{\watt}$; the total
+$0.96\,\si{\watt}$ equals $VI = 12\cdot 0.08$.
 \end{exercise}
 
 \begin{exercise}
@@ -654,6 +751,13 @@ Three resistors $R_{1} = 100\,\si{\ohm}$, $R_{2} = 200\,\si{\ohm}$,
 $R_{3} = 300\,\si{\ohm}$ are in parallel across a $24\,\si{\volt}$
 source. Compute the equivalent resistance, the total current, the
 current through each resistor, and the total power dissipated.
+\paragraph{Solution sketch.}
+The parallel conductance is $1/100 + 1/200 + 1/300 = 0.01833\,\si{
+\siemens}$, so $R_{\text{eq}} = 54.5\,\si{\ohm}$. The total current is
+$24/54.5 = 0.440\,\si{\ampere}$. Each branch sees the full
+$24\,\si{\volt}$: $I_{1} = 0.24\,\si{\ampere}$, $I_{2} = 0.12\,\si{
+\ampere}$, $I_{3} = 0.08\,\si{\ampere}$, summing to $0.44\,\si{\ampere}$.
+The total power is $24\cdot 0.44 = 10.6\,\si{\watt}$.
 \end{exercise}
 
 \begin{exercise}
@@ -662,6 +766,15 @@ resistor in series with the parallel combination of a $2\,\si{\kilo
 \ohm}$ resistor and a $3\,\si{\kilo\ohm}$ resistor. Compute the
 voltage across the parallel combination and the current through each
 resistor.
+\paragraph{Solution sketch.}
+The parallel pair is $2\,\text{k}\parallel 3\,\text{k} = 6/5 =
+1.2\,\si{\kilo\ohm}$, in series with $5\,\si{\kilo\ohm}$ for a total of
+$6.2\,\si{\kilo\ohm}$. The source current is $20/6200 = 3.23\,\si{
+\milli\ampere}$, which flows through the $5\,\si{\kilo\ohm}$ resistor.
+The voltage across the parallel combination is $3.23\,\text{mA}\cdot
+1.2\,\text{k}\Omega = 3.87\,\si{\volt}$. The branch currents are
+$3.87/2000 = 1.94\,\si{\milli\ampere}$ and $3.87/3000 = 1.29\,\si{
+\milli\ampere}$, summing to the source current.
 \end{exercise}
 
 \begin{exercise}
@@ -671,6 +784,17 @@ $1\,\si{\kilo\ohm}$ resistor that feeds a parallel combination of a
 $2\,\si{\kilo\ohm}$ resistor and a $4\,\si{\kilo\ohm}$ resistor; the
 $4\,\si{\kilo\ohm}$ resistor's far end is terminal $a$ and the source
 ground is terminal $b$.
+\paragraph{Solution sketch.}
+With $a$-$b$ open no current flows through the $4\,\si{\kilo\ohm}$
+resistor, so $V_{\text{Th}}$ is the voltage across the parallel pair
+seen through the divider. The $2\,\si{\kilo\ohm}$ resistor and the
+$4\,\si{\kilo\ohm}$ resistor in parallel give $R_{p} = 1.33\,\si{\kilo
+\ohm}$; the open-circuit voltage at that node is $10\cdot R_{p}/(1\,
+\text{k}+R_{p}) = 10\cdot 1.33/2.33 = 5.71\,\si{\volt}$, and since no
+current flows in the $4\,\si{\kilo\ohm}$ leg, $V_{\text{Th}} =
+5.71\,\si{\volt}$. Deactivating the source (short), the resistance from
+$a$ is $4\,\text{k} + (2\,\text{k}\parallel 1\,\text{k}) = 4\,\text{k}+
+0.67\,\text{k} = 4.67\,\si{\kilo\ohm}$.
 \end{exercise}
 
 \begin{exercise}
@@ -678,24 +802,52 @@ An RC circuit has $R = 1\,\si{\kilo\ohm}$, $C = 1\,\si{\micro\farad}$,
 driven by a $5\,\si{\volt}$ step from initial zero. Compute the
 capacitor voltage at $t = 0.5, 1, 2, 5\,\si{\milli\second}$. Compute
 the time at which $v_{C}$ first exceeds $4\,\si{\volt}$.
+\paragraph{Solution sketch.}
+The time constant is $\tau = RC = 1\,\si{\milli\second}$ and
+$v_{C}(t) = 5(1-e^{-t/\tau})$. At $t = 0.5, 1, 2, 5\,\si{\milli
+\second}$ the factor $1-e^{-t/\tau}$ is $0.393, 0.632, 0.865, 0.993$,
+giving $v_{C} = 1.97, 3.16, 4.32, 4.97\,\si{\volt}$. Setting $v_{C}=4$
+gives $e^{-t/\tau} = 0.2$, so $t = \tau\ln 5 = 1.61\,\si{\milli
+\second}$.
 \end{exercise}
 
 \begin{exercise}
 An RLC series circuit has $L = 1\,\si{\milli\henry}$, $C = 100\,\si{
 \nano\farad}$, $R = 10\,\si{\ohm}$. Compute the natural frequency, the
 damping ratio, the quality factor, and classify the response.
+\paragraph{Solution sketch.}
+$\omega_{n} = 1/\sqrt{LC} = 1/\sqrt{10^{-3}\cdot 10^{-7}} =
+10^{5}\,\si{\per\second}$, so $f_{n} = \omega_{n}/2\pi = 15.9\,\si{\kilo
+\hertz}$. The damping ratio is $\zeta = (R/2)\sqrt{C/L} = 5\cdot
+\sqrt{10^{-7}/10^{-3}} = 5\cdot 0.01 = 0.05$. The quality factor is
+$Q = 1/(2\zeta) = 10$. Since $\zeta < 1$ the response is underdamped
+and rings near $\omega_{n}$ before decaying.
 \end{exercise}
 
 \begin{exercise}
 An RLC bandpass filter has $L = 10\,\si{\milli\henry}$, $C = 100\,\si{
 \nano\farad}$, $R = 100\,\si{\ohm}$. Compute the resonant frequency in
 hertz, the quality factor, and the $-3\,\si{\decibel}$ bandwidth.
+\paragraph{Solution sketch.}
+$\omega_{0} = 1/\sqrt{LC} = 1/\sqrt{10^{-2}\cdot 10^{-7}} =
+3.16\times 10^{4}\,\si{\per\second}$, so $f_{0} = 5.03\,\si{\kilo
+\hertz}$. The quality factor is $Q = \omega_{0}L/R = 3.16\times
+10^{4}\cdot 10^{-2}/100 = 3.16$. The $-3\,\si{\decibel}$ bandwidth is
+$\Delta f = f_{0}/Q = 5030/3.16 = 1.59\,\si{\kilo\hertz}$.
 \end{exercise}
 
 \begin{exercise}
 A capacitor $C = 10\,\si{\micro\farad}$ has a voltage that varies as
 $v(t) = 5\sin(1000 t)\,\si{\volt}$. Compute the current waveform, the
 RMS current, and the impedance magnitude.
+\paragraph{Solution sketch.}
+$i = C\,\dd v/\dd t = 10^{-5}\cdot 5\cdot 1000\cos(1000t) =
+0.05\cos(1000t)\,\si{\ampere}$, leading the voltage by $90^\circ$. The
+peak current is $50\,\si{\milli\ampere}$, so the RMS current is
+$0.05/\sqrt{2} = 35.4\,\si{\milli\ampere}$. The impedance magnitude is
+$|Z_{C}| = 1/(\omega C) = 1/(1000\cdot 10^{-5}) = 100\,\si{\ohm}$,
+consistent with the $5\,\si{\volt}$ peak driving a $50\,\si{\milli
+\ampere}$ peak.
 \end{exercise}
 
 \begin{exercise}
@@ -704,12 +856,28 @@ A motor draws $50\,\si{\ampere}$ at $230\,\si{\volt}$ RMS, $50\,\si{
 reactive, and apparent power. Compute the capacitance needed in
 parallel with the motor to correct the power factor to $0.95$
 lagging.
+\paragraph{Solution sketch.}
+The apparent power is $S = VI = 230\cdot 50 = 11.5\,\si{\kilo\volt
+\ampere}$. With $\cos\phi = 0.75$, the real power is $P = 0.75 S =
+8.63\,\si{\kilo\watt}$ and the reactive power is $Q_{1} = P\tan\phi_{1}
+= 8.63\cdot\tan(41.4^\circ) = 7.61\,\text{kvar}$. To reach
+$\cos\phi = 0.95$ ($\phi_{2} = 18.2^\circ$) the load reactive power
+becomes $Q_{2} = P\tan\phi_{2} = 2.84\,\text{kvar}$, so the capacitor
+supplies $Q_{C} = 4.77\,\text{kvar}$. The capacitance is $C =
+Q_{C}/(\omega V^{2}) = 4770/(2\pi\cdot 50\cdot 230^{2}) = 287\,\si{
+\micro\farad}$. The companion script \texttt{code/power\_factor.py}
+returns the same value.
 \end{exercise}
 
 \begin{exercise}
 A balanced three-phase load on a $400\,\si{\volt}$ line-to-line system
 consumes $50\,\si{\kilo\watt}$ at power factor $0.9$ lagging. Compute
 the line current.
+\paragraph{Solution sketch.}
+From $P = \sqrt{3}V_{L}I_{L}\cos\phi$, solve for the line current:
+$I_{L} = P/(\sqrt{3}V_{L}\cos\phi) = 50000/(\sqrt{3}\cdot 400\cdot 0.9)
+= 50000/623.5 = 80.2\,\si{\ampere}$. The $\sqrt{3}$ factor is the
+working multiplier between single-phase and balanced three-phase.
 \end{exercise}
 
 \begin{exercise}
@@ -717,6 +885,13 @@ Compute the transfer function of an RC low-pass filter with $R =
 1\,\si{\kilo\ohm}$, $C = 100\,\si{\nano\farad}$. Report the $-3\,\si{
 \decibel}$ frequency and the magnitude in decibels at $f = 10\,\si{
 \kilo\hertz}$ and $f = 100\,\si{\kilo\hertz}$.
+\paragraph{Solution sketch.}
+$H(\omega) = 1/(1+j\omega RC)$ with $RC = 10^{-4}\,\si{\second}$. The
+cutoff is $f_{c} = 1/(2\pi RC) = 1.59\,\si{\kilo\hertz}$. At
+$10\,\si{\kilo\hertz}$, $f/f_{c} = 6.28$, so $|H| = 1/\sqrt{1+6.28^{2}}
+= 0.157$, that is $-16.1\,\si{\decibel}$. At $100\,\si{\kilo\hertz}$,
+$f/f_{c} = 62.8$, $|H| = 0.0159$, that is $-36.0\,\si{\decibel}$, one
+decade further down at the $-20\,\si{\decibel}$-per-decade slope.
 \end{exercise}
 
 \subsection*{Derivation}\pathtag{standard}
@@ -725,12 +900,31 @@ Compute the transfer function of an RC low-pass filter with $R =
 Derive the impedance of an ideal capacitor in sinusoidal steady state
 starting from $i(t) = C\,\dd v/\dd t$ and applying the phasor
 representation $v(t) = \Re(\tilde V e^{j\omega t})$.
+\paragraph{Solution sketch.}
+Write $v(t) = \Re(\tilde V e^{j\omega t})$ and differentiate:
+$\dd v/\dd t = \Re(j\omega\tilde V e^{j\omega t})$. Then $i(t) =
+C\,\dd v/\dd t = \Re(j\omega C\tilde V e^{j\omega t})$, which in phasor
+form reads $\tilde I = j\omega C\tilde V$. The impedance is the ratio
+$Z_{C} = \tilde V/\tilde I = 1/(j\omega C) = -j/(\omega C)$. The
+$-j$ shows the current leads the voltage by $90^\circ$, and the
+magnitude $1/(\omega C)$ falls with frequency.
 \end{exercise}
 
 \begin{exercise}
 Derive Th\'evenin's theorem for a linear two-terminal network
 containing only independent sources and resistors. State precisely
 where linearity is used.
+\paragraph{Solution sketch.}
+Apply a test current $I$ at the terminals and let $V$ be the resulting
+terminal voltage. By superposition (which holds because the network is
+linear), $V$ is the sum of the response to the internal sources with
+$I = 0$, call it $V_{\text{oc}}$, plus the response to $I$ with the
+internal sources deactivated, which is $-IR_{\text{eq}}$ where
+$R_{\text{eq}}$ is the resistance seen from the terminals. Hence
+$V = V_{\text{oc}} - IR_{\text{eq}}$, the terminal relation of a
+voltage source $V_{\text{Th}} = V_{\text{oc}}$ in series with
+$R_{\text{Th}} = R_{\text{eq}}$. Linearity enters at the superposition
+step: without it the two contributions could not be added.
 \end{exercise}
 
 \begin{exercise}
@@ -738,6 +932,19 @@ Derive the unit-step response of a second-order series RLC circuit in
 its three damping regimes by solving the characteristic equation
 $s^{2}+2\zeta\omega_{n}s+\omega_{n}^{2}=0$ and applying initial
 conditions $v_{C}(0) = 0$, $i_{L}(0) = 0$.
+\paragraph{Solution sketch.}
+The roots are $s = -\zeta\omega_{n}\pm\omega_{n}\sqrt{\zeta^{2}-1}$.
+For $\zeta>1$ both roots are real and negative, giving $v_{C} = V_{s} +
+A e^{s_{1}t} + B e^{s_{2}t}$; the two constants come from $v_{C}(0)=0$
+and $\dd v_{C}/\dd t(0) = i_{L}(0)/C = 0$. For $\zeta=1$ the repeated
+root $-\omega_{n}$ gives $v_{C} = V_{s} - V_{s}(1+\omega_{n}t)
+e^{-\omega_{n}t}$. For $\zeta<1$ the complex roots
+$-\zeta\omega_{n}\pm j\omega_{d}$ with $\omega_{d} =
+\omega_{n}\sqrt{1-\zeta^{2}}$ give the ringing form
+$v_{C} = V_{s}\!\left[1 - \frac{e^{-\zeta\omega_{n}t}}{\sqrt{1-\zeta^{2}}}
+\sin(\omega_{d}t + \arccos\zeta)\right]$. Each form satisfies both
+initial conditions; the script \texttt{code/rlc\_transient.py} confirms
+all three numerically.
 \end{exercise}
 
 \begin{exercise}
@@ -746,18 +953,47 @@ with open-circuit voltage $V_{\text{Th}}$ and source resistance
 $R_{\text{Th}}$ driving a real load $R_{L}$. State the efficiency at
 the matched condition and the conditions under which matched delivery
 is appropriate.
+\paragraph{Solution sketch.}
+The load current is $I = V_{\text{Th}}/(R_{\text{Th}}+R_{L})$ and the
+load power is $P_{L} = I^{2}R_{L} = V_{\text{Th}}^{2}R_{L}/(R_{\text{Th}}
++R_{L})^{2}$. Set $\dd P_{L}/\dd R_{L} = 0$: the numerator of the
+derivative is $(R_{\text{Th}}+R_{L})^{2} - R_{L}\cdot 2(R_{\text{Th}}+
+R_{L}) = (R_{\text{Th}}+R_{L})(R_{\text{Th}}-R_{L})$, which vanishes at
+$R_{L} = R_{\text{Th}}$. The maximum power is $V_{\text{Th}}^{2}/
+(4R_{\text{Th}})$. At the match the source resistor dissipates as much
+as the load, so the efficiency is $50\%$, acceptable for signal
+transmission but not for power delivery, where $R_{L}\gg R_{\text{Th}}$
+keeps efficiency near $100\%$.
 \end{exercise}
 
 \begin{exercise}
 Derive the resonance and bandwidth of a parallel RLC tuned circuit
 driven by an ideal current source. Show that $Q_{\parallel} =
 R/(\omega_{0}L)$ and that the bandwidth is $\omega_{0}/Q$.
+\paragraph{Solution sketch.}
+The parallel admittance is $Y = 1/R + j\omega C + 1/(j\omega L) = 1/R +
+j(\omega C - 1/\omega L)$. The susceptance vanishes at $\omega_{0} =
+1/\sqrt{LC}$, where $|Z|$ is maximum and equal to $R$; the voltage
+response driven by a fixed current source peaks there. Writing the
+admittance magnitude near resonance and finding the half-power points
+where the susceptance equals the conductance $1/R$ gives the two
+$-3\,\si{\decibel}$ frequencies separated by $\Delta\omega = 1/(RC)$.
+Then $Q = \omega_{0}/\Delta\omega = \omega_{0}RC = R/(\omega_{0}L)$,
+using $\omega_{0}^{2}LC = 1$, and the bandwidth is $\omega_{0}/Q$.
 \end{exercise}
 
 \begin{exercise}
 Show that an ideal lossless transformer with turns ratio $n$ reflects
 a secondary load impedance $Z_{L}$ to the primary as $Z_{\text{ref}}
 = Z_{L}/n^{2}$.
+\paragraph{Solution sketch.}
+For an ideal transformer with $n = N_{2}/N_{1}$, the secondary voltage
+is $V_{2} = nV_{1}$ and the currents satisfy $I_{1} = nI_{2}$ (power
+conservation, $V_{1}I_{1} = V_{2}I_{2}$). The load fixes $V_{2} =
+Z_{L}I_{2}$. The impedance seen at the primary is $Z_{\text{ref}} =
+V_{1}/I_{1} = (V_{2}/n)/(nI_{2}) = (1/n^{2})(V_{2}/I_{2}) = Z_{L}/n^{2}$.
+Impedance scales with the square of the turns ratio, which is why
+transformers serve as impedance-matching networks.
 \end{exercise}
 
 \begin{exercise}
@@ -765,6 +1001,15 @@ Derive the formula $P = \sqrt{3}V_{L}I_{L}\cos\phi$ for the total
 real power delivered to a balanced three-phase wye-connected load,
 starting from the single-phase formula and summing over the three
 phases.
+\paragraph{Solution sketch.}
+Each phase of a balanced wye load carries the phase voltage
+$V_{\phi} = V_{L}/\sqrt{3}$ and the line current $I_{L}$ at power
+factor $\cos\phi$, so the per-phase real power is $V_{\phi}I_{L}\cos\phi$.
+The total over three identical phases is $P = 3V_{\phi}I_{L}\cos\phi =
+3(V_{L}/\sqrt{3})I_{L}\cos\phi = \sqrt{3}V_{L}I_{L}\cos\phi$. The same
+result follows for a delta load by the dual substitution
+$I_{\phi} = I_{L}/\sqrt{3}$, $V_{\phi} = V_{L}$, so the line-quantity
+formula is connection-independent.
 \end{exercise}
 
 \subsection*{Estimation}\pathtag{core}
@@ -774,12 +1019,33 @@ Estimate the resistance of a typical household incandescent lamp from
 its nameplate power and voltage ratings. State whether the resistance
 is the cold resistance, the hot resistance, or an average; explain
 the difference.
+\paragraph{Reference estimate.}
+A $60\,\si{\watt}$ lamp on a $230\,\si{\volt}$ supply draws $P/V =
+0.26\,\si{\ampere}$, so $R = V^{2}/P = 230^{2}/60 \approx 880\,\si{
+\ohm}$. This is the hot (operating) resistance, computed from the
+rated steady-state dissipation. The cold filament resistance is roughly
+ten to fifteen times smaller (tungsten's resistance rises with
+temperature), which is why an incandescent lamp draws a large inrush
+current at switch-on before the filament heats and the resistance
+climbs to its operating value.
 \end{exercise}
 
 \begin{exercise}
 Estimate the time constant of a smartphone's battery-charging circuit
 during the constant-voltage phase of charging. State assumptions about
 the battery's internal resistance and the supply voltage.
+\paragraph{Reference estimate.}
+Model the cell as a capacitance-like reservoir behind an internal
+resistance. A $4000\,\si{\milli\ampere\hour}$ cell at $3.7\,\si{\volt}$
+stores about $5\times 10^{4}\,\si{\joule}$; treating it as an
+equivalent capacitor $C \sim Q/V = (4\,\text{Ah}\cdot 3600)/3.7
+\approx 4000\,\si{\farad}$. With an internal resistance of order
+$50\,\si{\milli\ohm}$, the electrical time constant $RC$ is of order
+$200\,\si{\second}$, a few minutes. The constant-voltage phase trails
+off over tens of minutes because the charge controller deliberately
+tapers the current well beyond one time constant to protect the cell;
+the $RC$ estimate sets the lower bound on how fast the terminal voltage
+could relax, not the full charge time.
 \end{exercise}
 
 \begin{exercise}
@@ -787,6 +1053,15 @@ Estimate the quality factor and bandwidth of a typical AM radio
 receiver's tuned circuit, given that adjacent AM stations are spaced
 $10\,\si{\kilo\hertz}$ in frequency and that strong adjacent-channel
 rejection is required.
+\paragraph{Reference estimate.}
+A station near the middle of the AM band sits at about
+$1\,\si{\mega\hertz}$. To pass one $10\,\si{\kilo\hertz}$ channel while
+rejecting its neighbours, the tuned circuit needs a bandwidth of order
+$10\,\si{\kilo\hertz}$, so $Q = f_{0}/\Delta f \approx 10^{6}/10^{4} =
+100$. A single LC tank with $Q\approx 100$ is achievable but marginal
+for sharp adjacent-channel rejection, which is why real receivers move
+selectivity to a fixed intermediate-frequency stage with cascaded tuned
+stages rather than relying on the antenna-stage $Q$ alone.
 \end{exercise}
 
 \begin{exercise}
@@ -794,6 +1069,17 @@ Estimate the reactive power that a domestic refrigerator's motor
 demands during start-up, given that the motor draws roughly $7$ times
 its run current at start. State the duration of the start-up
 transient and its impact on the household's instantaneous demand.
+\paragraph{Reference estimate.}
+A refrigerator compressor runs at perhaps $150\,\si{\watt}$, drawing
+about $1\,\si{\ampere}$ at $230\,\si{\volt}$ with a run power factor near
+$0.6$. At start the locked-rotor current is roughly $7\,\si{\ampere}$,
+mostly reactive because the stalled motor looks like an inductor. The
+start-up apparent power is then $230\cdot 7 \approx 1.6\,\si{\kilo\volt
+\ampere}$, of which the reactive part is of order $1.3\,\text{kvar}$.
+The transient lasts a few hundred milliseconds until the rotor reaches
+speed. The household sees a brief sag and a current spike that the
+circuit breaker is sized to tolerate but that can dim incandescent
+lamps momentarily.
 \end{exercise}
 
 \begin{exercise}
@@ -801,6 +1087,17 @@ Estimate the equivalent series resistance of a $1\,\si{\milli\farad}$
 aluminium electrolytic capacitor at $120\,\si{\hertz}$ and at
 $100\,\si{\kilo\hertz}$. State the dominant physical mechanism in
 each frequency range.
+\paragraph{Reference estimate.}
+A $1\,\si{\milli\farad}$ aluminium electrolytic typically lists an ESR
+of order $0.1$ to $0.3\,\si{\ohm}$ at $120\,\si{\hertz}$, dominated by
+the electrolyte's ionic conductivity and the dielectric loss of the
+oxide film. At $100\,\si{\kilo\hertz}$ the ESR falls to roughly
+$0.02$ to $0.05\,\si{\ohm}$ as the dielectric loss term shrinks, then
+the impedance begins to rise again because the equivalent series
+inductance of the wound foil takes over above the self-resonant
+frequency. The data file \texttt{data/capacitor\_dielectrics.csv}
+records the qualitative ESR-versus-frequency trend for several
+dielectric classes.
 \end{exercise}
 
 \begin{exercise}
@@ -809,6 +1106,19 @@ household consumes during the first cycle after a power outage's
 restoration, given that the dominant inrush is the cold filaments of
 incandescent lamps and the capacitor charging in switched-mode power
 supplies. State the assumed installed wattage of each load type.
+\paragraph{Reference estimate.}
+Assume $500\,\si{\watt}$ of incandescent lamps and $300\,\si{\watt}$ of
+switched-mode supplies installed. The lamps' cold filaments draw about
+ten times their steady current, so the first half-cycle
+($10\,\si{\milli\second}$) passes a peak of order
+$5\,\si{\kilo\watt}$, delivering roughly $500\,\text{W}\cdot 0.01\,
+\text{s}\cdot 10 \approx 50\,\si{\joule}$ in that first cycle before the
+filaments heat. The switched-mode supplies charge their input bulk
+capacitors through a near-short, drawing a narrow current spike that
+deposits a comparable few tens of joules. The first-cycle energy is
+therefore of order $100\,\si{\joule}$, dominated by inrush rather than
+steady draw; this is the load the inrush-limiting resistors and
+breakers must survive.
 \end{exercise}
 
 \subsection*{Simulation}\pathtag{mastery}
@@ -819,6 +1129,17 @@ The input is a netlist (resistors, voltage sources, current sources);
 the output is the steady-state node voltages. Test on a network of
 $10$ nodes with $20$ resistors and verify against hand calculation on
 a $3$-node sub-circuit.
+\paragraph{Model-answer sketch.}
+Stamp each element into a conductance matrix $G$ and a source vector
+$z$: a resistor between nodes $a$ and $b$ adds $1/R$ to $G_{aa}$ and
+$G_{bb}$ and subtracts it from $G_{ab}$ and $G_{ba}$; a current source
+adds to $z$; a voltage source needs modified nodal analysis with one
+extra unknown current per source. Solve $Gv = z$. The reference
+implementation \texttt{code/nodal\_solver.py} does exactly this and
+reproduces the $v_{1} = 4\,\si{\volt}$ divider result on the
+three-node test circuit. The graders should check that the
+$10$-node solution satisfies KCL at every node to within the solver's
+numerical tolerance.
 \end{exercise}
 
 \begin{exercise}
@@ -827,6 +1148,17 @@ circuits using trapezoidal-rule integration with step size $\Delta
 t$. Simulate the unit-step response of an RLC circuit at $\zeta = 0.1,
 0.5, 1, 2$ and compare to the analytical solution. Identify the step
 size at which the trapezoidal-rule truncation error becomes visible.
+\paragraph{Model-answer sketch.}
+Use the state vector $(v_{C}, i_{L})$ with $\dd v_{C}/\dd t = i_{L}/C$
+and $\dd i_{L}/\dd t = (V_{s}-Ri_{L}-v_{C})/L$, and advance with the
+trapezoidal rule (solve the implicit $2\times 2$ system each step). The
+reference \texttt{code/rlc\_transient.py} matches the closed-form step
+response to under a millivolt at $\omega_{n}\Delta t = 0.01$. Truncation
+error grows as $(\omega_{n}\Delta t)^{2}$; it becomes visible to the eye
+once $\omega_{n}\Delta t$ approaches $0.2$ to $0.5$, where the ringing
+period is sampled fewer than about a dozen times. Below that the
+A-stable trapezoidal scheme tracks all four damping ratios without
+artificial growth.
 \end{exercise}
 
 \begin{exercise}
@@ -834,6 +1166,17 @@ Implement the AC sweep of a passive bandpass filter and plot its Bode
 diagram. Compare to the analytical $H(\omega)$ and identify the
 component tolerances that would shift the centre frequency by
 $\pm 5\,\%$ and the $Q$ by $\pm 10\,\%$.
+\paragraph{Model-answer sketch.}
+Compute $H(\omega) = R/(R + j\omega L + 1/(j\omega C))$ over a
+logarithmic frequency grid and plot $20\log_{10}|H|$ and $\angle H$, as
+\texttt{code/ac\_sweep.py} does. Since $f_{0} = 1/(2\pi\sqrt{LC})$, a
+$\pm 5\%$ shift in $f_{0}$ follows from about $\pm 10\%$ combined
+tolerance in $LC$ (roughly $\pm 10\%$ on either $L$ or $C$ alone). Since
+$Q = \omega_{0}L/R$, a $\pm 10\%$ swing in $Q$ comes from about
+$\pm 10\%$ in $R$ or, after the $f_{0}$ shift, the residual sensitivity
+to $L$. The synthetic noisy sweep in
+\texttt{data/bandpass\_sweep.csv} lets the student practise extracting
+$f_{0}$ and $Q$ from imperfect data.
 \end{exercise}
 
 \subsection*{Design}\pathtag{standard}
@@ -845,6 +1188,18 @@ while passing DC-to-$1\,\si{\hertz}$ within $1\,\si{\decibel}$.
 Specify $R$, $C$, the cutoff frequency, and the resulting in-band
 ripple. Identify the trade-off between attenuation at $50\,\si{\hertz}$
 and the settling time of the filter to a step input.
+\paragraph{Solution sketch.}
+A first-order filter rolls off at $20\,\si{\decibel}$ per decade, so
+$40\,\si{\decibel}$ of attenuation at $50\,\si{\hertz}$ needs the cutoff
+two decades below, $f_{c} \approx 0.5\,\si{\hertz}$. That places the
+$1\,\si{\hertz}$ pass-band edge above $f_{c}$, costing more than
+$1\,\si{\decibel}$; a single pole cannot meet both edges, so either
+relax the pass-band spec or move to a higher-order filter. Taking
+$f_{c} = 0.5\,\si{\hertz}$ with $C = 1\,\si{\micro\farad}$ gives $R =
+1/(2\pi f_{c}C) = 318\,\si{\kilo\ohm}$. The trade-off is direct: a
+lower $f_{c}$ buys more $50\,\si{\hertz}$ rejection but lengthens the
+step settling time $\tau = 1/(2\pi f_{c})$, here about $0.3\,\si{
+\second}$, so the sensor responds sluggishly.
 \end{exercise}
 
 \begin{exercise}
@@ -853,6 +1208,16 @@ impedance $\ge 10\,\si{\kilo\ohm}$, and bandwidth $\ge 100\,\si{\kilo
 \hertz}$. Specify the feedback and input resistors, identify the
 required op-amp gain-bandwidth product, and select a candidate op-amp
 from a current commercial catalogue (as of 2025).
+\paragraph{Solution sketch.}
+For an inverting amplifier the gain is $-R_{f}/R_{\text{in}}$ and the
+input impedance is $R_{\text{in}}$. Set $R_{\text{in}} = 10\,\si{\kilo
+\ohm}$ to meet the input-impedance floor, then $R_{f} = 100\,\si{\kilo
+\ohm}$ for gain $-10$. The closed-loop bandwidth is the gain-bandwidth
+product divided by the noise gain $(1+R_{f}/R_{\text{in}}) = 11$, so a
+$\ge 100\,\si{\kilo\hertz}$ bandwidth needs $\text{GBW}\ge 1.1\,\si{
+\mega\hertz}$. A common general-purpose part with a few-megahertz GBW
+and rail-to-rail output (as of 2025, a part in the class of the
+MCP6002 or TLV9001 family) clears the requirement with margin.
 \end{exercise}
 
 \begin{exercise}
@@ -863,6 +1228,18 @@ of $0.7$ lagging. Specify the capacitance per phase needed to bring
 the power factor to $0.95$ lagging, the kvar rating, and the
 operational considerations (over-voltage on light load, switching
 transients).
+\paragraph{Solution sketch.}
+At $\cos\phi_{1} = 0.7$ ($\phi_{1} = 45.6^\circ$) the reactive power is
+$Q_{1} = P\tan\phi_{1} = 200\cdot 1.02 = 204\,\text{kvar}$; at
+$\cos\phi_{2} = 0.95$ ($\phi_{2} = 18.2^\circ$), $Q_{2} = 200\cdot
+0.329 = 65.7\,\text{kvar}$. The bank supplies $Q_{C} = 138\,\text{kvar}$,
+or $46\,\text{kvar}$ per phase. For a delta-connected bank each
+capacitor sees the line voltage $400\,\si{\volt}$: $C = Q_{C,\text{ph}}
+/(\omega V_{L}^{2}) = 46000/(2\pi\cdot 50\cdot 400^{2}) = 915\,\si{
+\micro\farad}$ per phase. Operationally, a fixed bank over-corrects on
+light load (raising voltage), so step-switched banks or detuned
+reactors are used; inrush on switching is limited by series reactors or
+pre-charge.
 \end{exercise}
 
 \begin{exercise}
@@ -871,6 +1248,19 @@ carrying eight $3.3\,\si{\volt}$ logic chips, each drawing peak pulse
 currents of $200\,\si{\milli\ampere}$ with $1\,\si{\nano\second}$
 edges. Specify the bulk and bypass capacitor values, placement, and
 the target supply-rail impedance from DC to $100\,\si{\mega\hertz}$.
+\paragraph{Solution sketch.}
+Allow a rail droop of, say, $50\,\si{\milli\volt}$ for a
+$200\,\si{\milli\ampere}$ pulse with a $1\,\si{\nano\second}$ edge. The
+target impedance is $Z_{\text{target}} = \Delta V/\Delta I =
+0.05/0.2 = 0.25\,\si{\ohm}$ across the band. Place one
+$100\,\si{\nano\farad}$ ceramic bypass capacitor at each chip's supply
+pin (eight total) to source the high-frequency edge current, plus a
+shared bulk reservoir of $10$ to $47\,\si{\micro\farad}$ for the
+low-frequency bulk demand. The $1\,\si{\nano\second}$ edge has spectral
+content to a few hundred megahertz, so keep the bypass-capacitor loop
+inductance minimal (vias straight to a ground plane); above
+$100\,\si{\mega\hertz}$ the ESL of the ceramics dominates and the plane
+capacitance carries the rail.
 \end{exercise}
 
 \subsection*{Diagnosis and reverse engineering}\pathtag{standard}
@@ -882,6 +1272,18 @@ A bench LCR meter measures an unmarked component as $33\,\si{\nano
 Identify the dielectric class (X7R, NPO, electrolytic) most consistent
 with this signature, and the secondary measurement that would
 distinguish among the candidates.
+\paragraph{Solution sketch.}
+The measured capacitance falls by about a quarter from
+$1\,\si{\kilo\hertz}$ to $1\,\si{\mega\hertz}$, a frequency dependence
+too strong for NP0/C0G (which is flat to fractions of a percent) and
+too mild for an aluminium electrolytic (which loses far more and is
+polarised besides). The signature fits a class II ceramic such as X7R,
+whose permittivity drops with frequency and bias. The distinguishing
+secondary measurement is the DC-bias dependence: apply a few volts of
+DC bias and re-measure; X7R loses substantial capacitance under bias,
+NP0 does not, and an electrolytic would show polarity sensitivity. The
+data file \texttt{data/capacitor\_dielectrics.csv} lists the
+contrasting stabilities.
 \end{exercise}
 
 \begin{exercise}
@@ -892,6 +1294,21 @@ peak-to-peak amplitude $300\,\si{\milli\volt}$, period $25\,\si{
 Estimate the $L$ and $C$ of the supply-rail loop, identify the source
 of $L$ (PCB-trace inductance, bond-wire inductance, capacitor ESL),
 and propose a measurement that distinguishes among them.
+\paragraph{Solution sketch.}
+The ringing period $T = 25\,\si{\nano\second}$ gives an oscillation
+frequency $f = 40\,\si{\mega\hertz}$, so $\omega = 2.5\times 10^{8}\,\si{
+\per\second}$ and $LC = 1/\omega^{2} = 1.6\times 10^{-17}\,\si{
+\second\squared}$. Three visible cycles means $Q \approx \pi\cdot 3
+\approx 10$. If the decoupling capacitor is $100\,\si{\nano\farad}$,
+then $L = 1/(\omega^{2}C) = 1.6\times 10^{-17}/10^{-7} = 0.16\,\si{
+\nano\henry}$, far too small; the resonance must instead involve a
+smaller effective capacitance (the capacitor's ESL series-resonating
+with a few nanohenries of loop inductance). Estimating $L \sim 5\,\si{
+\nano\henry}$ implies $C \sim 3\,\si{\nano\farad}$, consistent with
+parasitic capacitance plus a small bypass. To distinguish the
+inductance source, add a known series inductance and watch the period
+shift: PCB-trace inductance changes with layout, bond-wire inductance
+does not, and ESL changes when the capacitor is swapped.
 \end{exercise}
 
 \begin{exercise}
@@ -901,6 +1318,19 @@ magnitude with the output open ($100\,\si{\ohm}$) and shorted ($25
 a T-network of resistors, an L-network, or a transformer-coupled
 network, and propose the supplementary measurement that would close
 the identification.
+\paragraph{Solution sketch.}
+The open- and short-circuit input impedances $Z_{\text{oc}} =
+100\,\si{\ohm}$ and $Z_{\text{sc}} = 25\,\si{\ohm}$ give a geometric
+mean $\sqrt{Z_{\text{oc}}Z_{\text{sc}}} = 50\,\si{\ohm}$, the image
+impedance, and a ratio $Z_{\text{oc}}/Z_{\text{sc}} = 4$. All three
+candidate networks can reproduce two real measurements, so two numbers
+do not close the identification. Both resistive networks are
+frequency-independent, while a transformer-coupled network shows
+frequency dependence and a low-frequency roll-off. The supplementary
+measurement is a frequency sweep of the open-circuit impedance:
+flat means a resistive T or L network (distinguished by measuring the
+reverse open- and short-circuit impedances for symmetry), while a
+rising or falling magnitude with frequency marks the transformer.
 \end{exercise}
 
 \subsection*{Failure analysis}\pathtag{core}
@@ -911,6 +1341,16 @@ common ground at the power-supply input. The analog signal contains a
 $200\,\si{\milli\volt}$ peak-to-peak hash that correlates with
 digital-clock activity. Identify the failure mode and the layout
 change that would eliminate it.
+\paragraph{Solution sketch.}
+The failure mode is a shared-ground-impedance coupling (a ground loop):
+digital switching currents return through the common ground trace,
+whose finite inductance and resistance drop a voltage that the analog
+section reads as common-mode hash, synchronised to the clock. The cure
+is to give analog and digital sections their own ground returns joined
+at a single star point near the data converter, so the digital return
+current never flows through the analog reference path. A continuous
+ground plane with a deliberate partition under the converter
+accomplishes the same separation while keeping return paths short.
 \end{exercise}
 
 \begin{exercise}
@@ -919,6 +1359,19 @@ after $18$ months of service. The drive's nameplate rates the
 capacitor for $10\,000$ hours at $105\,\si{\celsius}$. Identify the
 failure mechanism, the likely thermal stress, and the design change
 that would extend the life.
+\paragraph{Solution sketch.}
+The mechanism is electrolyte dry-out: ripple current heats the
+capacitor through its ESR, the sealed electrolyte slowly escapes, the
+ESR rises, and the heating accelerates until the vent opens. Aluminium
+electrolytic life roughly doubles for every $10\,\si{\celsius}$ of
+reduced core temperature (an Arrhenius rule). Eighteen months is about
+$13\,000$ hours, so if the part lasted only that long against a
+$10\,000$-hour-at-$105\,\si{\celsius}$ rating, the core ran far above
+ambient, pointing to excessive ripple heating or poor airflow. The fix
+is to lower the operating temperature: a higher-ripple-rated or
+lower-ESR capacitor, paralleled units to share ripple, better cooling,
+or a longer-life ($105\,\si{\celsius}$, $5000$-to-$10\,000$-hour-plus)
+series part.
 \end{exercise}
 
 \begin{exercise}
@@ -927,6 +1380,16 @@ nameplate rating of $10^{6}$ operations. The load is a small
 inductive solenoid. Identify the failure mode, the missing protective
 element, and the SPICE-level simulation that would have predicted
 it.
+\paragraph{Solution sketch.}
+When the contacts open, the solenoid's inductance forces the current to
+continue, driving the contact voltage up until an arc strikes across
+the gap; the arc erodes and pits the contacts, shortening life. The
+missing protective element is a freewheeling path across the inductor: a
+flyback diode for a DC solenoid, or an RC snubber for AC. A transient
+simulation that opens the contact (a switch with finite off
+resistance) while the inductor carries current would show the voltage
+spike $v = L\,\dd i/\dd t$ rising into the hundreds of volts, predicting
+the arc; adding the snubber in the model clamps it.
 \end{exercise}
 
 \begin{exercise}
@@ -935,6 +1398,18 @@ clips its output at peak amplitudes corresponding to less than its
 rated output power. Identify three candidate causes (supply-rail
 sag, output-stage thermal limiting, feedback-loop slew limiting) and
 the oscilloscope measurements that would distinguish them.
+\paragraph{Solution sketch.}
+Supply-rail sag flattens the output at a ceiling that tracks the supply
+voltage; probe the rail during the clip and watch it droop with the
+signal envelope. Output-stage thermal limiting appears only after the
+stage has heated, so the clip onset drifts with time and temperature;
+monitor the heat-sink temperature and the clip threshold over minutes.
+Slew limiting is frequency-dependent: it produces a triangular distortion
+of fast edges while slow large-signal sinusoids pass cleanly, so sweep
+the input frequency at fixed amplitude and find the frequency where the
+peaks first distort. The three signatures (supply-tracking ceiling,
+time-drifting onset, frequency-dependent edge distortion) separate the
+causes.
 \end{exercise}
 
 \subsection*{Judgment}\pathtag{standard}
@@ -946,6 +1421,19 @@ multi-layer-ceramic stack for a DC-bus decoupling application at
 $48\,\si{\volt}$. State the engineering trade-off in terms of ESR,
 ESL, life, cost, and failure mode. Identify the working application
 in which each is the preferred choice.
+\paragraph{Model-answer sketch.}
+The electrolytic offers large capacitance per unit cost but high ESR,
+appreciable ESL, a finite wear-out life that shortens with temperature,
+and a vent-and-dry-out failure mode. The ceramic stack offers very low
+ESR and ESL and long life, but costs more per microfarad, loses
+capacitance under DC bias (class II dielectrics), and can fail short
+through mechanical cracking. For bulk energy storage and low-frequency
+ripple on the $48\,\si{\volt}$ bus, the electrolytic is the economical
+choice; for high-frequency decoupling and where lifetime and ESR
+dominate, the ceramic stack wins. Many designs use both: electrolytic
+for bulk, ceramics for the high-frequency edge. The data file
+\texttt{data/capacitor\_dielectrics.csv} summarises the contrasting
+properties.
 \end{exercise}
 
 \begin{exercise}
@@ -954,6 +1442,19 @@ industrial consumers from $0.85$ to $0.95$, with a tariff penalty on
 consumers below the new minimum. Identify who benefits and who pays
 under the change, and the technical argument for and against the new
 minimum.
+\paragraph{Model-answer sketch.}
+The utility and the wider rate base benefit: a higher power-factor floor
+reduces the reactive current the distribution network carries, cutting
+$I^{2}R$ losses and deferring capacity upgrades. Consumers below the new
+floor pay, either through the tariff penalty or through the capital cost
+of correction equipment. The technical argument for the change is that
+reactive current loads the network without delivering real energy, so
+charging for it aligns incentives. The argument against is that the last
+increment from $0.85$ to $0.95$ costs each consumer disproportionately
+(diminishing returns on correction capacitors), and over-correction
+risks light-load over-voltage and resonance with the supply
+inductance. A reasonable judgment weighs the network savings against the
+distributed correction cost and may phase the requirement in.
 \end{exercise}
 
 \begin{exercise}
@@ -962,6 +1463,19 @@ op-amp-based filter for a $4$-Hz-cutoff anti-aliasing filter ahead of
 an analog-to-digital converter. Identify the design trade-off in
 terms of component count, noise, drift, power consumption, and
 output-impedance behaviour.
+\paragraph{Model-answer sketch.}
+A passive RC filter is cheap, needs no power, adds no active-device
+noise, and cannot become unstable, but a $4\,\si{\hertz}$ cutoff with
+realistic capacitor values needs large resistors that raise the output
+impedance and load the following stage, and a single pole gives only a
+gentle roll-off. An active op-amp filter buffers the output to a low
+impedance, allows a sharp higher-order response in one stage, and
+isolates the source, but it adds component count, op-amp noise and
+offset drift, and power consumption, and demands attention to
+stability. For an anti-aliasing filter ahead of a converter, the
+active filter's low output impedance and steep roll-off usually justify
+its cost; the passive filter suits low-power or low-budget designs that
+can tolerate a soft cutoff.
 \end{exercise}
 
 \begin{exercise}
@@ -971,4 +1485,17 @@ switch (interrupting both line and neutral) or whether a single-pole
 switch (interrupting only line) is sufficient. State the safety
 argument on each side and the regional regulation (IEC 60364) that
 governs the choice.
+\paragraph{Model-answer sketch.}
+The single-pole switch interrupts only the line conductor; it is simpler
+and cheaper and is sufficient where the supply polarity is reliably
+known and the protective earthing system guarantees which conductor is
+live. The double-pole switch interrupts both line and neutral, so the
+equipment is fully isolated even if the plug is reversed or the
+installation's line and neutral are swapped, which matters for portable
+laboratory gear used across sockets of uncertain wiring. The safety
+argument for double-pole is fail-safe isolation under wiring faults; the
+argument for single-pole is reduced cost and complexity in a fixed,
+known installation. IEC 60364 (low-voltage installations) governs the
+earthing system and disconnection requirements that decide which is
+acceptable in a given jurisdiction and application.
 \end{exercise}
