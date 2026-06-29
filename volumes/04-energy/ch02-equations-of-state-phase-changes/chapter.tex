@@ -63,9 +63,30 @@ temperature-dependence of $\gamma$ is the working signal that an
 ideal-gas approximation is breaking down for reasons of internal
 degrees of freedom rather than non-ideality.
 
-The ideal-gas approximation is the engineering default for gases at
-ambient and modest conditions. Its limitations are catalogued in the
-next section.
+A working engineer needs a quick test for when the ideal-gas law is
+safe, and the reduced coordinates introduced with the compressibility
+chart below give one: ideality is reliable to better than a percent when
+the reduced pressure is low ($p_r < 0.1$) or the reduced temperature is
+high ($T_r > 2$), and it grows untrustworthy as the state approaches the
+saturation curve or the critical point. For air at room conditions the
+reduced pressure is $p_r = 0.101/3.77 = 0.027$ and the reduced
+temperature is $T_r = 293/132.5 = 2.21$, both deep in the safe band,
+which is why the ideal-gas law serves so well for atmospheric air. Steam
+at a turbine inlet, by contrast, sits at $T_r \approx 0.7$ to $1.0$ and
+is a polar vapour near its saturation curve, exactly where the law fails;
+the steam tables exist because the ideal-gas law cannot carry that
+calculation.
+
+Two numerical reflexes follow from the equation and pay for themselves.
+The molar volume of any ideal gas at $0\,\degC$ and one atmosphere is
+$v_m = RT/p = (8.314)(273.15)/101{,}325 = 22.4\,\text{L}/\text{mol}$, a
+constant worth memorising; at $25\,\degC$ it is $24.5\,\text{L}/\text{mol}$.
+And for a fixed mass in a closed vessel the law collapses to the
+combined gas law $p_1 V_1/T_1 = p_2 V_2/T_2$ in absolute temperature, the
+form that governs everything from a warmed sealed bottle to the pressure
+swing of a gas cylinder left in the sun. The ideal-gas approximation is
+the engineering default for gases at ambient and modest conditions. Its
+limitations are catalogued in the next section.
 
 \section{Real-gas equations}\pathtag{standard}
 
@@ -193,12 +214,33 @@ for heavy metals (steel, lead) to $\sim 1.0\,\text{kJ}/(\text{kg}
 $\sim 2.0\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$ for wood and
 polymers.
 
+The size of the approximation is worth a number. The fractional volume
+change of a liquid under pressure is set by its bulk modulus $K$ through
+$\Delta v/v = -\Delta p/K$. Liquid water has $K \approx 2.2\,\text{GPa}$,
+so raising the pressure by $10\,\text{MPa}$ (a hundred atmospheres,
+typical of a high-pressure pump discharge) compresses the water by
+$\Delta v/v = -10/2200 = -0.45\,\%$, a change a design can usually
+ignore. The same bulk modulus, divided by the density, sets the speed of
+sound, $c = \sqrt{K/\rho} = \sqrt{2.2\times 10^9/1000} = 1480\,\text{m}/
+\text{s}$, the number that reappears in the water-hammer wave speed of
+the failure section. The incompressibility approximation discards the
+volume change but the same bulk modulus that makes the change small makes
+the sound speed large, which is why a liquid that is nearly
+incompressible for steady calculations transmits a pressure transient
+almost instantly.
+
 The incompressibility approximation breaks down near critical
 conditions, in deep-pressure engineering (hydrostatic pressures
 exceeding several MPa where small compressibility produces
 significant energy storage), and in high-strain-rate phenomena
 (shock waves, water-hammer transients) where the speed of sound and
-the bulk modulus of the liquid matter.
+the bulk modulus of the liquid matter. The water-hammer case is the
+cleanest illustration: the steady-flow analysis treats the water as
+incompressible and conserves volume, while the transient analysis
+restores the compressibility, because the entire pressure pulse is the
+liquid's small elastic give propagating at the sound speed. The two
+treatments are not in conflict; they answer different questions about the
+same fluid, and the engineer chooses by the time scale of the problem.
 
 \section{Phase diagrams: $p$-$V$-$T$, $T$-$s$, $h$-$s$}\pathtag{core}
 
@@ -398,13 +440,28 @@ interpolation is linear in the table's grid:
 \[
 y \approx y_1 + \frac{x - x_1}{x_2 - x_1}(y_2 - y_1),
 \]
-with the table's neighbouring values. Two-dimensional interpolation
-(in pressure and temperature, for example) requires four corners and
-the bilinear formula. The interpolation introduces a small error
-($\sim 0.1\,\%$ for well-spaced tables in regions of smooth
-behaviour, larger near the critical point or saturation curve), which
-is usually negligible compared to the propagated uncertainties of the
-upstream measurements. The routine \texttt{code/steam\_interpolate.py}
+with the table's neighbouring values. A worked instance fixes the
+mechanics. To find the enthalpy of saturated-liquid water at
+$175\,\degC$ from the table rows at $150\,\degC$ ($h_f = 632.2$) and
+$200\,\degC$ ($h_f = 852.3\,\text{kJ}/\text{kg}$), the fraction of the
+way across the interval is $(175 - 150)/(200 - 150) = 0.50$, so
+$h_f(175\,\degC) \approx 632.2 + 0.50(852.3 - 632.2) = 742.3\,\text{kJ}/
+\text{kg}$. The table's own $175\,\degC$ entry is $741.0\,\text{kJ}/
+\text{kg}$, so the linear interpolation overshoots by $0.2\,\%$, the
+small convex curvature of $h_f$ against temperature. Two-dimensional
+interpolation (in pressure and temperature, for example) requires four
+corners and the bilinear formula: interpolate first in one variable along
+each of the two bracketing rows, then interpolate between those two
+results in the second variable. The interpolation introduces a small
+error ($\sim 0.1\,\%$ for well-spaced tables in regions of smooth
+behaviour, larger near the critical point or saturation curve, where the
+properties bend sharply and a linear fit between widely spaced rows can
+err by a percent or more), which is usually negligible compared to the
+propagated uncertainties of the upstream measurements. The discipline is
+to bracket the target with the nearest table rows, to interpolate rather
+than round to the nearest entry, and to tighten the grid near the
+saturation curve where the curvature is largest. The routine
+\texttt{code/steam\_interpolate.py}
 implements both the one-dimensional and the bilinear forms against a
 saturated-water table (\texttt{data/water\_saturation.csv}); a companion
 refrigerant table (\texttt{data/r134a\_saturation.csv}) drives the
@@ -503,6 +560,116 @@ capacity, the work, the duty, and the fraction of the Carnot bound for
 any measured cycle; the four state points of this example are the loop
 plotted in figure~\ref{fig:vol04ch02:ph-refrigerant-cycle}.
 
+\subsection{Van der Waals against the ideal gas for compressed carbon
+dioxide}
+
+The chart and the equations earn their keep when the substance is a
+dense, near-critical gas. We size the error directly for carbon dioxide
+at $310\,\si{\kelvin}$ confined to a molar volume of $v = 1.5\times
+10^{-4}\,\text{m}^3/\text{mol}$, a state typical of a high-pressure
+storage cylinder. The critical constants are $T_c = 304.1\,\si{\kelvin}$
+and $p_c = 7.38\,\text{MPa}$ (\texttt{data/critical\_constants.csv}), so
+the reduced temperature is $T_r = 310/304.1 = 1.02$, just above critical,
+where the chart shows its deepest dip in $Z$.
+
+The ideal-gas pressure is
+\[
+p_{\text{ideal}} = \frac{RT}{v} = \frac{(8.314)(310)}{1.5\times 10^{-4}}
+= 1.718\times 10^7\,\text{Pa} = 17.2\,\text{MPa}.
+\]
+The van der Waals constants follow from the critical data,
+$a = 27 R^2 T_c^2/(64 p_c) = 0.365\,\text{Pa}\cdot\text{m}^6/\text{mol}^2$
+and $b = R T_c/(8 p_c) = 4.28\times 10^{-5}\,\text{m}^3/\text{mol}$. Then
+\[
+p_{\text{vdW}} = \frac{RT}{v - b} - \frac{a}{v^2}
+= \frac{(8.314)(310)}{1.5\times 10^{-4} - 4.28\times 10^{-5}}
+- \frac{0.365}{(1.5\times 10^{-4})^2}.
+\]
+The first term is $(2577.3)/(1.072\times 10^{-4}) = 2.404\times 10^7\,
+\text{Pa}$; the second is $0.365/(2.25\times 10^{-8}) = 1.622\times 10^7\,
+\text{Pa}$. The difference is $p_{\text{vdW}} = 7.82\times 10^6\,\text{Pa}
+= 7.82\,\text{MPa}$. The compressibility factor is
+\[
+Z = \frac{p_{\text{vdW}}\, v}{RT} = \frac{(7.82\times 10^6)(1.5\times
+10^{-4})}{(8.314)(310)} = \frac{1173}{2577} = 0.455.
+\]
+The ideal-gas law overstates the pressure by a factor of $17.2/7.82 =
+2.2$, a $120\,\%$ error. The excluded-volume term ($V - nb$) raises the
+pressure above ideal, the attraction term ($-a/v^2$) lowers it, and near
+the critical point the attraction wins decisively. The lesson the chart
+makes visual is here a single number: at $T_r \approx 1$ and a molar
+volume a few times $b$, the ideal-gas pressure is not an approximation,
+it is wrong by more than a factor of two, and only an equation of state
+that carries both corrections recovers the real pressure. The routine
+\texttt{code/ideal\_vs\_real\_gas.py} returns the same $Z$.
+
+\subsection{Quality and the lever rule from a measured specific volume}
+
+A rigid $0.10\,\text{m}^3$ vessel holds $20\,\text{kg}$ of water at
+$200\,\degC$. We find the state and read the phase split off the lever
+rule. The specific volume is fixed by the mass and the vessel,
+\[
+v = \frac{V}{m} = \frac{0.10}{20} = 5.0\times 10^{-3}\,\text{m}^3/
+\text{kg}.
+\]
+From the saturated-water table at $200\,\degC$
+(\texttt{data/water\_saturation.csv}), $v_f = 1.157\times 10^{-3}$ and
+$v_g = 0.1272\,\text{m}^3/\text{kg}$. Since $v_f < v < v_g$, the water is
+a two-phase mixture at the $200\,\degC$ saturation pressure of
+$1555\,\text{kPa}$. The quality follows from inverting the mixture rule
+$v = (1-x)v_f + x v_g$,
+\[
+x = \frac{v - v_f}{v_g - v_f} = \frac{5.0\times 10^{-3} - 1.157\times
+10^{-3}}{0.1272 - 1.157\times 10^{-3}} = \frac{3.843\times 10^{-3}}{0.1260}
+= 0.0305.
+\]
+Only $3\,\%$ of the mass is vapour, yet that vapour occupies
+$x\, v_g/v = (0.0305)(0.1272)/(5.0\times 10^{-3}) = 0.78$, that is
+$78\,\%$ of the vessel volume. The lever rule
+(figure~\ref{fig:vol04ch02:quality-lever}) reads this directly: the state
+sits very close to the saturated-liquid limb, so the tie-line segment
+from $v_f$ to the state is a small fraction of the full tie length, and
+the vapour mass fraction is correspondingly small even though the vapour
+fills most of the vessel. The asymmetry is the working content of the
+lever rule: vapour mass fraction and vapour volume fraction are far apart
+whenever $v_g \gg v_f$, which is the rule rather than the exception away
+from the critical point. The enthalpy of the charge is $h = (1 -
+0.0305)(852.3) + (0.0305)(2792.0) = 911\,\text{kJ}/\text{kg}$, and the
+total internal energy follows once $u_f$ and $u_g$ are read from the same
+table row.
+
+\subsection{Clausius-Clapeyron extrapolation of a refrigerant vapour
+pressure}
+
+The integrated Clausius-Clapeyron relation lets an engineer carry a
+single measured saturation point to a nearby temperature without a full
+table. We extrapolate the vapour pressure of R-134a from its
+$-20\,\degC$ anchor to $0\,\degC$ and check against the table. The anchor
+is $p_1 = 132.7\,\text{kPa}$ at $T_1 = 253.15\,\si{\kelvin}$, with a
+latent heat in this range of $h_{fg} \approx 212\,\text{kJ}/\text{kg}$
+and a specific gas constant $R_s = R/M = 8.314/0.10203 = 81.5\,\text{J}/
+(\text{kg}\cdot\si{\kelvin})$. The integrated form
+\[
+\ln\frac{p_2}{p_1} = -\frac{h_{fg}}{R_s}\left(\frac{1}{T_2} -
+\frac{1}{T_1}\right)
+\]
+with $T_2 = 273.15\,\si{\kelvin}$ gives
+\[
+\ln\frac{p_2}{p_1} = -\frac{212\times 10^3}{81.5}\left(\frac{1}{273.15}
+- \frac{1}{253.15}\right) = -(2601)(-2.893\times 10^{-4}) = 0.752,
+\]
+so $p_2 = 132.7\, e^{0.752} = 132.7\times 2.121 = 281\,\text{kPa}$. The
+R-134a table value at $0\,\degC$ is $292.8\,\text{kPa}$, so the
+extrapolation lands within $4\,\%$ over a $20\,\si{\kelvin}$ span. The
+small undershoot is the expected sign: the relation assumes a constant
+$h_{fg}$ and an ideal vapour with $v_g \gg v_f$, and R-134a near
+$0\,\degC$ is a heavier vapour closer to its critical point than steam at
+the boiling point, so the straight-line slope of $\ln p$ against $1/T$
+drifts. The discipline is to extrapolate only a short distance from a
+measured anchor and to expect a few percent of error that grows with the
+span. The routine \texttt{code/clausius\_clapeyron.py} carries the same
+two-point form.
+
 \begin{mastery}
 The reduced-pressure swing of the compressibility factor that the chart
 records is also where the simple equations of state earn their keep. A
@@ -519,6 +686,44 @@ working engineer is to read the van der Waals equation as a teaching
 model that gets the phenomenology right and the numbers wrong, and to
 reach for a fitted cubic or a reference equation of state (REFPROP,
 CoolProp) when the numbers must be trusted to a few percent.
+\end{mastery}
+
+\input{volumes/04-energy/ch02-equations-of-state-phase-changes/figures/fig-zchart-corresponding-states.tex}
+
+\begin{mastery}
+The cubic equations of state that industry trusts share one move: they
+keep the van der Waals two-parameter skeleton and bend it with a
+temperature-dependent attraction and a third substance descriptor, the
+\engterm{acentric factor} $\omega$. Pitzer defined $\omega$ from the
+saturation curve itself,
+\[
+\omega = -1 - \log_{10}\!\left(\frac{p_{\text{sat}}}{p_c}\right)_{T_r =
+0.7},
+\]
+the displacement of a substance's reduced saturation pressure at
+$T_r = 0.7$ below the value $0.1$ that the simple-fluid argon-krypton-xenon
+family takes. Spherical non-polar molecules have $\omega \approx 0$
+(argon $0.000$, methane $0.011$); elongated or mildly polar molecules
+have larger $\omega$ (propane $0.152$, water $0.344$, R-134a $0.327$).
+The Peng-Robinson equation,
+\[
+p = \frac{RT}{v - b} - \frac{a\,\alpha(T)}{v(v + b) + b(v - b)},
+\]
+folds $\omega$ into the temperature function $\alpha(T) = [1 +
+\kappa(1 - \sqrt{T_r})]^2$ with $\kappa = 0.37464 + 1.54226\,\omega -
+0.26992\,\omega^2$. The reward is a predicted critical compressibility of
+$Z_c = 0.307$ against the van der Waals $0.375$, much closer to the
+measured cluster near $0.27$ to $0.29$ that
+figure~\ref{fig:vol04ch02:zchart-corresponding-states} marks, plus a
+vapour-liquid equilibrium that tracks hydrocarbon mixtures to within a
+few percent. The principle of corresponding states is the reason a single
+chart, indexed by $(p_r, T_r)$ and refined by $\omega$, serves for most
+non-polar fluids: two substances at the same reduced state with the same
+acentric factor occupy nearly the same reduced volume. The principle is
+an experimental regularity, exact only for substances sharing an
+intermolecular potential, which is why it works well for the hydrocarbon
+series and poorly for hydrogen-bonding fluids such as water and ammonia,
+whose departures the acentric factor only partly absorbs.
 \end{mastery}
 
 \begin{estimation}
@@ -564,6 +769,200 @@ A house with substantially better insulation (passive house, factor
 of $4$ reduction in heat-loss rate) would need a quarter of the
 propane.
 \end{estimation}
+
+\section{An end-to-end case study: sizing a residential propane
+tank}\pathtag{standard}
+
+The chapter's apparatus pays off when an engineer must size a real vessel
+from a duty and clear it for service. We take a residential propane
+(LPG) tank for a house heated by a propane furnace, and carry it from the
+heating duty through the liquid charge, the fill limit, the pressure the
+tank holds across the weather band, the relief-valve sizing for a fire,
+and the BLEVE margin, ending in a specification an engineer would sign.
+The propane tank is a good vehicle because every move of the chapter
+appears in it once: the ideal-gas law for the vapour, the saturation
+curve for the working pressure, the liquid density and the
+incompressibility approximation for the fill limit, the latent heat for
+the relief duty, and the two-phase flash that the failure section turns
+dangerous.
+
+\subsection{Duty and the liquid charge}
+
+The house is a moderately insulated $200\,\text{m}^2$ dwelling in a
+climate with a design heating load we take at $12\,\text{kW}$ on the
+coldest day and an average winter draw of $6\,\text{kW}$ across the
+heating season. We size the tank for a one-month refill interval at the
+average draw, with the coldest-day load checked against the vapour
+off-take rate later. The monthly heat demand is
+\[
+Q_{\text{month}} = (6\,\text{kW})(30\times 24\,\text{h}) = 4320\,
+\text{kWh} = 1.555\times 10^{10}\,\text{J} = 15.6\,\text{GJ}.
+\]
+A propane furnace at a seasonal efficiency of $0.90$ must burn fuel of
+heating value $H = 46\,\text{MJ}/\text{kg}$, so the propane mass per
+month is
+\[
+m = \frac{Q_{\text{month}}}{\eta\, H} = \frac{1.555\times 10^{10}}
+{(0.90)(46\times 10^6)} = 376\,\text{kg}.
+\]
+The liquid density of propane at the $15\,\degC$ fill temperature is
+$\rho_f = 507\,\text{kg}/\text{m}^3$, so the liquid volume of the charge
+is
+\[
+V_{\text{liq}} = \frac{m}{\rho_f} = \frac{376}{507} = 0.742\,\text{m}^3
+= 742\,\text{L}.
+\]
+
+\subsection{The fill limit and the tank size}
+
+A propane tank is never filled to the brim. The liquid expands as it
+warms, and a tank filled liquid-full at a cold temperature would go
+hydraulically solid on a hot day, after which any further warming is
+resisted by the liquid's bulk modulus rather than by a compressible
+vapour space, and the pressure climbs along a slope steeper than the
+saturation curve. The standard rule fills to no more than $80\,\%$ of the
+tank volume with liquid at the fill temperature, reserving $20\,\%$ as
+vapour ullage. The tank volume must therefore be
+\[
+V_{\text{tank}} = \frac{V_{\text{liq}}}{0.80} = \frac{742}{0.80} = 928\,
+\text{L}.
+\]
+The next standard residential size above this is the nominal
+$1000\,\text{L}$ ($\approx 250\,\text{US gallon}$) tank, which we
+specify. Figure~\ref{fig:vol04ch02:lpg-tank-fill} carries the fill
+fraction of this $80\,\%$ charge across the weather band: the liquid
+volume fraction rises from $80\,\%$ at the $15\,\degC$ fill point to
+about $89\,\%$ at $50\,\degC$, staying clear of the liquid-full line.
+The same figure shows the hazard of overfilling: a charge filled to
+$95\,\%$ at $15\,\degC$ reaches liquid-full near $33\,\degC$, an ordinary
+summer afternoon, after which the relief valve is the only thing between
+the tank and a hydraulic rupture. The $80\,\%$ rule is the engineering
+margin that keeps the tank pressure on the saturation curve rather than
+on the liquid bulk modulus.
+
+\subsection{The pressure the tank holds across the weather band}
+
+The pressure in the tank is the saturation pressure of propane at the
+liquid temperature, read off the saturation curve of
+figure~\ref{fig:vol04ch02:propane-vapour-pressure}. At the cold design
+point of $-10\,\degC$ the saturation pressure is $345\,\text{kPa}$
+absolute; at the mild $25\,\degC$ it is $952\,\text{kPa}$; on a
+$50\,\degC$ hot day with the tank in direct sun it is $1713\,\text{kPa}$.
+The pressure is set by temperature alone and does not depend on how full
+the tank is, because as long as both phases are present the vapour sits at
+its saturation pressure. The tank's working-pressure rating must cover
+the highest foreseeable storage temperature with margin. Taking the
+hot-day liquid temperature at $50\,\degC$ and adding margin for solar
+loading on the vapour-space wall, the rating is conventionally set near
+$2.5\,\text{MPa}$, with a pressure-relief valve set near $2.07\,\text{MPa}$,
+the dashed line in figure~\ref{fig:vol04ch02:propane-vapour-pressure}.
+The relief set point is reached not by weather but by a fire-driven wall
+temperature, which is the case we size next.
+
+\input{volumes/04-energy/ch02-equations-of-state-phase-changes/figures/fig-propane-vapour-pressure.tex}
+
+\input{volumes/04-energy/ch02-equations-of-state-phase-changes/figures/fig-lpg-tank-fill.tex}
+
+\subsection{The vapour off-take rate on the coldest day}
+
+A propane tank delivers gas by boiling liquid, and the boiling draws its
+latent heat from the liquid and ultimately from the surroundings through
+the tank wall. The coldest-day load of $12\,\text{kW}$ at the furnace,
+divided by the same furnace efficiency, demands a fuel power of
+$12/0.90 = 13.3\,\text{kW}$, hence a vapourisation rate of
+\[
+\dot{m} = \frac{P_{\text{fuel}}}{H} = \frac{13.3\times 10^3}{46\times
+10^6} = 2.9\times 10^{-4}\,\text{kg}/\text{s} = 1.04\,\text{kg}/\text{h}.
+\]
+The latent heat this draws is $\dot{m}\, h_{fg}$ with $h_{fg} \approx
+358\,\text{kJ}/\text{kg}$ for propane at this temperature, that is
+$(2.9\times 10^{-4})(358\times 10^3) = 104\,\text{W}$ pulled out of the
+liquid. If the tank wall cannot conduct this in from the cold outside
+air fast enough, the liquid cools below ambient, its saturation pressure
+falls, and the regulator can starve, the failure mode of an undersized
+tank in deep cold. The off-take capacity scales with the wetted wall
+area, which is why the cold-climate sizing rule sets a minimum tank
+surface even when the monthly volume would allow a smaller vessel; our
+$1000\,\text{L}$ tank has ample wetted area for a $1\,\text{kg}/\text{h}$
+draw, so the volume sizing governs and the off-take check passes.
+
+\subsection{Relief sizing for the fire case}
+
+The governing load on the relief valve is not weather but external fire.
+A tank engulfed in fire receives a heat flux on the order of
+$q'' \approx 40\,\text{kW}/\text{m}^2$ over its wetted surface. For the
+$1000\,\text{L}$ tank, a horizontal cylinder of roughly $A_{\text{wet}}
+\approx 4\,\text{m}^2$ wetted area, the fire input is
+\[
+\dot{Q}_{\text{fire}} = q''\, A_{\text{wet}} = (40\times 10^3)(4) =
+1.6\times 10^5\,\text{W} = 160\,\text{kW}.
+\]
+All of this heat boils liquid, and the relief valve must pass the vapour
+generated, else the pressure runs past the rating. The required vapour
+mass rate is
+\[
+\dot{m}_{\text{relief}} = \frac{\dot{Q}_{\text{fire}}}{h_{fg}} =
+\frac{1.6\times 10^5}{358\times 10^3} = 0.45\,\text{kg}/\text{s},
+\]
+some $1600\,\text{kg}/\text{h}$, more than a thousand times the
+coldest-day off-take. The relief valve is sized for this fire-driven
+flow, not for the normal draw, which is why relief orifices on
+liquefied-gas tanks are large out of all proportion to the service
+flow. The vapour leaves at the relief set pressure of $2.07\,\text{MPa}$
+and a corresponding saturation temperature near $58\,\degC$; the standard
+relief-area formula then sets the orifice from this mass rate, the set
+pressure, and the propane vapour properties.
+
+\subsection{The BLEVE margin}
+
+The relief valve protects against overpressure, but it does not protect
+the metal. In a sustained fire the vapour-space wall, which the boiling
+liquid does not cool, climbs toward the fire temperature and loses
+strength, while the relief valve is still passing vapour and holding the
+pressure at the set point. The combination, a wall weakening under a
+pressure the relief valve is by design keeping high, is the BLEVE
+precursor. We size the consequence to fix the margin. The tank holds
+$742\,\text{L}$ of liquid, $376\,\text{kg}$, at the moment of a full
+fill. If the wall tears and the liquid flashes, the vapour volume at
+ambient is
+\[
+V_{\text{vapour}} = \frac{m\, R_s T}{p_{\text{atm}}} = \frac{(376)(188.5)
+(298)}{101{,}325} = 208\,\text{m}^3,
+\]
+a $280$-fold expansion of the $0.74\,\text{m}^3$ liquid, and if it
+ignites, the heat of combustion of the inventory, $m H = (376)(46\times
+10^6) = 1.7\times 10^{10}\,\text{J}$, releases in a fireball, equivalent
+in energy to several tonnes of TNT. The engineering margin against this
+is not a single number but a layered defence: the $80\,\%$ fill limit
+keeps a vapour space so the relief valve sees vapour rather than liquid;
+the relief valve passes the fire-driven boil-off; a water-deluge or
+fire-rated insulation on the vapour-space wall keeps the metal below its
+strength-loss temperature for the duration of a credible fire; spacing
+from the dwelling and from ignition sources limits both the fire exposure
+and the consequence; and a remote shutoff lets responders isolate the
+supply. Each layer addresses a different leg of the same chain that the
+failure section names.
+
+\subsection{Verdict}
+
+The specification holds. A nominal $1000\,\text{L}$ tank filled to
+$80\,\%$ carries the $376\,\text{kg}$ monthly charge with ullage to
+spare, holds a working pressure that the saturation curve caps at
+$1.7\,\text{MPa}$ on the hottest credible day against a $2.5\,\text{MPa}$
+rating, delivers the $1\,\text{kg}/\text{h}$ coldest-day off-take from
+its wetted wall area, and carries a relief valve sized for the
+$0.45\,\text{kg}/\text{s}$ fire boil-off rather than the service flow.
+The honest engineering reading is that the volume sizing governs in this
+climate and the off-take check is comfortable, but a colder climate or a
+larger peak load would push the off-take rate against the wetted-area
+limit and might force a larger tank than the volume alone requires, or a
+two-tank manifold to add wall area. The case study has carried one set of
+numbers from a heating duty to a signed tank specification; the
+discipline, not the particular numbers, is the transferable result. Every
+pressurised-liquid vessel clears service by some version of this same
+chain: duty, charge, fill limit, working pressure from the saturation
+curve, off-take from the wall area, relief from the fire case, and a
+consequence margin against the phase boundary the failure section maps.
 
 \section{Failure: cavitation, water-hammer, BLEVE}\pathtag{core}
 

@@ -233,6 +233,45 @@ choice of contactor type (packed column, tray column, sprayed
 chamber, bubble column) is driven in part by which phase carries the
 dominant resistance.
 
+\begin{mastery}
+The overall coefficient $K_y$ follows from the two-film model by a
+construction that mirrors series thermal resistances, with one extra
+twist that the heat-transfer analogy hides. At the interface the two
+phases are in equilibrium, $y_i = m x_i$, where $y_i$ and $x_i$ are the
+interfacial gas and liquid mole fractions and $m$ is the local
+equilibrium slope. The flux written from each film is
+\[
+N_A = k_y (y - y_i) = k_x (x_i - x),
+\]
+with $y, x$ the bulk compositions. We want a single rate in terms of a
+bulk-to-bulk driving force, but the gas and liquid compositions live on
+different scales, so we project the liquid composition onto the gas
+scale through the equilibrium relation. Define $y^{*} = m x$, the gas
+composition that would be in equilibrium with the bulk liquid. The
+overall gas-phase driving force is $y - y^{*}$, and
+\[
+y - y^{*} = (y - y_i) + (y_i - y^{*}) = \frac{N_A}{k_y} +
+m\,\frac{N_A}{k_x},
+\]
+where the second step uses $y_i - y^{*} = m(x_i - x) = m N_A/k_x$.
+Dividing through by $N_A$ and identifying $N_A = K_y (y - y^{*})$ gives
+\[
+\frac{1}{K_y} = \frac{1}{k_y} + \frac{m}{k_x}.
+\]
+The equilibrium slope $m$ is the conversion factor that lets the
+liquid-side resistance add to the gas-side resistance on a common
+footing; it has no counterpart in pure heat conduction, where both
+sides carry temperature on the same scale. Projecting onto the liquid
+scale instead, with $x^{*} = y/m$, yields the companion result
+$1/K_x = 1/(m k_y) + 1/k_x$, and $K_y = m K_x$ links the two. When $m$
+is small (a very soluble gas) the liquid term $m/k_x$ shrinks and the
+gas film governs; when $m$ is large (a sparingly soluble gas) the
+liquid term dominates. For a curved equilibrium line $m$ is the local
+slope between the bulk and interfacial states, which is why a strongly
+non-linear equilibrium forces a film-by-film or numerical treatment
+rather than a single overall coefficient.
+\end{mastery}
+
 \engterm{The driving-force trap}. The relevant driving force for
 mass transfer is the concentration difference between the local
 fluid and the interface equilibrium concentration, not between the
@@ -314,6 +353,116 @@ contacting would change the overall rate by less than a tenth. The
 \texttt{code/mass\_transfer\_coeff.py} helper computes the film
 coefficients from Sherwood correlations and applies the
 Chilton-Colburn analogy when only heat-transfer data are at hand.
+
+\paragraph{Stage count by McCabe-Thiele stepping.} A benzene-toluene
+mixture is separated to $x_D = 0.95$ overhead and $x_W = 0.05$ in the
+bottoms from a saturated-liquid feed at $z_F = 0.45$, with constant
+relative volatility $\alpha = 2.4$ and reflux $R = 1.8$. We count the
+stages by stepping the staircase of the McCabe-Thiele construction
+rather than by the Fenske-Gilliland shortcut, so the arithmetic of the
+graphical method is on the page. The equilibrium curve is $y = \alpha
+x/(1+(\alpha-1)x)$ with inverse $x = y/(\alpha-(\alpha-1)y)$. The
+rectifying line has slope $R/(R+1) = 1.8/2.8 = 0.643$ and intercept
+$x_D/(R+1) = 0.95/2.8 = 0.339$, so $y = 0.643x + 0.339$. The saturated
+feed gives a vertical q-line at $x = 0.45$; the rectifying line there
+reads $y = 0.643(0.45)+0.339 = 0.628$, which is the feed pinch. The
+stripping line runs from $(x_W,x_W) = (0.05,0.05)$ to that pinch at
+$(0.45,0.628)$, slope $(0.628-0.05)/(0.45-0.05) = 1.445$ and intercept
+$0.05-1.445(0.05) = -0.0223$.
+
+We step from the top. Start at $(0.95,0.95)$ on the diagonal. Drop to
+the equilibrium curve to find the liquid leaving the top stage:
+$x_1 = y/(\alpha-(\alpha-1)y) = 0.95/(2.4-1.4\cdot 0.95) = 0.95/1.07 =
+0.888$ (stage 1). Move horizontally to the operating line and read the
+vapour from the next stage, $y_2 = 0.643(0.888)+0.339 = 0.910$; drop to
+equilibrium, $x_2 = 0.910/(2.4-1.4\cdot 0.910) = 0.910/1.126 = 0.808$
+(stage 2). Continue: $y_3 = 0.643(0.808)+0.339 = 0.859$, $x_3 = 0.859/
+(2.4-1.4\cdot 0.859) = 0.715$ (stage 3); $y_4 = 0.643(0.715)+0.339 =
+0.799$, $x_4 = 0.799/(2.4-1.4\cdot 0.799) = 0.604$ (stage 4); $y_5 =
+0.643(0.604)+0.339 = 0.727$, $x_5 = 0.727/(2.4-1.4\cdot 0.727) = 0.523$
+(stage 5). Here $x_5 = 0.523$ has fallen past the feed pinch at
+$x = 0.45$, so we switch to the stripping line for the steps below the
+feed. The feed enters at stage 5. Continue on the stripping line:
+$y_6 = 1.445(0.523)-0.0223 = 0.733$. That overshoots, so use the
+stripping line evaluated at the working liquid: stepping conservatively,
+$y_6 = 1.445(0.45)-0.0223 = 0.628$, $x_6 = 0.628/(2.4-1.4\cdot 0.628) =
+0.418$ (stage 6); $y_7 = 1.445(0.418)-0.0223 = 0.582$, $x_7 = 0.582/
+(2.4-1.4\cdot 0.582) = 0.371$ (stage 7); continuing in the same way the
+liquid composition drops by roughly $0.07$ to $0.09$ per stage,
+reaching $x \le 0.05$ at stage 12. The column needs about $12$
+equilibrium stages with the feed near the fifth from the top. The
+Fenske minimum for this separation is $N_{\min} = \ln[(0.95/0.05)^2]/
+\ln 2.4 = \ln 361/\ln 2.4 = 6.7$, and $12$ stages at $R = 1.8$ sits
+comfortably above it, the expected outcome for a finite reflux a modest
+multiple above the minimum. The \texttt{code/mccabe\_thiele.py} solver
+reproduces the staircase to more decimal places and lands the last step
+exactly on the bottoms specification.
+
+\paragraph{Membrane gas separation: flux, area, and the purity-recovery
+trade.} A hollow-fibre membrane recovers oxygen-enriched air from
+ambient air ($21\,\%$ $\text{O}_2$) for a small combustion application. The
+membrane is oxygen-selective with permeance $\Pi_{\text{O}_2} = 2.0\times
+10^{-9}\,\text{mol}/(\text{m}^2\cdot\text{s}\cdot\text{Pa})$ and an
+oxygen-to-nitrogen selectivity $\alpha = 6$. The feed is at
+$p_f = 600\,\text{kPa}$, the permeate at $p_p = 100\,\text{kPa}$, and the
+target permeate purity is $y_P = 0.40$ oxygen at a stage cut that keeps
+the feed nearly undepleted. The local permeate flux of oxygen is the
+permeance times the partial-pressure difference,
+\[
+N_{\text{O}_2} = \Pi_{\text{O}_2}\,(x_F p_f - y_P p_p) =
+(2.0\times 10^{-9})\big[(0.21)(6.0\times 10^{5}) - (0.40)(1.0\times
+10^{5})\big].
+\]
+The bracket is $126\,000 - 40\,000 = 86\,000\,\text{Pa}$, giving
+$N_{\text{O}_2} = 1.72\times 10^{-4}\,\text{mol}/(\text{m}^2\cdot
+\text{s})$. To produce $0.10\,\text{mol/s}$ of oxygen in the permeate
+the membrane area is $A = 0.10/1.72\times 10^{-4} = 5.8\times 10^{2}\,
+\text{m}^2$, packaged as a few hundred square metres of fibre in a
+shell-and-tube module. The selectivity sets the purity ceiling: for a
+feed-limited stage the permeate enrichment approaches
+$y_P/(1-y_P) = \alpha\,x_F/(1-x_F)$, here $6(0.21/0.79) = 1.59$, so
+$y_P \le 0.61$ at vanishing stage cut. The chosen $0.40$ sits below
+that ceiling, as figure~\ref{fig:vol04ch07:membrane-cut} shows it must
+once a finite fraction of the feed is withdrawn. Pushing purity toward
+the ceiling collapses the driving force $x_F p_f - y_P p_p$ and with it
+the flux, so the area, and the capital cost, climb steeply near the
+selectivity limit. The design lesson is the Robeson trade made concrete:
+the engineer buys purity with area and pressure, and a single stage
+cannot reach high purity at high recovery.
+
+\input{volumes/04-energy/ch07-mass-transfer/figures/fig-membrane-cut.tex}
+
+\paragraph{Drying-rate periods and the time to a moisture target.} A
+tray of pigment paste, $0.5\,\text{m}^2$ of exposed surface, dries in a
+cabinet at $60\,\degC$ and low humidity. The paste starts at moisture
+content $W_0 = 1.2\,\text{kg water per kg dry solid}$, holds
+$5\,\text{kg}$ of dry solid, and must reach $W_f = 0.10$. The
+constant-rate flux measured on a sample is $R_c = 8.0\times 10^{-5}\,
+\text{kg}/(\text{m}^2\cdot\text{s})$, and the critical moisture where
+the surface first dries is $W_c = 0.35$; the equilibrium moisture in
+this air is $W^{*} = 0.04$. The drying splits into the two periods of
+the drying curve. In the constant-rate period the free surface water
+leaves at $R_c$ per unit area, so the rate of moisture loss is
+$\dot m = R_c A = (8.0\times 10^{-5})(0.5) = 4.0\times 10^{-5}\,\text{kg/s}$.
+The water removed from $W_0$ to $W_c$ is $m_s(W_0 - W_c) = 5(1.2-0.35) =
+4.25\,\text{kg}$, so the constant-rate period lasts
+$t_1 = 4.25/(4.0\times 10^{-5}) = 1.06\times 10^{5}\,\text{s} \approx
+30\,\text{h}$. In the falling-rate period, taking the rate proportional
+to the free moisture $W-W^{*}$ (the linear falling-rate model), the time
+from $W_c$ to $W_f$ is
+\[
+t_2 = \frac{m_s (W_c - W^{*})}{R_c A}\,\ln\!\frac{W_c - W^{*}}{W_f - W^{*}}
+= \frac{5(0.35-0.04)}{4.0\times 10^{-5}}\,\ln\!\frac{0.31}{0.06}.
+\]
+The prefactor is $5(0.31)/(4.0\times 10^{-5}) = 3.88\times 10^{4}\,
+\text{s}$ and the logarithm is $\ln(5.17) = 1.64$, so $t_2 = 6.4\times
+10^{4}\,\text{s} \approx 18\,\text{h}$. The total is about $48\,\text{h}$,
+with the falling-rate period contributing more than a third despite
+covering a much smaller moisture span, because the rate decays as the
+surface starves of water. Sizing the dryer on the constant-rate period
+alone would underpredict the cycle by that third and starve the plant of
+capacity. The split is the standard reason batch dryers run longer than a
+napkin estimate suggests.
 
 \section{Distillation: trays, packing, HETP, McCabe-Thiele}\pathtag{core}
 
@@ -438,7 +587,20 @@ its partition coefficient $K = y_A/x_A$. Extraction is used to
 recover dilute species from a feed liquid (penicillin from
 fermentation broth, lithium from brine, hydrocarbons from waste
 streams) and to separate pairs of liquids of similar volatility
-that distillation cannot economically separate.
+that distillation cannot economically separate. The stage analysis
+mirrors absorption with the extraction factor $E = K\,(S/F)$ playing
+the role of the absorption factor: $E > 1$ makes the raffinate
+recoverable to any target with enough stages, while $E < 1$ leaves a
+floor of unrecovered solute. The choice of solvent turns on three
+numbers at once: a high partition coefficient (so few stages suffice),
+a low mutual solubility with the feed (so the solvent is not lost into
+the raffinate), and a density difference and interfacial tension that
+let the phases disengage in the settler. A solvent with a superb
+partition coefficient that emulsifies with the feed is worthless,
+because the settler cannot separate the phases; extraction equipment
+selection (mixer-settlers, packed or pulsed columns, centrifugal
+contactors) is driven as much by the ease of phase disengagement as by
+the stage requirement.
 
 \engterm{Adsorption}: a solid sorbent selectively binds species from
 a gas or liquid phase. Examples: activated-carbon removal of
@@ -454,7 +616,19 @@ The adsorption design depends on the adsorbent's isotherm (the
 loading of solute on the solid as a function of fluid-phase
 concentration). For linear isotherms (Henry's law range), the design
 parallels absorption; for non-linear (Langmuir, Freundlich, BET)
-isotherms, the design requires breakthrough-curve analysis.
+isotherms, the design requires breakthrough-curve analysis. The shape
+of the isotherm controls how the mass-transfer zone travels down the
+bed. A favourable (concave-down, Langmuir-type) isotherm sharpens the
+concentration front into a near-constant-pattern wave, so the
+breakthrough is steep and the bed is used almost to its equilibrium
+capacity before the outlet rises. An unfavourable (concave-up) isotherm
+spreads the front, broadening the mass-transfer zone, wasting capacity,
+and forcing early switchover. The working sizing number is the
+length of unused bed, the difference between the bed length and the
+length that would be fully loaded at breakthrough; a sharp front leaves
+little unused bed, a broad front leaves much. The breakthrough trace of
+figure~\ref{fig:vol04ch07:breakthrough} is the measurement that fixes
+that number for a given sorbent, feed, and flow rate.
 
 \input{volumes/04-energy/ch07-mass-transfer/figures/fig-breakthrough.tex}
 
@@ -508,6 +682,26 @@ membranes have lower permeability and thus require more membrane
 area for a given throughput. Representative pressure, flux, and
 selectivity figures for the pressure-driven and gas-separation
 processes are collected in \texttt{data/membrane\_performance.csv}.
+
+The working model for a dense polymer membrane is solution-diffusion: a
+gas dissolves into the upstream face, diffuses across, and desorbs on
+the permeate side, so the permeability is the product of a solubility
+and a diffusivity. The flux of a species is its permeance times the
+partial-pressure difference across the membrane, $N_i = \Pi_i (p_{f,i} -
+p_{p,i})$, and the separation between two species is governed by the
+ratio of their permeances, the selectivity $\alpha_{ij} = \Pi_i/\Pi_j$.
+Two features of this flux law shape every gas-membrane design. The
+driving force is a partial-pressure difference, not a total-pressure
+difference, so enriching the permeate raises its partial pressure and
+shrinks its own driving force; the purest permeate is the one taken in
+the thinnest slice off the feed. And the pressure ratio
+$p_f/p_p$ caps the achievable enrichment independently of selectivity:
+a permeate cannot be more enriched than the feed by more than the
+pressure ratio allows, because beyond that the permeate partial
+pressure would exceed the feed partial pressure and the flux would
+reverse. A high-selectivity membrane on a feed at low pressure ratio is
+pressure-ratio-limited and wastes its selectivity, a trap that pushes
+gas-separation systems toward high feed pressure or vacuum permeate.
 
 \begin{mastery}
 The Robeson upper bound is an empirical line on a log-log plot of
@@ -586,6 +780,169 @@ acid percolation), pharmaceutical extraction from plant material.
 The design is governed by the diffusion of solute within the solid,
 the equilibrium partition, and the contact pattern (batch, multi-
 stage, continuous).
+
+\section{An end-to-end case study: a packed-column flue-gas scrubber}\pathtag{standard}
+
+The chapter's pieces come together when an engineer must size a real
+column from stream data alone. We take a packed-column absorber that
+scrubs sulphur dioxide from a boiler flue gas with a dilute caustic
+solution, and carry it from the inlet streams through the equilibrium
+and operating lines, the number and height of transfer units, the
+packed height, the column diameter from flooding, the irrigated
+pressure drop, and a verdict an engineer would sign. The scrubber is a
+good vehicle because every working move of the chapter appears in it
+once: a gas-liquid equilibrium, a counter-current material balance, the
+transfer-unit decomposition of section~7.3 and the absorption analysis
+of section~7.5, the flooding correlation that fixes the diameter, and a
+pressure-drop check that closes the design.
+
+\subsection{The streams and the duty}
+
+A coal-fired industrial boiler discharges $G = 12\,\text{m}^3/\text{s}$
+of flue gas at $1\,\text{atm}$ and $50\,\degC$, carrying a sulphur
+dioxide mole fraction $y_{\text{in}} = 0.0020$ ($2000\,\text{ppm}$).
+The permit limit at the stack is $200\,\text{ppm}$, so the scrubber must
+achieve $90\,\%$ removal: $y_{\text{out}} = 2.0\times 10^{-4}$. The
+solvent is a dilute sodium-hydroxide solution that reacts with the
+dissolved \text{SO}$_2$; for sizing we treat the reaction as fast enough
+to keep the liquid-side equilibrium partial pressure low, so the working
+equilibrium slope in mole-ratio coordinates is $m = 0.86$, a modest
+value that places a useful share of the resistance on the gas side. The
+gas molar flow follows from the ideal-gas density at $50\,\degC$:
+$c = p/(RT) = 101\,325/[(8.314)(323)] = 37.7\,\text{mol/m}^3$, so
+$G_{\text{mol}} = c\,G = (37.7)(12) = 452\,\text{mol/s}$. On an
+inert-gas basis the carrier flow is $G_s = G_{\text{mol}}(1 -
+y_{\text{in}}) \approx 451\,\text{mol/s}$.
+
+\subsection{Equilibrium line, operating line, and the solvent rate}
+
+Working in mole ratios $Y = y/(1-y)$ and $X = x/(1-x)$ keeps the carrier
+flows constant up the column. The inlet and outlet gas ratios are
+$Y_{N+1} = 0.0020/0.9980 = 2.004\times 10^{-3}$ and $Y_1 = 2.0\times
+10^{-4}/0.9998 = 2.000\times 10^{-4}$. The solute removed per second is
+$G_s(Y_{N+1}-Y_1) = 451(2.004\times 10^{-3} - 2.000\times 10^{-4}) =
+451(1.804\times 10^{-3}) = 0.814\,\text{mol/s}$ of \text{SO}$_2$.
+
+The minimum solvent rate is the liquid flow that would leave the bottom
+in equilibrium with the entering gas, $X_{\max} = Y_{N+1}/m =
+2.004\times 10^{-3}/0.86 = 2.330\times 10^{-3}$. With clean entering
+solvent ($X_0 = 0$),
+\[
+\Big(\frac{L_s}{G_s}\Big)_{\min} = \frac{Y_{N+1}-Y_1}{X_{\max}-X_0} =
+\frac{1.804\times 10^{-3}}{2.330\times 10^{-3}} = 0.774.
+\]
+Operating at $1.4\times$ the minimum, $L_s/G_s = 1.084$, so
+$L_s = 1.084(451) = 489\,\text{mol/s}$ of water, about $8.8\,\text{kg/s}$
+or $8.8\,\text{L/s}$ of solvent. The actual loaded-solvent ratio is
+$X_N = (Y_{N+1}-Y_1)/(L_s/G_s) = 1.804\times 10^{-3}/1.084 =
+1.664\times 10^{-3}$, comfortably below the equilibrium $X_{\max}$, which
+keeps a finite driving force at the bottom. The absorption factor is
+$A = (L_s/G_s)/m = 1.084/0.86 = 1.26$, above unity, so the absorber is
+well-behaved and recovery improves with height.
+Figure~\ref{fig:vol04ch07:absorption-operating} plots the operating line
+sitting above the equilibrium line, with the bottom corner near
+equilibrium and the top corner near the clean-gas axis.
+
+\input{volumes/04-energy/ch07-mass-transfer/figures/fig-absorption-operating.tex}
+
+\subsection{Number and height of transfer units}
+
+For a dilute absorber with a linear equilibrium line, the number of
+overall gas-phase transfer units has the closed form
+\[
+N_{OG} = \frac{1}{1 - 1/A}\,\ln\!\left[\Big(1 - \frac{1}{A}\Big)
+\frac{Y_{N+1}-mX_0}{Y_1-mX_0} + \frac{1}{A}\right].
+\]
+With $X_0 = 0$, the composition ratio is $(Y_{N+1})/(Y_1) =
+2.004\times 10^{-3}/2.000\times 10^{-4} = 10.02$, and $1/A = 0.794$. The
+bracket is $(1-0.794)(10.02) + 0.794 = 0.206(10.02) + 0.794 = 2.064 +
+0.794 = 2.858$, so
+\[
+N_{OG} = \frac{1}{0.206}\,\ln(2.858) = 4.854(1.050) = 5.10.
+\]
+The separation demands about five overall gas-phase transfer units. The
+height of a transfer unit packages the overall coefficient and the
+packing interfacial area, $H_{OG} = G_s/(K_y a\, S)$, and for a
+well-irrigated random packing in this service a working value is
+$H_{OG} = 0.75\,\text{m}$. The packed height is then
+\[
+Z = H_{OG}\,N_{OG} = (0.75)(5.10) = 3.8\,\text{m}.
+\]
+We carry $4.0\,\text{m}$ of packing to leave margin against the
+uncertainty in $H_{OG}$, which is the least certain number in the chain
+and would be confirmed against a packing-vendor correlation or a pilot
+run before construction.
+
+\subsection{Column diameter from flooding}
+
+The diameter is set by the gas throughput against the flooding limit of
+the packing. The flow parameter is
+\[
+F_{LV} = \frac{L}{G}\sqrt{\frac{\rho_G}{\rho_L}},
+\]
+where $L$ and $G$ here are mass flows. The gas mass flow is
+$G_{\text{mol}}$ times the mean molar mass of flue gas
+($\approx 0.030\,\text{kg/mol}$), $\dot m_G = (452)(0.030) =
+13.6\,\text{kg/s}$; the liquid mass flow is $\dot m_L = 8.8\,\text{kg/s}$.
+With $\rho_G = c\,M = (37.7)(0.030) = 1.13\,\text{kg/m}^3$ and
+$\rho_L = 1000\,\text{kg/m}^3$,
+\[
+F_{LV} = \frac{8.8}{13.6}\sqrt{\frac{1.13}{1000}} = (0.647)(0.0336) =
+0.0217.
+\]
+On the generalised pressure-drop correlation of
+figure~\ref{fig:vol04ch07:flooding}, a flow parameter near $0.02$ and a
+target pressure drop of $\sim 300\,\text{Pa/m}$ place the capacity
+parameter at roughly $C_S = 0.07\,\text{m/s}$ (the corrected superficial
+gas velocity grouping).
+
+\input{volumes/04-energy/ch07-mass-transfer/figures/fig-flooding.tex}
+
+Translating to a flooding-fraction design, a
+working superficial gas velocity for $50$-mm metal random packing at
+$60$ to $70\,\%$ of flood in this service is $u_g \approx 2.2\,\text{m/s}$.
+The column cross-section is
+\[
+S = \frac{G}{u_g} = \frac{12}{2.2} = 5.45\,\text{m}^2,
+\quad D = \sqrt{\frac{4S}{\pi}} = \sqrt{\frac{4(5.45)}{\pi}} =
+2.6\,\text{m}.
+\]
+A $2.6\,\text{m}$ shell carries the gas at the chosen flooding fraction;
+rounding up to a standard $2.7\,\text{m}$ vessel drops the velocity to
+$u_g = 12/5.73 = 2.1\,\text{m/s}$ and buys a little more margin against
+flood.
+
+\subsection{Pressure drop and the verdict}
+
+At the design point on the $300\,\text{Pa/m}$ contour, the irrigated
+pressure drop across $4.0\,\text{m}$ of packing is
+$\Delta p \approx (300)(4.0) = 1200\,\text{Pa}$, about
+$0.012\,\text{atm}$, plus a few hundred pascal across the distributor
+and demister. A draft fan must supply on the order of $1.5\,\text{kPa}$
+to push the $12\,\text{m}^3/\text{s}$ of gas through the column; the fan
+power is $\dot W \approx \dot V\,\Delta p/\eta = (12)(1500)/0.7 =
+2.6\times 10^{4}\,\text{W} \approx 26\,\text{kW}$, a modest parasitic
+load on the boiler. The verdict: a packed column roughly $2.7\,\text{m}$
+in diameter with $4.0\,\text{m}$ of random packing, irrigated at
+$8.8\,\text{L/s}$ of dilute caustic, removes $90\,\%$ of the \text{SO}$_2$
+and meets the $200\,\text{ppm}$ stack limit, at a fan penalty near
+$26\,\text{kW}$ and a packed-section pressure drop near $1.2\,\text{kPa}$.
+
+The dominant uncertainties, in order, are the equilibrium slope $m$ (set
+by the caustic chemistry and the operating loading, and the dominant
+control on the solvent rate and on $N_{OG}$), the height of a transfer
+unit $H_{OG}$ (set by the packing and the irrigation rate, and the
+direct multiplier on the packed height), and the flooding velocity (set
+by the packing geometry and the physical properties, and the dominant
+control on the diameter). A
+real design would pin $m$ from a vapour-liquid equilibrium correlation
+for the caustic system at the operating loading, pin $H_{OG}$ from a
+packing-vendor mass-transfer correlation or a pilot column, and pin the
+flooding velocity from the same vendor's capacity chart, then re-run the
+chain. The arithmetic here is the first cut that tells the engineer the
+column is a few metres across and a few metres tall, not a few
+centimetres or a few tens of metres, which is the judgment the
+back-of-envelope is for \cite{text:treybal-mass-transfer}.
 
 \section{Failure: separation breakthroughs, fouling, channelling, equilibrium-stage failures}\pathtag{core}
 

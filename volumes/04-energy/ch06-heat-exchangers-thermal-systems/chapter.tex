@@ -92,7 +92,22 @@ The choice between exchanger types is set by the service: thermal
 duty, fluid properties, fouling tendency, materials of construction,
 maintenance access, footprint, and capital cost. Process-industry
 practice maintains design heuristics for each class; the working
-engineer matches the heuristic to the specific service.
+engineer matches the heuristic to the specific service. A few rules
+carry most cases. Shell-and-tube wins on pressure and temperature
+envelope, on tolerance of dirty and fouling fluids, and on the
+availability of code-stamped mechanical design, which is why it is the
+default for high-pressure and high-temperature process duty. Plate-and-
+frame wins when a close temperature approach is wanted (two outlet
+temperatures within a few kelvin of crossing), when the fluids are clean
+or the unit must be opened often for cleaning, and when floor space is
+tight, which is why it dominates dairy, district-heating substation, and
+HVAC service. Air-cooled units win where cooling water is scarce or
+expensive to treat and where a larger footprint is acceptable. Compact
+exchangers win where surface area per unit volume is the binding
+constraint, in cryogenic, aerospace, and electronics service, at the cost
+of small channels that foul readily and clean poorly. The first decision
+in a design is therefore not the size but the class, because the class
+fixes which trade-offs the later sizing can still touch.
 
 \section{LMTD method}\pathtag{core}
 
@@ -269,6 +284,62 @@ The lesson is to read the problem before choosing the method: area
 unknown and temperatures known favours LMTD; area known and
 temperatures unknown favours NTU.
 
+\textbf{Fouling-driven decline of an existing exchanger.} A cooling-water-
+to-process exchanger left service clean at $U_{\text{clean}} = 1100\,
+\si{\watt\per\meter\squared\per\kelvin}$, area $A = 18\,\text{m}^2$,
+cooling $4\,\text{kg/s}$ of process fluid ($c_p = 2.4\,\text{kJ}/(\text{
+kg}\cdot\si{\kelvin})$) from $95\,\degC$ against $6\,\text{kg/s}$ of
+water entering at $28\,\degC$. We want the duty when clean and the duty
+after the water-side fouling resistance has grown to $R_f = 0.0006\,
+\text{m}^2\cdot\si{\kelvin}/\text{W}$. The capacity rates are $C_p = 4
+\times 2400 = 9600\,\si{\watt\per\kelvin}$ and $C_w = 6 \times 4180 =
+25{,}080\,\si{\watt\per\kelvin}$, so $C_{\min} = 9600$ (the process
+fluid) and $C_r = 9600/25{,}080 = 0.38$. Clean, the number of transfer
+units is $\text{NTU} = U_{\text{clean}} A/C_{\min} = 1100 \times 18/
+9600 = 2.06$; the counter-flow relation gives $\varepsilon = 0.85$ and a
+duty of $\dot{Q} = \varepsilon C_{\min}(T_{h,i} - T_{c,i}) = 0.85 \times
+9600 \times 67 = 547\,\text{kW}$, leaving the process fluid at $95 -
+547{,}000/9600 = 38\,\degC$. Fouling adds resistance in series: $1/
+U_{\text{dirty}} = 1/1100 + 0.0006 = 0.000909 + 0.0006 = 0.001509$, so
+$U_{\text{dirty}} = 663\,\si{\watt\per\meter\squared\per\kelvin}$. The
+new NTU is $663 \times 18/9600 = 1.24$, the effectiveness falls to
+$\varepsilon = 0.69$, and the duty drops to $0.69 \times 9600 \times 67
+= 444\,\text{kW}$, with the process fluid now leaving at $49\,\degC$
+rather than $38\,\degC$. A fouling layer that adds two-thirds of the
+clean wall-plus-film resistance has cut the duty by $19\,\%$ and pushed
+the process outlet up by $11\,\si{\kelvin}$. The lesson the NTU route
+makes plain: effectiveness is concave in NTU, so an exchanger sized for
+a high clean effectiveness (here $0.85$) sheds duty less steeply under
+fouling than one run near the linear part of the curve, which is one
+quantitative argument for the over-design margin of the failure
+section. The routine \texttt{ntu\_effectiveness.py} returns both
+operating points.
+
+\textbf{An economiser recovering boiler flue-gas heat.} A boiler
+exhausts $8\,\text{kg/s}$ of flue gas ($c_p = 1.10\,\text{kJ}/(\text{kg}
+\cdot\si{\kelvin})$) at $260\,\degC$. An economiser preheats $5\,\text{
+kg/s}$ of feedwater ($c_p = 4.20\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$)
+from $40\,\degC$ before it enters the boiler, recovering heat that would
+otherwise go up the stack. The economiser is a finned cross-flow unit
+with $UA = 14{,}000\,\text{W}/\si{\kelvin}$. The capacity rates are
+$C_g = 8 \times 1100 = 8800\,\si{\watt\per\kelvin}$ and $C_w = 5 \times
+4200 = 21{,}000\,\si{\watt\per\kelvin}$, so $C_{\min} = 8800$ (the gas),
+$C_r = 8800/21{,}000 = 0.42$, and $\text{NTU} = 14{,}000/8800 = 1.59$.
+The cross-flow-both-unmixed correlation gives $\varepsilon \approx 0.71$.
+The recovered duty is $\dot{Q} = 0.71 \times 8800 \times (260 - 40) =
+1.37\,\text{MW}$. The gas leaves at $260 - 1{,}370{,}000/8800 = 104\,
+\degC$ and the feedwater enters the boiler at $40 + 1{,}370{,}000/
+21{,}000 = 105\,\degC$. The recovered $1.37\,\text{MW}$ is heat the
+boiler no longer has to supply from fuel, a direct efficiency gain. The
+binding constraint on pushing the gas outlet lower is the acid dew point:
+sulphur in the fuel forms sulphuric acid that condenses on the cold end
+below roughly $120$ to $150\,\degC$ and corrodes the economiser, so the
+$104\,\degC$ gas outlet here would demand a corrosion-resistant cold-end
+material or a higher feedwater inlet temperature to lift the metal
+temperature out of the condensing band. The economiser shows the
+recurring tension of heat recovery: the last increment of recovered heat
+is the cheapest in fuel and the most expensive in corrosion risk.
+
 \begin{mastery}
 The cross-flow effectiveness correlation
 $\varepsilon = 1 - \exp\{[\exp(-\text{NTU}^{0.78} C_r) - 1]
@@ -284,6 +355,183 @@ relations are geometry-specific: every flow arrangement has its own
 $\varepsilon(\text{NTU}, C_r)$, and substituting the counter-flow
 relation for a cross-flow unit is a common and quietly large error.
 \end{mastery}
+
+\section{An end-to-end case study: a kerosene cooler}\pathtag{standard}
+
+The methods of this chapter pay off when an engineer must turn a process
+duty into a piece of equipment specified well enough to order. We take a
+shell-and-tube kerosene cooler and carry it from stream data through the
+duty, the log-mean difference, the overall coefficient built up from
+films and wall and fouling, the required area, the tube count and shell
+size, a pressure-drop check on both sides, and a verdict. The cooler is
+a good vehicle because every move of the chapter appears in it once: the
+duty balance, the LMTD with its correction factor, the series thermal
+network, the area equation, the geometry that realises the area, and the
+pumping check that decides whether the geometry is affordable to run.
+
+\subsection{Duty and stream data}
+
+A refinery side-stream of kerosene must be cooled before it goes to
+storage. The hot stream is $\dot{m}_h = 10\,\text{kg/s}$ of kerosene
+($c_{p,h} = 2.20\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$, density
+$\rho_h = 800\,\text{kg/m}^3$, viscosity $\mu_h = 4.0\times 10^{-4}\,
+\text{Pa}\cdot\text{s}$, conductivity $k_h = 0.13\,\si{\watt\per\meter
+\per\kelvin}$), cooling from $T_{h,i} = 160\,\degC$ to $T_{h,o} = 60\,
+\degC$. The cold stream is cooling-tower water entering at $T_{c,i} =
+30\,\degC$, with the outlet to be held at or below $52\,\degC$ to limit
+scaling. The duty is set by the hot-side balance,
+\[
+\dot{Q} = \dot{m}_h c_{p,h}(T_{h,i} - T_{h,o}) = 10 \times 2200 \times
+100 = 2.20\,\text{MW}.
+\]
+The cooling-water flow follows from the cold-side balance at the
+$52\,\degC$ outlet limit,
+\[
+\dot{m}_c = \frac{\dot{Q}}{c_{p,c}(T_{c,o} - T_{c,i})} = \frac{2.20
+\times 10^6}{4180 \times (52 - 30)} = 23.9\,\text{kg/s}.
+\]
+We round the cooling-water flow to $24\,\text{kg/s}$, which trims the
+outlet to $T_{c,o} = 30 + 2.20\times 10^6/(24\times 4180) = 51.9\,\degC$,
+inside the limit.
+
+\subsection{Log-mean difference and correction factor}
+
+The exchanger is a one-shell-pass, two-tube-pass shell-and-tube unit,
+the standard first choice for this service. The counter-flow terminal
+differences are $\Delta T_1 = T_{h,i} - T_{c,o} = 160 - 51.9 = 108.1\,
+\si{\kelvin}$ and $\Delta T_2 = T_{h,o} - T_{c,i} = 60 - 30 = 30\,
+\si{\kelvin}$, so
+\[
+\Delta T_{\text{LMTD,CF}} = \frac{108.1 - 30}{\ln(108.1/30)} = \frac{
+78.1}{1.281} = 61.0\,\si{\kelvin}.
+\]
+The correction-factor parameters are $P = (T_{c,o} - T_{c,i})/(T_{h,i} -
+T_{c,i}) = 21.9/130 = 0.17$ and $R = (T_{h,i} - T_{h,o})/(T_{c,o} -
+T_{c,i}) = 100/21.9 = 4.6$. For one shell pass and two tube passes these
+values give $F \approx 0.94$, comfortably above the $0.75$ floor, so the
+configuration reaches the terminal temperatures without resorting to two
+shells in series. The effective driving difference is $F\,\Delta
+T_{\text{LMTD,CF}} = 0.94 \times 61.0 = 57.3\,\si{\kelvin}$. Figure
+\ref{fig:vol04ch06:case-study-temperature-profile} draws the two
+stream profiles and the terminal differences for the counter-flow
+reference.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-case-study-temperature-profile.tex}
+
+\subsection{Overall coefficient from films, wall, and fouling}
+
+The overall coefficient is assembled as a series thermal network
+referred to the tube outer area. The kerosene runs in the tubes and the
+water in the shell, the usual placement that keeps the dirtier
+cooling water on the shell side where it is easier to clean. We take
+tubes of outer diameter $d_o = 19\,\si{\milli\meter}$, wall thickness
+$2\,\si{\milli\meter}$ (inner diameter $d_i = 15\,\si{\milli\meter}$),
+carbon-steel wall conductivity $k_w = 50\,\si{\watt\per\meter\per
+\kelvin}$. Estimated film coefficients for this service are a tube-side
+(kerosene) value $h_i = 900\,\si{\watt\per\meter\squared\per\kelvin}$
+and a shell-side (water) value $h_o = 5000\,\si{\watt\per\meter\squared
+\per\kelvin}$. The fouling resistances, referred to their own surfaces,
+are $R_{f,i} = 0.0004$ for the kerosene and $R_{f,o} = 0.0003\,\text{m}^2
+\cdot\si{\kelvin}/\text{W}$ for the cooling water. Referred to the
+outer area, the overall coefficient is
+\[
+\frac{1}{U_o} = \frac{1}{h_o} + R_{f,o} + \frac{d_o \ln(d_o/d_i)}{2 k_w}
++ \frac{d_o}{d_i}R_{f,i} + \frac{d_o}{d_i}\frac{1}{h_i}.
+\]
+Evaluating each term in $\text{m}^2\cdot\si{\kelvin}/\text{W}$: the
+shell film is $1/5000 = 0.000200$; the shell fouling is $0.000300$; the
+wall is $0.019\ln(19/15)/(2\times 50) = 0.019\times 0.237/100 =
+0.0000450$; the tube fouling referred out is $(19/15)\times 0.0004 =
+0.000507$; the tube film referred out is $(19/15)/900 = 0.001407$. The
+sum is $0.002459\,\text{m}^2\cdot\si{\kelvin}/\text{W}$, so
+\[
+U_o = \frac{1}{0.002459} = 407\,\si{\watt\per\meter\squared\per\kelvin}.
+\]
+The tube-side kerosene film and the tube-side fouling together are
+$0.001914$ of the $0.002459$ total, that is, $78\,\%$ of the resistance:
+the kerosene side governs, and any move to improve this exchanger
+(higher tube velocity, internal enhancement, more frequent cleaning)
+should be spent there rather than on the already-good water side.
+
+\subsection{Required area and tube count}
+
+The area follows from the design equation with the correction factor,
+\[
+A = \frac{\dot{Q}}{U_o F\,\Delta T_{\text{LMTD,CF}}} = \frac{2.20\times
+10^6}{407 \times 57.3} = 94.3\,\text{m}^2.
+\]
+We add a $15\,\%$ margin against the film-coefficient estimates and
+end-of-cycle fouling beyond the design allowance, giving a design area
+of $A_d = 1.15 \times 94.3 = 108\,\text{m}^2$. The outer surface per
+unit length of one tube is $\pi d_o = \pi \times 0.019 = 0.0597\,\text{
+m}^2/\text{m}$. Choosing a tube length $L = 4.88\,\text{m}$ (a standard
+$16\,\text{ft}$ tube), one tube provides $0.0597 \times 4.88 = 0.291\,
+\text{m}^2$, so the tube count is
+\[
+N_t = \frac{A_d}{\pi d_o L} = \frac{108}{0.291} = 371 \to 372\,\text{
+tubes}
+\]
+rounded up to an even number for the two-pass layout (186 tubes per
+pass). On a triangular pitch of $p_t = 1.25\,d_o = 24\,\si{\milli\meter}$,
+the bundle outer-tube-limit diameter for $372$ tubes is roughly
+$D_{\text{otl}} = 0.637\,p_t\sqrt{N_t/\text{CTP}}$ with a two-pass
+tube-count constant near $0.90$, which lands the shell inner diameter at
+about $D_s = 0.58\,\text{m}$. Figure
+\ref{fig:vol04ch06:case-study-tube-layout} shows the triangular layout,
+the pitch, and the relation of the bundle to the shell. A $0.58\,\text{m}$
+shell with $372$ tubes of $4.88\,\text{m}$ is a routine TEMA-standard
+unit.
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-case-study-tube-layout.tex}
+
+\subsection{Pressure-drop check}
+
+A design that meets the duty is still unbuilt until the pumping cost is
+acceptable. On the tube side, the kerosene splits across $186$ tubes per
+pass. The flow area per pass is $186 \times (\pi/4) d_i^2 = 186 \times
+(\pi/4)(0.015)^2 = 0.0329\,\text{m}^2$, so the kerosene velocity is $u_t
+= \dot{m}_h/(\rho_h A_{\text{pass}}) = 10/(800 \times 0.0329) = 0.38\,
+\text{m/s}$. The tube Reynolds number is $Re = \rho_h u_t d_i/\mu_h =
+800 \times 0.38 \times 0.015/(4.0\times 10^{-4}) = 1.14\times 10^4$,
+turbulent, with a friction factor $f \approx 0.316\,Re^{-0.25} = 0.316
+\times (1.14\times 10^4)^{-0.25} = 0.031$. The flow path is two passes of
+$4.88\,\text{m}$, so $L_{\text{tube}} = 9.76\,\text{m}$, and the
+straight-tube drop is
+\[
+\Delta p_t = f\frac{L_{\text{tube}}}{d_i}\frac{\rho_h u_t^2}{2} = 0.031
+\times \frac{9.76}{0.015} \times \frac{800 \times 0.38^2}{2} = 0.031
+\times 650 \times 57.8 = 1.17\,\text{kPa}.
+\]
+Adding return-header and nozzle losses (a customary allowance of about
+four velocity heads for a two-pass unit, roughly $4 \times \rho_h
+u_t^2/2 = 231\,\text{Pa}$) brings the tube side to about $1.4\,\text{
+kPa}$, far inside a typical $50$ to $70\,\text{kPa}$ allowance. The
+kerosene velocity is in fact low, which warns that the modest tube-side
+film coefficient is the price of running well below the $1$ to $3\,\text{
+m/s}$ liquid band; a designer chasing a smaller exchanger would raise the
+tube-side velocity by using fewer, longer tubes, trading pressure drop
+for area. The shell side, by the Kern method, sits in the same low range
+for this flow, so neither side binds and the design is pumping-feasible.
+
+\subsection{Verdict}
+
+The kerosene cooler is a one-shell-pass, two-tube-pass shell-and-tube
+unit of $372$ carbon-steel tubes, $19\,\si{\milli\meter}$ outer diameter,
+$4.88\,\text{m}$ long, on a $24\,\si{\milli\meter}$ triangular pitch in
+a shell of about $0.58\,\text{m}$ inner diameter, delivering the
+$2.20\,\text{MW}$ duty at an overall coefficient near $407\,\si{\watt
+\per\meter\squared\per\kelvin}$ with both pressure drops well inside
+their allowances. The design is governed by the kerosene-side
+resistance, carries a $15\,\%$ area margin for fouling and estimate
+error, and would be confirmed against thermal-rating software before
+purchase. The single number an engineer would sign is the area,
+$108\,\text{m}^2$ installed, with the note that the cooler is
+film-limited on the kerosene side and that the cooling-water outlet sits
+at the scaling limit, so the cleaning interval is set by the water side
+even though the heat-transfer bottleneck is the oil. Both observations
+come straight out of the term-by-term thermal network, which is why the
+network is worth assembling explicitly rather than reaching for a single
+tabulated $U$.
 
 \section{Pressure drop and pumping power}\pathtag{standard}
 
@@ -467,6 +715,37 @@ or to ride through interruptions in waste-heat supply. Marstal,
 Denmark's $60{,}000\,\text{m}^3$ pit thermal energy storage is a
 canonical example, providing roughly $400$ days of summer collected
 solar heat to a winter heat-pump-driven district heating system.
+
+\begin{mastery}
+A plant with many hot streams to cool and many cold streams to heat
+must decide how much of the heating can be supplied by the cooling, so
+that external utilities carry only the remainder. Pinch analysis fixes
+that quantity before any exchanger is placed.
+Sort every stream into temperature intervals and, within each interval,
+add the heat available from all hot streams to form the hot composite
+curve and the heat required by all cold streams to form the cold
+composite curve. Each curve is temperature against cumulative enthalpy.
+Sliding the cold curve horizontally until its closest vertical approach
+to the hot curve equals a chosen minimum approach $\Delta T_{\min}$ fixes
+three numbers at once: the horizontal overlap is the heat internal
+exchangers can recover, the cold-end overshoot of the hot curve is the
+minimum cold utility, and the hot-end overshoot of the cold curve is the
+minimum hot utility. Figure \ref{fig:vol04ch06:composite-curves} shows
+the construction. The point of closest approach is the pinch, and it
+splits the process into a region above, which is a net heat sink, and a
+region below, which is a net heat source. Three design rules follow and
+together guarantee the minimum-utility targets: do not transfer heat
+across the pinch, do not use cold utility above the pinch, and do not use
+hot utility below the pinch. Choosing $\Delta T_{\min}$ trades capital
+against energy in the same shape the single-exchanger area-versus-driving-
+difference trade-off takes: a small approach recovers more heat but
+needs more area, and the optimum sits where the marginal area cost meets
+the marginal utility saving. The targets are known before a single unit
+is sized, which lets the engineer judge a flowsheet against the
+thermodynamic best case rather than against an arbitrary baseline.
+\end{mastery}
+
+\input{volumes/04-energy/ch06-heat-exchangers-thermal-systems/figures/fig-composite-curves.tex}
 
 \section{Failure: fouling, corrosion, tube leaks}\pathtag{core}
 

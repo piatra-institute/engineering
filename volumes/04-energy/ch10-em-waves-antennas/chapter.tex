@@ -403,13 +403,27 @@ An \engterm{antenna array} is a collection of antennas whose outputs
 are combined coherently. The radiation pattern of an array is the
 product of the pattern of the individual element and the
 \engterm{array factor}, which encodes the phasing and positioning of
-the elements. A two-element broadside array with elements spaced
-$\lambda/2$ apart and fed in phase has a pattern null in the end-fire
-direction and a peak broadside, with $3\,\si{\decibel}$ directivity
-gain over a single element. Phased arrays of hundreds or thousands
-of elements (modern radar, 5G mobile-radio base stations, satellite
-communications) achieve beam steering by varying the phase of each
-element electronically, with no moving parts.
+the elements. For $N$ identical elements spaced $d$ apart along a line
+and fed with a progressive phase shift $\alpha$ between neighbours, the
+array factor is the geometric sum
+\[
+\text{AF}(\theta) = \sum_{n=0}^{N-1} e^{jn\psi}, \quad \psi =
+\frac{2\pi d}{\lambda}\sin\theta + \alpha,
+\]
+whose magnitude is $|\sin(N\psi/2)/\sin(\psi/2)|$. The interelement
+phase $\psi$ collects the geometric path difference $(2\pi d/\lambda)
+\sin\theta$ and the feed phase $\alpha$ in one variable, so steering the
+beam is a matter of dialing $\alpha$. A two-element broadside array with
+elements spaced $\lambda/2$ apart and fed in phase ($\alpha = 0$) has a
+pattern null in the end-fire direction and a peak broadside, with
+$3\,\si{\decibel}$ directivity gain over a single element. Adding a
+$90^{\circ}$ feed phase squints the peak off broadside, the elementary
+case shown in figure \ref{fig:vol04ch10:array-factor-2el}. Phased arrays
+of hundreds or thousands of elements (modern radar, 5G mobile-radio base
+stations, satellite communications) achieve beam steering by varying the
+phase of each element electronically, with no moving parts.
+
+\input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-array-factor-2el.tex}
 
 \input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-gain-pattern.tex}
 
@@ -484,8 +498,11 @@ satellite TV, current as of 2025.
 
 \section{Worked examples}\pathtag{standard}
 
-Three worked examples fix the daily arithmetic of the chapter in mind.
-Each is the hand computation behind one of the code routines.
+Six worked examples fix the daily arithmetic of the chapter in mind.
+The first three are the hand computation behind the code routines; the
+last three carry the recurring small calculations of polarisation
+matching, narrowband impedance matching, and shielding that working RF
+engineers do on the back of a notebook.
 
 \paragraph{A plane wave at the surface of the Earth.}
 Bright sunlight delivers about $1\,\si{\kilo\watt\per\meter\squared}$ at
@@ -530,6 +547,61 @@ $-85\,\si{\decibel}\text{m}$ receiver sensitivity, leaving roughly
 $47\,\si{\decibel}$ of link margin for rain, misalignment, and fading.
 \texttt{code/friis\_link.py} reproduces the budget.
 
+\paragraph{Polarisation-mismatch loss.}
+A circularly polarised transmit antenna illuminates a linearly polarised
+receive antenna, the common situation when a satellite radiates circular
+polarisation (chosen so that the link survives Faraday rotation in the
+ionosphere) and the ground terminal is a plain linear dipole. The
+polarisation-mismatch factor is $\rho = |\unitvec{e}_{t}\cdot
+\unitvec{e}_{r}^{*}|^{2}$, the squared magnitude of the inner product of
+the two unit polarisation vectors. A circular wave decomposes into two
+equal orthogonal linear components, so a linear receiver captures exactly
+half the power: $\rho = \tfrac{1}{2}$, a flat $3\,\si{\decibel}$ loss
+independent of how the dipole is rotated about the line of sight. Two
+linear antennas misaligned by an angle $\psi$ instead give $\rho =
+\cos^{2}\psi$, the same Malus-law form met in polarised optics; a
+$30^{\circ}$ misalignment costs $\cos^{2}30^{\circ} = 0.75$, or
+$1.25\,\si{\decibel}$, while a cross-polarised pair ($\psi = 90^{\circ}$)
+gives $\rho = 0$ and a nominally infinite loss, in practice limited to
+the antennas' finite cross-polarisation rejection of $20$ to
+$30\,\si{\decibel}$. The lesson for a link budget is to carry the
+polarisation-mismatch term explicitly: the $3\,\si{\decibel}$ circular-to-
+linear penalty is a fixed line item, not a margin to be wished away.
+
+\paragraph{A quarter-wave matching section.}
+A patch antenna presents a real input impedance of $200\,\si{\ohm}$ at its
+resonant frequency of $2.4\,\si{\giga\hertz}$, and we must feed it from a
+$50\,\si{\ohm}$ microstrip line. A quarter-wave transformer of
+characteristic impedance $Z_{0t} = \sqrt{Z_{s}Z_{L}} = \sqrt{50\times 200}
+= 100\,\si{\ohm}$ does the job. At $2.4\,\si{\giga\hertz}$ the free-space
+wavelength is $\lambda = c/f = 0.125\,\si{\meter}$; on a microstrip with
+effective permittivity $\varepsilon_{\text{eff}} = 6.5$ the guided
+wavelength is $\lambda_{g} = \lambda/\sqrt{\varepsilon_{\text{eff}}} =
+0.125/2.55 = 0.049\,\si{\meter}$, so the transformer length is
+$\lambda_{g}/4 = 12.3\,\si{\milli\meter}$. At the design frequency the
+match is perfect, $\Gamma = 0$; one octave is far too wide to ask of a
+single section, but across a $\pm 5\,\%$ band the input reflection stays
+below $|\Gamma| = 0.1$ (VSWR $1.22$), comfortably inside the usual target.
+The same geometric-mean rule, in the field picture of the mastery box
+below, is the anti-reflection coating of an optical lens.
+
+\paragraph{Skin-depth shielding thickness.}
+An enclosure must attenuate a $1\,\si{\giga\hertz}$ field by
+$60\,\si{\decibel}$ through absorption in a copper wall. The skin depth in
+copper ($\sigma = 5.96\times 10^{7}\,\si{\siemens\per\meter}$, $\mu =
+\mu_{0}$) is $\delta = 1/\sqrt{\pi f \mu \sigma} = 1/\sqrt{\pi(10^{9})
+(4\pi\times 10^{-7})(5.96\times 10^{7})} = 2.1\,\si{\micro\meter}$, the
+value marked in figure \ref{fig:vol04ch10:skin-depth}. The field decays as
+$e^{-x/\delta}$, so the absorption loss in decibels is $A = 20\log_{10}
+e^{x/\delta} = 8.69\,(x/\delta)$. Setting $A = 60\,\si{\decibel}$ gives
+$x = (60/8.69)\,\delta = 6.9\,\delta = 14.5\,\si{\micro\meter}$. A copper
+foil a hundredth of a millimetre thick already provides this absorption at
+$1\,\si{\giga\hertz}$; the engineering difficulty of shielding lives not in
+the bulk metal but in the seams, gaskets, and cable penetrations, where
+leakage through apertures dominates the bulk absorption computed here.
+
+\input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-skin-depth.tex}
+
 \begin{mastery}
 The wave impedance $\eta = \sqrt{\mu/\varepsilon}$ and the
 characteristic impedance $Z_{0} = \sqrt{L'/C'}$ are the same idea in
@@ -546,6 +618,191 @@ frequency, whether the wave is light in glass or a signal on a line.
 The unification is the working reason an RF engineer and an optical
 engineer can read each other's matching problems.
 \end{mastery}
+
+\begin{mastery}
+The Friis equation has a cousin that governs radar, and it follows from
+the same effective-aperture idea together with the reciprocity of
+antennas. \engterm{Reciprocity} states that an antenna's transmit gain
+pattern and its receive pattern are identical, a consequence of the
+symmetry of Maxwell's equations under source-field interchange; the
+working content is the relation between gain and effective aperture,
+$A_{\text{eff}} = G\lambda^{2}/(4\pi)$, which holds whether the antenna
+sends or receives. The \engterm{radar range equation} chains two
+Friis-style hops. A radar of transmit power $P_{t}$ and antenna gain
+$G$ illuminates a target at range $R$ with power density $P_{t}G/(4\pi
+R^{2})$. The target intercepts and re-radiates this with a
+\engterm{radar cross-section} $\sigma$ (units of area), scattering an
+effective power $P_{t}G\sigma/(4\pi R^{2})$ that spreads back over a
+second inverse-square hop. The same antenna, with effective aperture
+$A_{\text{eff}} = G\lambda^{2}/(4\pi)$, collects the echo, so the
+received power is
+\[
+P_{r} = \frac{P_{t}\,G^{2}\,\lambda^{2}\,\sigma}{(4\pi)^{3}\,R^{4}}.
+\]
+The defining feature is the $R^{-4}$ dependence: doubling the detection
+range demands sixteen times the transmit power, or four times the
+antenna gain, which is why long-range radars carry both megawatt
+transmitters and very large apertures. Setting $P_{r}$ to the receiver's
+minimum detectable signal and solving for $R$ gives the radar's maximum
+range, the single number a radar engineer designs toward. The same
+$R^{-4}$ law sets the read range of a passive RFID tag, which is a
+backscatter radar in miniature.
+\end{mastery}
+
+\section{An end-to-end case study: a geostationary television
+downlink}\pathtag{standard}
+
+The chapter's apparatus pays off when an engineer must decide whether a
+real link will close before any hardware is bought. We take a
+direct-broadcast satellite television downlink, the most widely deployed
+microwave link on Earth, and carry it from transmit power through every
+gain and loss term to a carrier-to-noise ratio, an energy-per-bit figure,
+and a link margin that an engineer would sign. The downlink is a good
+vehicle because every quantity of the chapter appears in it once: the
+Friis path loss, antenna gain from effective aperture, the wave impedance
+that fixes received field strength, polarisation matching, and the
+noise-temperature bookkeeping that separates a working receiver from a
+silent one. The arithmetic is carried in decibels throughout, the working
+dialect of link budgets, with the understanding that a sum in decibels is
+a product of ratios.
+
+\subsection{The system and its numbers}
+
+A geostationary satellite at $35\,786\,\si{\kilo\meter}$ altitude carries
+a $100\,\si{\watt}$ transmitter operating at $12\,\si{\giga\hertz}$ in the
+Ku band. Its shaped-beam antenna has a gain of $34\,\si{\decibel
+\textsubscript{i}}$ toward the service region. The ground terminal is a
+domestic offset dish of diameter $D = 0.9\,\si{\meter}$ feeding a
+low-noise block downconverter. The signal is a digital video carrier
+occupying a symbol rate of $27.5\,\text{Msym/s}$ (megasymbols per
+second), carrying
+a quadrature-phase-shift-keyed bit stream at $2\,\si{\bit}$ per symbol
+before forward-error-correction overhead. The slant range to a receiver
+near the edge of the service region is $R = 3.85\times 10^{7}\,\si{\meter}$,
+longer than the orbital altitude because the path runs at a slant rather
+than straight down. The wavelength is $\lambda = c/f = (3\times 10^{8})/
+(12\times 10^{9}) = 0.025\,\si{\meter}$.
+
+\subsection{Transmit side: EIRP}
+
+The product of transmit power and transmit antenna gain is the
+\engterm{effective isotropic radiated power}, the power an isotropic
+radiator would need to produce the same on-axis field. In decibels it is
+a sum. The transmit power is $P_{t} = 100\,\si{\watt} = 20\,\si{
+\decibel}$ above one watt (dBW). The antenna gain is $G_{t} = 34\,\si{
+\decibel\textsubscript{i}}$. The EIRP is
+\[
+\text{EIRP} = P_{t} + G_{t} = 20 + 34 = 54\,\si{\decibel}\text{W}.
+\]
+The running level after this stage is the second bar of figure
+\ref{fig:vol04ch10:link-budget-waterfall}.
+
+\subsection{The path: free-space loss}
+
+The free-space path loss is the spreading term of the Friis equation
+written as a loss in decibels,
+\[
+L_{\text{fs}} = 20\log_{10}\!\left(\frac{4\pi R}{\lambda}\right) =
+20\log_{10}\!\left(\frac{4\pi\times 3.85\times 10^{7}}{0.025}\right) =
+205.6\,\si{\decibel}.
+\]
+This is the dominant term of the entire budget, the third bar of the
+waterfall. A useful cross-check is the engineering shorthand
+$L_{\text{fs}} = 92.45 + 20\log_{10}f_{\text{GHz}} + 20\log_{10}
+d_{\text{km}}$, which with $f_{\text{GHz}} = 12$ and $d_{\text{km}} =
+38\,500$ returns $92.45 + 21.6 + 91.7 = 205.7\,\si{\decibel}$, in
+agreement to a tenth of a decibel. We add a clear-sky atmospheric and
+rain-margin allowance of $1.5\,\si{\decibel}$ for the Ku band at a
+mid-latitude site, and a polarisation-mismatch allowance of
+$0.5\,\si{\decibel}$ for the imperfect alignment of a circularly polarised
+downlink to the terminal's feed.
+
+\subsection{Receive side: dish gain and G/T}
+
+The receive dish gain follows from its effective aperture. With aperture
+efficiency $\eta_{a} = 0.6$ the effective area is $A_{\text{eff}} =
+\eta_{a}\,\pi (D/2)^{2} = 0.6\,\pi(0.45)^{2} = 0.382\,\si{\meter}^{2}$,
+and the gain is
+\[
+G_{r} = \frac{4\pi A_{\text{eff}}}{\lambda^{2}} = \frac{4\pi\times 0.382}
+{(0.025)^{2}} = 7.68\times 10^{3} = 38.9\,\si{\decibel\textsubscript{i}}.
+\]
+The receiver's noise is summarised by the \engterm{system noise
+temperature} $T_{\text{sys}}$, the temperature of a resistor that would
+deliver the same noise power to the receiver input. It sums the antenna
+noise temperature seen looking at a cold sky through the dish (taken as
+$30\,\si{\kelvin}$, dominated by ground spillover and a little
+atmospheric emission) and the receiver noise temperature of a good Ku-band
+low-noise block (taken as $100\,\si{\kelvin}$, corresponding to a noise
+figure near $1.3\,\si{\decibel}$), so $T_{\text{sys}} = 130\,\si{\kelvin}
+= 21.1\,\si{\decibel}$ above one kelvin (dBK). The single figure of merit
+that ranks a receive station is
+\[
+\frac{G}{T} = G_{r} - T_{\text{sys}}\,[\si{\decibel}\text{K}] = 38.9 -
+21.1 = 17.8\,\si{\decibel}\text{/K},
+\]
+the quantity a satellite operator quotes when it certifies a ground
+terminal, because it captures both the dish's gain and the receiver's
+quietness in one number that drops straight into the budget.
+
+\subsection{Carrier-to-noise, energy-per-bit, and margin}
+
+The carrier-to-noise-density ratio, the received carrier power divided by
+the noise power per hertz, is the budget assembled with the noise terms
+folded in through $G/T$:
+\[
+\frac{C}{N_{0}} = \text{EIRP} - L_{\text{fs}} - L_{\text{atm}} -
+L_{\text{pol}} + \frac{G}{T} - k,
+\]
+where $k = 10\log_{10}(1.38\times 10^{-23}) = -228.6\,\si{\decibel}$(W/Hz/K)
+is Boltzmann's constant in decibels, which enters with a sign change
+because it sits in the denominator of the noise power. Carrying the
+numbers,
+\[
+\frac{C}{N_{0}} = 54 - 205.6 - 1.5 - 0.5 + 17.8 - (-228.6) = 92.8\,\si{
+\decibel}\text{Hz}.
+\]
+The energy-per-bit to noise-density ratio follows by dividing out the bit
+rate. The information bit rate before coding is $R_{b} = 27.5\times 10^{6}
+\times 2 = 55\,\si{\mega\bit\per\second} = 77.4\,\si{\decibel}$ bits per
+second, so
+\[
+\frac{E_{b}}{N_{0}} = \frac{C}{N_{0}} - R_{b} = 92.8 - 77.4 =
+15.4\,\si{\decibel}.
+\]
+Quadrature phase-shift keying needs about $E_{b}/N_{0} = 9.6\,\si{
+\decibel}$ for an uncoded bit-error rate of $10^{-5}$, and modern
+forward-error correction recovers several more decibels, so the required
+working threshold with coding is near $E_{b}/N_{0} = 5\,\si{\decibel}$.
+The link margin is the surplus over threshold,
+\[
+M = \frac{E_{b}}{N_{0}}\bigg|_{\text{available}} - \frac{E_{b}}{N_{0}}
+\bigg|_{\text{required}} = 15.4 - 5.0 = 10.4\,\si{\decibel}.
+\]
+
+\input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-link-budget-waterfall.tex}
+
+\subsection{Verdict}
+
+The link closes with about $10\,\si{\decibel}$ of margin, which is the
+reason a $0.9\,\si{\meter}$ dish is the standard domestic size at these
+EIRP levels: it is large enough to ride out a heavy rain fade, which in
+the Ku band can take $5$ to $8\,\si{\decibel}$ at a temperate site during
+the worst minutes of a year, while staying small enough to bolt to a
+wall. Shrinking the dish to $0.6\,\si{\meter}$ would cut the receive gain
+by $20\log_{10}(0.9/0.6) = 3.5\,\si{\decibel}$ and leave only
+$7\,\si{\decibel}$ of margin, marginal in a wet climate; growing it to
+$1.2\,\si{\meter}$ adds $2.5\,\si{\decibel}$ at the cost of a more
+demanding mount and pointing tolerance. The budget also shows where an
+operator spends to improve coverage: every decibel of satellite EIRP, of
+ground-terminal $G/T$, or of coding gain moves the margin one-for-one,
+and the cheapest decibels at the system level are almost always in the
+forward-error correction, which is the reason the satellite-television
+industry moved from the early digital standard to its successor largely
+to capture a few decibels of coding gain at no change to the antennas. A
+reader who can assemble this budget can size a terminal, certify a
+$G/T$, or judge a vendor's coverage claim, which is the working content
+of satellite-link engineering.
 
 \section{Failure: impedance mismatch, standing waves, RF heating}\pathtag{core}
 
