@@ -670,6 +670,145 @@ measured anchor and to expect a few percent of error that grows with the
 span. The routine \texttt{code/clausius\_clapeyron.py} carries the same
 two-point form.
 
+\subsection{Three cubic equations of state for compressed methane}
+
+A working engineer choosing an equation of state wants to know how much
+the choice changes the answer. We put the ideal-gas law, the van der
+Waals equation, and the Peng-Robinson equation against one another for
+methane at $200\,\si{\kelvin}$ confined to a molar volume of $v =
+6.0\times 10^{-4}\,\text{m}^3/\text{mol}$, a compressed state on the way
+to liquefaction. Methane has $T_c = 190.6\,\si{\kelvin}$, $p_c =
+4.60\,\text{MPa}$, and an acentric factor $\omega = 0.011$, so the
+reduced temperature is $T_r = 200/190.6 = 1.05$, just above critical,
+where the equations part company.
+
+The ideal-gas pressure is
+\[
+p_{\text{ideal}} = \frac{RT}{v} = \frac{(8.314)(200)}{6.0\times 10^{-4}}
+= 2.77\times 10^6\,\text{Pa} = 2.77\,\text{MPa}.
+\]
+For van der Waals, $a = 27R^2T_c^2/(64p_c) = 0.230\,\text{Pa}\cdot
+\text{m}^6/\text{mol}^2$ and $b = RT_c/(8p_c) = 4.31\times
+10^{-5}\,\text{m}^3/\text{mol}$, so
+\[
+p_{\text{vdW}} = \frac{RT}{v - b} - \frac{a}{v^2}
+= \frac{1662.8}{5.569\times 10^{-4}} - \frac{0.230}{3.6\times 10^{-7}}
+= 2.986\times 10^6 - 6.39\times 10^5 = 2.35\,\text{MPa}.
+\]
+For Peng-Robinson the constants are $a = 0.45724\,R^2T_c^2/p_c =
+0.249\,\text{Pa}\cdot\text{m}^6/\text{mol}^2$ and $b = 0.07780\,
+RT_c/p_c = 2.68\times 10^{-5}\,\text{m}^3/\text{mol}$, and the
+temperature function uses $\kappa = 0.37464 + 1.54226\,\omega -
+0.26992\,\omega^2 = 0.391$ so that
+\[
+\alpha(T) = \left[1 + \kappa\left(1 - \sqrt{T_r}\right)\right]^2
+= \left[1 + 0.391\left(1 - \sqrt{1.05}\right)\right]^2 = 0.981.
+\]
+The Peng-Robinson pressure is
+\[
+p_{\text{PR}} = \frac{RT}{v - b} - \frac{a\,\alpha}{v(v+b) + b(v-b)}.
+\]
+The repulsive term is $1662.8/(6.0\times 10^{-4} - 2.68\times 10^{-5}) =
+2.897\times 10^6\,\text{Pa}$. The attractive denominator is
+$v(v+b) + b(v-b) = (6.0\times 10^{-4})(6.268\times 10^{-4}) +
+(2.68\times 10^{-5})(5.732\times 10^{-4}) = 3.914\times 10^{-7}$, so the
+attractive term is $(0.249)(0.981)/(3.914\times 10^{-7}) = 6.24\times
+10^5\,\text{Pa}$. Then $p_{\text{PR}} = 2.897\times 10^6 - 6.24\times
+10^5 = 2.27\,\text{MPa}$. The three compressibility factors are
+$Z_{\text{ideal}} = 1.00$, $Z_{\text{vdW}} = 0.85$, and $Z_{\text{PR}} =
+0.82$. The reference value from a multiparameter methane equation of
+state at this state is $Z \approx 0.81$, so Peng-Robinson lands within a
+percent, van der Waals within five percent, and the ideal-gas law is
+high by more than twenty percent. The ordering is the working lesson: the
+ideal-gas law sets the scale, van der Waals captures most of the
+correction with two constants and no acentric factor, and Peng-Robinson
+earns its place in process software by closing the last few percent that
+a custody-transfer or liquefaction calculation cannot give away. The
+routine \texttt{code/ideal\_vs\_real\_gas.py} returns the van der Waals
+and ideal numbers; the Peng-Robinson arithmetic above is the one a
+process simulator runs at every flowsheet node.
+
+\subsection{Throttling a saturated liquid into the two-phase dome}
+
+A throttle, an expansion valve, or a partly-closed restriction holds
+enthalpy constant while it drops the pressure, and the question that
+matters for a refrigeration or a let-down line is how much of the liquid
+flashes to vapour on the way through. We carry saturated-liquid R-134a
+from a condenser at $40\,\degC$ ($p = 1017\,\text{kPa}$) through an
+expansion valve to an evaporator at $-10\,\degC$ ($p = 201\,\text{kPa}$)
+and find the exit state. The throttle is isenthalpic, so the exit
+enthalpy equals the inlet saturated-liquid enthalpy,
+\[
+h_{\text{out}} = h_f(40\,\degC) = 107.3\,\text{kJ}/\text{kg}.
+\]
+At the exit pressure the saturated-liquid and saturated-vapour
+enthalpies are $h_f(-10\,\degC) = 38.6\,\text{kJ}/\text{kg}$ and
+$h_g(-10\,\degC) = 244.5\,\text{kJ}/\text{kg}$
+(\texttt{data/r134a\_saturation.csv}). Since $h_f < h_{\text{out}} <
+h_g$, the exit is a two-phase mixture with quality
+\[
+x = \frac{h_{\text{out}} - h_f}{h_g - h_f} = \frac{107.3 - 38.6}{244.5 -
+38.6} = \frac{68.7}{205.9} = 0.334.
+\]
+A third of the liquid has flashed to vapour, and the flash is the point
+of the throttle: vapourising that third pulls its latent heat out of the
+remaining liquid, which is what drops the stream from $40\,\degC$ to
+$-10\,\degC$. The cooling per kilogram available downstream is the
+evaporator's job, $h_g(-10\,\degC) - h_{\text{out}} = 244.5 - 107.3 =
+137.2\,\text{kJ}/\text{kg}$, the remaining two-thirds of the latent heat
+that the cold coil can absorb. The throttle is irreversible, and the
+entropy rises across it even though the enthalpy does not: the inlet
+entropy is $s_f(40\,\degC) = 0.393\,\text{kJ}/(\text{kg}\cdot
+\si{\kelvin})$ and the exit entropy is $s_f(-10\,\degC) + x[s_g(-10\,
+\degC) - s_f(-10\,\degC)] = 0.158 + 0.334(0.937 - 0.158) = 0.418\,
+\text{kJ}/(\text{kg}\cdot\si{\kelvin})$, an entropy generation of
+$0.025\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$ that the expansion valve
+trades for the simplicity of having no moving parts. A turbine in place
+of the valve would recover some of that lost work, which is why large
+refrigeration and liquefaction plants sometimes replace the throttle
+with an expander; for a household refrigerator the valve's simplicity
+wins.
+
+\subsection{Dew point and the onset of condensation}
+
+Moist air carries water vapour as one component of a gas mixture, and the
+water condenses when the air is cooled to the temperature at which its
+vapour pressure equals the saturation pressure. We take room air at
+$20\,\degC$ and $73\,\%$ relative humidity and find the dew point, the
+temperature a window or a cold pipe must reach before it sweats. Relative
+humidity is the ratio of the actual water-vapour partial pressure to the
+saturation pressure at the air temperature,
+\[
+\phi = \frac{p_v}{p_{\text{sat}}(T)},
+\]
+so the partial pressure of water vapour is $p_v = \phi\,
+p_{\text{sat}}(20\,\degC) = 0.73\times 2.339 = 1.71\,\text{kPa}$, using
+the steam-table saturation pressure of water at $20\,\degC$. Cooling the
+air at constant total pressure holds $p_v$ fixed, because the amount of
+water in the parcel does not change, and the dew point is the
+temperature at which the saturation pressure has fallen to this $p_v$. We
+read it off the saturation curve of
+figure~\ref{fig:vol04ch02:dewpoint-construction}: the saturation pressure
+of water equals $1.71\,\text{kPa}$ at $15\,\degC$, so the dew point is
+$15\,\degC$. Any surface in the room colder than $15\,\degC$, a
+single-glazed window on a winter night, an uninsulated chilled-water
+pipe, the outside of a cold drink, drops the adjacent air below its dew
+point and grows condensation. The same construction sets a design rule
+for building envelopes: insulation must keep the inner surface of an
+exterior wall above the room-air dew point, or water condenses inside the
+wall and the assembly rots. The humidity ratio (mass of water vapour per
+mass of dry air) follows from the partial pressures through the ideal-gas
+law for each component, $w = 0.622\,p_v/(p - p_v) = 0.622\times
+1.71/(101.3 - 1.71) = 0.0107$, that is $10.7\,\text{g}$ of water per
+kilogram of dry air, the quantity an air-conditioning coil must remove to
+dehumidify. The dew-point calculation rests on treating each gas in the
+mixture as ideal and additive, the Dalton partial-pressure model, which
+holds well for the low water-vapour pressures of atmospheric air and
+fails only when a component approaches its own saturation curve at high
+pressure.
+
+\input{volumes/04-energy/ch02-equations-of-state-phase-changes/figures/fig-dewpoint-construction.tex}
+
 \begin{mastery}
 The reduced-pressure swing of the compressibility factor that the chart
 records is also where the simple equations of state earn their keep. A
@@ -724,6 +863,41 @@ an experimental regularity, exact only for substances sharing an
 intermolecular potential, which is why it works well for the hydrocarbon
 series and poorly for hydrogen-bonding fluids such as water and ammonia,
 whose departures the acentric factor only partly absorbs.
+\end{mastery}
+
+\begin{mastery}
+The throttling example held enthalpy constant and watched a liquid flash,
+but a throttle acting on a single-phase gas does something subtler: it
+changes the temperature, and the sign of that change is the
+\engterm{Joule-Thomson coefficient}
+\[
+\mu_{JT} = \left(\frac{\partial T}{\partial p}\right)_h
+= \frac{1}{c_p}\left[T\left(\frac{\partial v}{\partial T}\right)_p -
+v\right].
+\]
+For an ideal gas $v = R_s T/p$ makes the bracket vanish identically, so
+an ideal gas neither warms nor cools on throttling. A real gas has a
+non-zero coefficient whose sign flips along the \engterm{inversion
+curve}, the locus where $\mu_{JT} = 0$. Inside the inversion curve
+$\mu_{JT} > 0$ and a pressure drop cools the gas; outside it $\mu_{JT} <
+0$ and a pressure drop warms the gas. The cooling region is the working
+basis of gas liquefaction: the Linde cycle throttles a high-pressure gas
+that sits inside its inversion curve, takes the small temperature drop,
+recuperates it against the incoming stream, and repeats until the gas
+condenses. The hazard hides in the sign flip. Hydrogen and helium have
+inversion temperatures far below room temperature ($202\,\si{\kelvin}$
+for hydrogen, $40\,\si{\kelvin}$ for helium), so at ambient conditions
+they sit outside the inversion curve and a throttling leak \emph{warms}
+them, which is why a high-pressure hydrogen release can self-ignite at a
+pinhole while a throttled carbon-dioxide or nitrogen leak (both with
+room-temperature $\mu_{JT} > 0$) cools and can frost the fitting. The van
+der Waals equation predicts the inversion curve qualitatively, giving a
+maximum inversion temperature of $T_{\text{inv}}^{\max} = 2a/(R b) =
+(27/4)\,T_c$ in the low-pressure limit, which places nitrogen's at about
+$850\,\si{\kelvin}$ and hydrogen's at about $220\,\si{\kelvin}$, both in
+the right neighbourhood of the measured values. The lesson for a designer
+sizing a let-down station is to know which side of the inversion curve
+the gas sits on before assuming a throttle cools it.
 \end{mastery}
 
 \begin{estimation}
@@ -963,6 +1137,201 @@ pressurised-liquid vessel clears service by some version of this same
 chain: duty, charge, fill limit, working pressure from the saturation
 curve, off-take from the wall area, relief from the fire case, and a
 consequence margin against the phase boundary the failure section maps.
+
+\section{A second end-to-end case study: a steam Rankine
+power-cycle state-point analysis}\pathtag{standard}
+
+The propane case sized a vessel that stores a phase change at rest. A
+steam power plant runs a phase change in a loop, twice per cycle, and
+turns the latent heat of water into shaft work. We take a subcritical
+steam Rankine cycle of the kind that produces most of the world's
+grid electricity and carry it end to end: fix the four state points from
+the steam tables, balance the energy across each component, compute the
+thermal efficiency, and read the result against the Carnot bound and the
+turbine-exit moisture limit. Every tool of the chapter appears once. The
+saturation tables fix the condenser and boiler-drum states, the
+superheat tables fix the turbine inlet, the quality and the lever rule
+fix the wet turbine exit, the incompressibility approximation sizes the
+pump work, and the energy balance is the first law of chapter~1 applied
+component by component. The cycle is the same loop the $T$-$s$ diagram of
+figure~\ref{fig:vol04ch02:ts-dome-cycle} sketched schematically, now
+carrying real numbers in figure~\ref{fig:vol04ch02:rankine-ts-cycle}.
+
+\subsection{The cycle and its four states}
+
+The plant runs between a condenser at $10\,\text{kPa}$ and a boiler at
+$8\,\text{MPa}$, with the steam superheated to $500\,\degC$ at the
+turbine inlet. The four states of the ideal cycle are: state~1, the
+saturated liquid leaving the condenser; state~2, the compressed liquid
+the feed pump delivers to the boiler; state~3, the superheated steam at
+the turbine inlet; state~4, the wet steam leaving the turbine. We take
+the turbine and pump as isentropic for the ideal analysis and return to
+the real-machine corrections at the end. The mass flow rate is
+$\dot{m} = 50\,\text{kg}/\text{s}$, a small utility unit.
+
+\subsection{State 1 and the pump work to state 2}
+
+State~1 is saturated liquid at the condenser pressure of $10\,\text{kPa}$.
+From the saturated-water table at $10\,\text{kPa}$ the saturation
+temperature is $45.8\,\degC$, and
+\[
+h_1 = h_f = 191.8\,\text{kJ}/\text{kg}, \quad
+v_1 = v_f = 1.010\times 10^{-3}\,\text{m}^3/\text{kg}, \quad
+s_1 = s_f = 0.649\,\text{kJ}/(\text{kg}\cdot\si{\kelvin}).
+\]
+The feed pump raises the pressure from $10\,\text{kPa}$ to $8\,\text{MPa}$.
+Liquid water is nearly incompressible, so the reversible pump work per
+kilogram is the incompressible-flow result $w_p = v_1(p_2 - p_1)$ from
+the relation $dh = v\,dp$ at constant entropy and constant $v$:
+\[
+w_p = v_1(p_2 - p_1) = (1.010\times 10^{-3})(8000 - 10)\times 10^3 =
+8.07\times 10^3\,\text{J}/\text{kg} = 8.1\,\text{kJ}/\text{kg}.
+\]
+The compressed-liquid enthalpy at state~2 is then
+\[
+h_2 = h_1 + w_p = 191.8 + 8.1 = 199.9\,\text{kJ}/\text{kg},
+\]
+and the temperature rise across the pump is tiny, $w_p/c \approx 8.1/4.18
+= 1.9\,\si{\kelvin}$, which is why states~1 and~2 sit almost on top of one
+another on the left limb of the dome in
+figure~\ref{fig:vol04ch02:rankine-ts-cycle}. The incompressibility
+approximation earns its place here: computing $h_2$ from the
+compressed-liquid tables would return the same value to within the table's
+own rounding, and the $v\,\Delta p$ shortcut saves a table look-up at
+every flowsheet pass.
+
+\subsection{State 3 at the boiler exit}
+
+State~3 is superheated steam at $8\,\text{MPa}$ and $500\,\degC$. The
+superheated-steam table at this pressure and temperature gives
+\[
+h_3 = 3399\,\text{kJ}/\text{kg}, \quad
+s_3 = 6.727\,\text{kJ}/(\text{kg}\cdot\si{\kelvin}).
+\]
+The boiler carries the working fluid from the compressed liquid at
+state~2 all the way to this superheated state, three processes in one
+constant-pressure path: it warms the liquid to the $8\,\text{MPa}$
+saturation temperature of $295\,\degC$, boils it across the two-phase
+region at constant temperature, and superheats the dry vapour to
+$500\,\degC$. The heat added per kilogram is the enthalpy rise,
+\[
+q_{\text{in}} = h_3 - h_2 = 3399 - 199.9 = 3199\,\text{kJ}/\text{kg}.
+\]
+
+\subsection{State 4 at the turbine exit, and the moisture check}
+
+The turbine expands the steam isentropically from $8\,\text{MPa}$ to the
+condenser pressure of $10\,\text{kPa}$, so the exit entropy equals the
+inlet entropy, $s_4 = s_3 = 6.727\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$.
+At $10\,\text{kPa}$ the saturated entropies are $s_f = 0.649$ and $s_g =
+8.150\,\text{kJ}/(\text{kg}\cdot\si{\kelvin})$. Since $s_f < s_4 < s_g$,
+the exit is a wet two-phase mixture, and the quality follows from
+inverting the entropy mixture rule,
+\[
+x_4 = \frac{s_4 - s_f}{s_g - s_f} = \frac{6.727 - 0.649}{8.150 - 0.649} =
+\frac{6.078}{7.501} = 0.810.
+\]
+The exit enthalpy is then $h_4 = h_f + x_4 h_{fg}$ with $h_f = 191.8$ and
+$h_{fg} = 2392.8\,\text{kJ}/\text{kg}$ at $10\,\text{kPa}$,
+\[
+h_4 = 191.8 + 0.810\times 2392.8 = 191.8 + 1938 = 2130\,\text{kJ}/\text{kg}.
+\]
+The exit quality of $0.810$ means $19\,\%$ of the stream is liquid water
+by mass at the last turbine stage, above the conventional $0.88$ to
+$0.90$ moisture limit that protects the low-pressure blades from droplet
+erosion. The cycle as drawn would erode its turbine, and the standard
+remedies are the ones the worked turbine example named: raise the
+superheat, or split the expansion and reheat between stages. Reheat to
+$500\,\degC$ at an intermediate pressure of around $1\,\text{MPa}$ would
+lift the final quality past $0.92$ and is the reason every utility
+Rankine plant of this pressure runs with reheat; chapter~3 of this
+volume develops the reheat geometry. We carry the simple cycle forward to
+keep the accounting transparent and flag the moisture as the design
+defect it is.
+
+\subsection{The energy balance and the efficiency}
+
+The turbine work per kilogram is the enthalpy drop across it,
+\[
+w_t = h_3 - h_4 = 3399 - 2130 = 1269\,\text{kJ}/\text{kg},
+\]
+against which the pump consumed $w_p = 8.1\,\text{kJ}/\text{kg}$, so the
+net work is
+\[
+w_{\text{net}} = w_t - w_p = 1269 - 8.1 = 1261\,\text{kJ}/\text{kg}.
+\]
+The heat rejected at the condenser closes the balance,
+\[
+q_{\text{out}} = h_4 - h_1 = 2130 - 191.8 = 1938\,\text{kJ}/\text{kg},
+\]
+and the first-law check holds to table rounding, $q_{\text{in}} -
+q_{\text{out}} = 3199 - 1938 = 1261\,\text{kJ}/\text{kg} =
+w_{\text{net}}$. The thermal efficiency is the net work divided by the
+heat in,
+\[
+\eta_{\text{th}} = \frac{w_{\text{net}}}{q_{\text{in}}} = \frac{1261}{3199}
+= 0.394,
+\]
+just under $40\,\%$. At the $50\,\text{kg}/\text{s}$ mass flow the gross
+power is $\dot{m}\,w_{\text{net}} = (50)(1261) = 6.3\times 10^4\,\text{kW}
+= 63\,\text{MW}$, the boiler duty is $\dot{m}\,q_{\text{in}} = 160\,
+\text{MW}$, and the condenser must reject $\dot{m}\,q_{\text{out}} = 97\,
+\text{MW}$ to the cooling water, the dominant heat flow that sets the
+cooling-tower or river-intake size. Figure~\ref{fig:vol04ch02:rankine-energy-balance}
+draws the per-kilogram flows as a bar chart and makes the dominant fact
+of a steam plant plain: most of the heat added at the boiler leaves at
+the condenser, and the pump work is a rounding error against the turbine
+work.
+
+\input{volumes/04-energy/ch02-equations-of-state-phase-changes/figures/fig-rankine-ts-cycle.tex}
+
+\input{volumes/04-energy/ch02-equations-of-state-phase-changes/figures/fig-rankine-energy-balance.tex}
+
+\subsection{The Carnot bound and the real-machine corrections}
+
+The Carnot efficiency for heat exchange between the boiler-drum
+saturation temperature ($295\,\degC = 568\,\si{\kelvin}$) and the
+condenser temperature ($45.8\,\degC = 319\,\si{\kelvin}$) is
+\[
+\eta_{\text{Carnot}} = 1 - \frac{T_{\text{cold}}}{T_{\text{hot}}} = 1 -
+\frac{319}{568} = 0.438.
+\]
+The ideal Rankine cycle reaches $0.394$, that is $90\,\%$ of the Carnot
+bound computed at the drum temperature. The gap to Carnot is mostly the
+boiler's own irreversibility: heat enters the cycle across a finite
+temperature difference while the feedwater warms from $46\,\degC$ to the
+$295\,\degC$ saturation temperature, so the average temperature of heat
+addition is well below the peak, and the superheat to $500\,\degC$ only
+partly recovers it. A real plant falls further below the ideal number. An
+isentropic turbine efficiency of $0.85$ would cut the turbine work to
+$w_t = 0.85\times 1269 = 1079\,\text{kJ}/\text{kg}$ and lift the exit
+quality (the irreversible expansion ends warmer and drier), dropping the
+cycle efficiency to about $0.33$; boiler-stack losses, condenser
+sub-cooling, and pump inefficiency trim it further. The honest reading is
+that a simple subcritical Rankine cycle of this pressure delivers a
+real-plant efficiency in the low-to-mid thirties of a percent, that
+reheat and regenerative feedwater heating are the moves that recover
+several points of it, and that the condenser heat rejection, not the
+chimney, carries the bulk of the energy the cycle does not convert.
+
+\subsection{Verdict}
+
+The state-point analysis holds and the cycle's defect is explicit. The
+four states close a consistent energy balance, the thermal efficiency of
+$0.394$ sits at $90\,\%$ of the Carnot bound taken at the drum
+temperature, and the $63\,\text{MW}$ net output follows from the mass
+flow. The signing engineer would not release this cycle as drawn: the
+turbine-exit quality of $0.810$ is below the blade-erosion limit, and the
+fix is reheat or higher superheat, not a tweak to the operating
+pressures. The transferable result is the procedure, the same loop the
+refrigeration example traced in the opposite direction: fix the saturated
+end states from the pressure tables, fix the superheated inlet from its
+table, carry entropy through the isentropic legs to find the wet exit
+quality, size the pump work from the incompressible $v\,\Delta p$, and
+let the first law close component by component. Every steam plant, every
+organic-Rankine waste-heat unit, and every refrigeration loop clears its
+first design pass by exactly this chain of table look-ups and energy
+balances.
 
 \section{Failure: cavitation, water-hammer, BLEVE}\pathtag{core}
 
