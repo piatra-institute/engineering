@@ -273,6 +273,80 @@ non-inverting amplifier has gain $1+R_f/R_g$ and presents very high
 input impedance. Both follow from the virtual short by writing KCL at
 the inverting input.
 
+\subsection{Feedback gain, loop gain, and the gain-bandwidth product}
+\pathtag{standard}
+
+The virtual short is the limit of a quantitative statement worth
+carrying in full, because it tells the engineer how much error the
+finite gain of a real op-amp leaves behind and where the closed-loop
+bandwidth lands. A real op-amp produces an output $v_o = A(v_+ - v_-)$
+with a large but finite open-loop gain $A$. The non-inverting amplifier
+feeds a fraction $\beta = R_g/(R_f + R_g)$ of the output back to the
+inverting input, so $v_- = \beta v_o$ and $v_+ = v_{\text{in}}$. Solving
+$v_o = A(v_{\text{in}} - \beta v_o)$ for the closed-loop gain gives
+\[
+G = \frac{v_o}{v_{\text{in}}} = \frac{A}{1 + A\beta}
+= \frac{1}{\beta}\cdot\frac{A\beta}{1 + A\beta}.
+\]
+The product $A\beta$ is the \engterm{loop gain}, the gain a signal sees
+travelling once around the feedback loop, and $1 + A\beta$ is the
+\engterm{return difference}. When the loop gain is large, $A\beta \gg
+1$, the closed-loop gain collapses to $G \to 1/\beta = 1 + R_f/R_g$, the
+ideal result, set by the resistor ratio alone and independent of the
+op-amp. The fractional error of the ideal formula is $1/(1 + A\beta)$:
+an op-amp with $A = 10^{5}$ in a circuit with $\beta = 1/100$ has a loop
+gain of $10^{3}$, so the gain is low by about $0.1\,\%$, and the
+$0.1\,\%$ shrinks further as $A$ rises. The same return difference
+divides every imperfection referred to the output: distortion,
+output-impedance variation, and the effect of load changes all fall by
+the factor $1 + A\beta$. Feedback buys accuracy by trading away the
+surplus open-loop gain.
+
+The open-loop gain is not constant with frequency. A general-purpose
+op-amp is deliberately compensated to roll off as a single pole,
+\[
+A(\omega) = \frac{A_0}{1 + j\omega/\omega_p},
+\]
+with a DC gain $A_0$ and a dominant pole at $\omega_p$ placed low (often
+a few hertz to a few tens of hertz) so that the phase stays well short
+of $180^\circ$ until the gain has fallen below unity, the condition for
+stable feedback. Substituting this $A(\omega)$ into the closed-loop
+expression and keeping $\beta$ frequency-independent,
+\[
+G(\omega) = \frac{A_0/(1 + j\omega/\omega_p)}
+{1 + \beta A_0/(1 + j\omega/\omega_p)}
+= \frac{A_0}{(1 + \beta A_0) + j\omega/\omega_p}.
+\]
+Dividing through by $(1 + \beta A_0)$ puts this in single-pole form with
+DC gain $G_0 = A_0/(1 + \beta A_0) \approx 1/\beta$ and a closed-loop
+corner at
+\[
+\omega_c = \omega_p(1 + \beta A_0) \approx \beta A_0\,\omega_p.
+\]
+The product of the closed-loop DC gain and the closed-loop bandwidth is
+therefore $G_0\,\omega_c \approx (1/\beta)(\beta A_0\omega_p) =
+A_0\omega_p$, a constant independent of $\beta$. That constant is the
+\engterm{gain-bandwidth product} (GBW), the frequency at which the
+open-loop gain itself falls to unity. The working rule drops out: a
+feedback amplifier set to a closed-loop gain $G$ has a bandwidth
+$\text{GBW}/G$, so raising the gain narrows the bandwidth in exact
+proportion. Figure~\ref{fig:vol04ch09:gbw} draws the open-loop roll-off
+and two closed-loop gain lines breaking where they meet it.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-gbw.tex}
+
+The inverting amplifier obeys the same arithmetic with one wrinkle. Its
+ideal gain is $-R_f/R_{\text{in}}$, but the bandwidth is governed by the
+\engterm{noise gain}, the gain the op-amp's own input error sees, which
+is $1 + R_f/R_{\text{in}}$ rather than $R_f/R_{\text{in}}$. An inverting
+stage of gain $-10$ has a noise gain of $11$, so its bandwidth is
+$\text{GBW}/11$, not $\text{GBW}/10$, and its output noise and offset
+are amplified by $11$. The distinction between signal gain and noise
+gain is the kind of detail that separates a circuit that meets its
+bandwidth spec on the bench from one that falls a few percent short, and
+it is the reason the design exercises in this chapter size the op-amp by
+its noise gain.
+
 \section{Transient response: RC, RL, RLC}\pathtag{core}
 \label{sec:vol04ch09:transient}
 
@@ -710,6 +784,80 @@ arithmetic of reading a motor nameplate into a feeder design.
 
 \input{volumes/04-energy/ch09-circuits/figures/fig-transformer-match.tex}
 
+\paragraph{Sallen-Key corner and damping from component values.}
+A unity-gain Sallen-Key low-pass filter (Figure~\ref{fig:vol04ch09:sallen-key})
+has a transfer function whose denominator, derived in the case study below,
+is $1 + j\omega(R_1+R_2)C_2 + (j\omega)^2 R_1 R_2 C_1 C_2$. Matching this to
+the standard second-order form $1 + (j\omega)/(Q\omega_0) + (j\omega/\omega_0)^2$
+gives a corner $\omega_0 = 1/\sqrt{R_1 R_2 C_1 C_2}$ and a quality factor
+$Q = \sqrt{R_1 R_2 C_1 C_2}/((R_1+R_2)C_2)$. Take equal resistors
+$R_1 = R_2 = R = 11.3\,\si{\kilo\ohm}$ and capacitors $C_1 = 22\,\si{\nano
+\farad}$, $C_2 = 11\,\si{\nano\farad}$. Then $\omega_0 = 1/(R\sqrt{C_1 C_2}) =
+1/(11.3\times 10^{3}\cdot\sqrt{22\times 10^{-9}\cdot 11\times 10^{-9}}) =
+5.69\times 10^{3}\,\si{\per\second}$, so $f_0 = 906\,\si{\hertz}$, and with
+equal resistors the quality factor simplifies to $Q = \tfrac{1}{2}\sqrt{C_1/C_2}
+= \tfrac{1}{2}\sqrt{2} = 0.707$, the maximally-flat Butterworth value. The
+capacitor ratio sets the damping while the resistor and capacitor product set
+the corner, which is why a Sallen-Key stage is tuned by choosing the ratio
+$C_1/C_2$ first for the response shape, then scaling both for the frequency.
+
+\paragraph{Aliasing rejection of a two-pole anti-alias filter.}
+An analog-to-digital converter samples at $f_s = 8\,\si{\kilo\hertz}$, so its
+Nyquist frequency is $f_N = 4\,\si{\kilo\hertz}$; content above $f_N$ folds
+back into the band and corrupts the data. A second-order Butterworth low-pass
+with corner $f_c = 1\,\si{\kilo\hertz}$ has magnitude $|H| = 1/\sqrt{1 +
+(f/f_c)^4}$. At the Nyquist frequency $f/f_c = 4$, so $|H| = 1/\sqrt{1 + 256}
+= 1/16.0 = 0.0624$, that is $20\log_{10}(0.0624) = -24.1\,\si{\decibel}$;
+the first frequency that aliases onto a DC signal is $f_s = 8\,\si{\kilo
+\hertz}$, where $f/f_c = 8$ gives $|H| = 1/\sqrt{1 + 4096} = 0.0156$, that is
+$-36.1\,\si{\decibel}$. A single-pole filter at the same corner would reach
+only $-12\,\si{\decibel}$ at $f_N$ and $-18\,\si{\decibel}$ at $f_s$,
+half the slope, which is why anti-alias filters ahead of a converter are at
+least second order. The numbers say that a tone at $7.5\,\si{\kilo\hertz}$,
+arriving $24\,\si{\decibel}$ down from the two-pole filter and then aliasing
+to $0.5\,\si{\kilo\hertz}$, lands inside the pass band attenuated by only that
+$24\,\si{\decibel}$; if the converter has more than about four bits of
+resolution the alias is visible, and the filter order or corner must be
+raised to push it below the least significant bit.
+
+\paragraph{Wheatstone-bridge sensitivity and the small-signal output.}
+A quarter-bridge strain gauge places one variable resistor $R(1+x)$ in a
+four-arm bridge of nominal resistance $R$, excited by a voltage $V_{\text{exc}}$.
+The bridge output is the difference of two dividers,
+\[
+v_o = V_{\text{exc}}\left(\frac{R(1+x)}{R(1+x)+R} - \frac{R}{R+R}\right)
+= V_{\text{exc}}\left(\frac{1+x}{2+x} - \frac{1}{2}\right)
+= V_{\text{exc}}\,\frac{x}{2(2+x)}.
+\]
+For the small fractional change $x = \text{GF}\cdot\varepsilon$ a strain gauge
+delivers (gauge factor $\text{GF}\approx 2$), the output linearises to
+$v_o \approx V_{\text{exc}}\,x/4$. With $V_{\text{exc}} = 5\,\si{\volt}$ and a
+strain of $\varepsilon = 10^{-3}$ (one millistrain, a heavily loaded steel
+member near its working limit), $x = 2\times 10^{-3}$ and $v_o = 5\cdot
+2\times 10^{-3}/4 = 2.5\,\si{\milli\volt}$. The bridge converts a part-per-
+thousand resistance change into a few millivolts, a signal far too small to
+digitise directly and the reason the next stage is a high-gain instrumentation
+amplifier. The residual nonlinearity from the dropped $x/2$ term is
+$x/4 \approx 5\times 10^{-4}$, half a part per thousand, negligible against
+the gauge's own tolerance but a term a half-bridge or full-bridge arrangement
+cancels when the application needs it.
+
+\paragraph{Output-impedance reduction by feedback.}
+A voltage follower built from an op-amp with open-loop output resistance
+$R_{o} = 100\,\si{\ohm}$ and open-loop gain $A = 10^{5}$ presents a
+closed-loop output resistance reduced by the return difference,
+$R_{\text{out}} = R_{o}/(1 + A\beta)$. For a follower $\beta = 1$, so
+$R_{\text{out}} = 100/(1 + 10^{5}) = 1.0\,\si{\milli\ohm}$ at DC. The
+reduction tracks the loop gain, which falls with frequency at
+$-20\,\si{\decibel}$ per decade above the op-amp's dominant pole, so by the
+gain-bandwidth frequency the output impedance has climbed back toward $R_o$;
+a follower driving a fast load looks like a near-ideal source at audio
+frequencies and like a $100\,\si{\ohm}$ source in the megahertz range. This
+frequency-dependent output impedance is why a buffer that measures clean on a
+multimeter can still ring when it drives a capacitive load, the load
+resonating with the rising output inductance the feedback no longer
+suppresses.
+
 \begin{mastery}
 The phasor calculus of Section~\ref{sec:vol04ch09:ac} is the steady-state
 slice of the Laplace transform. Replacing $j\omega$ by the complex
@@ -1033,6 +1181,218 @@ the harmonic envelope off the edge rate, places the input-filter corner
 below the first troublesome harmonic, and confirms the result on a spectrum
 analyser with a line-impedance stabilisation network, the bench instrument
 that presents the standard source impedance the emissions limits assume.
+\end{mastery}
+
+\section{A third case study: a sensor signal-conditioning chain}\pathtag{standard}
+\label{sec:vol04ch09:signal-chain-case}
+
+The two power case studies move energy; this one moves information. A
+sensor that produces a small analog voltage must be amplified, filtered,
+and handed to an analog-to-digital converter without losing the
+information the bit budget can carry or adding error the application
+cannot tolerate. We carry a strain-gauge front end end to end: a
+Wheatstone bridge source, an instrumentation amplifier for gain and
+common-mode rejection, a second-order Sallen-Key anti-alias filter
+designed to a stated stop-band figure, a noise and offset budget
+referred to the converter's least significant bit, a Bode check of the
+chain, and a verdict an engineer would sign before laying out the board.
+The chain exercises every part of the chapter that the power supplies did
+not: the op-amp feedback theory, the second-order filter transfer
+function, and the AC frequency response.
+Figure~\ref{fig:vol04ch09:signal-chain} sketches the four stages and the
+signal level at each interface. The treatment follows the working
+references on sensor conditioning
+\cite{text:ch05-pallas-areny-webster2001, text:ch05-northrop2014}.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-signal-chain.tex}
+
+\subsection{Specification}
+
+The sensor is a quarter-bridge strain gauge of nominal arm resistance
+$350\,\si{\ohm}$ and gauge factor $2.0$, excited at $V_{\text{exc}} =
+5.0\,\si{\volt}$, measuring strain up to $\varepsilon_{\max} =
+1.0\times 10^{-3}$ (one millistrain). The physical quantity of interest
+varies slowly, with no real content above $1\,\si{\kilo\hertz}$. The
+converter is a $16$-bit device with a $\pm 1.0\,\si{\volt}$ input range
+sampling at $f_s = 8\,\si{\kilo\hertz}$. The chain must present the
+full-scale strain as close to the converter's full scale as the budget
+allows, hold the total referred-to-input error below one least
+significant bit, and attenuate any content at or above the Nyquist
+frequency $f_N = 4\,\si{\kilo\hertz}$ enough that an aliased tone falls
+below that same least significant bit.
+
+The converter's least significant bit spans $\text{LSB} = 2.0\,\si{\volt}
+/2^{16} = 30.5\,\si{\micro\volt}$ at the input, the unit against which
+every error in the chain is measured.
+
+\subsection{Bridge source and required gain}
+
+The quarter-bridge output at full strain, from the worked example above,
+is $v_o \approx V_{\text{exc}}\,\text{GF}\,\varepsilon/4 = 5.0\cdot 2.0
+\cdot 1.0\times 10^{-3}/4 = 2.5\,\si{\milli\volt}$ at the top of the
+range. To map this $2.5\,\si{\milli\volt}$ full-scale signal onto the
+converter's $1.0\,\si{\volt}$ full scale we need a gain of $G =
+1.0/2.5\times 10^{-3} = 400$. The bridge's source resistance is the
+$350\,\si{\ohm}$ bridge impedance, so the amplifier that follows must
+present a high input impedance to avoid loading the bridge and a high
+common-mode rejection to ignore the $2.5\,\si{\volt}$ common-mode
+voltage that sits at the bridge midpoints. The instrumentation amplifier
+of the earlier worked example is the standard answer; we set its gain to
+$400$ with its single gain resistor and carry that gain forward.
+
+\subsection{Anti-alias filter design}
+
+The converter samples at $8\,\si{\kilo\hertz}$, so anything above
+$4\,\si{\kilo\hertz}$ aliases. The signal has no real content above
+$1\,\si{\kilo\hertz}$, so a low-pass filter cornered at $f_c =
+1\,\si{\kilo\hertz}$ passes the signal and begins rolling off well before
+Nyquist. We require that a full-scale interfering tone at $f_N =
+4\,\si{\kilo\hertz}$ be attenuated below one least significant bit, a
+ratio of $\text{LSB}/\text{full scale} = 1/2^{16} = -96\,\si{\decibel}$
+in the worst case, relaxed in practice to the converter's effective
+number of bits.
+
+The Sallen-Key topology of Figure~\ref{fig:vol04ch09:sallen-key} builds
+a second-order low-pass in one op-amp. Writing KCL at nodes A and B with
+the virtual short ($v_B = v_{\text{out}}$ for the unity-gain follower)
+gives the transfer function. The current balance at node A is
+\[
+\frac{v_{\text{in}}-v_A}{R_1} = \frac{v_A - v_{\text{out}}}{1/(j\omega C_1)}
++ \frac{v_A - v_B}{R_2},
+\]
+and at node B, where the op-amp input draws no current,
+\[
+\frac{v_A - v_B}{R_2} = \frac{v_B - 0}{1/(j\omega C_2)}.
+\]
+Setting $v_B = v_{\text{out}}$ and eliminating $v_A$ yields
+\[
+H(j\omega) = \frac{v_{\text{out}}}{v_{\text{in}}}
+= \frac{1}{1 + j\omega(R_1+R_2)C_2 + (j\omega)^2 R_1 R_2 C_1 C_2}.
+\]
+This is the second-order low-pass form with $\omega_0 = 1/\sqrt{R_1 R_2
+C_1 C_2}$ and $1/(Q\omega_0) = (R_1+R_2)C_2$, so $Q = \sqrt{R_1 R_2 C_1
+C_2}/((R_1+R_2)C_2)$. Choosing equal resistors $R_1 = R_2 = R$ collapses
+the damping to $Q = \tfrac{1}{2}\sqrt{C_1/C_2}$, set by the capacitor
+ratio alone. The maximally-flat Butterworth response, the right choice
+for an anti-alias filter because it has no pass-band ripple, needs $Q =
+1/\sqrt{2}$, hence $C_1/C_2 = 2$. We take $C_1 = 22\,\si{\nano\farad}$
+and $C_2 = 11\,\si{\nano\farad}$, then solve $\omega_0 = 2\pi\cdot
+1000 = 1/(R\sqrt{C_1 C_2})$ for the resistor:
+\[
+R = \frac{1}{\omega_0\sqrt{C_1 C_2}}
+= \frac{1}{2\pi\cdot 1000\cdot\sqrt{22\times 10^{-9}\cdot 11\times 10^{-9}}}
+= 10.2\,\si{\kilo\ohm},
+\]
+which we round to a standard $10\,\si{\kilo\ohm}$ part, nudging the corner
+to $f_c = 1/(2\pi\cdot 10\times 10^{3}\sqrt{22\times 10^{-9}\cdot 11
+\times 10^{-9}}) = 1.03\,\si{\kilo\hertz}$, inside tolerance.
+
+The second-order Butterworth magnitude is $|H| = 1/\sqrt{1+(f/f_c)^4}$.
+At Nyquist, $f/f_c = 4000/1030 = 3.88$, so $|H| = 1/\sqrt{1 + 3.88^4} =
+1/15.1 = 0.066$, that is $-23.6\,\si{\decibel}$, and at the first alias
+frequency $f_s = 8\,\si{\kilo\hertz}$, $f/f_c = 7.77$ gives $-36\,\si{
+\decibel}$. Figure~\ref{fig:vol04ch09:antialias-bode} plots the response
+with these marks. Two poles do not reach the $-96\,\si{\decibel}$ a
+full-scale worst-case interferer would demand; the design closes the gap
+by noting that the physical signal has no energy near Nyquist in the
+first place, so the worst credible out-of-band tone is far below full
+scale, and the $-24\,\si{\decibel}$ the two-pole filter delivers brings
+even a half-scale interferer to within a few least significant bits. An
+application that cannot make that argument moves to a fourth-order filter
+(two cascaded Sallen-Key stages) or oversamples and filters in the
+digital domain.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-sallen-key.tex}
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-antialias-bode.tex}
+
+\subsection{Noise and offset budget}
+
+The chain's error budget is referred to the input, the $2.5\,\si{\milli
+\volt}$ full-scale bridge signal, and compared against the input-referred
+least significant bit, which is $\text{LSB}/G = 30.5\,\si{\micro\volt}
+/400 = 76\,\si{\nano\volt}$. Three error sources matter.
+
+The instrumentation amplifier's input offset voltage, a few tens of
+microvolts for a precision part, sits directly in series with the bridge
+signal and is amplified by the full gain. A $25\,\si{\micro\volt}$ offset
+is a third of the $76\,\si{\nano\volt}$ budget multiplied up, so it
+dominates unless removed; the cure is a single DC measurement at zero
+strain subtracted in software, which removes the static offset and leaves
+only its drift with temperature, of order $0.1\,\si{\micro\volt}$ per
+kelvin, a few tenths of a least significant bit over a ten-kelvin
+swing.
+
+The amplifier's input-referred voltage noise, of order $10\,\si{\nano
+\volt}/\sqrt{\si{\hertz}}$ for a low-noise part, integrates over the
+chain's noise bandwidth. The anti-alias filter sets that bandwidth: for a
+second-order Butterworth the noise bandwidth is $1.11\,f_c =
+1.14\,\si{\kilo\hertz}$. The integrated noise is then $10\,\si{\nano
+\volt}/\sqrt{\si{\hertz}}\cdot\sqrt{1140\,\si{\hertz}} = 0.34\,\si{\micro
+\volt}$ RMS referred to the input, about four and a half input-referred
+least significant bits RMS. To bury the noise under one bit the design
+either narrows the bandwidth (the signal allows it, since real content
+stops at $1\,\si{\kilo\hertz}$, but the anti-alias corner is already
+there) or averages in software: averaging $N$ samples drops the noise by
+$\sqrt{N}$, so averaging $25$ samples brings the $0.34\,\si{\micro\volt}$
+down to $68\,\si{\nano\volt}$, just under the bit, at the cost of slowing
+the effective output rate to $8000/25 = 320\,\si{\hertz}$. That output
+rate still resolves the signal, whose content stops at $1\,\si{\kilo
+\hertz}$ only because the anti-alias filter put it there, so the working
+compromise lowers the anti-alias corner to match the slower output rate,
+trading response speed for the bit of noise headroom averaging buys. The
+budget exposes the trade rather than hiding it.
+
+The bridge's own Johnson noise, $\sqrt{4k_B T R\,\Delta f}$ with $R =
+350\,\si{\ohm}$ and $\Delta f = 1140\,\si{\hertz}$, is $\sqrt{4\cdot
+1.38\times 10^{-23}\cdot 300\cdot 350\cdot 1140} = 0.083\,\si{\micro
+\volt}$ RMS, about one input-referred least significant bit, the floor no
+amplifier can beat. The amplifier noise sits above it, so the front end
+is amplifier-limited, and the design lever is the amplifier choice, not
+the bridge resistance.
+
+\subsection{Verdict}
+
+The chain delivers the full-scale strain as a full-scale converter
+reading, rejects the common-mode excitation through the instrumentation
+amplifier, holds the static offset to a software-removable level, and
+attenuates a Nyquist-frequency interferer by $24\,\si{\decibel}$, enough
+for a signal that carries no real energy near Nyquist. The residual error
+is dominated by amplifier voltage noise at about four least significant
+bits RMS, which a quieter amplifier or modest averaging reduces, and by
+offset drift at a few tenths of a bit. An engineer would sign this design
+for an application needing twelve to thirteen effective bits out of the
+sixteen the converter offers, and would reach for a chopper-stabilised
+amplifier and a fourth-order filter only if the application demanded the
+full sixteen. The chain is the information counterpart of the two power
+supplies: the same chapter machinery, turned to moving a measurement
+instead of moving energy.
+
+\begin{mastery}
+The noise budget above treated the amplifier's input-referred voltage
+noise as white, but a real op-amp's noise spectral density rises at low
+frequency as $1/f$, the \engterm{flicker} or pink-noise region, below a
+\engterm{corner frequency} $f_{\text{nc}}$ where the $1/f$ density crosses
+the flat broadband floor. The total input-referred noise integrates the
+density over the band, $\overline{v_n^2} = \int_{f_1}^{f_2} S_v(f)\,\dd f$
+with $S_v(f) = S_0(1 + f_{\text{nc}}/f)$, giving $\overline{v_n^2} =
+S_0[(f_2 - f_1) + f_{\text{nc}}\ln(f_2/f_1)]$. The flat term grows with
+bandwidth; the $1/f$ term grows only logarithmically, so it matters most
+for slow measurements that integrate down to fractions of a hertz, which
+is the regime a strain gauge reading a static load sits in. A corner of
+$10\,\si{\hertz}$ and a measurement extending from $0.1\,\si{\hertz}$ to
+$1140\,\si{\hertz}$ contributes a $1/f$ term of $f_{\text{nc}}\ln(1140/0.1)
+= 10\cdot 9.3 = 93\,\si{\hertz}$ of equivalent noise bandwidth, comparable
+to the flat $1140\,\si{\hertz}$ over a wide band but dominant for a
+measurement confined below a hertz. The architectural answer for
+near-DC measurement is the chopper-stabilised or auto-zero amplifier,
+which modulates the signal above $f_{\text{nc}}$, amplifies it where the
+noise is white, and demodulates back to baseband, moving the
+$1/f$ corner toward zero and leaving only the flat floor. The same
+modulate-amplify-demodulate idea is the lock-in amplifier of
+instrumentation practice, and it is why a precision bridge front end for
+static strain is built around an auto-zero part rather than the lowest
+broadband-noise op-amp the catalogue offers.
 \end{mastery}
 
 \section{Power: real, reactive, apparent}\pathtag{standard}
