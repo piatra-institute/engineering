@@ -49,6 +49,23 @@ board is no longer lumped; it requires transmission-line analysis
 working tool from DC to the low VHF band; above that, transmission-
 line and distributed analysis takes over.
 
+The practical criterion the designer carries is stated in rise time rather than
+frequency, because a digital signal that never leaves a fixed frequency still
+carries fast edges. A working rule holds a conductor \engterm{electrically
+short}, and therefore lumped, when its length is below about one tenth of the
+wavelength at the signal's highest significant frequency, and for a pulse the
+highest significant frequency is roughly $f_{\text{knee}} = 0.35/t_r$ set by the
+edge rise time $t_r$. A $1\,\si{\nano\second}$ edge has a knee near $350\,\si{
+\mega\hertz}$, a wavelength (accounting for the slower propagation in a board
+dielectric, roughly $0.6c$) of about $0.5\,\si{\meter}$, so the lumped
+approximation holds only for traces shorter than about $5\,\si{\centi\meter}$,
+and a longer trace carrying that edge behaves as a transmission line whether the
+schematic acknowledges it or not. The same edge that is lumped on a small module
+is distributed across a backplane, which is why the boundary is a property of the
+signal and the geometry together, not of the circuit alone, and why the
+signal-integrity failure at the end of the chapter is the lumped approximation
+breaking down rather than a distinct kind of fault.
+
 The five canonical two-terminal devices are:
 \begin{itemize}[leftmargin=*]
   \item \engterm{Resistor}: $v = iR$, with $R$ in $\si{\ohm}$.
@@ -124,6 +141,26 @@ and parallel connections, nodal is faster; for a circuit dominated by
 voltage sources and series connections, mesh is faster. The working
 engineer learns both and chooses by inspection.
 
+Two configurations break the simple recipe and need a named remedy. When a
+voltage source sits between two non-reference nodes rather than between a node
+and ground, neither node's KCL equation can be written on its own, because the
+current through the ideal source is unknown and unconstrained. The remedy is the
+\engterm{supernode}: draw a surface enclosing both nodes and the source, write
+one KCL equation for the total current crossing that surface, and close the
+system with the source's constraint that the two node voltages differ by the
+source value. The two equations, one balance and one constraint, replace the two
+that could not be written, and the count still closes. The dual difficulty
+appears in mesh analysis when a current source is shared between two meshes: the
+source fixes the difference of the two mesh currents but leaves the voltage
+across itself unknown, so a single mesh equation for either loop cannot be
+written. The \engterm{supermesh} is the remedy: write one KVL equation around
+the outer loop that avoids the shared source, then add the constraint that the
+two mesh currents differ by the source current. Both devices are the same move,
+enclosing the awkward element in a larger balance and supplying the missing
+equation from the element's own definition, and both are what a simulator's
+modified nodal analysis does automatically by adding one unknown branch current
+per voltage source.
+
 \input{volumes/04-energy/ch09-circuits/figures/fig-nodal-mesh.tex}
 
 Figure~\ref{fig:vol04ch09:nodal-mesh} shows a two-loop ladder annotated
@@ -196,6 +233,34 @@ $50\,\%$, which is acceptable for signal transmission (RF, audio) but
 unacceptable for power delivery (where one designs for $R_{L} \gg
 R_{\text{Th}}$ to keep the efficiency close to $100\,\%$).
 
+The Th\'evenin resistance of a network holding dependent sources cannot be found
+by deactivating sources and collapsing series and parallel resistors, because a
+dependent source is not an independent source and must stay active. The working
+procedure applies a test source: deactivate every \emph{independent} source,
+apply a test voltage $V_t$ at the terminals, compute the resulting current
+$I_t$, and read the resistance as $R_{\text{Th}} = V_t/I_t$. The test current
+must account for whatever the dependent source injects in response to the test
+excitation, which is exactly why the deactivate-and-collapse shortcut fails: the
+dependent source responds to the probe. A transistor small-signal model, which
+is a resistor network wrapped around a dependent current source, has its output
+resistance found this way, and the same test-source method gives the input and
+output impedances of every feedback amplifier. When the network has no dependent
+sources the test-source method still works and reduces to the collapse shortcut,
+so it is the general procedure the collapse is a special case of.
+
+Source transformation is the routine that moves between the two equivalents and
+between voltage-source and current-source pictures. A voltage source $V_s$ in
+series with a resistance $R$ is interchangeable, at its terminals, with a current
+source $I_s = V_s/R$ in parallel with the same $R$, and vice versa. The move is
+the working lever for simplifying a mixed network: converting each series
+voltage-source branch into its parallel current-source form collects sources at
+a node where they add directly, turning a multi-loop problem into a single nodal
+equation, and the reverse conversion collects parallel branches into a series
+chain for a mesh solution. Chaining source transformations, each exact, walks a
+ladder network down to a single equivalent without ever writing a full system of
+equations, the hand method that beats matrix inversion on the small networks an
+engineer reduces at a bench.
+
 \begin{archetype}[Balance and transport]
 A linear circuit is two patterns nested. The balance pattern enforces
 KCL at every node and KVL around every loop, giving the topological
@@ -236,6 +301,72 @@ capacitors in series invert and add: $1/C_{\text{tot}} = 1/C_{1} +
 $L_{\text{tot}} = L_{1}+L_{2}$; two in parallel invert and add. The
 rules are the duals of the resistor rules: resistors in series sum,
 in parallel invert and add.
+
+The series and parallel rules for capacitors follow from the two conservation
+laws the elements obey, and seeing why is worth more than memorising the four
+cases. Two capacitors in series carry the same charge, because the plates
+between them form an isolated island whose net charge cannot change: charge
+$+Q$ pushed onto the top plate of the first draws $-Q$ onto its bottom plate,
+which forces $+Q$ onto the top plate of the second. Equal charge across unequal
+capacitances means unequal voltages, $V_k = Q/C_k$, and the voltages add along
+the series path, so $V = Q(1/C_1 + 1/C_2)$ and the reciprocal capacitances add,
+exactly the resistor-parallel form. Two capacitors in parallel instead share
+the same voltage and split the charge, $Q = (C_1 + C_2)V$, so the capacitances
+add. The series case carries a warning the parallel case does not: two series
+capacitors of different value do not share the applied voltage equally, since
+the smaller capacitance takes the larger voltage, so a string of series
+capacitors used to withstand a high voltage needs balancing resistors across
+each to force an even split, without which the smallest part sees the most
+voltage and fails first.
+
+The energy an inductor and a capacitor store sets a hard limit on how fast a
+circuit can change, the limit that every transient in the chapter respects.
+Because $U_C = \tfrac{1}{2}Cv^2$ and $U_L = \tfrac{1}{2}Li^2$ are finite and a
+finite power can change a finite energy only at a finite rate, the capacitor
+voltage and the inductor current are continuous: they cannot jump. At the
+instant a switch changes state, a capacitor holds whatever voltage it had and a
+freshly energised inductor holds whatever current it had, which fixes the
+initial conditions of every transient. In the long-time limit, once all
+transients have died, the derivatives vanish, so a capacitor with $i = C\,\dd
+v/\dd t \to 0$ carries no current and behaves as an open circuit, while an
+inductor with $v = L\,\dd i/\dd t \to 0$ drops no voltage and behaves as a short
+circuit. These two initial-and-final rules, continuity at $t = 0^+$ and
+open-or-short at $t \to \infty$, let an engineer read the endpoints of a
+first-order transient by inspection before writing a single differential
+equation, and they are the sanity check that catches a sign error in the full
+solution: the closed form must start where continuity puts it and end where the
+open-or-short limit puts it.
+
+\begin{mastery}
+The resistance of a conductor is not the constant the DC value suggests once the
+current alternates fast enough. An alternating current in a conductor sets up an
+alternating magnetic field inside it, and by Faraday's law that field induces
+eddy currents that oppose the flow at the centre and reinforce it near the
+surface, so the current crowds into a thin outer layer, the \engterm{skin
+effect}. The current density falls exponentially inward with a characteristic
+\engterm{skin depth}
+\[
+\delta = \sqrt{\frac{2\rho}{\omega\mu}}
+= \sqrt{\frac{\rho}{\pi f\mu}},
+\]
+with $\rho$ the resistivity, $\mu$ the permeability, and $f$ the frequency, so
+the depth shrinks as the inverse square root of frequency. In copper the skin
+depth is about $9.3\,\si{\milli\meter}$ at $50\,\si{\hertz}$, $66\,\si{\micro
+\meter}$ at $1\,\si{\mega\hertz}$, and $2\,\si{\micro\meter}$ at
+$1\,\si{\giga\hertz}$. When the skin depth falls below the conductor radius the
+effective cross-section carrying current is roughly the perimeter times the skin
+depth rather than the full area, so the AC resistance rises as $\sqrt{f}$ above
+the frequency where the skin depth equals the radius. A wire that measures a few
+milliohms at DC can present tenths of an ohm at radio frequencies, which is why
+high-frequency inductors are wound with litz wire (many fine insulated strands
+that each stay thinner than a skin depth), why a printed-circuit trace's
+high-frequency loss scales with its perimeter rather than its area, and why the
+winding resistance in the buck-converter loss budget is a frequency-dependent
+quantity, not the DC value the ohmmeter reads. The companion effect between
+adjacent conductors, the \engterm{proximity effect}, crowds the current further
+still, so a tightly wound multilayer coil can carry far higher AC resistance
+than the skin effect alone predicts.
+\end{mastery}
 
 \begin{principle}[Pick the state variable]
 A circuit's order is the number of independent capacitors and
@@ -534,6 +665,35 @@ j(\omega L - 1/\omega C)$, which has zero reactance at the
 the circuit is purely resistive; below resonance it is capacitive;
 above resonance it is inductive.
 
+\begin{mastery}
+The maximum-power-transfer theorem of the resistive sections said that a load
+matches its source when the two resistances are equal; the AC generalisation is
+sharper and reverses part of that advice. A source of Th\'evenin impedance
+$Z_{\text{Th}} = R_s + jX_s$ delivers maximum power to a load $Z_L = R_L + jX_L$
+when the load is the \engterm{complex conjugate} of the source,
+\[
+Z_L = Z_{\text{Th}}^{*} = R_s - jX_s,
+\]
+that is when the load resistance equals the source resistance and the load
+reactance cancels the source reactance. The reactance cancellation is the new
+term: the load reactance is chosen to annul the source reactance so the loop is
+purely resistive at the operating frequency, and only then is the resistive
+match worth setting. To see why, write the load power as $P_L = \tfrac{1}{2}
+|I|^{2}R_L$ with $|I|^{2} = |V_{\text{Th}}|^{2}/[(R_s + R_L)^{2} + (X_s +
+X_L)^{2}]$. The reactance appears only in the denominator, added in quadrature,
+so any nonzero net reactance $X_s + X_L$ can only lower the power; the power is
+largest when $X_L = -X_s$, and with the reactance cancelled the problem reduces
+to the resistive one, maximised at $R_L = R_s$. The conjugate match is why an
+antenna tuner adds exactly the reactance that cancels the antenna's, why a
+matching network between a transistor and a $50\,\si{\ohm}$ line is two reactive
+elements rather than one resistor, and why a matched load at one frequency is
+mismatched at another, since the cancellation holds only where the two
+reactances are equal and opposite. When the load reactance cannot be chosen
+freely, the best achievable match sets the load resistance not to the source
+resistance but to the magnitude of the source impedance, the compromise a
+purely resistive load strikes against a reactive source.
+\end{mastery}
+
 The \engterm{transfer function} $H(\omega) = V_{\text{out}}/V_{\text{in}}$
 of a filter is the phasor ratio of output to input. A low-pass first-
 order filter (single RC stage) has $H(\omega) = 1/(1+j\omega RC)$; a
@@ -576,6 +736,55 @@ the working engineer sketches before refining the $-3\,\si{\decibel}$
 rounding at each corner on the bench.
 
 \input{volumes/04-energy/ch09-circuits/figures/fig-bode-twopole.tex}
+
+The high-pass filter is the mirror of the low-pass and carries a working role
+the low-pass cannot. Its transfer function $H(\omega) = j\omega RC/(1 + j\omega
+RC)$ has a zero at the origin that kills the DC term and a pole at the corner
+that levels the response above it, so it passes the signal and blocks any
+constant offset riding under it. That single property, called AC coupling, is
+why a series capacitor sits at the input of nearly every audio and
+instrumentation stage: it lets the wanted signal through while stripping the
+slowly-varying bias or offset the previous stage sat on, which would otherwise
+push the following amplifier into its rail. The corner is placed low enough that
+the lowest wanted signal frequency sits well above it, since the phase leads by
+forty-five degrees at the corner and by more below it, a phase shift that
+distorts a low-frequency signal riding near the corner. A coupling capacitor
+cornered at $20\,\si{\hertz}$ ahead of an audio stage, for instance, passes the
+$20\,\si{\hertz}$-to-$20\,\si{\kilo\hertz}$ band nearly flat while blocking the
+DC bias, and its value follows from $f_c = 1/(2\pi RC)$ with $R$ the following
+stage's input resistance. Figure~\ref{fig:vol04ch09:highpass-bode} draws the
+magnitude and phase, the low-frequency rise at twenty decibels per decade
+mirroring the low-pass fall and the phase running from ninety degrees of lead
+down to zero as the filter hands the signal through.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-highpass-bode.tex}
+
+\begin{mastery}
+An inductor is bulky, lossy, and hard to build on silicon, so the analog
+designer who needs inductive behaviour often synthesises it from an op-amp, a
+capacitor, and resistors rather than winding a coil. The \engterm{gyrator} is
+the two-port that makes this possible: it transforms an impedance into its
+inverse, turning a capacitor at one port into an inductor seen at the other. A
+gyrator terminated by a capacitance $C$ presents an input impedance
+$Z_{\text{in}} = R_g^{2}\,j\omega C$, which is exactly the impedance of an
+inductance $L_{\text{eq}} = R_g^{2}C$, where $R_g$ is the gyration resistance
+set by the circuit's resistors. A single op-amp gyrator with $R_g =
+10\,\si{\kilo\ohm}$ and $C = 100\,\si{\nano\farad}$ synthesises $L_{\text{eq}} =
+(10^{4})^{2}\cdot 10^{-7} = 10\,\si{\henry}$, a value that would be a heavy,
+expensive coil but is a few cents of op-amp and capacitor. The synthesised
+inductor is grounded (one terminal must return to the reference), it needs power,
+and it saturates at the op-amp's rails, so it cannot carry the large currents a
+real inductor handles; its home is the low-power filter, where it replaces the
+inductor of an RLC bandpass with an active equivalent, the basis of the
+gyrator-capacitor filters in telephone and audio equipment before fully
+integrated switched-capacitor filters displaced them. The same impedance-inverting
+idea, driven past unity, is the \engterm{negative-impedance converter}, an op-amp
+circuit whose input impedance is the negative of a reference impedance; a negative
+resistance cancels the loss of a tank and is the active element that keeps an
+oscillator's amplitude from decaying, the bridge between the passive resonance of
+this section and the sustained oscillation of the Colpitts and Wien-bridge
+vignettes.
+\end{mastery}
 
 \begin{mastery}
 Above the lumped band the two-port view replaces the loop-and-node view.
@@ -1094,13 +1303,17 @@ The collector current differs from the emitter current only by the small
 base current, $I_{C}\approx 2.67\,\si{\milli\ampere}$, and the collector-emitter voltage is
 $V_{CE} = V_{CC} - I_{C}(R_{C}+R_{E}) = 12 - 2.67\times 10^{-3}\cdot 2670 =
 4.9\,\si{\volt}$, comfortably in the active region and near the centre of the
-load line, where the stage has the most symmetric swing before clipping. The
+load line, where the stage has the most symmetric swing before clipping.
+Figure~\ref{fig:vol04ch09:loadline} places this quiescent point where the chosen
+base-current curve crosses the load line the supply and resistors draw. The
 emitter degeneration is what stabilises the operating point: the $R_{B}/
 (\beta+1) = 55\,\si{\ohm}$ term is small against $R_{E} = 470\,\si{\ohm}$, so
 $I_{E}$ depends weakly on $\beta$, and a transistor with $\beta = 300$ instead
 of $150$ shifts $I_{E}$ by under a percent. Bias stability is bought by
 trading voltage gain (the emitter resistor lowers it) for insensitivity to
 the part-to-part scatter in $\beta$.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-loadline.tex}
 
 \paragraph{Transformer impedance matching to a loudspeaker.}
 An audio output stage with a Th\'evenin source resistance of $R_{s} =
@@ -1460,6 +1673,372 @@ L I_0/(V_Z I_0) \approx L/R_{\text{eff}}$ set by the higher clamp voltage,
 trading a higher switch-node stress for a faster release. The freewheeling
 diode is the cheapest reliability improvement on the board and the first
 element a reviewer checks on any inductive driver.
+
+\paragraph{Superposition of two sources at a shared node.}
+A single node is driven by a $15\,\si{\volt}$ source through $R_1 = 3\,\si{
+\kilo\ohm}$, a $6\,\si{\volt}$ source through $R_2 = 2\,\si{\kilo\ohm}$, and
+loaded to ground by $R_3 = 6\,\si{\kilo\ohm}$; superposition finds the node
+voltage as the sum of two single-source results and shows the method's
+bookkeeping cleanly. With the $6\,\si{\volt}$ source deactivated (shorted to
+ground through $R_2$), the $15\,\si{\volt}$ source sees $R_1$ in series with
+$R_2\parallel R_3 = 2\parallel 6 = 1.5\,\si{\kilo\ohm}$, so the node voltage is
+$15\cdot 1.5/(3 + 1.5) = 5.0\,\si{\volt}$. With the $15\,\si{\volt}$ source
+deactivated, the $6\,\si{\volt}$ source sees $R_2$ in series with $R_1\parallel
+R_3 = 3\parallel 6 = 2.0\,\si{\kilo\ohm}$, so its contribution is $6\cdot 2.0/
+(2 + 2.0) = 3.0\,\si{\volt}$. The node voltage is the sum, $5.0 + 3.0 =
+8.0\,\si{\volt}$, which a direct nodal equation confirms: $(v-15)/3 + (v-6)/2 +
+v/6 = 0$ gives $v(1/3 + 1/2 + 1/6) = 15/3 + 6/2$, that is $v = 8.0\,\si{\volt}$.
+Superposition cost two easy divider calculations against one nodal equation
+here, a wash at two sources, but it pays when one source is an awkward AC term
+and the others are DC, letting the engineer carry the DC bias and the AC signal
+through the same network on separate ledgers and add them only at the end, which
+is the whole basis of the small-signal method that splits a transistor stage
+into a DC operating point and an AC gain.
+
+\paragraph{Boost converter duty cycle, inductor, and peak current.}
+A boost converter (Figure~\ref{fig:vol04ch09:boost-topology}) steps a
+$V_{\text{in}} = 5.0\,\si{\volt}$ input up to $V_{\text{out}} = 12\,\si{\volt}$
+at a load current $I_{\text{out}} = 0.5\,\si{\ampere}$, switching at $f_s =
+300\,\si{\kilo\hertz}$. Volt-second balance across the inductor sets the duty
+cycle: the input drives the inductor for $DT_s$ and the input-minus-output
+drives it for $(1-D)T_s$, so $V_{\text{in}}DT_s = (V_{\text{out}}-V_{\text{in}})
+(1-D)T_s$, which rearranges to $V_{\text{out}}/V_{\text{in}} = 1/(1-D)$ and
+therefore $D = 1 - V_{\text{in}}/V_{\text{out}} = 1 - 5/12 = 0.58$. The input
+current is not the load current: because the output power must come from the
+input in a lossless converter, $V_{\text{in}}I_{\text{in}} = V_{\text{out}}
+I_{\text{out}}$, so the average inductor current equals the input current
+$I_L = I_{\text{in}} = (V_{\text{out}}/V_{\text{in}})I_{\text{out}} = 2.4\cdot
+0.5 = 1.2\,\si{\ampere}$, more than twice the load current, the trap a designer
+who sizes the inductor for the load current falls into. Sizing the ripple to
+$30\,\%$ of $I_L$, $\Delta I_L = 0.36\,\si{\ampere}$, and using the on-time
+relation $\Delta I_L = V_{\text{in}}DT_s/L$ with $DT_s = 0.58/300\times 10^{3} =
+1.93\,\si{\micro\second}$,
+\[
+L = \frac{V_{\text{in}}\,DT_s}{\Delta I_L}
+= \frac{5.0\cdot 1.93\times 10^{-6}}{0.36}
+= 26.8\,\si{\micro\henry},
+\]
+rounded to a standard $27\,\si{\micro\henry}$ part. The peak inductor current
+is $I_L + \Delta I_L/2 = 1.2 + 0.18 = 1.38\,\si{\ampere}$, the value the
+switch, the diode, and the inductor saturation rating must clear. The boost
+inductor carries the input current continuously while the buck inductor of the
+earlier case study carried the output current, the structural difference that
+makes a boost stage draw a smooth input current and deliver a pulsed output
+current, the reverse of the buck.
+
+\paragraph{Wien-bridge oscillator frequency and start-up gain.}
+A Wien-bridge oscillator (Figure~\ref{fig:vol04ch09:wien-bridge}) sets its
+frequency by the balance of its series and shunt RC arms and its start-up by the
+amplifier gain. With equal arms $R = 16\,\si{\kilo\ohm}$ and $C = 10\,\si{\nano
+\farad}$, the feedback network passes its maximum fraction with zero phase shift
+at the frequency where the arm reactance equals the arm resistance, $\omega_0 =
+1/(RC)$, so
+\[
+f_0 = \frac{1}{2\pi RC}
+= \frac{1}{2\pi\cdot 16\times 10^{3}\cdot 10\times 10^{-9}}
+= 995\,\si{\hertz},
+\]
+just under a kilohertz. At that frequency the network transmits exactly one
+third of the output to the positive input, so the Barkhausen magnitude condition
+$A\beta = 1$ with $\beta = 1/3$ demands an amplifier gain of exactly three. The
+non-inverting amplifier gain is $1 + R_f/R_g$, so $R_f/R_g = 2$; a design sets
+the ratio slightly above two, say $R_f = 2.05R_g$, so the loop gain starts just
+above unity and the oscillation grows, then relies on an amplitude-dependent
+element in the gain arm (a small incandescent lamp, whose resistance rises with
+current, or a diode-clamped network) to pull the average gain back to exactly
+three as the amplitude settles. Set the ratio too high and the amplifier clips,
+filling the output with the odd harmonics of a square wave; set it too low and
+the oscillation dies. The Wien bridge holds the lowest distortion of the simple
+sine sources because its selective network is a smooth RC balance rather than a
+switching threshold, which is why it is the classic audio-frequency laboratory
+sine generator.
+
+\paragraph{Twin-T notch filter to reject mains hum.}
+A twin-T network placed around a signal path rejects a single frequency, and
+sizing it to remove $50\,\si{\hertz}$ mains hum shows the design. The passive
+twin-T nulls at $f_0 = 1/(2\pi RC)$ when its two T-sections are balanced, one T
+of two resistors $R$ and a shunt capacitor $2C$, the other of two capacitors $C$
+and a shunt resistor $R/2$. Solving $f_0 = 50\,\si{\hertz}$ for the resistor with
+$C = 100\,\si{\nano\farad}$,
+\[
+R = \frac{1}{2\pi f_0 C}
+= \frac{1}{2\pi\cdot 50\cdot 100\times 10^{-9}}
+= 31.8\,\si{\kilo\ohm},
+\]
+so the network uses two $31.8\,\si{\kilo\ohm}$ resistors and one of half that,
+$15.9\,\si{\kilo\ohm}$, with two $100\,\si{\nano\farad}$ capacitors and one of
+$200\,\si{\nano\farad}$. The depth of the null depends on how precisely those
+element ratios hold: a one-percent mismatch limits the rejection to about forty
+decibels, a five-percent mismatch to about twenty-six, as
+Figure~\ref{fig:vol04ch09:notch-response} shows for the two quality factors, so
+a deep notch needs matched or trimmed components. The passive twin-T also has a
+low quality factor, a broad trough that touches the wanted signal near
+$50\,\si{\hertz}$; wrapping the twin-T in an op-amp feedback loop that
+bootstraps its shunt node raises the effective quality factor and narrows the
+notch, the active twin-T that removes hum from a slow sensor signal without
+disturbing the signal band a few hertz away.
+
+\paragraph{RC integrator and differentiator by the time-constant regime.}
+The same series RC network is an integrator or a differentiator depending on
+where its corner sits relative to the signal, and one calculation fixes the
+boundary. Take $R = 100\,\si{\kilo\ohm}$ and $C = 1\,\si{\nano\farad}$, corner
+$f_c = 1/(2\pi RC) = 1.59\,\si{\kilo\hertz}$, driven by a square wave. Taking
+the output across the capacitor, a square wave whose period is long against the
+time constant $\tau = RC = 100\,\si{\micro\second}$ charges the capacitor nearly
+fully each half-cycle and reproduces the square wave with rounded corners; but a
+square wave whose period is short against $\tau$, say a $50\,\si{\kilo\hertz}$
+square wave with a half-period of $10\,\si{\micro\second}$ against the
+$100\,\si{\micro\second}$ constant, only starts each exponential ramp, so the
+capacitor voltage is the running integral of the input, a triangle wave. Taking
+the output across the resistor inverts the roles: for the fast square wave the
+resistor voltage is a train of decaying spikes, the derivative of the input,
+each edge producing an impulse-like transient that decays in one time constant.
+The rule is that a stage integrates a signal well above its corner and
+differentiates a signal well below it, which is why an RC differentiator sharpens
+edges for a trigger and an RC integrator smooths a pulse-width-modulated
+waveform into its average, the digital-to-analog conversion a microcontroller
+performs with one resistor and one capacitor.
+
+\paragraph{Capacitor-input peak detector and its droop.}
+A diode feeding a capacitor holds the peak of an AC waveform, and the droop
+between peaks sets the ripple the same charge-balance argument gave the bench
+supply. A $1\,\si{\kilo\hertz}$ sinusoid of $5\,\si{\volt}$ amplitude drives a
+diode into a $C = 1\,\si{\micro\farad}$ hold capacitor loaded by $R_L =
+100\,\si{\kilo\ohm}$. The capacitor charges to the peak less a diode drop,
+$5 - 0.6 = 4.4\,\si{\volt}$, on each cycle, then the load discharges it for
+almost a full period $T = 1\,\si{\milli\second}$ before the next peak refreshes
+it. The droop over that interval is $\Delta V = I_L T/C$ with $I_L = V/R_L =
+4.4/100\times 10^{3} = 44\,\si{\micro\ampere}$, so
+\[
+\Delta V = \frac{I_L T}{C}
+= \frac{44\times 10^{-6}\cdot 1\times 10^{-3}}{1\times 10^{-6}}
+= 44\,\si{\milli\volt},
+\]
+about one percent of the held value, the ripple on the detected envelope. A
+faster envelope needs a smaller time constant so the detector follows the fall
+of the input, but a smaller time constant lets more droop through between
+carrier peaks, the same speed-against-ripple trade the AM-radio envelope
+detector lives on: the time constant must be long against the carrier period and
+short against the modulation period, a window that exists only when the carrier
+is far above the modulation, the condition that makes envelope detection work.
+
+\paragraph{Mutual inductance and the coupled-coil dot convention.}
+Two magnetically coupled coils add or subtract their mutual term depending on
+the winding sense, and a series-aiding-minus-series-opposing measurement
+extracts the coupling. Two coils of self-inductance $L_1 = 10\,\si{\milli
+\henry}$ and $L_2 = 40\,\si{\milli\henry}$ share a mutual inductance $M = k
+\sqrt{L_1 L_2}$ with a coupling coefficient $k$. Connected in series so their
+fluxes aid, the total inductance is $L_{\text{aid}} = L_1 + L_2 + 2M$; connected
+so they oppose, $L_{\text{opp}} = L_1 + L_2 - 2M$. Measuring $L_{\text{aid}} =
+70\,\si{\milli\henry}$ and $L_{\text{opp}} = 30\,\si{\milli\henry}$, the
+difference gives the mutual term directly, $4M = L_{\text{aid}} - L_{\text{opp}}
+= 40\,\si{\milli\henry}$, so $M = 10\,\si{\milli\henry}$, and the coupling
+coefficient is $k = M/\sqrt{L_1 L_2} = 10/\sqrt{10\cdot 40} = 10/20 = 0.5$, a
+loosely coupled pair. The dot convention encodes the sign: current entering the
+dotted terminal of each coil produces aiding flux, so a schematic that places
+the dots correctly tells the analyst whether to add or subtract the $2M$ term
+without tracing the winding. Perfect coupling, $k = 1$, is the ideal-transformer
+limit of the earlier impedance-matching example; a real transformer has $k$ near
+but below one, and the shortfall is the leakage inductance that limits the
+bandwidth over which the reflected-impedance match holds.
+
+\paragraph{Decibels, log scales, and a cascaded gain budget.}
+A signal chain's gains and losses add in decibels, and one budget shows why the
+logarithmic unit is the working currency. A receiver chain has an antenna signal
+of $-90\,\si{\decibel}$ referred to one milliwatt (that is, $-90\,\si{\decibel}$m),
+a low-noise amplifier of $+15\,\si{\decibel}$ gain, a filter of $-3\,\si{
+\decibel}$ insertion loss, a mixer of $-7\,\si{\decibel}$ conversion loss, and an
+intermediate-frequency amplifier of $+40\,\si{\decibel}$. The output level is the
+sum, $-90 + 15 - 3 - 7 + 40 = -45\,\si{\decibel}$m, a computation of five
+additions where the linear-power version would multiply five ratios spanning
+fourteen orders of magnitude. Converting back, $-45\,\si{\decibel}$m is
+$10^{-45/10}\,\si{\milli\watt} = 3.2\times 10^{-5}\,\si{\milli\watt} = 32\,\si{
+\nano\watt}$, and the overall chain gain from antenna to output is $-45 - (-90) =
+45\,\si{\decibel}$, a linear power ratio of $10^{4.5} = 3.16\times 10^{4}$. The
+decibel turns the cascade of multiplicative gains into a sum, turns the wide
+dynamic range of a real chain into a compact span of tens rather than powers of
+ten, and matches the roughly logarithmic response of human hearing and vision, a
+convergence of arithmetic convenience and perceptual fit that keeps the unit at
+the centre of every gain, loss, and signal-to-noise specification in the
+discipline.
+
+\paragraph{Current mirror sizing a constant-current LED driver.}
+A light-emitting diode wants a fixed current, not a fixed voltage, because its
+brightness follows its current and its forward voltage drifts with temperature;
+a current mirror delivers that fixed current from a single programming resistor.
+The diode-connected reference transistor of Figure~\ref{fig:vol04ch09:current-mirror}
+carries a reference current set by the resistor from the supply,
+\[
+I_{\text{ref}} = \frac{V_{CC} - V_{BE}}{R_{\text{ref}}},
+\]
+and the output transistor, sharing the same base-emitter voltage, copies it. To
+drive a white LED at $I_{\text{out}} = 20\,\si{\milli\ampere}$ from a
+$V_{CC} = 5.0\,\si{\volt}$ rail with a transistor $V_{BE} = 0.7\,\si{\volt}$,
+the resistor is
+\[
+R_{\text{ref}} = \frac{V_{CC} - V_{BE}}{I_{\text{ref}}}
+= \frac{5.0 - 0.7}{20\times 10^{-3}}
+= 215\,\si{\ohm},
+\]
+rounded to a standard $220\,\si{\ohm}$ part, which sets $I_{\text{ref}} =
+19.5\,\si{\milli\ampere}$. The copy is not exact: the two base currents are both
+drawn from the reference branch, so the mirrored current falls short by the
+base-current fraction, $I_{\text{out}} = I_{\text{ref}}/(1 + 2/\beta)$, a
+$1.3\,\%$ error at $\beta = 150$ that a third helper transistor (the
+beta-helper mirror) removes. The mirror holds the LED current nearly constant as
+the LED forward voltage wanders with temperature, because the output transistor
+absorbs the difference between the rail and the LED across its
+collector-emitter terminals, sourcing a current the load voltage barely
+influences until the transistor runs out of headroom and saturates. The compliance
+voltage, the range over which the mirror holds its current, is the rail minus the
+LED drop minus the transistor's saturation voltage, and a design that stacks too
+many series LEDs against the rail loses the mirror's regulation as that headroom
+vanishes.
+
+\paragraph{Class-B push-pull efficiency and crossover distortion.}
+A push-pull output stage runs two transistors, one sourcing current on the
+positive half of the signal and one sinking it on the negative half, so each
+conducts for half the cycle and dissipates nothing on the other half, the
+arrangement that lifts the output-stage efficiency far above the class-A
+single-transistor stage. For a sinusoidal output of peak voltage $V_p$ into a
+load $R_L$ from supply rails $\pm V_{CC}$, the load power is $P_L =
+V_p^2/(2R_L)$ and the power drawn from the two rails is $P_{\text{supply}} =
+(2/\pi)V_{CC}V_p/R_L$, the average of the half-wave-rectified current each rail
+delivers. The efficiency is their ratio,
+\[
+\eta = \frac{P_L}{P_{\text{supply}}}
+= \frac{V_p^2/(2R_L)}{(2/\pi)V_{CC}V_p/R_L}
+= \frac{\pi}{4}\cdot\frac{V_p}{V_{CC}},
+\]
+which reaches its ceiling $\pi/4 = 78.5\,\%$ when the output swings to the full
+rail, $V_p = V_{CC}$. A stage delivering $V_p = 10\,\si{\volt}$ into
+$R_L = 8\,\si{\ohm}$ from $\pm 12\,\si{\volt}$ rails puts $P_L = 100/16 =
+6.25\,\si{\watt}$ into the speaker, draws $P_{\text{supply}} = (2/\pi)\cdot 12
+\cdot 10/8 = 9.55\,\si{\watt}$ from the rails, and runs at $\eta = 65\,\%$, with
+the remaining $3.3\,\si{\watt}$ split as heat between the two transistors. The
+class-B stage carries one native fault: near the zero crossing, where the signal
+is smaller than a base-emitter drop, neither transistor conducts and the output
+sits in a dead band, the crossover distortion of
+Figure~\ref{fig:vol04ch09:class-b-crossover}. A small quiescent bias current that
+keeps both devices barely on through the crossover straightens the transfer
+curve into class AB, trading a standing dissipation for a clean handover, the
+compromise every audio power stage strikes.
+
+\paragraph{Slew rate and the full-power bandwidth of an op-amp.}
+The small-signal bandwidth an op-amp's gain-bandwidth product predicts is not the
+whole story, because a large output swing can outrun the rate at which the
+amplifier's internal compensation capacitor can charge, the \engterm{slew-rate}
+limit. An op-amp with a slew rate $\text{SR} = 10\,\si{\volt}/\si{\micro\second}$
+driving a sinusoid $v(t) = V_p\sin(2\pi f t)$ must supply a maximum output rate
+of change $\dd v/\dd t|_{\max} = 2\pi f V_p$ at the zero crossing. The output
+follows cleanly only while that demanded rate stays below the slew rate, so the
+\engterm{full-power bandwidth}, the highest frequency at which the amplifier can
+swing its full output $V_p$ without slew distortion, is
+\[
+f_{\text{FP}} = \frac{\text{SR}}{2\pi V_p}.
+\]
+For a full swing of $V_p = 10\,\si{\volt}$ this part reaches $f_{\text{FP}} =
+10\times 10^{6}/(2\pi\cdot 10) = 159\,\si{\kilo\hertz}$, far below the several
+megahertz its gain-bandwidth product might suggest, and a $100\,\si{\kilo\hertz}$
+full-amplitude sine drives it just inside the slew limit while a
+$500\,\si{\kilo\hertz}$ one turns the intended sine into a triangle wave as the
+output ramps at the fixed slew rate between peaks it can no longer reach in time.
+The lesson is that the small-signal bandwidth governs low-amplitude signals and
+the slew rate governs large ones, so a stage that measures flat to a megahertz on
+a millivolt test signal can distort a full-scale volt-level signal an octave
+lower, which is why a data sheet quotes both numbers and why a designer sizing an
+op-amp for a large fast swing checks the slew rate first.
+
+\paragraph{Howland current pump from matched resistors.}
+A grounded load sometimes needs a current set by a control voltage, and the
+Howland current pump turns an op-amp and four resistors into a
+voltage-controlled current source that drives a load returned to ground. The
+circuit places a positive-feedback path and a negative-feedback path around the
+op-amp so that, when the four resistors satisfy a matching ratio, the output
+current into the load depends only on the input voltage and one resistor, not on
+the load. With input resistors and feedback resistors all equal to $R$ and a
+sense resistor $R_s$, the load current is
+\[
+I_{\text{load}} = \frac{V_{\text{in}}}{R_s},
+\]
+independent of the load voltage as long as the op-amp stays out of its rails.
+Taking $R_s = 1\,\si{\kilo\ohm}$ and $V_{\text{in}} = 2.0\,\si{\volt}$ pumps
+$I_{\text{load}} = 2.0\,\si{\milli\ampere}$ into whatever load the output sees,
+so a load rising from $100\,\si{\ohm}$ to $500\,\si{\ohm}$ holds the same
+$2.0\,\si{\milli\ampere}$ while the op-amp output climbs from a fraction of a
+volt to over a volt to keep it there. The pump's Achilles heel is the resistor
+match: the output impedance the pump presents to the load is finite and falls off
+as the four resistors drift apart, because the positive-feedback path must cancel
+the negative-feedback path exactly to make the current load-independent. A
+$0.1\,\%$ mismatch in one resistor drops the output impedance from ideally
+infinite to of order $R/(4\times 0.001) = 250\,\si{\kilo\ohm}$, still high but no
+longer perfect, which is why a precision Howland source uses a matched resistor
+network on one substrate rather than four discrete parts, and why the topology is
+the standard bench source for injecting a known current into a grounded sensor or
+electrode.
+
+\paragraph{Zobel network to flatten a loudspeaker's rising impedance.}
+A loudspeaker is not the resistor a power amplifier would prefer to drive: its
+voice-coil inductance makes its impedance rise with frequency, which detunes a
+passive crossover and can destabilise an amplifier with a marginal phase margin.
+A Zobel network, a series resistor and capacitor placed across the speaker
+terminals, presents a falling impedance that cancels the rising coil impedance,
+leaving the amplifier a nearly resistive load. Model the speaker as a DC
+resistance $R_e$ in series with the voice-coil inductance $L_e$. The Zobel arm is
+sized to mirror it: the resistor is set to the DC resistance, $R_z = R_e$, and
+the capacitor to
+\[
+C_z = \frac{L_e}{R_e^{2}},
+\]
+so that the RC arm's impedance falls exactly as the coil's impedance rises and
+their parallel combination stays flat at $R_e$. For a typical
+$R_e = 6.5\,\si{\ohm}$ speaker with a voice-coil inductance $L_e = 0.7\,\si{
+\milli\henry}$, the network is $R_z = 6.5\,\si{\ohm}$ and
+\[
+C_z = \frac{0.7\times 10^{-3}}{6.5^{2}} = 1.66\times 10^{-5}\,\si{\farad}
+= 16.6\,\si{\micro\farad},
+\]
+a $6.5\,\si{\ohm}$ resistor in series with a $15$-to-$18\,\si{\micro\farad}$
+non-polar capacitor rated for the audio power. The resistor dissipates real power
+at high frequency, so it is sized for a few watts, and the network flattens the
+load the crossover and amplifier see across the audio band, the small conjugate
+cell that a crossover designer adds so the filter sections work into the
+resistance they were computed for rather than into the rising coil impedance.
+
+\paragraph{Bootstrapping to multiply a bias resistor's apparent impedance.}
+A high-pass or AC-coupled stage needs a bias resistor to set the input's DC
+level, but that resistor loads the source and drops the input impedance the stage
+presents; bootstrapping drives the bottom of the resistor with a copy of the
+signal at its top, so the resistor sees almost no signal voltage across it and
+therefore passes almost no signal current, multiplying its apparent value. If a
+bias resistor $R_b$ is bootstrapped by a follower of gain $A$ close to unity, the
+signal voltage across the resistor is reduced to $(1 - A)$ of the input swing, so
+the current the input must supply falls by the same factor and the apparent
+resistance rises to
+\[
+R_{\text{eff}} = \frac{R_b}{1 - A}.
+\]
+A follower of gain $A = 0.99$ turns a $100\,\si{\kilo\ohm}$ bias resistor into an
+apparent $100\,\text{k}/(1 - 0.99) = 10\,\si{\mega\ohm}$, a hundredfold lift that
+lets a modest resistor set the bias without loading a high-impedance source such
+as a piezoelectric sensor or a guitar pickup. The multiplication is the dual of
+the Miller effect the op-amp mastery box drew: Miller multiplication inflates a
+feedback capacitance seen at the input by the stage gain, and bootstrapping
+inflates a bias resistance seen at the input by the reciprocal of one minus the
+follower gain, both the same lever of driving one end of a component with a
+scaled copy of the voltage at the other end. The limit is the follower's
+departure from unity gain and the phase shift it develops at high frequency,
+which turns the pure resistance multiplication into a complex impedance and, if
+the follower gain is pushed above unity, into a negative resistance that can make
+the stage oscillate, the reason a bootstrap is designed with the follower gain
+held just below one.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-current-mirror.tex}
+\input{volumes/04-energy/ch09-circuits/figures/fig-class-b-crossover.tex}
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-boost-topology.tex}
+\input{volumes/04-energy/ch09-circuits/figures/fig-wien-bridge.tex}
+\input{volumes/04-energy/ch09-circuits/figures/fig-notch-response.tex}
 
 \begin{mastery}
 The phasor calculus of Section~\ref{sec:vol04ch09:ac} is the steady-state
@@ -2142,6 +2721,178 @@ loop gain that, kept below unity with margin, makes a stable amplifier
 becomes, pushed to unity at one frequency, the engine of a sustained
 oscillation.
 
+\section{A third applied vignette: the photodiode transimpedance amplifier}
+\pathtag{standard}
+\label{sec:vol04ch09:tia}
+
+A photodiode produces a current proportional to the light falling on it, and
+turning that current into a usable voltage is the job of the transimpedance
+amplifier, the circuit that shows the op-amp feedback theory and the noise and
+stability arguments working together on one small stage. The photodiode is a
+current source in parallel with a junction capacitance $C_d$, and the naive way
+to read its current, a load resistor to ground, fails twice: the diode's own
+voltage swings as the current changes, which makes the response nonlinear
+through the diode's exponential characteristic, and the junction capacitance
+against the load resistor sets a slow pole. The transimpedance amplifier removes
+both faults by holding the diode at a fixed voltage. The diode current flows
+into the inverting input of an op-amp whose feedback resistor $R_f$ returns the
+current to the output, and the virtual short holds the inverting input at
+ground, so the diode sees a constant zero bias and the output voltage is
+\[
+v_{\text{out}} = -I_{\text{ph}}\,R_f,
+\]
+a clean linear conversion of current to voltage with the diode pinned. The
+feedback resistor is the gain, in volts per ampere, and a photodiode delivering
+$1\,\si{\micro\ampere}$ into a $1\,\si{\mega\ohm}$ feedback resistor produces a
+one-volt output, a transimpedance of $10^{6}\,\si{\volt\per\ampere}$.
+
+The stability of the stage is where the circuit earns its subtlety. The diode
+capacitance $C_d$ at the inverting input, working against the feedback resistor
+$R_f$, forms a pole in the feedback network that adds phase lag, and that lag can
+push the loop toward oscillation. The feedback factor rolls off above the
+frequency $f_p = 1/(2\pi R_f C_d)$, so the noise gain rises with frequency and
+crosses the op-amp's open-loop roll-off at a steeper angle than a resistive
+feedback would, eating the phase margin. The cure is a small capacitor $C_f$
+across the feedback resistor, which adds a zero that flattens the noise gain
+before it meets the open-loop curve. The standard choice sets the feedback pole
+$f_f = 1/(2\pi R_f C_f)$ at the geometric mean of the input pole and the
+gain-bandwidth product, $f_f = \sqrt{f_p\,\text{GBW}}$, which gives a phase
+margin near forty-five degrees. For $R_f = 1\,\si{\mega\ohm}$, $C_d = 50\,\si{
+\pico\farad}$, and a $\text{GBW}$ of $10\,\si{\mega\hertz}$, the input pole sits
+at $f_p = 1/(2\pi\cdot 10^{6}\cdot 50\times 10^{-12}) = 3.2\,\si{\kilo\hertz}$,
+so $f_f = \sqrt{3.2\times 10^{3}\cdot 10^{7}} = 179\,\si{\kilo\hertz}$, and the
+feedback capacitor is $C_f = 1/(2\pi R_f f_f) = 0.89\,\si{\pico\farad}$, a value
+so small that the stray capacitance of the resistor and the board layout is
+itself a large fraction of it, which is why a transimpedance amplifier is laid
+out with the feedback resistor guarded and kept short.
+
+The noise of the stage sets its floor and rises with the diode capacitance in a
+way that surprises the newcomer. The feedback resistor contributes Johnson noise
+of density $\sqrt{4k_B T R_f}$ referred to the output, which for the
+$1\,\si{\mega\ohm}$ resistor is $\sqrt{4\cdot 1.38\times 10^{-23}\cdot 300\cdot
+10^{6}} = 129\,\si{\nano\volt}/\sqrt{\si{\hertz}}$, and the amplifier's own
+voltage noise is multiplied by the same rising noise gain that the capacitance
+sets, so the output noise climbs with frequency and the total is dominated by
+the high-frequency end of the band. The working rule is that a larger diode,
+which collects more light, brings more capacitance and therefore more noise and
+less bandwidth, so a designer choosing a photodiode for a fast, quiet receiver
+takes the smallest diode that still collects the needed light, the opposite of
+the instinct to grab the largest sensor available. The transimpedance amplifier
+is the front end of every optical receiver, from the pulse oximeter on a
+fingertip to the fibre link in a data centre, and the same three arguments,
+linear conversion by the virtual short, stability by the feedback zero, and a
+noise floor set by the feedback resistor and the diode capacitance, size all of
+them.
+
+\section{A fourth applied vignette: the Dickson charge pump}
+\pathtag{standard}
+\label{sec:vol04ch09:charge-pump}
+
+The buck and boost converters move energy through an inductor; the charge pump
+moves it through capacitors alone, and it is the circuit that generates a voltage
+higher than the supply, or of the opposite polarity, on a chip that has no room
+for an inductor. The building block is a diode and a capacitor: a clock swings a
+capacitor's bottom plate between ground and the supply, and a diode lets the
+charge it pushes onto its top plate flow forward but not back, so each stage adds
+roughly one supply voltage to the level it receives. Stacking $N$ such stages,
+the Dickson charge pump, reaches an ideal output of
+\[
+V_{\text{out}} = (N + 1)V_{\text{in}} - (N + 1)V_D - \frac{I_{\text{out}}\,N}
+{f\,C},
+\]
+where the first term is the ideal voltage multiplication, the second subtracts a
+diode drop per stage, and the third is the droop under load, set by the clock
+frequency $f$, the pump capacitance $C$, and the output current. The load term
+says the charge pump is a soft source: it holds its multiplied voltage well only
+at light load, and its output impedance is roughly $N/(fC)$, an equivalent
+resistance that falls as the clock runs faster or the capacitors grow. A
+three-stage pump with $V_{\text{in}} = 3.3\,\si{\volt}$, Schottky drops $V_D =
+0.3\,\si{\volt}$, $C = 100\,\si{\nano\farad}$, and $f = 100\,\si{\kilo\hertz}$
+reaches an unloaded $4\cdot 3.3 - 4\cdot 0.3 = 12\,\si{\volt}$, and at a
+$1\,\si{\milli\ampere}$ load droops by $I N/(fC) = 10^{-3}\cdot 3/(10^{5}\cdot
+10^{-7}) = 0.3\,\si{\volt}$, holding about $11.7\,\si{\volt}$, adequate for
+biasing a small load but not for delivering power.
+
+The charge pump's virtue is that it needs no inductor, so it fits where a
+switching converter's magnetics would not: the negative-voltage supply for a
+liquid-crystal display's contrast rail, the boosted gate drive that turns on a
+high-side power switch, the programming voltage inside a flash memory, and the
+supply for a small handful of operational amplifiers that want a rail beyond the
+logic supply. Its cost is the soft output and a ripple at the clock frequency
+that couples into sensitive analog circuits, so a charge pump feeding an analog
+stage is followed by a small linear regulator or an RC filter that trades a
+little of the pumped headroom for a clean rail. The switched-capacitor idea
+extends past voltage multiplication: the same charge-transfer bookkeeping builds
+the switched-capacitor filter, where a capacitor clocked between two nodes
+emulates a resistor of value $1/(fC)$, so an integrated filter sets its corner by
+a clock frequency and a capacitor ratio rather than by an absolute resistor
+value, which is far easier to hold accurate on silicon. The charge pump and the
+switched-capacitor filter are the two faces of moving charge in discrete packets,
+the sampled-charge counterpart to the continuous currents the rest of the chapter
+analyses.
+
+\section{A fifth applied vignette: the RC phase-shift oscillator}
+\pathtag{standard}
+\label{sec:vol04ch09:phase-shift}
+
+The Wien-bridge and Colpitts oscillators set their frequency by a network that
+peaks in amplitude at resonance; the RC phase-shift oscillator sets its frequency
+instead by where a chain of RC sections delivers exactly the phase the amplifier
+needs to close the loop, and it is the circuit that turns the all-pass and
+transfer-function ideas of this chapter into a sine source with no inductor and no
+tuned tank. An inverting amplifier supplies $180^\circ$ of phase on its own, so
+the Barkhausen phase condition demands that the feedback network add the other
+$180^\circ$ at the oscillation frequency. A single RC section can lead or lag by
+at most $90^\circ$, and only asymptotically, so no single section reaches
+$180^\circ$; three cascaded sections can, each contributing about $60^\circ$ at
+the design frequency, which is why the phase-shift oscillator is built from three
+identical RC stages rather than one or two.
+
+The frequency where three identical high-pass RC sections accumulate a full
+$180^\circ$ of lead is found by writing the loop transfer function of the ladder
+and setting its phase to $180^\circ$, or equivalently its imaginary part to zero.
+For three identical sections of resistance $R$ and capacitance $C$ the analysis
+gives an oscillation frequency
+\[
+f_0 = \frac{1}{2\pi RC\sqrt{6}},
+\]
+and at that frequency the three-section ladder attenuates the signal by a factor
+of $29$, so the amplifier must supply a gain of at least $29$ to make the
+round-trip loop gain reach unity. The two conditions, the frequency fixed by the
+phase and the minimum gain fixed by the attenuation, are the whole of the design,
+and they show the trade the topology accepts: the same network that provides the
+phase eats a factor of twenty-nine in amplitude, so the phase-shift oscillator
+demands far more amplifier gain than the Wien bridge's factor of three, the price
+of using phase rather than resonance to select the frequency.
+Figure~\ref{fig:vol04ch09:allpass-phase} draws the phase-versus-frequency
+behaviour of an all-pass building block, the flat-magnitude phase sweep that the
+same idea uses when the sections are arranged as all-pass stages rather than
+plain high-pass ones.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-allpass-phase.tex}
+
+A worked instance fixes the numbers. For an oscillator near $1\,\si{\kilo\hertz}$
+choose $C = 10\,\si{\nano\farad}$ and solve for the resistor,
+\[
+R = \frac{1}{2\pi f_0 C\sqrt{6}}
+= \frac{1}{2\pi\cdot 1000\cdot 10\times 10^{-9}\cdot 2.449}
+= 6.50\,\si{\kilo\ohm},
+\]
+rounded to a standard $6.8\,\si{\kilo\ohm}$ part, which places the oscillation at
+$f_0 = 956\,\si{\hertz}$. The inverting amplifier is set to a gain magnitude a
+little above $29$, say $33$, so the loop starts reliably across temperature and
+component spread, and an amplitude-limiting nonlinearity trims the surplus gain
+away as the amplitude grows, exactly as the Wien bridge does. The phase-shift
+oscillator holds a stable low-frequency sine with a smaller parts count than a
+Wien bridge and no inductor, its cost being the higher required gain and a
+distortion that rises if the amplitude limiter is crude. Its home is the
+low-frequency signal source, the sine injection for a bench test, and the audio
+tone generator where an inductor of the size an LC oscillator would need is
+impractical. The lesson the vignette carries is that an oscillator's
+frequency-selecting network can work by amplitude, as the LC tank does, or by
+phase, as the RC ladder does, and the two routes reach the same Barkhausen
+condition from opposite sides of the transfer function.
+
 \section{Power: real, reactive, apparent}\pathtag{standard}
 
 In sinusoidal steady state the instantaneous power $p(t) = v(t)i(t)$
@@ -2158,6 +2909,33 @@ ratio of real power to the product of RMS voltage and RMS current
 volt-amperes). The \engterm{reactive power} is $Q = V_{\text{rms}}I_{
 \text{rms}}\sin\phi$ in volt-amperes-reactive (VAR); it represents
 energy oscillating between source and load without net transfer.
+
+The three powers are not a bookkeeping convenience laid over a single number;
+they are the two physically distinct halves into which the instantaneous power
+splits, and carrying the split explicitly is what makes reactive power a
+measurable, dispatchable quantity rather than an accounting fiction. Take
+$v(t) = V_m\cos\omega t$ and $i(t) = I_m\cos(\omega t - \phi)$. The product,
+expanded with the product-to-sum identity, is
+\[
+p(t) = V_m I_m\cos\omega t\,\cos(\omega t - \phi)
+= \underbrace{\tfrac{1}{2}V_m I_m\cos\phi\,(1 + \cos 2\omega t)}_{\text{real}}
++ \underbrace{\tfrac{1}{2}V_m I_m\sin\phi\,\sin 2\omega t}_{\text{reactive}}.
+\]
+The first term is a pulsating power that never goes negative: it swings between
+zero and twice its average $P = \tfrac{1}{2}V_m I_m\cos\phi$, so it is
+unidirectional energy flow into the load, the part that does work and warms the
+resistor. The second term is a pure sinusoid at $2\omega$ with zero average: it
+swings equally positive and negative, so energy flows into the reactive element
+for a quarter cycle and back out the next, the part that does no net work and
+whose amplitude is the reactive power $Q = \tfrac{1}{2}V_m I_m\sin\phi$. The
+reactive term is real current flowing in real wires, heating them through their
+resistance, which is why a utility must carry it and charges for the apparent
+power that combines both. The instantaneous power reaches negative excursions
+whenever the reactive amplitude exceeds the real average, the moments each cycle
+when the load returns more energy than it takes, and a wattmeter that integrates
+$p(t)$ over a cycle reads only the real term because the reactive term averages
+to zero, the reason a plain energy meter never sees the reactive power the load
+still forces the network to carry.
 
 \input{volumes/04-energy/ch09-circuits/figures/fig-power-triangle.tex}
 
