@@ -993,6 +993,399 @@ estimate also shows why ``solar cannot power a country because it would
 cover the country'' is wrong by two orders of magnitude.
 \end{estimation}
 
+\section{The mathematics of grid operation}\pathtag{standard}
+
+The operational quantities used throughout the chapter rest on four
+derivations that the preceding sections stated and used without proof. We
+give them here at working depth: the power-flow equations that relate bus
+voltages to the power they exchange, the discounted-cash-flow construction
+behind the levelized cost, the swing equation and droop control that govern
+frequency, and the capacity-outage table that turns unit reliability into a
+loss-of-load probability. Each derivation ends in a number the rest of the
+chapter has already leaned on.
+
+\subsection{The two-bus power-flow equations and the DC approximation}
+
+Consider the simplest non-trivial network: two buses joined by a single
+transmission line. Bus~1 holds voltage phasor $V_1\angle\delta_1$ and bus~2
+holds $V_2\angle\delta_2$, and the line between them has series impedance
+$Z = R + jX$, with admittance $Y = 1/Z = G + jB$. The current from bus~1
+into the line is $I_{12} = Y(V_1\angle\delta_1 - V_2\angle\delta_2)$, and the
+complex power injected at bus~1 is $S_{12} = V_1\angle\delta_1 \cdot
+I_{12}^{\ast}$. Writing the angle difference as $\delta = \delta_1 -
+\delta_2$ and expanding the conjugate product gives the real and reactive
+power leaving bus~1:
+\begin{align}
+P_{12} &= V_1^2 G - V_1 V_2\,(G\cos\delta + B\sin\delta),\\
+Q_{12} &= -V_1^2 B - V_1 V_2\,(G\sin\delta - B\cos\delta).
+\end{align}
+A transmission line is dominated by its reactance, $X \gg R$, so to a good
+first approximation $G \to 0$ and $B \to -1/X$ (the susceptance of a pure
+reactance is negative). The real-power flow collapses to the form the
+chapter has used since the grid section:
+\[
+P_{12} = \frac{V_1 V_2}{X}\sin\delta,
+\]
+the \engterm{power-angle equation}. Real power flows from the leading bus to
+the lagging bus, driven by the voltage-angle difference $\delta$, and the
+transfer reaches a maximum of $P_{\max} = V_1 V_2 / X$ at $\delta = 90^\circ$
+(Figure \ref{fig:vol04ch14:power-angle}). Beyond $90^\circ$ the transfer
+falls with rising angle, so a load on the falling branch is statically
+unstable: a small increase in demanded power lowers the transfer, the angle
+runs away, and the machines slip out of synchronism. The usable operating
+range is the rising branch, and the gap between the working angle and
+$90^\circ$ is the \engterm{static stability margin}. The reactive-power
+equation, with the same approximation, becomes $Q_{12} = (V_1^2 - V_1 V_2
+\cos\delta)/X$, which for small $\delta$ is $\approx V_1(V_1 - V_2)/X$:
+reactive power flows from the higher-voltage bus to the lower-voltage one and
+is the lever that controls voltage magnitude, while real power follows the
+angle. The decoupling of the two, real power with angle and reactive power
+with voltage, is the working simplification that makes large-grid analysis
+tractable.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-power-angle.tex}
+
+The \engterm{DC power-flow approximation} pushes the simplification one step
+further for planning-scale studies. Assume every bus voltage holds at its
+nominal $1.0$ per unit ($V_1 = V_2 = 1$), neglect the line resistance, and
+take the angle differences small enough that $\sin\delta \approx \delta$ in
+radians. The power-angle equation linearises to
+\[
+P_{12} \approx \frac{\delta_1 - \delta_2}{X},
+\]
+the exact electrical analogue of Ohm's law with angle in the role of voltage,
+power in the role of current, and reactance in the role of resistance. The
+whole network's flows then follow from a linear system $\mathbf{P} =
+\mathbf{B}\,\boldsymbol{\delta}$, with $\mathbf{B}$ the susceptance matrix
+built the way a conductance matrix is built for a resistive circuit. The DC
+approximation drops voltage magnitude, reactive power, and losses, so it is
+wrong in detail, but it is fast, it never fails to converge, and it captures
+the quantity a planner most needs: which lines carry how much real power
+under a given dispatch, and which will overload first. The full AC power flow,
+solved by Newton-Raphson iteration on the nonlinear equations above, is the
+tool when voltage and reactive power matter; the DC flow is the tool when the
+question is contingency screening across thousands of cases.
+
+\paragraph{Worked example: two-bus transfer and the stability margin.} A
+$220\,\si{\kilo\volt}$ line of reactance $X = 40\,\si{\ohm}$ connects a
+generator bus held at $V_1 = 1.02$ per unit to a load bus at $V_2 = 0.98$ per
+unit, with a measured angle difference of $\delta = 18^\circ$. On a
+$100\,\si{\mega\watt}$, $220\,\si{\kilo\volt}$ base the per-unit reactance is
+$X_{\text{pu}} = X / Z_{\text{base}} = 40 / (220^2/100) = 40/484 \approx
+0.0826$ per unit. The real-power transfer is $P = (V_1 V_2 / X_{\text{pu}})
+\sin\delta = (1.02 \times 0.98 / 0.0826)\sin 18^\circ \approx 12.1 \times
+0.309 \approx 3.74$ per unit, that is $\sim 374\,\si{\mega\watt}$. The maximum
+transfer is $P_{\max} = V_1 V_2 / X_{\text{pu}} \approx 12.1$ per unit, $\sim
+1210\,\si{\mega\watt}$, so the line runs at $374/1210 \approx 31\,\%$ of its
+static stability limit, a comfortable margin. Halving the voltages to $V_1 =
+V_2 = 0.90$ per unit (a depressed-voltage emergency) would cut $P_{\max}$ to
+$0.81/0.0826 \approx 9.8$ per unit and force the angle to $\delta =
+\arcsin(3.74/9.8) \approx 22.5^\circ$ to carry the same power, eating into the
+margin; this is why voltage collapse and angle instability arrive together,
+and why reactive support that holds voltage up also buys angle-stability
+margin.
+
+\subsection{Levelized cost of energy from discounted cash flow}
+
+The chapter has quoted levelized costs and used a capital-recovery factor
+without deriving either. Both follow from one idea: money has a time value,
+so a cost or a revenue that arrives in year $t$ is worth less today than the
+same sum now, discounted by $(1+i)^{-t}$ at a discount rate $i$. The
+\engterm{levelized cost of energy} is the constant per-unit price $\text{LCOE}$
+that makes the discounted lifetime revenue equal the discounted lifetime cost.
+Writing the year-$t$ cost as a capital outlay $I_t$ plus operations,
+maintenance, and fuel $M_t$, and the year-$t$ energy as $E_t$,
+\[
+\sum_{t=0}^{N} \frac{\text{LCOE}\cdot E_t}{(1+i)^t}
+= \sum_{t=0}^{N} \frac{I_t + M_t}{(1+i)^t},
+\qquad\text{so}\qquad
+\text{LCOE} = \frac{\displaystyle\sum_{t=0}^{N} (I_t + M_t)/(1+i)^t}
+{\displaystyle\sum_{t=0}^{N} E_t/(1+i)^t}.
+\]
+The discounting of the denominator is the part that surprises: a plant's
+future energy is discounted at the same rate as its future cost, because a
+megawatt-hour delivered in year twenty is worth, in present terms, far less
+than one delivered in year one. For the common case of a single upfront
+capital cost $I_0$, a constant annual running cost $M$, and a constant annual
+energy $E$ over $N$ years, the denominators are geometric series. The sum
+$\sum_{t=1}^{N}(1+i)^{-t} = [1 - (1+i)^{-N}]/i$ is the annuity factor, and its
+reciprocal is the \engterm{capital-recovery factor}
+\[
+\text{CRF} = \frac{i}{1 - (1+i)^{-N}},
+\]
+the constant annual payment that repays one unit of capital over $N$ years at
+rate $i$. The levelized cost then reduces to
+\[
+\text{LCOE} = \frac{I_0 \cdot \text{CRF} + M}{E},
+\]
+the annualised capital plus the running cost, divided by the annual energy,
+which is exactly the bookkeeping the case studies used. The capital-recovery
+factor carries the entire dependence on financing: at $i = 0.07$ and $N = 20$,
+$\text{CRF} = 0.07/(1 - 1.07^{-20}) \approx 0.0944\,\text{yr}^{-1}$; at $i =
+0.03$ the same plant has $\text{CRF} \approx 0.0672$, almost a third lower, so
+a capital-heavy low-carbon plant is far cheaper under cheap capital than under
+dear capital. The discount rate is therefore not a financial footnote; it is
+the single number that most moves the relative cost of capital-heavy
+renewables and nuclear against fuel-heavy gas.
+
+\paragraph{Worked example: how the discount rate reorders the merit of
+generation.} Compare a solar plant ($I_0 = \$900\,\si{\per\kilo\watt}$,
+$M = \$15\,\si{\per\kilo\watt}$ per year, no fuel, $\text{CF} = 0.18$,
+$N = 30$) with a combined-cycle gas plant ($I_0 = \$1000\,\si{\per\kilo\watt}$,
+$M + \text{fuel} = \$45\,\si{\per\mega\watt\hour}$ delivered, $\text{CF} =
+0.50$, $N = 30$). The annual energy per kilowatt is $\text{CF}\times 8760$:
+$1577\,\si{\kilo\watt\hour}$ for solar, $4380\,\si{\kilo\watt\hour}$ for gas.
+At a $7\,\%$ discount rate, $\text{CRF}_{30} = 0.07/(1 - 1.07^{-30}) \approx
+0.0806\,\text{yr}^{-1}$. Solar: $\text{LCOE} = (900\times 0.0806 +
+15)/1.577 \approx (72.5 + 15)/1.577 \approx \$55\,\si{\per\mega\watt\hour}$.
+Gas: $\text{LCOE} = (1000\times 0.0806)/4.380 + 45 \approx 18.4 + 45 \approx
+\$63\,\si{\per\mega\watt\hour}$. Solar wins by a small margin. Now drop the
+discount rate to $3\,\%$: $\text{CRF}_{30} \approx 0.051$. Solar falls to
+$(900\times 0.051 + 15)/1.577 \approx \$38\,\si{\per\mega\watt\hour}$ while
+gas falls only to $(1000\times 0.051)/4.380 + 45 \approx \$57\,\si{\per\mega
+\watt\hour}$, because gas is dominated by the undiscounted fuel cost that no
+financing rate touches. Cheap capital widens solar's lead from $\$8$ to $\$19
+\,\si{\per\mega\watt\hour}$; dear capital ($i = 12\,\%$, $\text{CRF}_{30}
+\approx 0.124$) reverses it, lifting solar to $(900\times 0.124 + 15)/1.577
+\approx \$80$ against gas at $(1000\times 0.124)/4.380 + 45 \approx \$73$. The
+levelized cost is not a property of a technology; it is a property of a
+technology at a financing rate, and the same two plants change places as the
+cost of capital moves.
+
+\subsection{Primary frequency control: the swing equation and droop}
+
+The frequency dynamics the chapter sketched in the grid section follow from
+Newton's second law applied to the rotating mass of the synchronous fleet.
+Let $J$ be the combined moment of inertia of all generators and motors locked
+to the grid, $\omega$ the electrical angular frequency, $T_m$ the mechanical
+torque driving the rotors, and $T_e$ the electrical torque the load draws.
+The rotor obeys $J\,d\omega/dt = T_m - T_e$. Multiplying by $\omega$ converts
+torque to power, $J\omega\,d\omega/dt = P_m - P_e$, and normalising by the
+system rating $S$ and the nominal frequency $\omega_0$ defines the
+\engterm{inertia constant} $H = \tfrac12 J\omega_0^2 / S$, the stored kinetic
+energy in seconds of rated output. In terms of the per-unit frequency
+deviation $\Delta f = (f - f_0)/f_0$, the result is the \engterm{swing
+equation}:
+\[
+2H\,\frac{d(\Delta f)}{dt} = \Delta P_m - \Delta P_e - D\,\Delta f,
+\]
+where $D$ is a small load-damping term (loads draw slightly less power as
+frequency falls). The equation says the rate of change of frequency is the
+power imbalance divided by twice the inertia. At the instant a block $\Delta
+P$ of generation is lost, before any governor has moved, $\Delta P_m = 0$ and
+the initial rate of change of frequency is
+\[
+\left.\frac{d(\Delta f)}{dt}\right|_{0} = -\frac{\Delta P}{2H},
+\qquad\text{or in hertz}\qquad
+\left.\frac{df}{dt}\right|_{0} = -\frac{f_0\,\Delta P}{2H S},
+\]
+the expression the inertia mastery box quoted. Halving the inertia doubles the
+initial slope and deepens the nadir, the regime a high-inverter grid moves
+into.
+
+The governor closes the loop. Each generator's mechanical power is commanded
+to rise as frequency falls, in proportion set by the \engterm{droop} $R$:
+$\Delta P_m = -\Delta f / R$, where $R$ is the per-unit frequency change that
+swings the unit from no load to full load, conventionally $\sim 0.05$ (a
+$5\,\%$ droop means full frequency authority over a $5\,\%$, that is $2.5\,
+\si{\hertz}$ on a $50\,\si{\hertz}$ grid, frequency swing). Substituting the
+governor law into the swing equation and solving for the steady state, where
+$d(\Delta f)/dt = 0$, gives the settled frequency deviation after a sustained
+imbalance $\Delta P$:
+\[
+\Delta f_{\text{ss}} = -\frac{\Delta P}{1/R + D} \approx -R\,\Delta P
+\quad(\text{since } 1/R \gg D),
+\]
+so a $5\,\%$ droop holds the steady-state frequency error to $R$ times the
+per-unit power deficit. With $n$ units of droops $R_k$ sharing the load, the
+common settled frequency is read by all of them, and each picks up power
+$\Delta P_k = -\Delta f_{\text{ss}}/R_k$, so the units share the imbalance in
+inverse proportion to their droops (Figure
+\ref{fig:vol04ch14:droop-sharing}). Droop control is therefore a
+communication-free load-sharing scheme: every machine measures the one global
+signal, frequency, and contributes its share automatically. Secondary control
+(automatic generation control) then trims the residual steady-state error back
+to zero over minutes by shifting the units' no-load setpoints, the slow
+integral action on top of the fast proportional droop.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-droop-sharing.tex}
+
+\paragraph{Worked example: nadir and droop sharing after a trip.} A
+$30\,\si{\giga\watt}$ grid with an inertia constant $H = 5\,\si{\second}$
+loses a $900\,\si{\mega\watt}$ unit. The per-unit deficit is $\Delta P =
+900/30000 = 0.03$. The initial rate of frequency fall is $df/dt = -f_0 \Delta
+P/(2H) = -50 \times 0.03/(2\times 5) = -0.15\,\si{\hertz}/\si{\second}$, so in
+the first second, before governors respond, the frequency drops $\sim 0.15\,
+\si{\hertz}$. The surviving fleet carries an effective droop of $R = 0.05$, so
+the steady-state deviation is $\Delta f_{\text{ss}} \approx -R\,\Delta P =
+-0.05\times 0.03 = -0.0015$ per unit, that is $-0.075\,\si{\hertz}$: the grid
+settles near $49.93\,\si{\hertz}$, inside the emergency band, and secondary
+control restores nominal. If the inertia were halved to $H = 2.5\,\si{\second}$
+(a high-renewable hour), the initial slope would double to $-0.30\,\si{\hertz}/
+\si{\second}$ and the nadir would reach deeper before the governors arrest it,
+which is the case for synthetic inertia and faster primary response. The
+steady-state deviation does not change with inertia, since it depends only on
+droop, but the transient nadir does, and the nadir is what trips automatic
+load shedding. Two units of droops $R_A = 0.04$ and $R_B = 0.06$ carrying the
+$0.03$ deficit at a common settled frequency share it through their droops:
+unit A picks up $\Delta P_A = -\Delta f_{\text{ss}}/R_A$ and unit B $\Delta
+P_B = -\Delta f_{\text{ss}}/R_B$, in the ratio $R_B : R_A = 0.06 : 0.04 = 3 :
+2$, so the stiffer unit A carries $60\,\%$ of the shortfall and unit B
+$40\,\%$. The droop setting, not the unit size, fixes the share.
+
+\subsection{Reliability: the capacity-outage table and loss-of-load
+probability}
+
+The reserve margin the case studies held at a planning target rests on a
+probabilistic construction. Each generating unit is either available or
+forced out, and its \engterm{forced-outage rate} (FOR) is the long-run
+probability it is unavailable when called, typically a few percent for a
+well-maintained thermal unit. The system's reliability is the probability
+that enough units are available to meet the load. For $n$ identical units each
+of capacity $C$ and forced-outage rate $q$, the number forced out is binomial:
+the probability that exactly $k$ units are out is $\binom{n}{k} q^k
+(1-q)^{n-k}$, and the \engterm{capacity-outage probability table} (COPT) lists
+the cumulative probability that the capacity on outage equals or exceeds each
+level (Figure \ref{fig:vol04ch14:copt-lolp}). The
+\engterm{loss-of-load probability} (LOLP) is read off the table at the deficit
+between installed capacity and load: if the installed capacity is $n C$ and the
+peak load is $L$, the load is lost whenever more than $nC - L$ of capacity is
+forced out, so
+\[
+\text{LOLP} = \Pr\!\left(\text{capacity on outage} > nC - L\right)
+= \sum_{k > (nC-L)/C} \binom{n}{k} q^k (1-q)^{n-k}.
+\]
+Summed over the hours of a year against the load-duration curve, the same
+construction gives the \engterm{loss-of-load expectation} (LOLE) in hours per
+year, the planning currency the case studies held at $\sim 0.1\,\si{\hour}/
+\text{yr}$. The reserve margin is chosen so the LOLP sits below the target,
+and the table shows why the last increment of reliability is dear: each added
+unit of reserve shifts the cumulative curve down by roughly a factor of $q$
+per step, so reaching a stringent target costs a whole unit of capacity that
+runs only in the rare hours the rest of the fleet is short.
+
+\input{volumes/04-energy/ch14-energy-systems-integration/figures/fig-copt-lolp.tex}
+
+\paragraph{Worked example: loss-of-load probability of a small system.} A
+small grid has five $100\,\si{\mega\watt}$ units, each with a forced-outage
+rate $q = 0.05$, serving a peak load of $L = 300\,\si{\mega\watt}$. Installed
+capacity is $500\,\si{\mega\watt}$, so the load is lost when more than $500 -
+300 = 200\,\si{\mega\watt}$, that is more than two units, are forced out. The
+loss-of-load probability is the probability that three, four, or five units
+are out:
+\[
+\text{LOLP} = \sum_{k=3}^{5} \binom{5}{k} (0.05)^k (0.95)^{5-k}
+= 0.001158 + 3.0\times 10^{-5} + 3.1\times 10^{-7}
+\approx 1.19\times 10^{-3}.
+\]
+Over $8760\,\si{\hour}$ at the peak that is $\sim 10.4\,\si{\hour}/\text{yr}$,
+far above a $0.1\,\si{\hour}/\text{yr}$ target. Adding a sixth $100\,\si{\mega
+\watt}$ unit raises installed capacity to $600\,\si{\mega\watt}$, so the load
+is now lost only when more than three units are out:
+\[
+\text{LOLP} = \sum_{k=4}^{6} \binom{6}{k} (0.05)^k (0.95)^{6-k}
+\approx 8.6\times 10^{-5} + 1.8\times 10^{-6} + 1.6\times 10^{-8}
+\approx 8.8\times 10^{-5},
+\]
+a drop of more than a factor of ten from one added unit, the staircase of
+Figure \ref{fig:vol04ch14:copt-lolp}. The reserve margin has risen from
+$500/300 - 1 = 67\,\%$ to $100\,\%$, large for this toy system because the
+units are coarse relative to the load; a real grid with many small units
+reaches the same reliability at a far smaller percentage margin, which is one
+reason a fleet of many modest units is more reliable per installed megawatt
+than a few large ones. The construction also exposes the failure mode the
+Texas 2021 event \cite{acc:ferc-nerc-texas-2021} embodied: the binomial
+assumes the units fail independently, and a common-mode stress (extreme cold
+de-rating many gas units at once) makes the outages correlated, which fattens
+the tail of the distribution far beyond the independent-failure table and
+voids the reserve margin computed from it.
+
+\begin{mastery}
+\textbf{Reactive power is the voltage currency, and it does not travel.} The
+power-angle derivation split the two-bus flow into a real part carried by the
+angle and a reactive part carried by the voltage difference, and the split is
+the working basis of voltage control. Reactive power $Q$ is the part of the
+apparent power $S = P + jQ$ that oscillates between the source and the
+inductive and capacitive elements of the network without doing net work; it
+energises the magnetic fields of transformers and motors and the electric
+fields of lines and cables. A grid must supply it, because most load is
+partly inductive (motors, transformers), and the reactive demand sets the
+voltage: too little reactive supply and the voltage sags, too much and it
+rises. Unlike real power, reactive power does not travel well, because moving
+it along a reactive line itself consumes reactive power ($Q_{\text{loss}} =
+I^2 X$, and $X$ dominates the line), so voltage must be supported locally,
+near where the reactive load sits, rather than imported from a distant
+generator the way real power is. The local sources are synchronous generators
+and condensers (which can absorb or supply reactive power by adjusting their
+field excitation), shunt capacitor banks (supply, switched in as load rises),
+shunt reactors (absorb, switched in on lightly loaded lines whose charging
+overvolts them), and modern power-electronic compensators (static var
+compensators and STATCOMs, which adjust continuously and fast). The energy
+transition complicates this: retiring synchronous generators removes their
+reactive-support and voltage-regulating capability along with their inertia,
+so a high-inverter grid must manufacture reactive support too, through
+grid-forming inverters and dedicated compensators. Voltage collapse, the
+runaway in which sagging voltage raises current, which raises reactive loss,
+which sags voltage further, is the reactive-power analogue of the angle
+instability the power-angle curve showed, and the two arrive together in a
+stressed grid, which is why reactive reserve is planned alongside real-power
+reserve.
+\end{mastery}
+
+\subsection{An applied vignette: a rooftop-solar net-metering household}
+
+The chapter's household project models a year of dispatch; a shorter
+calculation settles the question a homeowner actually asks, whether the
+rooftop array pays for itself, and shows how the answer turns on the billing
+arrangement rather than on the physics. Take a household at a sunny
+mid-latitude site that installs a $6\,\si{\kilo\watt\textsubscript{p}}$ array
+at an installed cost of $\$2.50\,\si{\per\watt}$ (current as of 2024), so
+$\$15\,000$ before any subsidy, and consumes $9000\,\si{\kilo\watt\hour}/
+\text{yr}$. At a $20\,\%$ capacity factor the array generates $6 \times 0.20
+\times 8760 \approx 10{,}500\,\si{\kilo\watt\hour}/\text{yr}$, slightly more
+than the household uses.
+
+The payback depends on what each kilowatt-hour is worth, and that is set by the
+tariff, not by the panel. Under \engterm{full net metering}, the meter runs
+backward when the array exports and the household is billed only on its net
+annual draw, so every generated kilowatt-hour offsets one bought kilowatt-hour
+at the full retail rate of, say, $\$0.20\,\si{\per\kilo\watt\hour}$. The annual
+saving is then $10{,}500 \times 0.20 \approx \$2100/\text{yr}$ (capped at the
+$\$1800$ the household's own consumption is worth, with the small surplus
+credited or lost depending on the rule), and the simple payback is $\sim
+15{,}000/1800 \approx 8.3$ years, comfortably inside the array's $\sim
+25$-year life. Under \engterm{net billing}, the more common arrangement as
+distributed solar has grown (current as of 2024), exports are paid not at the
+retail rate but at a lower export rate near the wholesale value, say $\$0.06\,
+\si{\per\kilo\watt\hour}$, while only the self-consumed share offsets the full
+retail rate. If the household self-consumes $40\,\%$ of its generation directly
+(the no-battery midday overlap) and exports the other $60\,\%$, the saving is
+$0.40\times 10{,}500\times 0.20 + 0.60\times 10{,}500\times 0.06 \approx 840 +
+378 \approx \$1218/\text{yr}$, and the payback stretches to $\sim 15{,}000/1218
+\approx 12.3$ years. The same hardware, the same sunshine, and a payback that
+moves by four years on the billing rule alone.
+
+The lever the household controls under net billing is self-consumption, which
+is why a battery changes the economics only under that tariff. The
+self-consumption saturation calculation earlier in the chapter gives the shape:
+a battery that lifts self-consumption from $40\,\%$ to $\sim 70\,\%$ moves
+$0.30\times 10{,}500 \approx 3150\,\si{\kilo\watt\hour}/\text{yr}$ from the
+$\$0.06$ export rate to the $\$0.20$ retail offset, worth $3150\times(0.20 -
+0.06) \approx \$440/\text{yr}$. Against a $\$6000$ battery at the
+$9.4\,\%$ capital-recovery factor, that is $\$564/\text{yr}$ of annualised cost
+to capture $\$440/\text{yr}$ of value, so the battery does not pay for itself
+on arbitrage alone at these prices and must earn the rest from backup value or
+a steeper tariff spread. Under full net metering the battery saves almost
+nothing, because the grid already serves as a free, lossless, infinite store
+at retail value, which is precisely why utilities have moved away from full net
+metering as solar penetration has risen: the arrangement that makes the
+homeowner's array pay fastest also shifts the most grid cost onto
+non-solar customers, and the export rate is where that conflict is settled.
+The numbers carry their year and move with hardware cost, retail rate, and the
+export rule, but the structure is durable: rooftop solar is a sound investment
+on physics and falling hardware cost, and the variable that decides the
+payback is regulatory, the price the grid pays for an exported kilowatt-hour.
+
 \section{An end-to-end case study: sizing a solar-plus-storage microgrid}\pathtag{core}
 
 The chapter's quantities are easiest to trust when they run end to end on

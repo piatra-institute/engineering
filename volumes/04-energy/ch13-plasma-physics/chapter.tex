@@ -500,6 +500,352 @@ the sawtooth crash in tokamaks, in which the core field reconnects on a
 fast timescale and flattens the central temperature profile.
 \end{mastery}
 
+\section{Foundations: the equations behind the working formulas}\pathtag{core}
+
+The operational formulas used so far were quoted with a sketch of their
+origin. An engineer who must trust them at the margin, where a $20\%$
+confinement shortfall decides ignition or a factor-of-two ion mass moves an
+inferred density, needs the derivations in full. Four results carry most of
+the weight: the Saha equation that fixes the ionisation, the decomposition
+of the magnetic force into a pressure and a tension that gives the beta
+limit its meaning, the reduction of the two-species kinetic plasma to the
+single conducting fluid of MHD, and the frozen-in flux theorem that makes
+field topology a conserved quantity. We derive each from its starting point
+and read off the engineering consequence.
+
+\subsection{The Saha equation from statistical mechanics}
+
+The Saha equation is the law of mass action applied to the ionisation
+reaction $\mathrm{A} \rightleftharpoons \mathrm{A}^{+} + e^{-}$ in thermal
+equilibrium. The derivation is the chemical-equilibrium argument with the
+electron treated as one of the products, and it shows where every factor in
+the quoted formula comes from.
+
+In thermal and chemical equilibrium the chemical potentials balance,
+$\mu_{n} = \mu_{i} + \mu_{e}$, where $\mu_{n}$, $\mu_{i}$, $\mu_{e}$ are the
+chemical potentials of the neutral atom, the ion, and the electron. For an
+ideal gas of structureless particles of mass $m$ and internal partition
+function $g$, the chemical potential is
+\[
+\mu = -k_{B}T\ln\!\left(\frac{g}{n}\left(
+\frac{m k_{B}T}{2\pi\hbar^{2}}\right)^{3/2}\right)
++ \varepsilon_{0},
+\]
+where $n$ is the number density, the bracketed factor is the inverse cube of
+the thermal de Broglie wavelength $\lambda_{\mathrm{th}} =
+(2\pi\hbar^{2}/m k_{B}T)^{1/2}$, and $\varepsilon_{0}$ is the rest energy of
+the internal ground state. The thermal wavelength is the quantum length over
+which a particle's wavefunction is spread at temperature $T$; the quantity
+$n\lambda_{\mathrm{th}}^{3}$ measures whether the gas is classical
+($n\lambda_{\mathrm{th}}^{3}\ll 1$) or degenerate.
+
+Write the equilibrium condition with the rest energies measured from the
+neutral ground state, so the ion-plus-electron state lies an ionisation
+energy $E_{i}$ above the neutral. Equating the chemical potentials and
+collecting terms gives the law of mass action
+\[
+\frac{n_{i}n_{e}}{n_{n}} = \frac{g_{i}g_{e}}{g_{n}}
+\left(\frac{m_{e}k_{B}T}{2\pi\hbar^{2}}\right)^{3/2}
+\exp\!\left(-\frac{E_{i}}{k_{B}T}\right).
+\]
+The electron mass appears in the prefactor, not the ion mass, because the
+heavy ion and the neutral have nearly equal thermal wavelengths and their
+ratio cancels; the surviving factor is the electron's thermal wavelength
+cubed. The statistical weights $g_{i}$, $g_{e} = 2$ (two electron spin
+states), and $g_{n}$ are the degeneracies of the internal states; for
+hydrogen, taking $g_{i}/g_{n} = 1/2$ leaves the prefactor in the form quoted
+at the start of the chapter, $g_{e}g_{i}/g_{n} = 1$. The exponential is the
+Boltzmann factor for paying the ionisation energy out of the thermal bath.
+
+Two engineering lessons follow from the structure rather than the value. The
+prefactor has dimensions of density and is enormous at any laboratory
+temperature, of order $10^{27}\,\si{\per\meter\cubed}$ at $10^{4}\,\si{
+\kelvin}$, so the ionisation runs to substantial fractions long before the
+mean thermal energy $k_{B}T$ reaches $E_{i}$. The transition is sharp
+because the right-hand side multiplies a slowly varying power of $T$ by a
+fast exponential; the half-ionisation temperature solves $n_{e} \approx
+n_{n}$ and lands near $E_{i}/k_{B}T \approx 10$, an order of magnitude below
+the naive $E_{i}/k_{B}T = 1$. The density dependence is hidden in the ratio:
+at fixed temperature, raising the total density pushes the equilibrium back
+toward the neutral side, since recombination scales as $n_{i}n_{e}$ while
+ionisation scales as $n_{n}$, so a denser gas ionises at a higher
+temperature. The companion \texttt{code/saha\_ionization.py} solves the
+quadratic for the ionisation fraction at any density and reproduces the
+curve of Figure~\ref{fig:vol04ch13:saha-fraction}.
+
+\paragraph{Worked example: half-ionisation temperature of hydrogen.}
+Solve the Saha equation for the temperature at which hydrogen is half
+ionised at a total density $n_{\mathrm{tot}} = n_{n} + n_{i} = 10^{20}\,\si{
+\per\meter\cubed}$, a representative low-density laboratory plasma. At half
+ionisation $n_{i} = n_{e} = n_{n} = n_{\mathrm{tot}}/2 = 5\times 10^{19}\,
+\si{\per\meter\cubed}$, so the Saha ratio is $n_{i}n_{e}/n_{n} = n_{e} =
+5\times 10^{19}\,\si{\per\meter\cubed}$. Setting the right-hand side equal to
+this and writing $\theta = E_{i}/k_{B}T$ with $E_{i} = 13.6\,\text{eV}$,
+\[
+5\times 10^{19} = \left(\frac{m_{e}k_{B}T}{2\pi\hbar^{2}}\right)^{3/2}
+e^{-\theta}.
+\]
+The prefactor at $T$ near $10^{4}\,\si{\kelvin}$ is $\approx 3.0\times
+10^{27}\,\si{\per\meter\cubed}$, so $e^{-\theta} \approx 5\times 10^{19}/
+3\times 10^{27} = 1.7\times 10^{-8}$, giving $\theta = \ln(6\times 10^{7})
+\approx 17.9$. Then $T = E_{i}/(k_{B}\theta) = (13.6)(1.6\times 10^{-19})/
+[(1.38\times 10^{-23})(17.9)] \approx 8.8\times 10^{3}\,\si{\kelvin}$. The
+gas is half ionised near $9000\,\si{\kelvin}$, far below the $1.6\times
+10^{5}\,\si{\kelvin}$ that $E_{i}/k_{B}T = 1$ would give, which is the
+quantitative content of the sharp Saha transition. A self-consistent
+solution iterates the prefactor at the new temperature, but one pass already
+lands within a few percent because the exponential dominates.
+
+\subsection{The magnetic force as a pressure and a tension}
+
+The force per unit volume on a plasma is $\vect{J}\times\vect{B}$. Using
+Amp\`ere's law $\vect{J} = (\curl\vect{B})/\mu_{0}$ and the vector identity
+$(\curl\vect{B})\times\vect{B} = (\vect{B}\cdot\grad)\vect{B} - \grad(B^{2}
+/2)$, the force splits into two pieces,
+\[
+\vect{J}\times\vect{B}
+= \frac{(\vect{B}\cdot\grad)\vect{B}}{\mu_{0}}
+- \grad\!\left(\frac{B^{2}}{2\mu_{0}}\right).
+\]
+The second term is the gradient of the scalar $p_{B} = B^{2}/(2\mu_{0})$, the
+\engterm{magnetic pressure}: it pushes plasma from strong-field to weak-field
+regions exactly as a gas pressure pushes from high to low. The first term is
+the \engterm{magnetic tension}: it is non-zero only where the field lines
+curve. Writing $\vect{B} = B\hat{\vect{b}}$ and using $(\hat{\vect{b}}\cdot
+\grad)\hat{\vect{b}} = \hat{\vect{n}}/R_{c}$, where $\hat{\vect{n}}$ points
+toward the centre of curvature and $R_{c}$ is the radius of curvature, the
+tension term becomes
+\[
+\frac{(\vect{B}\cdot\grad)\vect{B}}{\mu_{0}}
+= \frac{B^{2}}{\mu_{0}R_{c}}\hat{\vect{n}}
++ \hat{\vect{b}}\,\frac{\partial}{\partial s}\!
+\left(\frac{B^{2}}{2\mu_{0}}\right),
+\]
+where $s$ is arc length along the field line. The first piece is a force
+$B^{2}/(\mu_{0}R_{c})$ per unit volume directed toward the centre of
+curvature, the tension of a stretched elastic string of tension
+$B^{2}/\mu_{0}$ per unit area; the second cancels the parallel part of the
+pressure gradient, so the net force along the field comes only from the
+plasma pressure. Figure~\ref{fig:vol04ch13:magnetic-stress} draws the two
+contributions.
+
+\input{volumes/04-energy/ch13-plasma-physics/figures/fig-magnetic-stress.tex}
+
+The decomposition is the engineer's tool for reading any magnetic
+confinement geometry. A straight field line carries pressure but no tension,
+so it confines only across itself; a curved field line adds a restoring
+force that is the source of the shear-Alfv\'en wave, whose speed
+$v_{A} = B/\sqrt{\mu_{0}\rho}$ is the propagation speed of a transverse
+twang on a field-line string of tension $B^{2}/\mu_{0}$ and mass per length
+$\rho$ times the cross-section, exactly the string-wave result $\sqrt{T/
+\mu_{\mathrm{lin}}}$. The Alfv\'en speed quoted earlier is therefore not a
+separate fact but the tension wave of this very decomposition.
+
+The static force balance of a confined plasma is $\grad p = \vect{J}\times
+\vect{B}$, which with the decomposition reads $\grad(p + B^{2}/2\mu_{0}) =
+(\vect{B}\cdot\grad)\vect{B}/\mu_{0}$. Where the field is straight the
+right-hand side vanishes and the total pressure $p + B^{2}/(2\mu_{0})$ is
+constant across the plasma: the thermal pressure that the plasma carries is
+bought from the magnetic pressure that the field gives up.
+Figure~\ref{fig:vol04ch13:pressure-balance} shows the trade across a plasma
+column.
+
+\input{volumes/04-energy/ch13-plasma-physics/figures/fig-pressure-balance.tex}
+
+The ratio that names the trade is the \engterm{plasma beta},
+\[
+\beta = \frac{p}{B^{2}/(2\mu_{0})} = \frac{2\mu_{0}nk_{B}T}{B^{2}}.
+\]
+A device that confines a thermal pressure $p$ with a field $B$ runs at this
+beta, and the beta the field can hold against the instabilities the pressure
+drives is the figure of merit of a confinement scheme. Fusion power density
+scales as $n^{2}\langle\sigma v\rangle \sim p^{2}/T^{2}\langle\sigma v
+\rangle$ at fixed temperature, so it scales as $\beta^{2}B^{4}$: the fusion
+power a magnet of a given field can produce rises as the fourth power of the
+field and the square of the achievable beta, which is why both high-field
+magnets and high-beta operation are pursued together. The Troyon scaling
+sets an empirical beta limit of a few percent in a tokamak before the
+pressure-driven ballooning modes break confinement, the same number the
+case-study plasma sat at.
+
+\paragraph{Worked example: beta and the field a plasma needs.}
+The case-study tokamak ran at $n = 10^{20}\,\si{\per\meter\cubed}$,
+$T = 12\,\si{\kilo\electronvolt}$, and $B = 5.3\,\si{\tesla}$, giving
+$\beta \approx 0.034$. Ask the inverse question a designer faces: to hold
+the same plasma at the Troyon-limited $\beta = 0.05$, how strong a field is
+allowed at most? Since $\beta = 2\mu_{0}nk_{B}T/B^{2}$, holding $p$ fixed and
+raising the allowed beta to $0.05$ lowers the required field to $B =
+\sqrt{2\mu_{0}p/\beta}$. With $p = 2nk_{B}T = 2(10^{20})(1.92\times
+10^{-15}) = 3.84\times 10^{5}\,\si{\pascal}$, $B = \sqrt{2(4\pi\times
+10^{-7})(3.84\times 10^{5})/0.05} = \sqrt{1.93\times 10^{1}} \approx
+4.4\,\si{\tesla}$. Running at the beta limit rather than below it lets the
+same plasma be confined by a $4.4\,\si{\tesla}$ field instead of
+$5.3\,\si{\tesla}$, a $30\%$ saving in $B^{2}$ and so in stored magnet
+energy. The designer reads this as the payoff of operating near the beta
+limit: every point of beta won is magnet cost saved or, at fixed field,
+fusion power gained.
+
+\subsection{From two fluids to one: the MHD reduction}
+
+The single-fluid MHD equations quoted earlier are a reduction of a more
+honest two-fluid description, one momentum equation for the electrons and
+one for the ions. The reduction shows which terms were dropped and so where
+MHD fails. Each species $s$ (electrons $e$, ions $i$) obeys a continuity and
+a momentum equation,
+\begin{align}
+\pdv{n_{s}}{t} + \divg(n_{s}\vect{u}_{s}) &= 0,\\
+m_{s}n_{s}\dv{\vect{u}_{s}}{t} &= -\grad p_{s}
++ q_{s}n_{s}(\vect{E} + \vect{u}_{s}\times\vect{B})
++ \vect{R}_{s},
+\end{align}
+where $\vect{u}_{s}$ is the species flow, $p_{s}$ its pressure, and
+$\vect{R}_{s}$ the collisional friction between species, with
+$\vect{R}_{e} = -\vect{R}_{i}$ by momentum conservation. The single-fluid
+variables are the mass density $\rho = n_{i}m_{i} + n_{e}m_{e} \approx
+n_{i}m_{i}$, the centre-of-mass velocity $\vect{v} = (n_{i}m_{i}\vect{u}_{i}
++ n_{e}m_{e}\vect{u}_{e})/\rho \approx \vect{u}_{i}$, the current density
+$\vect{J} = e(n_{i}\vect{u}_{i} - n_{e}\vect{u}_{e})$, and the total pressure
+$p = p_{i} + p_{e}$.
+
+Add the two momentum equations. The electric force cancels under
+quasineutrality $n_{i} \approx n_{e}$, the friction terms cancel because
+$\vect{R}_{e} = -\vect{R}_{i}$, and the magnetic terms combine into
+$\vect{J}\times\vect{B}$, leaving the single-fluid momentum equation
+\[
+\rho\dv{\vect{v}}{t} = -\grad p + \vect{J}\times\vect{B},
+\]
+the second ideal-MHD equation. The Ohm's law comes from the electron
+momentum equation alone. Divide it by $-e n_{e}$ and keep the leading terms;
+the electron inertia $m_{e}\,\dd\vect{u}_{e}/\dd t$ is smaller than the
+magnetic term by the ratio of the dynamical frequency to the electron
+gyrofrequency and is dropped, giving the \engterm{generalised Ohm's law}
+\[
+\vect{E} + \vect{v}\times\vect{B}
+= \eta\vect{J}
++ \frac{\vect{J}\times\vect{B}}{en_{e}}
+- \frac{\grad p_{e}}{en_{e}}
++ \frac{m_{e}}{e^{2}n_{e}}\pdv{\vect{J}}{t}.
+\]
+The four terms on the right are the resistive drag, the \engterm{Hall term},
+the electron-pressure term, and the electron-inertia term. Ideal MHD keeps
+only the left side: it drops resistivity (infinite conductivity), the Hall
+term (valid when the length scale is large compared to the ion skin depth
+$c/\omega_{pi}$), the pressure term (same condition), and the inertia term
+(slow compared to the electron plasma frequency). The reduction is therefore
+the long-wavelength, low-frequency, high-conductivity limit, the slow window
+of Figure~\ref{fig:vol04ch13:timescale-ordering}.
+
+\input{volumes/04-energy/ch13-plasma-physics/figures/fig-timescale-ordering.tex}
+
+The dropped terms are the ones an engineer reaches for when MHD fails. The
+resistive term restores reconnection and the resistive instabilities. The
+Hall term matters in reconnection layers and in the Hall thruster, where the
+ion skin depth is comparable to the channel, and it is the reason that
+device carries the name it does. The electron-pressure term drives the
+diamagnetic drift and the gradients that feed drift-wave turbulence, the
+turbulence that sets the anomalous transport of the earlier mastery box. The
+inertia term carries the electron plasma oscillation and the high-frequency
+waves. Reading which term has been dropped tells the engineer which physics
+the MHD model cannot see.
+
+\subsection{The frozen-in flux theorem, in full}
+
+The most consequential result of ideal MHD is that magnetic field lines move
+with the fluid. The proof combines the ideal Ohm's law with Faraday's law
+and the kinematics of a moving surface. Start from the ideal Ohm's law
+$\vect{E} = -\vect{v}\times\vect{B}$ and substitute into Faraday's law
+$\partial\vect{B}/\partial t = -\curl\vect{E}$ to get the induction equation
+\[
+\pdv{\vect{B}}{t} = \curl(\vect{v}\times\vect{B}).
+\]
+Consider the magnetic flux $\Phi = \int_{S(t)}\vect{B}\cdot\dd\vect{A}$
+through a surface $S(t)$ whose boundary is a loop of fluid elements, so the
+surface is carried along by the flow. The total rate of change of the flux
+through a comoving surface has two contributions, the explicit time change
+of $\vect{B}$ and the sweeping of the boundary through the field,
+\[
+\dv{\Phi}{t}
+= \int_{S}\pdv{\vect{B}}{t}\cdot\dd\vect{A}
++ \oint_{\partial S}\vect{B}\cdot(\vect{v}\times\dd\vect{\ell}).
+\]
+The boundary term rewrites with the scalar triple product as $-\oint(\vect{v}
+\times\vect{B})\cdot\dd\vect{\ell}$, which by Stokes' theorem is
+$-\int_{S}\curl(\vect{v}\times\vect{B})\cdot\dd\vect{A}$. Adding it to the
+first term and using the induction equation,
+\[
+\dv{\Phi}{t}
+= \int_{S}\left[\pdv{\vect{B}}{t}
+- \curl(\vect{v}\times\vect{B})\right]\cdot\dd\vect{A} = 0.
+\]
+The flux through every comoving loop is constant in time. Two fluid elements
+that share a field line at one instant share it for all time, so the field
+lines are advected by the flow as if painted on the fluid. This is the
+\engterm{frozen-in} condition, and it is the reason a magnetically confined
+plasma cannot simply slide off its field: to move across the field the
+plasma would have to break the flux conservation, which ideal MHD forbids.
+
+The theorem fails exactly where the dropped resistive term re-enters. With
+finite resistivity the induction equation gains a diffusion term,
+\[
+\pdv{\vect{B}}{t} = \curl(\vect{v}\times\vect{B})
++ \frac{\eta}{\mu_{0}}\nabla^{2}\vect{B},
+\]
+and the field now diffuses through the fluid on the resistive time
+$\tau_{R} = \mu_{0}L^{2}/\eta$. The ratio of the advection term to the
+diffusion term is the \engterm{magnetic Reynolds number} $R_{m} = \mu_{0}Lv/
+\eta$, the same group as the Lundquist number with the flow speed in place of
+the Alfv\'en speed. Where $R_{m}\gg 1$ the field is frozen and topology is
+conserved; where $R_{m}\sim 1$, in thin current sheets and at small scales,
+the field slips and reconnects. The engineering reading is that flux is
+conserved on the large scale that sets the confinement and violated on the
+small scale that sets the disruptions, the two regimes the chapter's failure
+section returns to.
+
+\paragraph{Worked example: magnetic Reynolds number of a tokamak and a lamp.}
+For the case-study tokamak at $T_{e} = 12\,\si{\kilo\electronvolt}$, the
+Spitzer resistivity is $\eta \approx 5.2\times 10^{-5}(17)/(1.2\times
+10^{4})^{3/2} \approx 6.8\times 10^{-10}\,\si{\ohm\meter}$. Taking a flow
+speed of order the Alfv\'en speed $v_{A}\approx 7\times 10^{6}\,\si{\meter
+\per\second}$ and a length $L = 2\,\si{\meter}$, the magnetic Reynolds
+number is $R_{m} = \mu_{0}Lv/\eta = (4\pi\times 10^{-7})(2)(7\times 10^{6})/
+(6.8\times 10^{-10}) \approx 2.6\times 10^{10}$, so the field is frozen to
+better than ten significant figures on the device scale and ideal MHD is an
+excellent description of the bulk. Contrast a fluorescent lamp at $T_{e} =
+1\,\si{\electronvolt}$, where the resistivity is $\eta \approx 5.2\times
+10^{-5}(10)/(1)^{3/2} \approx 5\times 10^{-4}\,\si{\ohm\meter}$, a flow speed
+of $\sim 10^{3}\,\si{\meter\per\second}$, and a length $L = 0.01\,\si{\meter}$:
+$R_{m} = (4\pi\times 10^{-7})(0.01)(10^{3})/(5\times 10^{-4}) \approx
+2.5\times 10^{-5}$, far below one. The lamp plasma does not freeze flux at
+all; its field diffuses through the gas almost instantly, which is why
+low-temperature discharges are described by collisional transport and
+chemistry rather than by MHD. The same plasma physics gives opposite
+descriptions at the two ends of the temperature range because the single
+group $R_{m}$ moves by fifteen orders of magnitude between them.
+
+\begin{mastery}
+The reduction above produced \engterm{ideal} MHD, but a magnetised plasma
+supports a richer set of transport processes that survive even when the
+collisional friction is small, collected under the name
+\engterm{neoclassical transport}. In a torus a fraction of the particles are
+trapped between the magnetic mirrors formed by the $1/R$ variation of the
+field strength along a field line, and these trapped particles execute
+banana-shaped orbits whose width is much larger than the gyroradius. Their
+collisional scattering across the field steps by the banana width rather than
+the gyroradius, so the diffusion coefficient is enhanced over the naive
+classical estimate by a factor of order $(R/a)^{3/2}q^{2}$, the
+neoclassical factor, which can be one to two orders of magnitude. The
+trapped-particle population also drives the \engterm{bootstrap current}, a
+self-generated toroidal current proportional to the pressure gradient that a
+tokamak can use to supplement or replace the transformer-driven current,
+relaxing the pulsed-operation limit that the transformer imposes. A reactor
+design that aims at steady state leans on a large bootstrap fraction, so the
+neoclassical theory that the ideal reduction left out is, for the
+steady-state engineer, the part that matters most. Even neoclassical
+transport, though, is dwarfed in practice by the turbulent anomalous
+transport of the earlier mastery box, so the working confinement time
+remains an empirical input rather than a first-principles output.
+\end{mastery}
+
 \section{Plasma diagnostics}\pathtag{standard}
 
 Measuring the parameters of a plasma without disturbing it is the
@@ -1234,6 +1580,79 @@ Lawson balance is taken from empirical confinement scaling laws rather than
 computed from first principles: the turbulent transport that sets it is not
 yet calculable from the equilibrium alone.
 \end{mastery}
+
+\section{An applied vignette: the plasma arc cutter}\pathtag{standard}
+
+The three case studies sat at the extremes of the density-temperature map.
+A shorter example brings the same physics down to a tool a fabrication shop
+keeps in the corner: the plasma arc cutter that slices steel plate. It is a
+thermal-equilibrium arc, the Saha regime of the foundations section rather
+than the non-equilibrium discharge of the etch reactor, and it shows the
+chapter's formulas working at the scale of a hand tool.
+
+A plasma cutter strikes a constricted electric arc between a tungsten
+electrode and the workpiece, then forces a gas, usually compressed air or
+nitrogen, through a narrow copper nozzle that squeezes the arc to a thin,
+fast jet. The constriction raises the current density and the temperature in
+the channel to $T \approx 1.5\times 10^{4}$ to $3\times 10^{4}\,\si{
+\kelvin}$, hot enough that the Saha equation, not an electron-impact
+discharge model, fixes the ionisation. For the air arc near $2\times
+10^{4}\,\si{\kelvin}$, the ionisation fraction computed exactly as in the
+arc-plasma worked example is a few percent to tens of percent, enough to
+carry the hundreds of amperes the torch draws and to deliver the jet of hot
+ionised gas that melts and blows away the metal.
+
+Take a hand torch running $I = 60\,\si{\ampere}$ at an arc voltage $V =
+120\,\si{\volt}$, so the electrical power into the arc is $P = IV = 7.2\,\si{
+\kilo\watt}$. The nozzle orifice is $d = 1.2\,\si{\milli\meter}$, so the
+current density in the channel is $J = I/(\pi d^{2}/4) = 60/[\pi(1.2\times
+10^{-3})^{2}/4] \approx 5.3\times 10^{7}\,\si{\ampere\per\meter\squared}$, a
+density that a solid copper conductor could not sustain without melting but
+that the gas plasma carries because its ionised channel is continually
+replenished. The arc plasma at this temperature has a Spitzer-like
+resistivity of order $\eta \approx 10^{-4}\,\si{\ohm\meter}$ (much higher
+than a fusion plasma because the arc is two orders of magnitude cooler), so
+the ohmic dissipation per unit volume is $p_{\Omega} = \eta J^{2} \approx
+(10^{-4})(5.3\times 10^{7})^{2} \approx 2.8\times 10^{11}\,\si{\watt\per
+\meter\cubed}$, an enormous volumetric heating that holds the channel at its
+operating temperature against the convective and radiative losses to the
+cold gas sheath around it. The same $T_{e}^{-3/2}$ resistivity scaling that
+made a fusion plasma a near-perfect conductor here keeps the cooler arc
+dissipative enough to stay hot, the self-regulating balance that lets an arc
+sit at a stable temperature.
+
+The cut itself is a heat-transfer problem fed by the arc. The jet must
+deliver enough power to melt a kerf through the plate and blow the melt
+clear. To cut mild steel of thickness $h = 10\,\si{\milli\meter}$ at a
+travel speed $u = 0.5\,\si{\meter\per\minute} = 8.3\times 10^{-3}\,\si{\meter
+\per\second}$ with a kerf width $w = 1.5\,\si{\milli\meter}$, the volume
+removal rate is $\dot{V} = h w u = (0.01)(1.5\times 10^{-3})(8.3\times
+10^{-3}) \approx 1.2\times 10^{-7}\,\si{\meter\cubed\per\second}$. Steel of
+density $7800\,\si{\kilogram\per\meter\cubed}$ removed at this rate is a mass
+flow $\dot{m} = 9.7\times 10^{-4}\,\si{\kilogram\per\second}$. Raising that
+steel from room temperature through its melt point and supplying the latent
+heat of fusion costs roughly $c_{p}\Delta T + L_{f} \approx (500)(1500) +
+2.7\times 10^{5} \approx 1.0\times 10^{6}\,\si{\joule\per\kilogram}$, so the
+power that must reach the kerf is $\dot{m}\times 10^{6} \approx 9.7\times
+10^{2}\,\si{\watt}$, about $1\,\si{\kilo\watt}$. The torch delivers
+$7.2\,\si{\kilo\watt}$, so the coupling efficiency from electrical input to
+useful melting is of order $15\%$, the rest carried off as radiation, as
+heat conducted into the plate, and as enthalpy of the spent gas jet. A
+shop's experience that a $60\,\si{\ampere}$ torch cuts roughly
+$10\,\si{\milli\meter}$ plate at a modest speed is the same balance read in
+the other direction.
+
+The engineering constraints follow the same pattern as the case studies. The
+nozzle erodes because the constricted arc concentrates the heat on the
+copper orifice, so consumable life is set by the arc current and the
+duty cycle, and pushing the current to cut thicker plate trades cut capacity
+against consumable cost, the same energy-against-erosion trade the Hall
+thruster faced at its channel walls. The cut quality, square edge versus
+bevelled, is set by how tightly the nozzle constricts the arc, the same
+directionality-versus-spread trade the etch sheath set for ion bombardment.
+The plasma cutter is the chapter's physics at the scale of a tool a single
+operator carries, and it obeys the same laws as the reactor that fills a
+building.
 
 \section{Worked examples}\pathtag{standard}
 
