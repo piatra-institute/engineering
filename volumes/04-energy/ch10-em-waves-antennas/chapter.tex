@@ -109,6 +109,46 @@ the \engterm{Malus law}, derived by Etienne-Louis Malus in 1809. The
 $\cos^{2}\theta$ dependence is the working content of polarised-light
 filters, LCD displays, and circular-polariser sunglasses.
 
+\subsection{The axial ratio and a working measure of polarisation}
+
+An antenna is never perfectly circularly polarised, and a receiver
+matched to one polarisation never fully rejects the orthogonal one, so a
+link engineer needs a number that grades how circular a real wave is. The
+tip of the electric-field vector traces an ellipse; the ratio of its major
+to its minor axis is the \engterm{axial ratio},
+\[
+\text{AR} = \frac{E_{\text{major}}}{E_{\text{minor}}}, \quad 1\le
+\text{AR}\le \infty,
+\]
+which is unity for perfect circular polarisation and infinite for linear
+polarisation, the two limits of the ellipse. Antenna datasheets quote it
+in decibels, $\text{AR}_{\text{dB}} = 20\log_{10}\text{AR}$, so a
+$3\,\si{\decibel}$ axial ratio (major axis $\sqrt{2}$ times the minor) is
+the usual boundary between an antenna sold as circularly polarised and one
+that is merely elliptical. The axial ratio sets the worst-case
+polarisation-mismatch loss directly: when a wave of axial ratio
+$\text{AR}_1$ meets a receiving antenna of axial ratio $\text{AR}_2$, the
+mismatch loss swings between a best and a worst alignment, and the spread
+between them widens as either ellipse departs from a circle. Two
+nominally circular antennas each at $3\,\si{\decibel}$ axial ratio can lose
+more than a decibel in the wrong relative orientation, which is why a
+satellite terminal chases a low axial ratio and not merely a nominal
+circular sense.
+
+The full state of a partially polarised wave takes four numbers rather
+than one, the \engterm{Stokes parameters} $(S_0, S_1, S_2, S_3)$: total
+intensity, the excess of horizontal over vertical linear, the excess of
+the two diagonal linears, and the excess of right- over left-circular. A
+fully polarised wave satisfies $S_1^2 + S_2^2 + S_3^2 = S_0^2$, and the
+\engterm{degree of polarisation} $p = \sqrt{S_1^2 + S_2^2 + S_3^2}/S_0$
+falls below unity for the partially polarised light of a thermal source or
+a wave scrambled by a rough scattering channel. The Stokes vector is the
+working representation because every polarising element, from a wave plate
+to an ionospheric Faraday rotation, acts on it as a fixed matrix, so a
+chain of elements multiplies out to a single transformation; radio
+astronomy, remote sensing, and optical instrumentation all carry
+polarisation through their systems in exactly this form.
+
 \subsection{Energy flow and the factor of one half}
 
 The energy a plane wave carries follows from the Poynting vector
@@ -377,6 +417,44 @@ The routine \texttt{code/transmission\_line.py} computes the reflection
 coefficient, VSWR, reflected and delivered power fractions, return loss,
 and the input impedance of a lossless line of any electrical length,
 with complex load impedances handled directly.
+
+\subsection{Loss on a real line}
+
+A lossless line is the design ideal; a real line has $R'$ and $G'$, and
+the signal decays as it travels. The damped telegrapher's equation admits
+a travelling solution $V(z) = V_0 e^{-\gamma z}$ with a complex
+\engterm{propagation constant} $\gamma = \alpha + j\beta$, whose real part
+$\alpha$ is the \engterm{attenuation constant} in nepers per metre and
+whose imaginary part $\beta$ is the phase constant already met. Carrying
+the general solution of the sinusoidal telegrapher's equations gives
+$\gamma = \sqrt{(R' + j\omega L')(G' + j\omega C')}$, and for the
+low-loss line that most cables approximate, $R'\ll \omega L'$ and $G'\ll
+\omega C'$, a first-order expansion separates the two parts cleanly,
+\[
+\alpha \approx \frac{R'}{2 Z_0} + \frac{G' Z_0}{2}, \quad
+\beta \approx \omega\sqrt{L' C'},
+\]
+the attenuation splitting into a conductor term that rises with $R'$ and a
+dielectric term that rises with $G'$. The power falls as $e^{-2\alpha z}$,
+so a line of length $\ell$ has a matched-line loss of $8.686\,\alpha\ell$
+decibels, the factor converting nepers to decibels. The two loss
+mechanisms scale differently with frequency, which sets the character of
+each cable family: conductor loss grows as $\sqrt{f}$ through the skin
+effect, since $R'$ climbs as the current crowds into an ever-thinner
+surface layer, while dielectric loss grows linearly with $f$ because $G' =
+\omega C'\tan\delta$ carries an explicit $\omega$. A coaxial cable is
+conductor-limited at low frequencies and dielectric-limited at high ones,
+with a crossover in the low gigahertz for common foam-dielectric cables,
+which is the reason cable datasheets quote loss at several frequencies
+rather than a single number and why a run that is quiet at $100\,\si{\mega
+\hertz}$ can be lossy at $10\,\si{\giga\hertz}$. Loss also softens the
+mismatch picture: on a lossy line the reflection a load throws back is
+attenuated twice over on its round trip to the source, so a badly matched
+antenna at the end of a long lossy cable reads a deceptively low VSWR at
+the transmitter, the reflected wave having been eaten by the cable rather
+than the load. An engineer who reads a good VSWR through a long feed must
+ask whether the match is real or whether the cable is hiding a fault, the
+diagnostic the reverse-engineering exercises turn on \cite{text:pozar-microwave}.
 
 The \engterm{Smith chart} is the graphical companion to this algebra.
 It maps the complex reflection-coefficient plane (the unit disk
@@ -680,6 +758,32 @@ achieved with a parallel-tuned capacitor. Working applications: AM
 radio direction-finding, RFID readers, and the antenna for the older
 push-button garage-door openers.
 
+The steep $(C/\lambda)^4$ dependence of the small loop's radiation
+resistance is the fact behind every design choice a loop forces. Halving
+the loop size drops its radiation resistance by sixteen, so a loop small
+enough to fit a wristband or a credit card radiates a vanishing fraction
+of the power fed to it and lives almost entirely on its stored magnetic
+field. Two moves recover a usable antenna. Adding turns multiplies the
+radiation resistance by $N^2$ for $N$ turns, since each turn adds its
+contribution to the same enclosed flux, which is why a ferrite loopstick
+in an AM radio carries dozens of turns rather than one. Threading the loop
+with a high-permeability ferrite core multiplies the effective enclosed
+flux by the core's effective permeability, raising the antenna's
+\engterm{effective height} (the ratio of open-circuit voltage to incident
+field) without enlarging the winding, the trick that fits a broadcast-band
+receiving antenna inside a pocket radio. Both moves also raise the loop's
+inductance and its ohmic loss, so the realised efficiency stays low and
+the loop earns its keep as a receiving antenna feeding a high-impedance,
+narrowband front end rather than as a radiator; a small loop that must
+transmit, as in an RFID interrogator or a near-field wireless-power
+coupler, accepts the low efficiency and works in the reactive near field,
+where the coupling is inductive and the radiation resistance barely
+matters. The loop's null broadside to its plane, sharp because it comes
+from a first-order path-difference cancellation rather than a broad
+pattern lobe, is what makes it the classic direction-finding antenna: a
+listener rotates the loop for a signal null, not a peak, because the null
+is the narrower and more precise bearing.
+
 An \engterm{antenna array} is a collection of antennas whose outputs
 are combined coherently. The radiation pattern of an array is the
 product of the pattern of the individual element and the
@@ -874,7 +978,12 @@ last five close on the core theory the chapter deepened: the group delay
 through a near-cutoff guide, the frequency choice that follows from
 holding apertures fixed, an energy-balanced Fresnel ledger, the pulse
 spreading bred by a second waveguide mode, and the reading of a
-slotted-line measurement.
+slotted-line measurement. A final run of seven reaches wider still: the
+power a coaxial line carries before it arcs, the pulse spread a near-cutoff
+guide adds across a signal bandwidth, the polarisation loss between two
+imperfect circular antennas, the two-ray ground-reflection range penalty,
+the noise temperature of a receiver chain, a Yagi's gain from its boom, and
+the sizing of a single-layer anti-reflection coating.
 
 \paragraph{A plane wave at the surface of the Earth.}
 Bright sunlight delivers about $1\,\si{\kilo\watt\per\meter\squared}$ at
@@ -1218,6 +1327,194 @@ the load a purely real load above it. The slotted line is obsolete, but
 the arithmetic, VSWR from a max-to-min ratio and wavelength from the null
 spacing, is exactly what a modern analyser computes internally.
 
+\paragraph{The power a coaxial cable can carry.}
+A coaxial cable carries power without arcing only until the field at its
+inner conductor reaches the breakdown strength of the dielectric, so the
+power rating follows from the peak field, not from any thermal limit alone.
+For an air-dielectric line the radial field is largest at the inner
+conductor of radius $a$ and equals $E_{\max} = V/[a\ln(b/a)]$, with $b$ the
+shield radius and $V$ the peak line voltage. The characteristic impedance
+of the air line is $Z_0 = 60\ln(b/a)$, and the matched power a peak voltage
+$V$ delivers is $P = V^2/(2 Z_0)$. Eliminating $V$ in favour of the field,
+\[
+P_{\max} = \frac{E_{\max}^2\, a^2 \ln(b/a)}{120},
+\]
+in watts with the field in volts per metre. Take a line with $a = 3.5\,\si{
+\milli\meter}$, $b = 8.0\,\si{\milli\meter}$ (so $Z_0 = 60\ln(2.29) =
+49.6\,\si{\ohm}$, near the standard $50\,\si{\ohm}$) and dry-air breakdown
+$E_{\max} = 3.0\times 10^{6}\,\si{\volt\per\meter}$. Then
+\[
+P_{\max} = \frac{(3.0\times 10^{6})^{2}(3.5\times 10^{-3})^{2}\ln(2.29)}
+{120} = \frac{(9\times 10^{12})(1.225\times 10^{-5})(0.829)}{120}
+= 7.6\times 10^{5}\,\si{\watt},
+\]
+about $760\,\si{\kilo\watt}$ of matched power before the air ionises, a
+comfortable margin over the kilowatt-scale transmitters that use such
+lines. The rating collapses under three real effects the bare formula
+omits: a standing wave from a mismatch raises the local voltage by the
+VSWR, so a $3{:}1$ mismatch cuts the safe power to a third; altitude lowers
+the breakdown field with air density; and any burr, moisture film, or
+contaminant on the inner conductor concentrates the field and triggers
+breakdown early. A cable rated at $760\,\si{\kilo\watt}$ matched is
+prudently derated to a small fraction of that in service, which is the
+engineering distance between an ideal-geometry calculation and a
+datasheet number.
+
+\paragraph{The pulse spread a near-cutoff guide adds.}
+The group-delay example showed that a near-cutoff carrier travels slowly;
+a signal occupies a band of frequencies, and the spread of group delay
+across that band spreads the pulse. The group delay per unit length is
+$\tau_g = 1/v_g = 1/[c\sqrt{1-(f_c/f)^2}]$, and its variation across a
+signal bandwidth $\Delta f$ is the pulse spread. Differentiating,
+\[
+\frac{\dd \tau_g}{\dd f} = -\frac{f_c^2}{c f^3\,[1-(f_c/f)^2]^{3/2}},
+\]
+so the spread over a length $L$ and bandwidth $\Delta f$ is $\Delta\tau =
+L\,|\dd\tau_g/\dd f|\,\Delta f$. Take a $2\,\si{\meter}$ WR-90 guide
+($f_c = 6.56\,\si{\giga\hertz}$) carrying a $200\,\si{\mega\hertz}$-wide
+signal at $7.0\,\si{\giga\hertz}$, just above cutoff. With $1-(f_c/f)^2 =
+0.122$, the bracket to the $3/2$ power is $0.0426$, so
+\[
+\left|\frac{\dd\tau_g}{\dd f}\right| = \frac{(6.56)^2}{(3\times 10^{8})
+(7.0)^3(0.0426)}\times 10^{9} = 3.4\times 10^{-19}\,\si{\second\per\hertz
+\per\meter}\;\text{(per metre)},
+\]
+carrying the gigahertz-to-hertz factors, which over $2\,\si{\meter}$ and
+$200\,\si{\mega\hertz}$ gives $\Delta\tau \approx 0.14\,\si{\nano\second}$.
+A pulse that started sharp arrives smeared by a seventh of a nanosecond,
+enough to close the eye of a link running faster than a few gigabits per
+second over that short guide. The same computation at $11\,\si{\giga
+\hertz}$, mid-band, drops the spread by more than an order of magnitude,
+the quantitative reason a wideband guide is run in the middle of its band
+and never near the cutoff edge where the delay slope steepens.
+
+\paragraph{Circular-to-elliptical polarisation loss.}
+A satellite radiates right-hand circular polarisation with an axial ratio
+of $2\,\si{\decibel}$, and a ground antenna receives with an axial ratio of
+$3\,\si{\decibel}$, the two ellipses aligned in the worst relative
+orientation. We size the polarisation-mismatch loss. Converting the axial
+ratios to linear, $\text{AR}_1 = 10^{2/20} = 1.26$ and $\text{AR}_2 =
+10^{3/20} = 1.41$. The polarisation efficiency for two co-rotating
+elliptical antennas, worst case over relative tilt, is
+\[
+\rho = \frac{1}{2} + \frac{1}{2}\,\frac{(\text{AR}_1^2-1)(\text{AR}_2^2-1)}
+{(\text{AR}_1^2+1)(\text{AR}_2^2+1)}\;\text{(best)}, \quad
+\rho_{\text{worst}} = \frac{1}{2} - \frac{1}{2}\,\frac{(\text{AR}_1^2-1)
+(\text{AR}_2^2-1)}{(\text{AR}_1^2+1)(\text{AR}_2^2+1)}.
+\]
+With $\text{AR}_1^2 = 1.585$ and $\text{AR}_2^2 = 2.0$, the fraction is
+$(0.585)(1.0)/[(2.585)(3.0)] = 0.585/7.755 = 0.0754$, so $\rho_{\text{worst}}
+= 0.5 - 0.5(0.0754) = 0.462$ and $\rho_{\text{best}} = 0.538$. The worst
+case is $10\log_{10}0.462 = -3.35\,\si{\decibel}$ and the best
+$-2.69\,\si{\decibel}$, a swing of $0.66\,\si{\decibel}$ about the nominal
+$3\,\si{\decibel}$ circular-to-circular baseline that a perfect pair would
+also show only if one were linear. The lesson for the link budget is that
+two imperfect circular antennas carry not just the nominal loss but a
+tilt-dependent band of it, and a spinning or tumbling satellite sweeps
+through the whole band, so the margin must cover the worst end.
+
+\paragraph{The two-ray ground-reflection range penalty.}
+A terrestrial link over flat ground receives a direct ray and a
+ground-reflected ray, and their interference departs sharply from the
+free-space Friis prediction. With transmit and receive heights $h_t$ and
+$h_r$ and a grazing reflection (reflection coefficient near $-1$), the two
+rays differ in path by $\Delta \approx 2 h_t h_r/R$ at range $R\gg h_t,
+h_r$, a phase difference $\Delta\phi = 2\pi\Delta/\lambda = 4\pi h_t h_r/
+(\lambda R)$. Beyond the last interference lobe, where $\Delta\phi < \pi$,
+the direct and reflected fields nearly cancel and the received power takes
+the two-ray form
+\[
+P_r = P_t G_t G_r \left(\frac{h_t h_r}{R^2}\right)^2,
+\]
+independent of wavelength and falling as $R^{-4}$ rather than $R^{-2}$.
+Take $h_t = 30\,\si{\meter}$, $h_r = 2\,\si{\meter}$, $\lambda = 0.15\,\si{
+\meter}$ (a $2\,\si{\giga\hertz}$ link). The breakpoint range where the
+model turns from lobing to smooth $R^{-4}$ decay is $R_b = 4 h_t h_r/
+\lambda = 4(30)(2)/0.15 = 1600\,\si{\meter}$. Inside $1.6\,\si{\kilo\meter}$
+the power swings through the lobes of figure
+\ref{fig:vol04ch10:two-ray-lobing}; beyond it, doubling the range costs
+$12\,\si{\decibel}$ rather than the $6\,\si{\decibel}$ of free space. A
+cellular planner who sized a cell on free-space loss would place the cell
+edge nearly twice too far out, the systematic error the two-ray model
+corrects and the reason terrestrial coverage tools carry a ground-reflection
+term.
+
+\input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-two-ray-lobing.tex}
+
+\paragraph{The noise temperature of a receiver chain.}
+The system noise temperature of the downlink case study was quoted as a
+single number; it is the sum of a cascade, and the sum shows why the
+low-noise block sits at the feed. For stages of gain $G_1, G_2, \dots$ and
+noise temperature $T_1, T_2, \dots$, the input-referred noise temperature
+of the chain is the \engterm{Friis noise cascade}
+\[
+T_e = T_1 + \frac{T_2}{G_1} + \frac{T_3}{G_1 G_2} + \cdots,
+\]
+each stage divided by the gain ahead of it. Take a front end of a
+low-noise amplifier ($G_1 = 20\,\si{\decibel} = 100$, $T_1 = 50\,\si{
+\kelvin}$), a lossy mixer ($G_2 = -7\,\si{\decibel} = 0.20$, $T_2 =
+870\,\si{\kelvin}$), and an intermediate-frequency amplifier ($G_3 = 30\,\si{
+\decibel}$, $T_3 = 290\,\si{\kelvin}$). The contributions referred to the
+input are $T_1 = 50\,\si{\kelvin}$, $T_2/G_1 = 870/100 = 8.7\,\si{\kelvin}$,
+and $T_3/(G_1 G_2) = 290/(100\times 0.20) = 14.5\,\si{\kelvin}$, so $T_e =
+50 + 8.7 + 14.5 = 73\,\si{\kelvin}$, the bars of figure
+\ref{fig:vol04ch10:noise-cascade}. The first stage supplies more than two
+thirds of the total, and the noisy mixer, which alone would be dreadful,
+enters divided by a hundred. Remove the amplifier and feed the mixer
+directly and the mixer's $870\,\si{\kelvin}$ would dominate, wrecking the
+$G/T$ that the link budget depends on, which is the whole reason the
+first active device is a high-gain low-noise amplifier placed as close to
+the antenna as the mechanics allow.
+
+\input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-noise-cascade.tex}
+
+\paragraph{A Yagi gain from its boom.}
+A Yagi-Uda antenna adds parasitic directors and a reflector to a driven
+dipole to push the pattern forward, and its gain tracks the boom length in
+wavelengths more than the number of elements. A working estimate for a
+well-designed Yagi is $G\approx 10\log_{10}(C\,L_{\text{boom}}/\lambda) +
+D_0$ decibels with $C\approx 8$ and the dipole reference already folded in,
+but the cleaner rule engineers carry is that a Yagi gains roughly
+$3\,\si{\decibel}$ for each doubling of boom length past about half a
+wavelength. Take a $144\,\si{\mega\hertz}$ Yagi on a boom
+$3\lambda = 6.24\,\si{\meter}$ long ($\lambda = 2.08\,\si{\meter}$). The
+gain estimate is near $10\log_{10}(8\times 3) + 2.15 = 13.8 + 2.15 \approx
+16\,\si{\decibel\textsubscript{i}}$, and such an antenna carries perhaps
+ten elements. Doubling the boom to $6\lambda$ would add about $2.5$ to
+$3\,\si{\decibel}$, not double the gain, which is the diminishing return
+that stops amateur Yagis around $6\lambda$ and drives the very-high-gain
+requirement toward arrays of Yagis stacked and phased rather than one
+impossibly long boom. The front-to-back ratio, the gain forward over the
+gain toward the reflector, is the second figure of merit; a good Yagi holds
+$20\,\si{\decibel}$ or more, the property that lets it reject an
+interferer behind it, which a symmetric dipole cannot do.
+
+\paragraph{A single-layer anti-reflection coating.}
+The mastery box unified the quarter-wave transformer with the optical
+anti-reflection coating; here we size the coating. A camera lens of index
+$n_g = 1.52$ in air is to be coated for minimum reflection at
+$\lambda_0 = 550\,\si{\nano\meter}$, the eye's peak sensitivity. The
+coating cancels the two interface reflections when its index is the
+geometric mean, $n_f = \sqrt{n_{\text{air}}\,n_g} = \sqrt{1.52} = 1.23$,
+and its optical thickness is a quarter wave, $n_f d = \lambda_0/4$, so the
+physical thickness is
+\[
+d = \frac{\lambda_0}{4 n_f} = \frac{550}{4(1.23)} = 112\,\si{\nano\meter}.
+\]
+Magnesium fluoride, the standard coating, has index $1.38$ rather than the
+ideal $1.23$, so the cancellation is imperfect: the residual reflectance at
+the design wavelength is $R = [(n_f^2 - n_g)/(n_f^2 + n_g)]^2 = [(1.904 -
+1.52)/(1.904 + 1.52)]^2 = (0.112)^2 = 0.0126$, cutting the bare $4.3\,\%$
+reflection to $1.3\,\%$ rather than to zero, the curve of figure
+\ref{fig:vol04ch10:ar-coating}. The reflectance rises away from $550\,\si{
+\nano\meter}$, which is why a single-layer coating on a lens looks purple
+in reflection: it passes the green it is tuned for and reflects the red and
+blue edges, and a coating that stays low across the whole visible band
+needs a stack of layers, the multilayer generalisation of the same
+quarter-wave idea.
+
+\input{volumes/04-energy/ch10-em-waves-antennas/figures/fig-ar-coating.tex}
+
 \begin{mastery}
 The wave impedance $\eta = \sqrt{\mu/\varepsilon}$ and the
 characteristic impedance $Z_{0} = \sqrt{L'/C'}$ are the same idea in
@@ -1348,6 +1645,36 @@ outrunning the swimmer who rides it. Optical fibre, dielectric resonators,
 and laser cavities all carry this ray-and-mode duality, and an engineer
 who holds both pictures can move between the cutoff algebra and the
 bounce-angle intuition as the problem rewards.
+\end{mastery}
+
+\begin{mastery}
+The reflection coefficient $\Gamma$ describes a one-port device by a single
+complex number; a component with more ports needs a matrix, and the
+\engterm{scattering matrix} is the generalisation the whole of microwave
+engineering is built on. Assign to each port an incoming wave amplitude
+$a_i$ and an outgoing wave amplitude $b_i$, both normalised so that
+$|a_i|^2$ and $|b_i|^2$ are powers, and the linear device relates them by
+$\vect{b} = \mat{S}\,\vect{a}$. The diagonal entry $S_{ii}$ is the
+reflection seen at port $i$ with every other port terminated in its
+reference impedance, so $S_{11}$ is exactly the $\Gamma$ of the one-port
+case; the off-diagonal $S_{ij}$ is the transmission from port $j$ to port
+$i$ under the same match-all condition. The whole appeal is that the
+scattering parameters are defined by matched terminations rather than the
+open and short circuits that low-frequency network parameters demand, and a
+matched broadband load is buildable at microwave frequencies where a true
+open or short is not. A vector network analyser measures the full $\mat{S}$
+of a device directly, sweeping frequency, and every specification an RF
+component carries, insertion loss, return loss, isolation, coupling, is a
+named entry or ratio of entries of $\mat{S}$. Two symmetry laws prune the
+matrix: a reciprocal device (any passive structure without ferrites or
+active elements) has $\mat{S} = \mat{S}^{\mathsf{T}}$, so $S_{ij} =
+S_{ji}$, and a lossless device has a unitary $\mat{S}$, $\mat{S}^{\dagger}
+\mat{S} = \mat{I}$, the statement that power in equals power out written as
+a matrix identity. The circulator of the failure section is the standard
+non-reciprocal counterexample: its scattering matrix is deliberately
+asymmetric, routing power one way around its ports, which is exactly why a
+ferrite is needed to build it and why no passive reciprocal network can do
+its job \cite{text:pozar-microwave}.
 \end{mastery}
 
 \section{An end-to-end case study: a geostationary television
@@ -1907,6 +2234,81 @@ the mismatched-transmitter failure of the next section played out at the
 scale of an appliance. The lossy food is the matched load that keeps the
 cavity quiet, and an empty oven is a transmitter staring into an open
 circuit.
+
+\section{A second applied vignette: the passive RFID
+tag}\pathtag{standard}
+
+The oven confined a wave in a box; the passive radio-frequency
+identification tag turns a wave around and sends it back, and it is the
+cheapest antenna problem in mass production. A passive tag carries no
+battery. It harvests the power to run its chip from the interrogator's own
+field, and it answers not by transmitting but by \engterm{backscatter
+modulation}: switching the impedance at its antenna terminals between two
+states so that the reflected wave carries the modulation, the same
+reflection-coefficient physics of Section 10.4 turned into a data channel.
+A tag is a backscatter radar in miniature, and its read range follows the
+$R^{-4}$ law of the radar mastery box, softened at the near end by the tag
+needing enough harvested power to wake.
+
+\subsection{The two links of a passive tag}
+
+A passive tag lives on two separate budgets, and the shorter of the two
+sets the range. The \engterm{forward link} must deliver enough power to the
+tag chip to turn it on. A reader radiating an effective isotropic power
+$\text{EIRP}$ at wavelength $\lambda$ puts a power density $\text{EIRP}/
+(4\pi R^2)$ on the tag, which its antenna of gain $G_t$ and effective
+aperture $G_t\lambda^2/(4\pi)$ collects, so the harvested power is
+\[
+P_{\text{tag}} = \text{EIRP}\,\frac{G_t\lambda^2}{(4\pi R)^2},
+\]
+one Friis hop. A modern ultra-high-frequency tag chip wakes on about
+$-18\,\si{\decibel}\text{m}$ ($16\,\si{\micro\watt}$). At the $866\,\si{
+\mega\hertz}$ European band, $\lambda = 0.346\,\si{\meter}$, and with a
+reader at the regulatory $\text{EIRP} = 3.3\,\si{\watt}$ ($35.2\,\si{
+\decibel}\text{m}$) and a tag antenna gain near $G_t = 1.6$ ($2\,\si{
+\decibel\textsubscript{i}}$), setting $P_{\text{tag}} = 16\,\si{\micro
+\watt}$ and solving for range gives
+\[
+R = \frac{\lambda}{4\pi}\sqrt{\frac{\text{EIRP}\,G_t}{P_{\text{tag}}}}
+= \frac{0.346}{4\pi}\sqrt{\frac{3.3\times 1.6}{16\times 10^{-6}}}
+= 0.0275\sqrt{3.3\times 10^{5}} = 15.8\,\si{\meter}.
+\]
+The \engterm{reverse link}, the backscattered answer, is the two-way
+$R^{-4}$ hop and returns a far weaker signal, but a reader's receiver is
+far more sensitive than a tag chip, so on most tags the forward
+power-up link is the binding constraint and the reverse link has margin to
+spare. The practical read range of a passive UHF tag is a few metres,
+shorter than this ideal because a tag on a real object detunes against its
+backing material, and a tag on metal or on water can fall silent
+altogether, the reason speciality tags carry a spacer or a ground-plane
+backing to hold their tuning.
+
+\subsection{The impedance the tag switches between}
+
+Backscatter modulation works the reflection coefficient directly. The tag
+chip presents two impedances to its antenna, and the antenna is designed to
+present a complex conjugate match to one of them for maximum harvested
+power. Switching to the other state throws the match off, changing the
+reflection coefficient at the antenna terminals from near zero to near
+unity, so the tag alternates between absorbing the reader's wave and
+reflecting it. The difference between the two reflected waves is the signal
+the reader detects, and its size is governed by the \engterm{differential
+radar cross-section} set by the change in $\Gamma$, not by the absolute
+reflection. A tag that matched perfectly in both states would harvest well
+but backscatter nothing; a tag that reflected in both states would
+backscatter well but never power up. The design threads between these,
+which is the whole art of the tag antenna: it must conjugate-match a
+capacitive chip (tag chips look like a small capacitance in parallel with a
+resistance) with an inductive antenna structure, hold that match across the
+band and against detuning by the tagged object, and still swing $\Gamma$
+far enough between states to be heard. The reader, for its part, must dig a
+tiny backscattered modulation out of the enormous continuous wave it is
+itself transmitting, a self-jamming problem solved by the same isolation
+and cancellation that a monostatic radar uses to hear its own echoes past
+its own transmitter. The passive tag is therefore a compact tour of the
+chapter: a Friis link to power it, a conjugate impedance match to couple
+it, a switched reflection coefficient to modulate it, and an $R^{-4}$
+backscatter hop to return its answer.
 
 \section{Failure: impedance mismatch, standing waves, RF heating}\pathtag{core}
 

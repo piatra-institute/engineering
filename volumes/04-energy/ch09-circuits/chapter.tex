@@ -347,6 +347,34 @@ bandwidth spec on the bench from one that falls a few percent short, and
 it is the reason the design exercises in this chapter size the op-amp by
 its noise gain.
 
+\begin{mastery}
+An impedance bridging the input and output of an inverting stage does not
+present its own value to the input; it presents a value multiplied by the
+stage gain, the \engterm{Miller effect}. A capacitance $C_f$ from the input
+to the output of a stage of voltage gain $-A_v$ sees a voltage swing of
+$(1 + A_v)$ times its input-side swing, because when the input rises by
+$\Delta v$ the output falls by $A_v\Delta v$, so the charge the input must
+supply is $C_f(1 + A_v)\Delta v$. The input therefore loads as though a
+capacitance
+\[
+C_{\text{Miller}} = C_f\,(1 + A_v)
+\]
+sat from the input to ground. A stray $2\,\si{\pico\farad}$ of
+collector-to-base or drain-to-gate capacitance in a stage of gain $-100$
+loads the input like $202\,\si{\pico\farad}$, and that inflated capacitance
+working against the source resistance sets a pole that can fall decades below
+where the raw device capacitance would put it, the dominant bandwidth limit of
+a high-gain inverting stage. The effect is not always a liability: the same
+multiplication is how a single small compensation capacitor across the
+high-gain stage of an op-amp synthesises the large effective capacitance that
+places the dominant pole low enough for stable feedback, Miller compensation,
+which is why the internal compensation capacitor of a general-purpose op-amp
+is only tens of picofarads yet fixes a pole at a few hertz. An engineer who
+sees a high-gain stage falling short of its expected bandwidth checks the
+feedback-path capacitance first, because the Miller multiplication turns a
+parasitic too small to notice into the pole that governs the response.
+\end{mastery}
+
 \section{Transient response: RC, RL, RLC}\pathtag{core}
 \label{sec:vol04ch09:transient}
 
@@ -1298,6 +1326,141 @@ with the input open, closes the parameter table. The open-and-short pair
 is the oldest two-port characterisation and still the first an engineer
 reaches for at a bench without a network analyser.
 
+\paragraph{RL relay coil: current settling and stored energy.}
+A $24\,\si{\volt}$ supply energises a relay coil of inductance $L =
+80\,\si{\milli\henry}$ and winding resistance $R = 60\,\si{\ohm}$ through a
+driver that closes at $t = 0$ with the coil at rest. The final current is
+$I_\infty = V/R = 24/60 = 0.40\,\si{\ampere}$ and the time constant is
+$\tau = L/R = 80\times 10^{-3}/60 = 1.33\,\si{\milli\second}$, so the coil
+reaches its rated pull-in current after a few time constants, of order
+$5\,\si{\milli\second}$. The stored magnetic energy at full current is
+$U_\infty = \tfrac{1}{2}LI_\infty^2 = \tfrac{1}{2}\cdot 0.08\cdot 0.40^2 =
+6.4\,\si{\milli\joule}$, and because the energy scales with the square of
+the current it lags the current: at one time constant the current is
+$0.632I_\infty$ but the energy is only $0.632^2 = 0.40$ of $U_\infty$, as
+Figure~\ref{fig:vol04ch09:rl-energy} shows. The lag is why a relay
+specified to pull in at a stated current does not pull in at one time
+constant, when the mechanical work the magnetic field can do is still short
+of half its final value. The release side is harsher still: opening the
+driver forces the coil current to fall, and $v = L\,\dd i/\dd t$ drives the
+collector node up until something clamps it. A $0.40\,\si{\ampere}$ current
+interrupted in $1\,\si{\micro\second}$ demands $v = 0.08\cdot 0.40/10^{-6} =
+32\,\si{\kilo\volt}$ in the ideal limit, which in practice strikes an arc or
+punches through the driver transistor unless a freewheeling diode carries
+the $6.4\,\si{\milli\joule}$ away, the protective element the relay-failure
+exercise turns on.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-rl-energy.tex}
+
+\paragraph{Unbalanced bridge by the delta-wye transformation.}
+A resistive bridge that no series-parallel step can reduce yields at once to
+one delta-wye conversion. Take a Wheatstone bridge with arms $R_1 =
+100\,\si{\ohm}$ and $R_2 = 200\,\si{\ohm}$ on the left, $R_3 = 300\,\si{
+\ohm}$ and $R_4 = 400\,\si{\ohm}$ on the right, a galvanometer arm $R_5 =
+150\,\si{\ohm}$ across the middle, driven from a $10\,\si{\volt}$ source
+across the top and bottom nodes. The three resistors $R_1$, $R_3$, $R_5$
+meeting the top-left, top-right, and middle form a delta; converting it to a
+wye (Figure~\ref{fig:vol04ch09:delta-wye}) collapses the bridge to a
+series-parallel ladder. The delta edges are $R_1 = 100$, $R_3 = 300$, $R_5 =
+150\,\si{\ohm}$ with sum $\Sigma = 550\,\si{\ohm}$, so the wye spokes are
+$R_A = R_1 R_3/\Sigma = 100\cdot 300/550 = 54.5\,\si{\ohm}$ (to the top
+node), $R_B = R_1 R_5/\Sigma = 100\cdot 150/550 = 27.3\,\si{\ohm}$, and
+$R_C = R_3 R_5/\Sigma = 300\cdot 150/550 = 81.8\,\si{\ohm}$. The transformed
+network is $R_A$ in series with the parallel pair $(R_B + R_2)\parallel(R_C
++ R_4)$, that is $54.5 + (27.3 + 200)\parallel(81.8 + 400) = 54.5 +
+227.3\parallel 481.8 = 54.5 + 154.3 = 209\,\si{\ohm}$. The source current is
+$10/209 = 47.9\,\si{\milli\ampere}$, and back-substituting the two branch
+currents through the wye returns the galvanometer current the naive
+series-parallel reduction could never reach. The transformation is the
+standard escape from a bridge topology, and it is exact, not an
+approximation.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-delta-wye.tex}
+
+\paragraph{Series RLC energy exchange and Q from the ringdown.}
+A lightly damped series RLC circuit trades energy between the capacitor and
+the inductor twice per cycle, and the quality factor is the count of that
+exchange against the loss. Take $L = 2.2\,\si{\milli\henry}$, $C = 10\,\si{
+\nano\farad}$, and $R = 15\,\si{\ohm}$. The resonant frequency is $\omega_0
+= 1/\sqrt{LC} = 1/\sqrt{2.2\times 10^{-3}\cdot 10^{-8}} = 2.13\times
+10^{5}\,\si{\per\second}$, so $f_0 = 33.9\,\si{\kilo\hertz}$, and the quality
+factor is $Q = \omega_0 L/R = 2.13\times 10^{5}\cdot 2.2\times 10^{-3}/15 =
+31.3$. The physical reading of $Q$ is $2\pi$ times the ratio of stored energy
+to energy lost per cycle: a tank charged to $1\,\si{\volt}$ on the capacitor
+stores $\tfrac{1}{2}CV^2 = \tfrac{1}{2}\cdot 10^{-8}\cdot 1 = 5\,\si{\nano
+\joule}$, and with $Q = 31.3$ it loses $2\pi\cdot 5/31.3 = 1.0\,\si{\nano
+\joule}$ each cycle, so the oscillation amplitude falls by a factor $e$ in
+$Q/\pi = 10$ cycles. An engineer reading a ringdown off an oscilloscope
+inverts this: counting the cycles for the envelope to fall to $1/e$ of its
+start and multiplying by $\pi$ recovers $Q$ without any component
+measurement, the field measurement of a resonator's loss that a network
+analyser would otherwise supply.
+
+\paragraph{Current divider and Millman's theorem at a single node.}
+Three sources feeding one node through their own resistances settle to a node
+voltage that Millman's theorem writes in one line. Suppose a $12\,\si{\volt}$
+source through $2\,\si{\kilo\ohm}$, a $5\,\si{\volt}$ source through
+$1\,\si{\kilo\ohm}$, and a $0\,\si{\volt}$ (grounded) return through
+$4\,\si{\kilo\ohm}$ all meet at a common node. Millman's theorem, which is
+nodal analysis at a single node written as a conductance-weighted average of
+the source voltages, gives
+\[
+V_{\text{node}} = \frac{\sum_k V_k/R_k}{\sum_k 1/R_k}
+= \frac{12/2000 + 5/1000 + 0/4000}{1/2000 + 1/1000 + 1/4000}
+= \frac{0.006 + 0.005 + 0}{0.00175}
+= 6.29\,\si{\volt}.
+\]
+The current each source delivers follows by Ohm's law across its own
+resistor: the $12\,\si{\volt}$ source supplies $(12 - 6.29)/2000 =
+2.86\,\si{\milli\ampere}$, the $5\,\si{\volt}$ source draws
+$(5 - 6.29)/1000 = -1.29\,\si{\milli\ampere}$ (it absorbs current, since the
+node sits above it), and the ground leg sinks $6.29/4000 = 1.57\,\si{\milli
+\ampere}$, the three summing to zero as KCL demands. Millman's theorem is the
+fastest hand method for a summing junction, a resistor DAC ladder, or a
+multi-supply bias node, because it delivers the node voltage without setting
+up and inverting a matrix.
+
+\paragraph{Phasor mesh with complex arithmetic.}
+A single-loop AC circuit exercises the complex-number bookkeeping that the
+phasor method buys. A $10\,\si{\volt}$ RMS source at $\omega = 10^{4}\,\si{
+\per\second}$ drives a series loop of $R = 50\,\si{\ohm}$, $L = 5\,\si{\milli
+\henry}$, and $C = 4\,\si{\micro\farad}$. The element impedances are $Z_R =
+50\,\si{\ohm}$, $Z_L = j\omega L = j\cdot 10^{4}\cdot 5\times 10^{-3} =
+j50\,\si{\ohm}$, and $Z_C = 1/(j\omega C) = -j/(10^{4}\cdot 4\times 10^{-6})
+= -j25\,\si{\ohm}$. The total impedance is $Z = 50 + j50 - j25 = 50 +
+j25\,\si{\ohm}$, of magnitude $|Z| = \sqrt{50^2 + 25^2} = 55.9\,\si{\ohm}$
+and angle $\arctan(25/50) = 26.6^\circ$. The loop current is $\tilde I =
+\tilde V/Z = 10/(55.9\,\angle\,26.6^\circ) = 0.179\,\angle\,{-26.6^\circ}\,
+\si{\ampere}$ RMS, lagging the source because the net reactance is inductive.
+The voltage across the inductor is $\tilde V_L = \tilde I Z_L = 0.179\cdot
+50\,\angle\,(90^\circ - 26.6^\circ) = 8.94\,\angle\,63.4^\circ\,\si{\volt}$,
+larger in magnitude than the source's resistive share and phase-shifted, the
+reactive-voltage rise that surprises an engineer who forgets that series
+reactances can develop terminal voltages exceeding the applied voltage. The
+real power is $P = |\tilde I|^2 R = 0.179^2\cdot 50 = 1.60\,\si{\watt}$,
+delivered only to the resistor, while the inductor and capacitor exchange
+their stored energy without net dissipation.
+
+\paragraph{Diode clamp and the reverse-recovery snap.}
+A protection diode across an inductive load carries the freewheeling current
+when a switch opens, and its recovery behaviour sets a second transient the
+designer must see. Take the relay coil above, $L = 80\,\si{\milli\henry}$
+carrying $I_0 = 0.40\,\si{\ampere}$, clamped by a diode of forward drop
+$V_F = 0.7\,\si{\volt}$. When the driver opens, the current commutates into
+the diode and decays with the coil resistance alone, time constant $\tau =
+L/R = 1.33\,\si{\milli\second}$, so the freewheeling current falls to zero
+over several milliseconds while the coil dissipates its $6.4\,\si{\milli
+\joule}$ in its own winding and the diode. The clamp holds the switch node
+one diode drop above the rail rather than the $32\,\si{\kilo\volt}$ the
+unclamped coil would demand, the whole purpose of the part. The cost is
+speed: the slow decay delays the relay's mechanical release, so a design that
+needs a fast dropout adds a series Zener with the diode, raising the clamp
+voltage to (say) $30\,\si{\volt}$ and shortening the decay to $\tau' =
+L I_0/(V_Z I_0) \approx L/R_{\text{eff}}$ set by the higher clamp voltage,
+trading a higher switch-node stress for a faster release. The freewheeling
+diode is the cheapest reliability improvement on the board and the first
+element a reviewer checks on any inductive driver.
+
 \begin{mastery}
 The phasor calculus of Section~\ref{sec:vol04ch09:ac} is the steady-state
 slice of the Laplace transform. Replacing $j\omega$ by the complex
@@ -1903,6 +2066,82 @@ reservoir capacitor of the bench supply, run between two comparator
 thresholds instead of toward a single final value, is the whole of the
 oscillator's timing.
 
+\section{A second applied vignette: the Colpitts LC oscillator}
+\pathtag{standard}
+\label{sec:vol04ch09:colpitts}
+
+The 555 oscillator sets its frequency by an RC transient charging between two
+thresholds; the Colpitts oscillator sets its frequency by an LC tank ringing
+at its resonance, and it is the circuit that turns the feedback theory of
+Section~9.4 and the resonance theory of Section~9.6 into a source of a clean
+sinusoid. An oscillator is a feedback amplifier arranged so that the loop gain
+reaches unity magnitude with zero net phase at one frequency, the
+\engterm{Barkhausen condition}: at that frequency a disturbance travelling once
+around the loop returns to itself in phase and undiminished, so the circuit
+sustains an oscillation with no input. Below unity loop gain the oscillation
+dies; above it the amplitude grows until some nonlinearity (the amplifier
+running into its rails, or a deliberate limiter) pulls the average loop gain
+back to unity, which is why a real oscillator starts with a loop gain slightly
+above one and settles at an amplitude the nonlinearity fixes.
+Figure~\ref{fig:vol04ch09:colpitts} draws the topology.
+
+\input{volumes/04-energy/ch09-circuits/figures/fig-colpitts.tex}
+
+The Colpitts arrangement places an inductor $L$ across a capacitive divider of
+$C_1$ and $C_2$ in series, and taps the feedback from the junction of the two
+capacitors. The tank resonates at the frequency where the inductor reactance
+cancels the reactance of the series capacitor pair, whose combined value is
+$C_{\text{eq}} = C_1 C_2/(C_1 + C_2)$, so
+\[
+f_0 = \frac{1}{2\pi\sqrt{L\,C_{\text{eq}}}}
+= \frac{1}{2\pi}\sqrt{\frac{C_1 + C_2}{L\,C_1 C_2}}.
+\]
+The capacitive divider also fixes the feedback fraction. The tank voltage
+appears across the two capacitors in series, and the tap returns the voltage
+across $C_2$, so the fraction fed back is the reactance ratio $\beta =
+X_{C_2}/(X_{C_1}+X_{C_2})$. Because the two reactances share the same tank
+current and each is inversely proportional to its capacitance, the fraction
+reduces to a capacitance ratio,
+\[
+\beta = \frac{1/C_2}{1/C_1 + 1/C_2} = \frac{C_1}{C_1 + C_2},
+\]
+independent of frequency, which is the property that makes the Colpitts tank a
+clean feedback network. The Barkhausen magnitude condition then sets the
+minimum amplifier gain: the round-trip gain $A\beta$ must reach unity, so the
+amplifier must supply at least $A_{\min} = 1/\beta = (C_1 + C_2)/C_1 = 1 +
+C_2/C_1$. A design that wants a light feedback tap (small $\beta$, for a tank
+the amplifier loads gently) pays for it in a higher required gain, the same
+gain-versus-feedback trade the op-amp section drew for the closed-loop
+amplifier.
+
+A worked instance fixes the numbers. For a $1\,\si{\mega\hertz}$ oscillator
+choose $L = 22\,\si{\micro\henry}$ and a divider $C_1 = 1\,\si{\nano\farad}$,
+$C_2 = 10\,\si{\nano\farad}$. The series pair is $C_{\text{eq}} = 1\cdot 10/
+(1 + 10) = 0.909\,\si{\nano\farad}$, so the resonance is $f_0 = 1/(2\pi\sqrt{
+22\times 10^{-6}\cdot 0.909\times 10^{-9}}) = 1.13\,\si{\mega\hertz}$, close
+to target and trimmed by a small adjustment of $L$. The feedback fraction is
+$\beta = 1/(1 + 10) = 0.091$, so the amplifier must supply a gain of at least
+$1/\beta = 11$ to start, and a working design allows a comfortable excess,
+perhaps a gain of $20$, so the loop starts reliably across temperature and
+part spread and lets the amplitude-limiting nonlinearity trim the surplus
+away. The tank's own quality factor, set by the inductor loss and the load
+the amplifier presents, fixes the spectral purity: a higher-$Q$ tank yields a
+cleaner sinusoid with less phase noise, which is why an oscillator wanting a
+stable frequency uses a high-$Q$ inductor or, at the limit, replaces the LC
+tank with a quartz crystal whose $Q$ reaches tens of thousands. The Colpitts
+topology, with the crystal standing in for the inductor, is the workhorse
+clock oscillator inside almost every microcontroller, and the same divider
+arithmetic sets its feedback.
+
+The design lever is the divider ratio for feedback and start-up margin, the
+inductor for coarse frequency, and a small trimmer capacitor across the tank
+for fine frequency. The lesson the vignette carries is that an oscillator is
+not a distinct kind of circuit but a feedback amplifier deliberately pushed
+past the stability boundary the op-amp section worked to stay inside: the same
+loop gain that, kept below unity with margin, makes a stable amplifier
+becomes, pushed to unity at one frequency, the engine of a sustained
+oscillation.
+
 \section{Power: real, reactive, apparent}\pathtag{standard}
 
 In sinusoidal steady state the instantaneous power $p(t) = v(t)i(t)$
@@ -1999,6 +2238,60 @@ formula is identical for wye and delta loads. The $\sqrt{3}$ factor is
 the working multiplier the practising engineer carries when estimating
 three-phase loads from nameplate data.
 
+The balance that makes three-phase efficient holds only when the three
+loads match. A wye load with unequal arms draws unequal phase currents, and
+their sum no longer vanishes; the difference flows in the neutral. For a
+wye load carrying phase currents $\tilde I_a$, $\tilde I_b$, $\tilde I_c$
+the neutral current is their phasor sum,
+\[
+\tilde I_n = \tilde I_a + \tilde I_b + \tilde I_c,
+\]
+which is zero for a balanced load and grows as the imbalance grows. A
+building that puts most of its single-phase lighting on one phase loads that
+phase's conductor and returns the excess through the neutral, which is why
+the neutral of a distribution feeder is sized for the worst credible
+imbalance rather than assumed to carry nothing. A subtler case defeats the
+intuition entirely: nonlinear single-phase loads, the switched-mode supplies
+in every computer and light-emitting-diode fixture, each draw a current
+pulse near the voltage peak rich in the third harmonic. The third harmonics
+of the three phases are in phase with one another rather than $120^\circ$
+apart, because tripling a $120^\circ$ separation gives $360^\circ$, a full
+turn back to alignment. They therefore add in the neutral instead of
+cancelling, and a neutral carrying balanced fundamental currents that sum to
+zero can still carry a large triplen-harmonic current, a mechanism that has
+overheated neutrals sized by the old balanced-load rule and the reason modern
+codes size the neutral of a harmonic-rich feeder at or above the phase
+conductor.
+
+Measuring three-phase power needs fewer instruments than the three phases
+suggest. Blondel's theorem states that the power in an $N$-wire system is
+measured by $N-1$ wattmeters, so a three-wire three-phase load (delta, or
+wye with no accessible neutral) needs only two. In the
+\engterm{two-wattmeter method} each meter reads a line current against a
+line-to-line voltage, and the two readings sum to the total real power
+regardless of the load balance,
+\[
+P = P_1 + P_2,
+\]
+while their difference fixes the power-factor angle through $\tan\phi =
+\sqrt{3}\,(P_1 - P_2)/(P_1 + P_2)$. The relation carries a diagnostic an
+engineer reads at the meters: at a power factor below $0.5$ one of the two
+wattmeters reads negative, its pointer driven backward, and a technician who
+does not expect the reversal and subtracts the magnitudes rather than
+respecting the sign reports the wrong total. The two-wattmeter method is the
+standard field measurement of three-phase power, and its sign convention is
+the kind of detail that separates a correct commissioning report from a
+plausible wrong one.
+
+Phase sequence, the order in which the three voltages reach their peaks
+($a$-$b$-$c$ or the reverse $a$-$c$-$b$), is invisible on a single-phase
+meter but decisive for a motor: reversing the sequence reverses the rotating
+magnetic field and therefore the shaft rotation. A pump wired to the wrong
+sequence runs backward, a mistake caught on a bench by a phase-rotation
+meter and in the field by the pump moving no water, and the reason a
+three-phase motor connection is checked for sequence before it drives a load
+that a reverse rotation would damage.
+
 \section{Failure: grounding, EMC, signal integrity}\pathtag{core}
 
 Three failure modes recur in lumped-circuit practice. They are the
@@ -2020,6 +2313,28 @@ nearly uniform across the board. For mixed-signal designs (digital
 and sensitive analog on the same board), separate analog and digital
 grounds joined at a single point near the data-converter chip prevent
 digital switching noise from contaminating the analog reference.
+
+The magnitude of the problem is a two-line calculation the designer should
+carry. A ground trace or bond wire has an inductance of order $1\,\si{\nano
+\henry}$ per millimetre of length, so a $20\,\si{\milli\meter}$ return path
+carries about $20\,\si{\nano\henry}$. A logic output switching a
+$50\,\si{\milli\ampere}$ load in a $2\,\si{\nano\second}$ edge drives a
+ground-return transient of
+\[
+v = L\dv{i}{t} = 20\times 10^{-9}\cdot\frac{0.050}{2\times 10^{-9}}
+= 0.50\,\si{\volt},
+\]
+half a volt of \engterm{ground bounce} appearing between the two ends of a
+trace the schematic drew as a single node. Half a volt is a large fraction of
+a logic threshold and dwarfs the microvolt-scale signals of the sensor chain
+earlier in the chapter; it is why the analog and digital returns must not
+share the inductive path and why the cure is width and area, not a thinner
+wire, since inductance falls only weakly with cross-section but strongly with
+the return-current loop area a ground plane collapses. The same $L\,\dd i/\dd
+t$ that the relay-coil example turned into a kilovolt spike appears here as a
+sub-volt disturbance because the current and the inductance are each far
+smaller, but the mechanism is one, and an engineer who has the relay
+calculation in hand has the ground-bounce calculation too.
 
 \engterm{Power-rail decoupling} is the second-most-common failure
 mode. Every active device on a board draws current pulses from its
