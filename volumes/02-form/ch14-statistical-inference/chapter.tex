@@ -472,6 +472,72 @@ Volume I Chapter 8 worked the operational example. We treat the
 confidence interval as the chapter's default and refer the reader
 to Volume I Chapter 8 for the prediction-interval construction.
 
+\subsection{Tolerance intervals: covering a proportion of the population}
+
+A third interval answers a question the first two do not, and it is
+the interval a materials specification most often needs. A confidence
+interval brackets the mean; a prediction interval brackets the next
+single draw; a \engterm{tolerance interval} brackets a stated
+proportion of the whole population, with a stated confidence. A
+$95/99$ tolerance interval is the interval that contains at least
+$99\,\%$ of the population with $95\,\%$ confidence, and it is the
+right object when a drawing calls out that ninety-nine percent of
+produced parts must fall within a dimensional band. The distinction
+matters because the three intervals have three different limiting
+behaviours. The confidence half-width shrinks to zero as $1/\sqrt{n}$,
+because enough data pin the mean exactly; the prediction and tolerance
+half-widths shrink toward a fixed multiple of the population standard
+deviation, because a future draw and a population proportion both
+carry irreducible spread that no sample size removes.
+
+For a Gaussian population the two-sided tolerance interval is
+$\bar{x} \pm k\,s$, where the \engterm{tolerance factor} $k =
+k(n, p, 1-\alpha)$ depends on the sample size $n$, the population
+proportion $p$ to be covered, and the confidence $1-\alpha$. The
+factor is larger than both the confidence and the prediction
+multiplier, because it must simultaneously cover a population fraction
+and hedge against the sample's estimate of the mean and standard
+deviation being off. A workable closed-form approximation for the
+two-sided factor is Howe's,
+\[
+k \approx z_{(1+p)/2}\,
+\sqrt{\frac{(n-1)\bigl(1 + \tfrac{1}{n}\bigr)}
+{\chi^{2}_{\alpha,\, n-1}}},
+\]
+where $z_{(1+p)/2}$ is the standard-normal quantile for the covered
+proportion and $\chi^{2}_{\alpha, n-1}$ is the lower-$\alpha$
+chi-square quantile that discounts the sample standard deviation for
+its own uncertainty.
+
+\paragraph{Worked example: a dimensional tolerance interval.} A run of
+$n = 30$ machined pins has sample mean diameter $\bar{x} =
+12.00\,\si{\milli\meter}$ and sample standard deviation $s =
+0.040\,\si{\milli\meter}$, and the specification asks for the band that
+contains $99\,\%$ of pins with $95\,\%$ confidence. The covered
+proportion is $p = 0.99$, so $z_{(1+p)/2} = z_{0.995} = 2.576$; the
+confidence is $95\,\%$, so $\alpha = 0.05$ and the lower chi-square
+quantile at $29$ degrees of freedom is $\chi^{2}_{0.05, 29} = 17.71$.
+Howe's factor is $k \approx 2.576\sqrt{29 \cdot (1 + 1/30)/17.71} =
+2.576\sqrt{29 \cdot 1.0333/17.71} = 2.576\sqrt{1.692} = 2.576 \cdot
+1.301 = 3.35$, so the tolerance interval is $12.00 \pm 3.35 \cdot 0.040
+= 12.00 \pm 0.134 = [11.87, 12.13]\,\si{\milli\meter}$. The contrast
+with the mean's confidence interval is the whole lesson: the $95\,\%$
+confidence interval for the mean is $12.00 \pm 2.045 \cdot 0.040/
+\sqrt{30} = 12.00 \pm 0.015\,\si{\milli\meter}$, nearly nine times
+narrower, and an engineer who quoted it against a population-coverage
+specification would certify a band that in truth holds far less than
+ninety-nine percent of the pins. The tolerance factor $3.35$ against
+the naive $z_{0.995} = 2.576$ is the premium the finite sample pays for
+not knowing the true mean and standard deviation: were $\mu$ and
+$\sigma$ known exactly, the interval would be $\mu \pm 2.576\,\sigma$,
+and the extra $0.77$ in the multiplier is the estimation hedge that
+vanishes only as $n \to \infty$. Figure
+\ref{fig:vol02ch14:tolerance-interval} draws the three half-widths
+together against sample size and shows the confidence curve diving to
+zero while the prediction and tolerance curves level off above it.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-tolerance-interval.tex}
+
 \begin{estimation}
 \textbf{Question.} A pilot of $n = 20$ flexural strength tests on a
 new ceramic gives sample mean $\bar{x} = 480 \,\si{\mega\pascal}$
@@ -893,6 +959,112 @@ paired data must permute within pairs, and a bootstrap on dependent
 data must resample blocks, or both procedures silently assume an
 independence the data do not have.
 \end{mastery}
+
+\subsection{Equivalence testing: proving two things are the same}
+
+A significance test that fails to reject its null has not shown the
+two groups are equal; it has shown the data do not rule equality out,
+which is a different and weaker statement. The engineer who must
+demonstrate that a cheaper supplier's material is \emph{as good as}
+the incumbent, or that a redesign did not degrade a response, needs a
+test whose rejection means sameness, not a test whose non-rejection is
+read, wrongly, as sameness. \engterm{Equivalence testing} supplies it
+by inverting the burden of proof. The engineer states an
+\engterm{equivalence margin} $\Delta$, the largest difference that is
+practically negligible, and tests the compound null that the true
+difference lies \emph{outside} $[-\Delta, +\Delta]$ against the
+alternative that it lies inside. Rejecting that null establishes
+equivalence within the margin, at the stated level.
+
+The standard machine is the \engterm{two one-sided tests} procedure,
+or TOST. The interval null $\abs{\mu_{1} - \mu_{2}} \geq \Delta$ splits
+into two one-sided pieces, $\mu_{1} - \mu_{2} \leq -\Delta$ and
+$\mu_{1} - \mu_{2} \geq +\Delta$, and each is tested at level $\alpha$
+with a one-sided $t$-test. Equivalence is declared only when both
+one-sided tests reject, which happens exactly when the ordinary
+$(1 - 2\alpha)$ confidence interval for the difference falls entirely
+inside $[-\Delta, +\Delta]$. The $1 - 2\alpha$ rather than $1 - \alpha$
+level is not a slip: the two one-sided tests at $\alpha$ each control
+their own tail, and their conjunction controls the equivalence claim
+at $\alpha$ while corresponding to a $90\,\%$ interval when $\alpha =
+0.05$.
+
+\paragraph{Worked example: qualifying a substitute alloy.} A qualified
+alloy has a mean tensile strength the engineer will accept a shortfall
+of no more than $\Delta = 10\,\si{\mega\pascal}$ against; a candidate
+substitute must be shown equivalent within that margin. Twenty
+specimens of each give $\bar{x}_{\text{inc}} = 465$, $\bar{x}_{\text{cand}}
+= 461$, a difference of $4\,\si{\mega\pascal}$, with a pooled standard
+error of the difference of $\widehat{\mathrm{se}} = 2.6\,
+\si{\mega\pascal}$ on $38$ degrees of freedom. The naive reading notes
+that an ordinary two-sided $t$-test of $H_{0}: \mu_{\text{inc}} =
+\mu_{\text{cand}}$ gives $t = 4/2.6 = 1.54$, $p \approx 0.13$, fails to
+reject, and stops, concluding nothing. The equivalence test does the
+work the naive test cannot. The upper one-sided statistic for
+$H_{0}: \mu_{\text{inc}} - \mu_{\text{cand}} \geq 10$ is $t_{U} = (4 -
+10)/2.6 = -2.31$, which rejects at $\alpha = 0.05$ against the lower
+critical value $-t_{0.95, 38} = -1.686$; the lower one-sided statistic
+for $H_{0}: \mu_{\text{inc}} - \mu_{\text{cand}} \leq -10$ is $t_{L} =
+(4 + 10)/2.6 = 5.38$, which rejects easily. Both one-sided tests
+reject, so equivalence within $10\,\si{\mega\pascal}$ is established at
+$\alpha = 0.05$. Equivalently, the $90\,\%$ confidence interval for the
+difference is $4 \pm 1.686 \cdot 2.6 = [-0.38, 8.38]\,\si{\mega\pascal}$,
+which sits inside $[-10, 10]$, and the substitute qualifies. The
+lesson is the asymmetry the two frames expose: the ordinary test's
+$p = 0.13$ was silent on equivalence, and an engineer who had read
+its non-rejection as ``the alloys are the same'' would have made a
+claim the data did not support, in the same direction and for the same
+reason that a non-significant safety test is silent on whether a
+hazard is absent.
+
+\subsection{Sequential testing: deciding as the data arrive}
+
+The tests so far fix the sample size in advance and decide once. When
+observations arrive one at a time and each new unit is costly, the
+engineer can often decide sooner by testing after every observation,
+provided the stopping rule is designed to hold the error rates. Naive
+repeated testing inflates the false-alarm rate exactly as
+multiple comparisons do, so the sequential procedure must be built to
+account for the repeated looks. The \engterm{sequential probability
+ratio test}, or SPRT, does this for a simple null against a simple
+alternative by accumulating the log-likelihood ratio and comparing it
+to two boundaries \cite[ch.~10]{text:wasserman2004}. After $m$
+observations the running statistic is
+\[
+\Lambda_{m} = \sum_{i=1}^{m} \ln\frac{p(x_{i}; \theta_{1})}
+{p(x_{i}; \theta_{0})},
+\]
+and the rule accepts $H_{0}$ when $\Lambda_{m} \leq \ln B$, accepts
+$H_{1}$ when $\Lambda_{m} \geq \ln A$, and takes one more observation
+otherwise. The boundaries follow from the target error rates by Wald's
+approximation, $A \approx (1-\beta)/\alpha$ and $B \approx \beta/
+(1-\alpha)$, and the test's payoff is that its expected sample size
+under either hypothesis is typically well below the fixed-sample size
+that would achieve the same $\alpha$ and $\beta$.
+
+\paragraph{Worked example: an accept-on-quality sampling test.} An
+incoming lot is acceptable at a defect rate $p_{0} = 0.02$ and
+rejectable at $p_{1} = 0.10$, and the inspector wants $\alpha = 0.05$,
+$\beta = 0.10$. The boundaries are $A = 0.90/0.05 = 18$ and
+$B = 0.10/0.95 = 0.105$, so $\ln A = 2.89$ and $\ln B = -2.25$. Each
+inspected unit contributes to the running log-likelihood ratio $\ln
+(p_{1}/p_{0}) = \ln(0.10/0.02) = 1.609$ if it is defective and
+$\ln((1 - p_{1})/(1 - p_{0})) = \ln(0.90/0.98) = -0.0851$ if it is
+sound. Inspecting a stream that runs clean, each good unit subtracts
+$0.0851$ from the statistic, and after $\lceil 2.25/0.0851 \rceil = 27$
+consecutive good units the statistic crosses $\ln B$ and the lot is
+accepted, well before a fixed-sample plan of comparable power would
+finish. A single early defect adds $1.609$ and pushes the decision the
+other way: two defects in the first handful of units drive the
+statistic toward $\ln A = 2.89$ and reject the lot on a tiny sample.
+The expected number inspected under a clean lot is near $30$ against
+a fixed-sample plan needing on the order of $80$, and the saving is the
+reason acceptance sampling adopted the sequential design where units
+are expensive to test. The discipline the SPRT enforces is that the
+two boundaries, not a fixed count, define the stopping rule, and they
+were fixed from $\alpha$ and $\beta$ before the first unit was
+inspected, which is the same pre-specification discipline the failure
+section of this chapter demands of every analysis.
 
 \subsection{Decision-theoretic framing}
 
@@ -1965,6 +2137,71 @@ selects the one threshold the plant should deploy. A vendor who reports
 nor the cost ratio, and the number is silent on the decision the plant
 actually has to make.
 
+\subsection{Applied vignette: is the probability a probability? calibration}
+
+The ROC vignette read the classifier's output as a \emph{ranking} and
+asked which threshold to cut it at. A separate question the ROC curve
+cannot answer is whether the number the model reports as a probability
+behaves like one. A model that assigns $0.7$ to a batch of welds should
+see about seventy percent of that batch turn out defective; if instead
+only forty percent do, the model is \engterm{miscalibrated}, and every
+downstream decision that reads the probability literally, expected-cost
+thresholds, spare-part sizing, risk pricing, inherits the error. The
+distinction is sharp: ranking and calibration are independent
+properties, and a model can rank cases perfectly while reporting
+probabilities that are systematically too confident.
+
+Calibration is measured directly. Bin the predicted probabilities into
+intervals, and in each bin compare the mean predicted probability to
+the observed frequency of the positive class. A perfectly calibrated
+model places every bin on the $45$-degree line of the
+\engterm{reliability diagram}. Return to the weld classifier of the ROC
+vignette and read its ten deciles. The model's high-confidence bin, the
+welds it calls $95\,\%$ likely defective, contains parts that are
+defective only $82\,\%$ of the time; its low-confidence bin, the welds
+it calls $5\,\%$ likely, contains parts defective $14\,\%$ of the time.
+The reliability diagram in figure \ref{fig:vol02ch14:calibration} shows
+the curve crossing the diagonal with a shallower slope than one, the
+signature of an \engterm{overconfident} model that pushes its scores
+toward the extremes. This defect is invisible to the ROC curve, whose
+area was a healthy $0.88$: the model orders welds correctly, so every
+threshold sweep looks fine, while the probabilities it hands to a
+cost calculation are wrong.
+
+The single-number summary is the \engterm{Brier score}, the mean
+squared difference between the predicted probability and the binary
+outcome, $\mathrm{BS} = \frac{1}{n}\sum_{i}(\hat{p}_{i} - y_{i})^{2}$.
+It is a \engterm{proper scoring rule}: it is minimised in expectation
+only by reporting the true probability, so a model cannot game it by
+shading its forecasts toward zero or one. The Brier score decomposes,
+by the Murphy decomposition, into a calibration term (how far the
+reliability curve sits from the diagonal), a refinement term (how
+sharply the model separates the classes), and an irreducible term set
+by the base rate. A model can lower its Brier score either by
+calibrating better or by sharpening, and reading the decomposition
+tells the engineer which lever is available. For the weld classifier
+the calibration term is the large one, which says the fix is not a
+better feature set but a \engterm{recalibration} of the existing
+scores: fit a one-parameter logistic map from the raw score to a
+calibrated probability (\engterm{Platt scaling}) or a monotone
+step function (\engterm{isotonic regression}) on a held-out
+calibration set, and the reliability curve is pulled onto the diagonal
+without touching the ranking the ROC curve rewarded.
+
+The vignette's working point closes the pair. The ROC curve certifies
+that the model ranks; the reliability diagram certifies that its
+numbers can be read as probabilities; the two are separate audits and a
+deployment that feeds probabilities into a cost model needs both. A
+vendor who reports an area under the ROC curve of $0.88$ has reported
+the ranking audit and stayed silent on the calibration one, and an
+expected-cost threshold computed from uncalibrated scores places the
+cut in the wrong place by exactly the amount the reliability diagram
+would have exposed. The engineer asks for the reliability diagram and
+the Brier score, not the ROC area alone, whenever the probability
+itself, and not merely the ordering, drives the decision.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-calibration.tex}
+
 \subsection{Generalised linear models and Poisson regression}
 
 Linear regression and logistic regression are two instances of one
@@ -2368,6 +2605,42 @@ this rule is reporting an estimate of training error with a
 confidence-inflating disguise.
 \end{principle}
 
+\begin{mastery}
+Cross-validation estimates an average error; it does not by itself
+attach a valid interval to a single new prediction. \engterm{Conformal
+prediction} supplies one, and it does so without any distributional
+assumption, which is what distinguishes it from the parametric
+prediction interval of section 14.1. The split-conformal recipe is
+short. Partition the data into a training set and a held-out
+\engterm{calibration set}. Fit the model on the training set, and on
+each of the $m$ calibration points compute a \engterm{nonconformity
+score}, for regression the absolute residual $r_{j} = \abs{y_{j} -
+\hat{f}(x_{j})}$. For a target coverage $1 - \alpha$, take the
+$\lceil (m+1)(1-\alpha) \rceil / m$ empirical quantile $\hat{q}$ of the
+calibration scores. The prediction interval for a new point is then
+$\hat{f}(x_{\mathrm{new}}) \pm \hat{q}$, and its finite-sample coverage
+is at least $1 - \alpha$ under the single assumption that the
+calibration points and the new point are exchangeable, no Gaussian
+tail, no correct model, no asymptotics required. The guarantee is
+\engterm{marginal}, averaged over the randomness in the calibration
+draw, and the interval has constant width unless the score is
+normalised by a local spread estimate to make it adaptive. The
+mechanism is the same rank argument the permutation test used: the new
+point's score is equally likely to fall at any rank among the $m + 1$
+scores under exchangeability, so the probability it exceeds the
+$\lceil (m+1)(1-\alpha)\rceil$-th is at most $\alpha$ by counting
+alone. Conformal prediction is the working tool when the engineer needs
+a prediction interval with a coverage guarantee on a model whose error
+distribution is unknown or plainly non-Gaussian, a black-box regressor
+or a machine-learned classifier, where the parametric prediction
+interval has no license and the bootstrap prediction interval carries
+only an asymptotic one. Its limitation is the exchangeability
+assumption itself: a distribution shift between calibration and
+deployment, or a time-ordered series where the future is not
+exchangeable with the past, breaks the guarantee exactly as it breaks
+every other resampling method in this chapter.
+\end{mastery}
+
 \section{A worked case study: from data to a defensible interval}\pathtag{standard}
 
 The apparatus of the chapter earns its keep on a single problem
@@ -2576,6 +2849,40 @@ have sent the engineer to a mixture model before any single-Weibull
 number was reported.
 
 \input{volumes/02-form/ch14-statistical-inference/figures/fig-weibull-plot.tex}
+
+The Weibull plot presumes a Weibull. A stricter check makes no
+distributional assumption at all, and the engineer runs it before
+committing to the parametric family. The \engterm{Kaplan-Meier}
+estimator, or product-limit estimator, reconstructs the survival
+function $S(t) = \Pr[T > t]$ from censored data using only the order of
+the failures and the count still at risk. At each failure time $t_{(i)}$
+with $d_{i}$ failures among $n_{i}$ units still at risk just before it,
+the estimator multiplies the survival by the factor $(1 - d_{i}/n_{i})$,
+\[
+\hat{S}(t) = \prod_{t_{(i)} \leq t}\left(1 - \frac{d_{i}}{n_{i}}\right),
+\]
+and holds the step flat between failures, censored units leaving the
+at-risk count without triggering a drop. For the ten bearings, all
+distinct single failures, the at-risk count falls from ten by one at
+each failure time, so the survival steps down through $0.9, 0.8, \ldots,
+0.2$ across the eight failures and holds at $0.2$ past the last failure
+because the two units censored at $500$ hours never fail. Figure
+\ref{fig:vol02ch14:kaplan-meier} overlays the fitted Weibull survival
+curve on this step, and the two tracking each other through the
+observed range is the distribution-free licence for the parametric
+model that the Weibull plot only suggested. A parametric curve that
+pulled away from the Kaplan-Meier step, sitting above it in the middle
+and below it in the tail, would be the signal that the single-Weibull
+shape is wrong, sending the engineer to a two-parameter mixture or a
+different family before any characteristic-life number is quoted. The
+nonparametric estimate has its own uncertainty, the
+\engterm{Greenwood} variance $\widehat{\Var}[\hat{S}(t)] = \hat{S}(t)^{2}
+\sum_{t_{(i)} \leq t} d_{i}/(n_{i}(n_{i} - d_{i}))$, which widens the
+pointwise band toward the tail where few units remain at risk, and it is
+the reason a Kaplan-Meier curve near its right end is read with the same
+caution the Weibull fit's lower-tail extrapolation earns.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-kaplan-meier.tex}
 
 \subsection{Step three: the maximum-likelihood fit and its information}
 

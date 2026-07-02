@@ -182,6 +182,32 @@ matrix of its eigenvalues. The whole programme of the chapter is to
 find the basis in which a given matrix is as close to diagonal as it
 can be made.
 
+\begin{example}
+The abstract statement becomes concrete when the same map is written in
+two bases and the invariants are checked to agree. Take $\mat{A} =
+\begin{psmallmatrix} 4 & 1 \\ 2 & 3 \end{psmallmatrix}$ of section 10.1,
+with eigenvalues $5$ and $2$ and eigenvectors $\vect{v}_{1} = (1,1)
+\transpose$ and $\vect{v}_{2} = (1,-2)\transpose$. Change to the
+eigenbasis with $\mat{S} = \begin{psmallmatrix} 1 & 1 \\ 1 & -2
+\end{psmallmatrix}$, whose determinant is $-3$, so $\mat{S}\inv =
+\tfrac{1}{3}\begin{psmallmatrix} 2 & 1 \\ 1 & -1 \end{psmallmatrix}$.
+Computing $\mat{A}\mat{S}$ term by term gives $\begin{psmallmatrix} 5 &
+2 \\ 5 & -4 \end{psmallmatrix}$, each column being $\mat{A}$ applied to
+an eigenvector and therefore its eigenvalue times that eigenvector.
+Then $\mat{S}\inv(\mat{A}\mat{S}) = \begin{psmallmatrix} 5 & 0 \\ 0 & 2
+\end{psmallmatrix} = \diag(5, 2)$, the diagonal of eigenvalues. The
+trace is $7$ and the determinant is $10$ in both the original entries
+and the diagonal form, as similarity requires: the change of basis
+rewrites the same map and touches neither invariant. Change instead to
+a non-eigen basis, say $\mat{T} = \begin{psmallmatrix} 1 & 0 \\ 1 & 1
+\end{psmallmatrix}$; then $\mat{T}\inv\mat{A}\mat{T} =
+\begin{psmallmatrix} 5 & 1 \\ -4 & 2 \end{psmallmatrix}$, no longer
+diagonal but still with trace $7$ and determinant $10$. The eigenbasis
+is the one change of coordinates among all invertible ones that removes
+every off-diagonal entry; every other basis leaves the map coupled
+while preserving the two invariants the spectrum controls.
+\end{example}
+
 \subsection{The Rayleigh quotient}
 
 For a symmetric matrix $\mat{A}$ and a nonzero vector $\vect{x}$,
@@ -565,6 +591,92 @@ complex pair $3 \pm i$ says the mode spirals, with growth or decay
 rate set by the real part $3$ and oscillation rate set by the
 imaginary part $1$.
 
+\subsection{The companion matrix: polynomial roots as eigenvalues}\pathtag{mastery}
+
+Section 10.1.9 warned that eigenvalues should not be computed by
+factoring the characteristic polynomial. The reverse direction is a
+genuine tool. Every monic polynomial is the characteristic polynomial
+of a matrix built directly from its coefficients, so the roots of a
+polynomial are the eigenvalues of that matrix, and a stable eigensolver
+becomes a stable polynomial-root finder. For the monic degree-$n$
+polynomial $p(\lambda) = \lambda^{n} + c_{n-1}\lambda^{n-1} + \cdots +
+c_{1}\lambda + c_{0}$, the \engterm{companion matrix} is
+
+\[
+\mat{C} = \begin{pmatrix}
+0 & 0 & \cdots & 0 & -c_{0} \\
+1 & 0 & \cdots & 0 & -c_{1} \\
+0 & 1 & \cdots & 0 & -c_{2} \\
+\vdots & & \ddots & & \vdots \\
+0 & 0 & \cdots & 1 & -c_{n-1}
+\end{pmatrix},
+\]
+
+whose characteristic polynomial is exactly $p(\lambda)$.
+
+\begin{example}
+Take $p(\lambda) = \lambda^{3} - 6\lambda^{2} + 11\lambda - 6$, whose
+roots are wanted. The coefficients are $c_{2} = -6$, $c_{1} = 11$,
+$c_{0} = -6$, so the companion matrix is
+\[
+\mat{C} = \begin{pmatrix} 0 & 0 & 6 \\ 1 & 0 & -11 \\ 0 & 1 & 6
+\end{pmatrix}.
+\]
+Its trace is $6$ and its determinant is $6$, matching $-c_{2} = 6$ and
+$(-1)^{3}c_{0} = 6$, the sum and product the eigenvalues must satisfy.
+Expanding $\det(\mat{C} - \lambda\mat{I})$ returns $p(\lambda)$ itself,
+and the roots factor as $(\lambda - 1)(\lambda - 2)(\lambda - 3)$, so
+the eigenvalues are $1$, $2$, $3$. The point is not that this cubic
+happened to factor; it is that a routine which computes eigenvalues by
+shifted QR (section 10.6) applied to $\mat{C}$ returns the roots of any
+degree-$n$ polynomial without the numerical collapse of the
+radical formulas. This inversion is exactly what \texttt{numpy.roots}
+and MATLAB's \texttt{roots} do internally: they build the companion
+matrix and call the eigenvalue routine, trading a badly conditioned
+root-finding problem for a well-understood eigenvalue one. The
+conditioning is not free, high-degree companion matrices can be
+non-normal and their roots sensitive in the Bauer-Fike sense of
+section 10.1, which is why polynomial root-finding from raw
+coefficients is delicate at high degree, but the companion route is the
+best general-purpose method available.
+\end{example}
+
+\subsection{The spectral mapping theorem}\pathtag{standard}
+
+A polynomial in a matrix has a spectrum that is the polynomial applied
+to the spectrum of the matrix. If $\lambda$ is an eigenvalue of $\mat{A}$
+with eigenvector $\vect{v}$, then for any polynomial $p$,
+$p(\mat{A})\vect{v} = p(\lambda)\vect{v}$, so $p(\lambda)$ is an
+eigenvalue of $p(\mat{A})$ with the same eigenvector. This is the
+\engterm{spectral mapping theorem}, and it extends from polynomials to
+any function defined on the spectrum, which is why section 10.2's
+identity $f(\mat{A}) = \mat{S}f(\mat{\Lambda})\mat{S}\inv$ works: the
+eigenvectors are carried through unchanged and only the eigenvalues are
+transformed.
+
+\begin{example}
+Let $\mat{A}$ have eigenvalues $1$, $2$, $4$ and apply $p(\lambda) =
+\lambda^{2} - 3\lambda$. The spectral mapping theorem says the
+eigenvalues of $p(\mat{A}) = \mat{A}^{2} - 3\mat{A}$ are $p(1) = -2$,
+$p(2) = -2$, and $p(4) = 4$, computed by evaluating one scalar
+polynomial three times rather than by forming $\mat{A}^{2}$ and finding
+its spectrum afresh. Two consequences are worth naming. First, the
+spectrum of $p(\mat{A})$ can be more degenerate than that of $\mat{A}$:
+here the distinct eigenvalues $1$ and $2$ both map to $-2$, so
+$p(\mat{A})$ has a repeated eigenvalue where $\mat{A}$ had two simple
+ones, and its eigenspace at $-2$ is the two-dimensional span of the
+eigenvectors at $1$ and $2$. Second, the map lets an engineer design a
+matrix with a wanted spectrum by choosing $p$: to shift every
+eigenvalue of $\mat{A}$ leftward by a fixed amount, use $p(\lambda) =
+\lambda - s$, the shift behind inverse iteration in section 10.6; to
+square the gaps between eigenvalue magnitudes and accelerate power
+iteration, use $p(\lambda) = \lambda^{2}$, the trick the design
+exercises exploit. \Cref{fig:vol02:ch10:spectral-mapping} reads the
+images off the curve.
+\end{example}
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-spectral-mapping.tex}
+
 \section{Diagonalisation}\pathtag{core}
 
 A square matrix $\mat{A}$ is \engterm{diagonalisable} when there
@@ -882,6 +994,59 @@ The diagonal dominance of the chain ($4 > 1 + 1$) was enough to
 guarantee positive definiteness and a usable lower bound on the
 stiffness, both without a single matrix operation.
 \end{estimation}
+
+\subsection{The Ky Fan principle: the top eigenvalues as best captured energy}\pathtag{mastery}
+
+The Rayleigh quotient says the largest eigenvalue is the most energy any
+single unit direction can extract from a symmetric form. The natural
+extension asks how much energy the best $k$ directions can extract
+together, and the answer is the sum of the $k$ largest eigenvalues.
+
+\begin{principle}[Ky Fan maximum principle]
+For a symmetric matrix $\mat{A}$ with eigenvalues $\lambda_{1} \geq
+\cdots \geq \lambda_{n}$,
+\[
+\lambda_{1} + \cdots + \lambda_{k} = \max_{\mat{Q}\transpose\mat{Q}
+= \mat{I}_{k}} \tr(\mat{Q}\transpose\mat{A}\mat{Q}),
+\]
+the maximum taken over all $n \times k$ matrices $\mat{Q}$ with
+orthonormal columns, and it is achieved by the $\mat{Q}$ whose columns
+are the top $k$ eigenvectors.
+\end{principle}
+
+The quantity $\tr(\mat{Q}\transpose\mat{A}\mat{Q}) = \sum_{j=1}^{k}
+\vect{q}_{j}\transpose\mat{A}\vect{q}_{j}$ is the total form-energy the
+frame $\mat{Q}$ captures, a sum of $k$ Rayleigh quotients over an
+orthonormal set. The $k = 1$ case is the Rayleigh maximum. The $k = n$
+case is the trace identity $\sum_{i}\lambda_{i} = \tr\mat{A}$, since any
+full orthonormal basis captures all the energy. The principle is the
+eigenvalue face of the same optimality Eckart-Young gives the singular
+values: choosing the top $k$ eigenvectors is optimal because no other
+$k$-dimensional frame reaches a higher partial trace.
+
+\begin{example}
+The principle turns PCA's optimality claim into an inequality that can
+be checked by hand. Take the covariance eigenvalues $\lambda =
+(6.0,\ 3.2,\ 1.6,\ 0.9,\ 0.5,\ 0.3)$, total $12.5$. A two-component PCA
+keeps the frame of the top two eigenvectors and captures $\lambda_{1} +
+\lambda_{2} = 9.2$, a fraction $9.2/12.5 = 0.736$ of the variance. Ky
+Fan guarantees no other pair of orthonormal directions does better:
+pick any two orthonormal vectors, form their two Rayleigh quotients,
+and their sum cannot exceed $9.2$. A naive alternative, keeping the two
+raw features of largest individual variance, is exactly the special
+case where $\mat{Q}$ is two standard basis vectors, and its captured
+energy is the sum of two diagonal entries of the covariance, which the
+principle bounds below $9.2$ unless those axes happen to be
+eigenvectors. \Cref{fig:vol02:ch10:ky-fan-partial-trace} plots the
+partial trace as the ceiling curve at each $k$: the gap between that
+curve and the full trace is the tail energy PCA discards, the same tail
+the scree plot of section 10.8 asks the reader to inspect. The
+companion \engterm{Ky Fan minimum principle} takes the bottom $k$
+eigenvalues as the smallest achievable captured energy, which is the
+quantity a whitening or noise-floor analysis reads instead.
+\end{example}
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-ky-fan-partial-trace.tex}
 
 \section{The singular value decomposition}\pathtag{core}
 
@@ -2873,6 +3038,103 @@ the eigenvalues govern the asymptotic fate, and a saturation limit
 crossed during a transient can end the system before the asymptote
 arrives. Stability analysis is eigenvalue location plus a check that
 the transient the eigenvalues do not see stays within bounds.
+
+\subsection{Applied vignette: moving the eigenvalues by feedback}\pathtag{standard}
+
+Linear-stability analysis reads the eigenvalues and reports a verdict.
+The control engineer takes the next step: when the verdict is unstable,
+change the eigenvalues. A feedback law adds a term to the dynamics that
+relocates the spectrum wherever the designer chooses, and the whole
+apparatus of this chapter, characteristic polynomials, similarity, and
+the constraint that a real matrix carries complex eigenvalues in
+conjugate pairs, is what makes the relocation a calculation rather than
+a search.
+
+Consider an inverted-pendulum cart, linearised about the upright
+position, a textbook unstable plant whose open-loop matrix, current as
+of 2025, is
+
+\[
+\mat{A} = \begin{pmatrix} 0 & 1 \\ 6 & 0 \end{pmatrix}, \qquad
+\mat{B} = \begin{pmatrix} 0 \\ 1 \end{pmatrix},
+\]
+
+with state $\vect{x} = (\theta, \dot{\theta})$ the tilt angle and its
+rate and $\mat{B}$ the channel through which the motor force enters. The
+open-loop eigenvalues solve $\lambda^{2} - 6 = 0$, giving $\lambda =
+\pm\sqrt{6} \approx \pm 2.45$. The positive root sits in the right
+half-plane, so the pendulum falls: the free response grows like
+$e^{2.45t}$, and no amount of eigenvalue reading changes that fate. The
+open-loop spectrum is the diagnosis, not the cure.
+
+State feedback applies the force $u = -\mat{K}\vect{x}$ with gain row
+$\mat{K} = (k_{1}, k_{2})$, and the closed-loop dynamics become
+$\dot{\vect{x}} = (\mat{A} - \mat{B}\mat{K})\vect{x}$ with
+
+\[
+\mat{A} - \mat{B}\mat{K} = \begin{pmatrix} 0 & 1 \\ 6 - k_{1} & -k_{2}
+\end{pmatrix}.
+\]
+
+The design target is a stable, well-damped pair, say the eigenvalues
+$-2 \pm 2i$, a choice that sets both the decay rate (real part $-2$) and
+the oscillation rate (imaginary part $2$). Those eigenvalues are the
+roots of the desired characteristic polynomial $(\lambda + 2 - 2i)
+(\lambda + 2 + 2i) = \lambda^{2} + 4\lambda + 8$. The closed-loop
+characteristic polynomial is $\lambda^{2} + k_{2}\lambda + (k_{1} - 6)$,
+read off the $2 \times 2$ matrix by trace and determinant. Matching
+coefficients term by term gives $k_{2} = 4$ and $k_{1} - 6 = 8$, so
+$k_{1} = 14$. The gain $\mat{K} = (14, 4)$ places the closed-loop
+eigenvalues exactly at $-2 \pm 2i$, and the pendulum, unstable when
+left alone, now returns to upright with a damped oscillation the
+designer specified. \Cref{fig:vol02:ch10:pole-placement} draws the move
+from the right half-plane to the assigned locations.
+
+Two disciplines from earlier in the chapter attach to the result.
+First, the assigned eigenvalues must form a real spectrum, so complex
+targets come in conjugate pairs; asking for $-2 + 2i$ without its
+conjugate would demand a complex gain and a complex closed-loop matrix,
+which no real actuator produces. Second, the placement is only as good
+as the model: the eigenvalues of $\mat{A} - \mat{B}\mat{K}$ sit exactly
+where the design put them for the nominal $\mat{A}$, but a parameter
+drift perturbs $\mat{A}$, and the Bauer-Fike bound of section 10.1
+sizes how far the closed-loop poles move under that perturbation. A
+design that places a pole a hair inside the stable region is one
+modelling error away from instability, which is why the assigned poles
+carry a margin, the distance from the imaginary axis, rather than
+sitting on the frontier. The eigenvalue that was a verdict in the
+stability subsection is a design variable here, and the same
+characteristic polynomial that diagnosed the failure prescribes the
+gain that fixes it. Whether every eigenvalue can be placed at all is a
+controllability question that Volume IX Chapter 4 settles; when it can,
+this coefficient-matching is the placement.
+
+\begin{mastery}
+The \engterm{matrix sign function} counts eigenvalues by half-plane
+without computing them. For a matrix $\mat{A}$ with no eigenvalues on
+the imaginary axis, define $\operatorname{sign}(\mat{A})$ as the matrix
+function that applies the scalar sign (positive real part maps to $+1$,
+negative to $-1$) to each eigenvalue through the spectral mapping
+theorem: $\operatorname{sign}(\mat{A}) = \mat{S}\operatorname{sign}
+(\mat{\Lambda})\mat{S}\inv$. The result is a matrix whose eigenvalues
+are all $\pm 1$, and the number of $+1$ eigenvalues equals the number
+of eigenvalues of $\mat{A}$ in the right half-plane. The half-plane
+count is then $\tfrac{1}{2}(n + \tr\operatorname{sign}(\mat{A}))$,
+recovered from a single trace once the sign function is formed. The
+sign function is computed not by diagonalising, which fails for
+near-defective $\mat{A}$, but by the Newton iteration $\mat{X}_{k+1} =
+\tfrac{1}{2}(\mat{X}_{k} + \mat{X}_{k}\inv)$ started at $\mat{X}_{0} =
+\mat{A}$, which converges quadratically to $\operatorname{sign}
+(\mat{A})$ using only matrix inverses and no spectral decomposition.
+This is how a large stability analysis certifies that a closed-loop
+matrix has zero right-half-plane eigenvalues without solving the full
+eigenproblem, and it is the linear-algebra core of the Lyapunov and
+Riccati solvers that control design leans on. The imaginary-axis
+exclusion is essential: an eigenvalue exactly on the axis leaves the
+sign undefined, the same neutral case the linearisation cannot resolve.
+\end{mastery}
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-pole-placement.tex}
 
 \section{Worked examples: PCA, modal analysis, image compression}\pathtag{standard}
 

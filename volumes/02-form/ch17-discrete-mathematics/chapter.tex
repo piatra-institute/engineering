@@ -476,6 +476,44 @@ the complement count again. The audit matters because a designer
 who assumed ``most codes have distinct digits'' would be wrong by a
 wide margin: more than a quarter of the space repeats a digit.
 
+\subsection{Worked example: counting by a lattice-path bijection}
+
+A count that resists a direct product rule often yields to a
+bijection onto lattice paths, and the reflection principle then does
+the arithmetic. Consider a tally in which votes for two candidates
+$X$ and $Y$ are opened one at a time, four each, and ask in how many
+of the $\binom{8}{4} = 70$ opening orders candidate $X$ is never
+behind $Y$ at any point in the count. Encode an opening order as a
+monotone lattice path from $(0, 0)$ to $(4, 4)$, a step right for
+each $X$ vote and a step up for each $Y$ vote (figure
+\ref{fig:vol02:ch17:catalan-lattice}). The condition ``$X$ never
+behind'' is exactly ``the path never rises above the main diagonal
+$y = x$,'' and the paths with that property are the ones the Catalan
+number $C_{4}$ counts.
+
+The reflection principle counts the \emph{bad} paths, the ones that
+touch the forbidden line $y = x + 1$ at least once. Reflect the
+portion of a bad path up to its first touch of that line across the
+line itself. The reflection swaps right steps and up steps along that
+prefix, and it carries the endpoint $(4, 4)$ to $(4 - 1, 4 + 1) =
+(3, 5)$, so the reflected paths are exactly the monotone paths from
+$(0, 0)$ to $(3, 5)$, of which there are $\binom{8}{5} = \binom{8}{3}
+= 56$. The reflection is a bijection between bad paths and these
+shifted paths, so the good paths number
+\[
+\binom{8}{4} - \binom{8}{5} = 70 - 56 = 14 = C_{4},
+\]
+in agreement with the closed form $C_{n} = \frac{1}{n+1}
+\binom{2n}{n}$ at $n = 4$. The same count, read through the
+diagonal-avoidance bijection, is the number of balanced strings of
+four pairs of brackets, the number of shapes of a binary tree on
+four internal nodes, and the number of ways to triangulate a hexagon.
+The engineer's transferable move is the one the bijective principle
+names: replace a hard direct count by an equivalent path count, then
+let reflection subtract the forbidden paths.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-catalan-lattice.tex}
+
 \subsection{Inclusion-exclusion}
 
 The sum rule gives $\abs{A \cup B} = \abs{A} + \abs{B}$ when $A$
@@ -536,6 +574,78 @@ chance that a random permutation has no fixed point settles near
 $37\%$ for all but the smallest $n$. The constant is why a
 naive ``random reassignment'' of $n$ items to $n$ slots leaves about
 $37\%$ of items moved off every original slot regardless of scale.
+
+\subsection{Worked example: counting onto assignments}
+
+Inclusion-exclusion earns its place on a problem an engineer meets
+whenever a set of items must be spread across a set of channels with
+none left idle. How many ways can $5$ distinct log records be
+assigned to $3$ distinct storage shards so that every shard receives
+at least one record? Without the ``at least one'' constraint the
+count is $3^{5} = 243$, the product-rule count of independent
+choices. The constraint removes the assignments that miss a shard,
+and inclusion-exclusion counts those. Let $A_{i}$ be the set of
+assignments that avoid shard $i$. An assignment avoiding one named
+shard sends every record to the remaining two, $2^{5} = 32$ ways, and
+there are $\binom{3}{1} = 3$ such shards; an assignment avoiding two
+named shards sends every record to the single survivor, $1^{5} = 1$
+way, with $\binom{3}{2} = 3$ such pairs; no assignment can avoid all
+three shards. The surjective count is
+\[
+3^{5} - \binom{3}{1} 2^{5} + \binom{3}{2} 1^{5}
+= 243 - 3 \cdot 32 + 3 \cdot 1 = 243 - 96 + 3 = 150.
+\]
+The general formula for the number of surjections from an $n$-set
+onto a $k$-set is $\sum_{j=0}^{k} (-1)^{j} \binom{k}{j} (k - j)^{n}$,
+and dividing by $k!$ (the orderings of the shards, when the shards
+are interchangeable) recovers the Stirling number of the second kind
+$S(n, k)$, here $150 / 3! = 25$, the count of ways to partition $5$
+records into $3$ non-empty unlabelled groups. The two answers differ
+by exactly the factor an engineer must decide on before counting:
+whether the shards carry identities or are interchangeable. The
+inclusion-exclusion structure is the same one the derangement count
+used, with ``avoids shard $i$'' in place of ``fixes position $i$.''
+
+\subsection{Worked example: counting by expectation}
+
+A counting question sometimes yields fastest not to a formula for the
+count itself but to the \engterm{expected value} of a quantity, and the
+tool that makes such counts routine is the linearity of expectation:
+the expected value of a sum of random quantities is the sum of their
+expected values, whether or not the quantities are independent. The
+canonical engineering instance is the \engterm{coupon-collector
+problem}, which an engineer meets whenever a process must observe every
+one of $n$ distinct items by sampling uniformly at random with
+replacement. How many draws, on average, are needed to see all $n$? The
+question governs how long a randomised test must run to touch every one
+of $n$ code paths it hits at random, how many packets a receiver must
+buffer before every one of $n$ fountain-coded blocks has arrived, and
+how many random probes a cache-profiling run needs to observe every
+line.
+
+Split the collection into phases. Phase $i$ runs from the moment $i - 1$
+distinct items have been seen until the $i$-th new item appears. During
+phase $i$ each draw is new with probability $(n - i + 1)/n$, since $n -
+i + 1$ of the $n$ items are still missing, so the number of draws in
+phase $i$ is a geometric random variable with expected value $n / (n -
+i + 1)$. Linearity of expectation adds the phase costs with no
+independence assumption:
+\[
+\E[\text{draws}] = \sum_{i=1}^{n} \frac{n}{n - i + 1}
+= n \sum_{k=1}^{n} \frac{1}{k} = n H_{n},
+\]
+where $H_{n} = 1 + \tfrac12 + \cdots + \tfrac1n$ is the $n$-th harmonic
+number. The harmonic number grows as $H_{n} \approx \ln n + 0.577$, so
+collecting all $n$ items costs about $n \ln n$ draws, not $n$: an
+engineer who budgets $n$ random samples to cover $n$ items falls short
+by a factor of $\ln n$. For $n = 100$ code paths the expected draw
+count is $100 \cdot H_{100} \approx 100 \cdot 5.19 = 519$, more than
+five times the naive estimate. The last few items dominate the cost,
+because the final coupon alone contributes an expected $n$ draws, the
+tail an engineer feels as the long wait for the last untested case. The
+same $n H_{n}$ appears as the worst-case ratio of the greedy set-cover
+algorithm in section 17.8, and the appearance is no coincidence: both
+count how a covering process slows as the uncovered remainder shrinks.
 
 \begin{mastery}
 Counting and probability join in the \engterm{probabilistic method},
@@ -790,6 +900,81 @@ explosion (section 17.8). The reader who conflates the two, assuming
 a Hamilton cycle is as easy to find as an Euler circuit, has
 committed the chapter's most expensive misjudgement.
 
+\subsection{Applied vignette: de Bruijn sequences and genome
+assembly}\pathtag{standard}
+
+The even-degree Euler test is not a museum piece about eighteenth
+century bridges. It is the engine of two live engineering tasks that
+look unrelated until the graph is drawn: designing a shift-register
+sequence that cycles through every possible window of bits, and
+assembling a genome from millions of short overlapping reads. Both
+are Euler-circuit problems on a \engterm{de Bruijn graph}, and both
+turn on the same fact that made K\"{o}nigsberg tractable and the
+Hamilton problem intractable, that an edge-traversal question is easy
+where a vertex-traversal question is hard.
+
+\paragraph{The de Bruijn graph.}
+Fix an alphabet of size $\sigma$ and a window length $\ell$. The de
+Bruijn graph $B(\sigma, \ell)$ has one vertex per string of length
+$\ell - 1$ and one directed edge per string of length $\ell$: the
+edge for the string $s_{1} s_{2} \cdots s_{\ell}$ runs from the
+vertex $s_{1} \cdots s_{\ell-1}$ to the vertex $s_{2} \cdots
+s_{\ell}$, sliding the window one symbol. Figure
+\ref{fig:vol02:ch17:de-bruijn} draws the binary case $B(2, 3)$: four
+vertices (the $2$-mers), eight edges (the $3$-mers). Every vertex has
+in-degree $\sigma$ and out-degree $\sigma$, because a length-$(\ell-1)$
+string can be extended by any of $\sigma$ symbols on either end, so
+the graph is connected with all degrees balanced, and the directed
+form of Euler's theorem guarantees an Euler circuit through all
+$\sigma^{\ell}$ edges.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-de-bruijn.tex}
+
+\paragraph{Shift-register sequences.}
+A \engterm{de Bruijn sequence} of order $\ell$ over $\sigma$ symbols
+is a cyclic string in which every one of the $\sigma^{\ell}$ possible
+windows of length $\ell$ appears exactly once. Reading the first
+symbol of each edge along an Euler circuit of $B(\sigma, \ell)$
+produces exactly such a sequence, because the circuit visits each
+length-$\ell$ edge once and consecutive edges overlap by $\ell - 1$
+symbols. For the binary order-$3$ graph, the circuit
+$000, 001, 011, 111, 110, 101, 010, 100$ reads out the cyclic
+sequence $00011101$, which contains all eight $3$-bit windows once
+around the loop. These sequences are the design pattern behind
+maximal-length feedback shift registers used in spread-spectrum
+communication, in the position-encoding patterns printed on rotary
+encoders and on the dot grids of digital pens, and in memory
+built-in self-test, where a single short cyclic pattern must exercise
+every $\ell$-bit state a circuit can hold. Hierholzer's algorithm
+constructs the circuit in $O(\sigma^{\ell})$ time, linear in the
+number of windows, so generating a de Bruijn sequence is cheap even
+where the window count is large.
+
+\paragraph{Genome assembly.}
+A modern sequencer does not read a chromosome end to end; it reads
+millions of short fragments of a few hundred bases each and leaves
+the reassembly to software. The Eulerian formulation, introduced to
+assembly by Pevzner and colleagues, breaks each read into its
+overlapping $\ell$-mers and builds a de Bruijn graph whose edges are
+the observed $\ell$-mers and whose vertices are the flanking
+$(\ell - 1)$-mers. A walk that uses every edge once spells a sequence
+consistent with every observed $\ell$-mer, so the assembled genome is
+an Euler path through the read graph. The formulation is the reason
+short-read assembly is computationally feasible at all: the
+alternative, an \engterm{overlap} graph whose Hamilton path visits
+each read once, poses the NP-complete vertex-traversal problem the
+previous subsection warned against, while the de Bruijn formulation
+poses the polynomial-time edge-traversal problem. The engineer's
+payoff is exactly the K\"{o}nigsberg lesson at genomic scale: recast
+a ``visit every object once'' question as ``traverse every edge
+once'' and an intractable search becomes a linear-time walk. The
+practical assemblers layer real-world corrections on top, since
+sequencing errors create spurious edges, repeated genomic regions
+create multiple valid Euler paths, and coverage gaps break
+connectivity, but the skeleton is the Euler circuit, and the
+degree-balance condition that makes it exist is the same count that
+settled the bridges.
+
 \subsection{Connectedness, components, trees}
 
 An undirected graph is \engterm{connected} if there is a path
@@ -844,6 +1029,81 @@ network designer cannot enumerate candidate spanning trees for a
 graph of any size, and the reason the minimum-spanning-tree
 algorithms of section 17.3 earn their place: they find the cheapest
 tree without listing the $n^{n-2}$ candidates.
+
+Cayley's formula is not a piece of folklore to be memorised; it is a
+bijection, and exhibiting the bijection both proves the count and shows
+the bijective principle of section 17.1 at work on a structure an
+engineer meets daily. The device is the \engterm{Prufer sequence}, a
+map that turns a labelled tree on $n$ vertices into a length-$(n-2)$
+string over the label alphabet $\set{1, \ldots, n}$. Encoding runs a
+short loop: while more than two vertices remain, find the leaf with the
+smallest label, record the label of its unique neighbour, and delete
+the leaf. The loop stops with two vertices and a recorded sequence of
+$n - 2$ symbols. Figure \ref{fig:vol02:ch17:prufer} shows the first
+step on a six-vertex tree, whose smallest leaf is vertex $1$ with
+neighbour $4$, so the sequence opens with $4$. Continuing on that tree,
+the smallest leaf becomes $2$ (neighbour $3$), then $5$ (neighbour
+$3$), then $3$ (neighbour $4$), leaving vertices $4$ and $6$; the full
+Prufer sequence is $(4, 3, 3, 4)$, four symbols for a six-vertex tree.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-prufer.tex}
+
+The map inverts. A vertex's label appears in the finished sequence
+exactly $\deg(v) - 1$ times, so a vertex absent from the sequence is a
+leaf, and the decoding loop rebuilds the tree by repeatedly joining the
+smallest absent label to the current sequence head, then striking that
+head from the sequence. Because encoding and decoding are mutual
+inverses, the trees on $\set{1, \ldots, n}$ are in bijection with the
+length-$(n-2)$ strings over an $n$-symbol alphabet, and the product
+rule counts those strings as $n^{n-2}$. Cayley's formula falls straight
+out of the bijective principle, and the same encoding delivers a bonus
+an engineer sometimes needs: to sample a labelled tree uniformly at
+random, draw a uniform random Prufer sequence of $n - 2$ symbols and
+decode it, which runs in $O(n \log n)$ and needs no rejection. The
+degree of vertex $v$ in the sampled tree is one more than the number of
+times $v$ was drawn, so the encoding also reads off the tree's degree
+distribution before the tree is built.
+
+Cayley's formula counts spanning trees of the complete graph, where
+every pair of vertices is joined. For a graph that is not complete
+the count is read off a determinant, by \engterm{Kirchhoff's
+matrix-tree theorem}: the number of spanning trees equals any
+cofactor of the graph's Laplacian $L = D - A$, that is, the
+determinant of $L$ with one row and the matching column deleted. A
+worked instance fixes the mechanics and shows the theorem agreeing
+with Cayley where the two overlap. Take the complete graph $K_{4}$ on
+$\set{1, 2, 3, 4}$. Every vertex has degree $3$, so $D = 3 I$, and
+the off-diagonal Laplacian entries are $-1$ for each edge. Delete row
+and column $1$ to get the $3 \times 3$ minor
+\[
+M = \begin{pmatrix}
+3 & -1 & -1 \\
+-1 & 3 & -1 \\
+-1 & -1 & 3
+\end{pmatrix},
+\qquad \det M = 3(9 - 1) + 1(-3 - 1) - 1(1 + 3) = 24 - 4 - 4 = 16,
+\]
+matching Cayley's $4^{4-2} = 16$. Now remove one edge, say
+$\set{1, 4}$, leaving the ``diamond'' of two triangles sharing the
+edge $\set{2, 3}$. Vertices $1$ and $4$ drop to degree $2$ while $2$
+and $3$ stay at degree $3$; deleting row and column $1$ from the new
+Laplacian gives the minor
+\[
+M' = \begin{pmatrix}
+3 & -1 & -1 \\
+-1 & 3 & -1 \\
+-1 & -1 & 2
+\end{pmatrix},
+\qquad \det M' = 3(6 - 1) + 1(-2 - 1) - 1(1 + 3) = 15 - 3 - 4 = 8.
+\]
+The diamond has $8$ spanning trees, half the complete graph's, and
+the determinant delivers the count without enumeration. The theorem
+is the working tool when a network designer needs the number of
+distinct ways a graph can be held connected by a tree, a quantity
+that governs reliability estimates and the normalising constant of
+certain random-spanning-tree samplers, and it is one more instance of
+the section-17.2 mastery theme that a combinatorial graph question
+often has a clean linear-algebra answer.
 
 \subsection{Working metrics}
 
@@ -1007,6 +1267,37 @@ single-layer board layout: if the connection graph exceeds the
 planar edge ceiling, no via-free routing exists and the design needs
 a second copper layer.
 
+\begin{mastery}
+Kuratowski's two forbidden subgraphs are the first instance of a
+sweeping structural pattern. A graph $H$ is a \engterm{minor} of $G$
+if $H$ can be obtained from $G$ by deleting vertices, deleting edges,
+and contracting edges, and a family of graphs is \engterm{minor-closed}
+if every minor of a member is again a member. The planar graphs are
+minor-closed, and Wagner's refinement of Kuratowski says they are
+exactly the graphs with neither $K_{5}$ nor $K_{3,3}$ as a minor, two
+forbidden minors that characterise the entire infinite family. The
+Robertson-Seymour graph-minor theorem, proved across roughly twenty
+papers between 1983 and 2004, generalises this to a result of
+startling reach: \emph{every} minor-closed family, however
+complicated, is characterised by a \emph{finite} set of forbidden
+minors. The engineering consequence is algorithmic. Robertson and
+Seymour also showed that testing whether a fixed graph $H$ is a minor
+of an $n$-vertex graph $G$ runs in $O(n^{3})$ time, so membership in
+any minor-closed family is decidable in cubic time once the finite
+obstruction set is known: planarity, embeddability on a fixed
+surface, bounded tree-width, and knotless embeddability (relevant to
+whether a wiring harness can be routed without links) are all
+polynomial-time testable for this reason. The catch that keeps the
+result partly non-constructive is that the theorem guarantees the
+finite obstruction set exists without saying what it is or how large,
+and for some families the obstruction set is known to run to hundreds
+of graphs. The recognition-level takeaway: a design constraint that
+is closed under deleting and contracting parts of a network is,
+by this theorem, testable in polynomial time, even when the
+constraint has no obvious local test of the even-degree kind that
+settled the Euler question.
+\end{mastery}
+
 A \engterm{bipartite} graph $G = (V, E)$ has $V = A \cup B$ with
 $A \cap B = \emptyset$ and every edge between $A$ and $B$. A graph
 is bipartite if and only if it has no odd-length cycle, a test that
@@ -1023,6 +1314,33 @@ cycles, equivalently the connected graph with $n - 1$ edges.
 working data structure for hierarchical organisation: file systems,
 parse trees, decision trees, dependency trees, and the
 divide-and-conquer recursion trees we meet in section 17.6.
+
+A fourth family, the \engterm{hypercube} $Q_{d}$, is the one an engineer
+meets in interconnection networks and in coding theory. Its $2^{d}$
+vertices are the binary strings of length $d$, and two strings are
+joined by an edge exactly when they differ in one bit, so every vertex
+has degree $d$ and the graph has $d \cdot 2^{d-1}$ edges. The hypercube
+packs a large vertex count into a small diameter: the distance between
+two vertices is the number of bit positions in which their labels
+differ, the Hamming distance of section 17.7, so the diameter is $d =
+\log_{2}(\text{vertex count})$, logarithmic in the size. That trade,
+logarithmic diameter at the price of logarithmic degree, is why the
+hypercube was the topology of a generation of parallel machines: a
+message between any two of $2^{d}$ processors routes in at most $d$ hops
+by flipping the differing bits one at a time, and the routing needs no
+global table, only the exclusive-or of source and destination address.
+The hypercube is bipartite (the two sides are the even-weight and
+odd-weight strings, and every edge flips one bit and so the parity), it
+is vertex-transitive (every vertex looks like every other, which is why
+the routing rule is uniform), and its recursive structure $Q_{d} = $
+two copies of $Q_{d-1}$ joined by a perfect matching is the same
+divide-and-conquer split that gives the fast Fourier transform its
+butterfly network. The engineer reads $Q_{d}$ wherever a design must
+connect $2^{d}$ units with uniform short paths and local routing, from
+early message-passing supercomputers to the address structure of a
+Gray-coded rotary encoder, where consecutive positions are hypercube
+neighbours so that a single misread bit shifts the reading by one step
+rather than by an arbitrary jump.
 
 \subsection{Graph colouring}\pathtag{standard}
 
@@ -1061,6 +1379,45 @@ the special-families discussion above. For \emph{planar} graphs the
 four-colour theorem caps $\chi(G) \leq 4$, the result behind
 four-colour map shading and used wherever the conflict graph is
 known to be planar.
+
+The chromatic number reports one number, the fewest colours; the
+\engterm{chromatic polynomial} $P(G, k)$ reports the full count of
+proper colourings with $k$ colours, and it is the working object when
+an engineer needs not just whether a schedule exists but how many
+distinct conflict-free schedules a given palette admits. The polynomial
+is computed by \engterm{deletion-contraction}, a recurrence as basic to
+graph counting as Pascal's identity is to subsets. For any edge $e$,
+\[
+P(G, k) = P(G - e, k) - P(G / e, k),
+\]
+where $G - e$ deletes the edge and $G / e$ contracts it, merging its two
+endpoints into one vertex. The reading is a disjoint case split: a
+proper colouring of $G - e$ either gives $e$'s endpoints different
+colours (a proper colouring of $G$) or the same colour (a proper
+colouring of $G / e$), and subtracting the second class from the first
+counts exactly the colourings that respect $e$. Figure
+\ref{fig:vol02:ch17:chromatic} runs the recurrence on a triangle. The
+deletion $G - e$ is a path on three vertices, whose colourings the
+product rule counts as $k(k-1)^{2}$: colour the middle vertex $k$ ways,
+each end $k - 1$ ways to differ from it. The contraction $G / e$ is a
+single edge, counted as $k(k-1)$. Subtracting,
+\[
+P(\text{triangle}, k) = k(k-1)^{2} - k(k-1) = k(k-1)(k-2),
+\]
+which is zero for every $k < 3$ and first positive at $k = 3$, so
+$\chi = 3$ and there are $3 \cdot 2 \cdot 1 = 6$ proper $3$-colourings.
+The chromatic polynomial is always a polynomial in $k$ of degree $n$
+with integer coefficients that alternate in sign, and its smallest root
+among the non-negative integers is the chromatic number; evaluating it
+counts schedules, evaluating its root locates the resource floor. The
+deletion-contraction recurrence also carries the warning that colouring
+is hard: unfolding it on a dense graph branches into $2^{m}$ leaves in
+the worst case, the same combinatorial explosion that makes computing
+$\chi(G)$ NP-hard, so the polynomial is a specification an engineer
+evaluates on small or structured conflict graphs, not a general-purpose
+solver.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-chromatic.tex}
 
 \subsection{Graph traversal: BFS and DFS}\pathtag{standard}
 
@@ -1144,6 +1501,107 @@ their formula references; a package manager installs dependencies
 before dependents. A circular dependency, detected when the
 topological sort fails, is the standard build-system error message,
 and the chapter's vocabulary names exactly what went wrong.
+
+\subsection{Applied vignette: critical-path scheduling on a project
+DAG}\pathtag{standard}
+
+A topological order settles the sequence in which dependent tasks may
+run; a project manager needs one thing more, the earliest date on which
+the whole project can finish and the tasks whose slippage moves that
+date. Both questions are a single sweep over the topological order, and
+the sweep is the \engterm{critical-path method}, the scheduling
+technique that grew out of the DuPont and Polaris programmes of the late
+1950s and now runs inside every project-planning tool. The vignette
+works the method end to end on a small graph and names the quantity, the
+\engterm{slack}, that separates the tasks a manager must watch from the
+tasks that can drift.
+
+\paragraph{The model.}
+Model the project as an activity-on-node DAG: each task is a vertex
+carrying a duration, and an edge $u \to v$ records that $u$ must finish
+before $v$ starts. Add a zero-duration start vertex $S$ preceding every
+task with no other predecessor and a zero-duration end vertex $T$
+following every task with no other successor. Figure
+\ref{fig:vol02:ch17:critical-path} draws a seven-vertex instance with
+tasks $A$ through $E$ and durations $A{:}3$, $B{:}2$, $C{:}4$, $D{:}2$,
+$E{:}2$. The precedence edges are $S \to A$, $S \to B$, $A \to C$,
+$A \to E$, $B \to D$, $C \to E$, $D \to E$, $E \to T$.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-critical-path.tex}
+
+\paragraph{The forward pass: earliest finish times.}
+The \engterm{earliest finish} $\mathrm{EF}(v)$ of a task is the longest
+path from $S$ to the end of $v$, and longest path on a DAG, unlike
+longest path on a general graph, is not hard: it is a dynamic program
+that reads the vertices in topological order and takes, for each task,
+the latest earliest-finish among its predecessors plus its own duration,
+\[
+\mathrm{EF}(v) = \mathrm{dur}(v) + \max_{u \to v} \mathrm{EF}(u),
+\]
+with $\mathrm{EF}(S) = 0$. Sweeping the figure's graph in topological
+order $S, A, B, C, D, E, T$ gives $\mathrm{EF}(A) = 3$,
+$\mathrm{EF}(B) = 2$, $\mathrm{EF}(C) = 3 + 4 = 7$,
+$\mathrm{EF}(D) = 2 + 2 = 4$, and then $E$, whose predecessors are $A$,
+$C$, and $D$: $\mathrm{EF}(E) = 2 + \max(3, 7, 4) = 9$. The project
+makespan is $\mathrm{EF}(T) = 9$. The reason longest path is easy here
+and NP-hard on a general graph is exactly the reason the topological
+order exists: a DAG has no cycle to inflate a path without bound, so the
+max-over-predecessors recurrence is well founded, and the whole sweep
+runs in $\Theta(n + m)$.
+
+\paragraph{The backward pass: slack and the critical path.}
+Run the same sweep in reverse to get each task's \engterm{latest finish}
+$\mathrm{LF}(v)$, the latest a task can finish without delaying $T$:
+$\mathrm{LF}(T) = 9$, and $\mathrm{LF}(v) = \min_{v \to w}
+(\mathrm{LF}(w) - \mathrm{dur}(w))$ over successors. A task's
+\engterm{slack} is $\mathrm{LF}(v) - \mathrm{EF}(v)$, the amount it may
+slip. The tasks with zero slack form the \engterm{critical path}, the
+red chain $S \to A \to C \to E \to T$ of the figure with total duration
+$3 + 4 + 2 = 9$; a one-day delay to any of $A$, $C$, $E$ pushes the
+finish to day $10$. Tasks $B$ and $D$ carry slack: $B$ finishes at day
+$2$ but need not finish until day $\mathrm{LF}(B) = 5$, so it holds
+three days of float, and a manager who spends scarce resources
+accelerating $B$ buys nothing, because $B$ is not on the critical path.
+The payoff is the one every scheduling tool sells: the critical path is
+where to spend attention and money, the slack is where to absorb
+disruption, and both fall out of two linear sweeps over a topological
+order. The same longest-path-on-a-DAG dynamic program prices the
+critical path of a compiler's instruction-scheduling graph, the makespan
+of a manufacturing job shop, and the latency of a dataflow pipeline; the
+recurrence is identical and only the vertices' meaning changes.
+
+\begin{mastery}
+The partial order that a project DAG imposes carries a second scheduling
+quantity, the fewest parallel processors a task set needs, and it is
+fixed by a theorem of striking economy. In a poset, a \engterm{chain} is
+a set of elements every two of which are comparable (a sequence of tasks
+each preceding the next), and an \engterm{antichain} is a set of
+elements no two of which are comparable (tasks that could run at once
+because none waits on another). \engterm{Dilworth's theorem} states that
+the minimum number of chains needed to cover the whole poset equals the
+size of the largest antichain. The engineering reading is direct: a
+chain is a sequence one processor can run in order, so the minimum
+chain cover is the fewest processors that can execute all tasks
+respecting precedence, and Dilworth's theorem says that number equals
+the largest set of mutually independent tasks, the widest ``rank'' of
+the dependency graph. The dual, \engterm{Mirsky's theorem}, says the
+minimum number of antichains covering the poset equals the longest
+chain, which is the critical-path length of the vignette above measured
+in task count rather than duration. Both theorems are not merely
+existence statements: the minimum chain cover is computed by a bipartite
+matching (section 17.3), through a reduction that splits each element
+into an in-copy and an out-copy and matches comparable pairs, so
+Konig's theorem turns Dilworth's min-max identity into a
+polynomial-time algorithm. The pattern recurs across scheduling: the
+minimum number of machines to run a set of intervals without overlap is
+the maximum number of intervals live at any instant (an antichain in the
+containment-free interval order), the fact behind optimal register
+allocation on straight-line code and behind classroom-and-examination
+timetabling. The recognition-level takeaway is that a precedence poset
+answers two independent capacity questions at once, longest chain for
+time and largest antichain for width, and both are min-max dualities
+that a matching algorithm computes exactly rather than heuristically.
+\end{mastery}
 
 \section{Algorithmic graph problems}\pathtag{standard}
 
@@ -1234,6 +1692,28 @@ unavoidable: routing protocols that price links with arbitrage
 opportunities, currency-conversion arbitrage detection, and any
 problem in which an edge weight encodes a benefit rather than a
 cost.
+
+A worked example shows the negative-cycle test doing real work:
+detecting a currency-arbitrage loop. Suppose one unit of currency
+$A$ buys $0.9$ of $B$, one $B$ buys $0.8$ of $C$, and one $C$ buys
+$1.5$ of $A$. A cycle of trades multiplies the exchange rates:
+$0.9 \times 0.8 \times 1.5 = 1.08 > 1$, so a trader who goes
+$A \to B \to C \to A$ ends with $8\%$ more than the start, an
+arbitrage. Multiplicative rates do not fit a shortest-path additive
+model directly, so encode each edge weight as $w(u, v) = -\ln r(u,
+v)$ where $r$ is the exchange rate. A profitable cycle has a rate
+product greater than $1$, that is, $\prod r > 1$, which under the
+logarithm is $\sum \ln r > 0$, that is, $\sum w < 0$: an arbitrage
+loop is exactly a negative-weight cycle in the log-weighted graph.
+The three edges carry weights $-\ln 0.9 \approx 0.105$, $-\ln 0.8
+\approx 0.223$, and $-\ln 1.5 \approx -0.405$, summing to $-0.077 <
+0$. Bellman-Ford's final pass finds an edge it can still relax after
+$n - 1$ rounds and reports the negative cycle, flagging the
+arbitrage; Dijkstra cannot be used because the log weights are
+negative. The reduction, replace a product by a sum through a
+logarithm and a maximisation by a minimisation through a sign flip,
+is the recurring move that lets an additive shortest-path solver
+answer a multiplicative question.
 
 \subsection{All-pairs shortest path: Floyd-Warshall}
 
@@ -1409,6 +1889,34 @@ Prim's algorithm is the cut property iterated with $S$ as the
 current tree's vertex set; Kruskal's is the cut property iterated
 across changing cuts as the algorithm builds the tree.
 
+\begin{mastery}
+The reason Kruskal's ``sort the edges and take each unless it closes
+a cycle'' is optimal, and not merely plausible, is that the forests
+of a graph form a \engterm{matroid}. A matroid is a ground set $E$
+with a family of \engterm{independent} subsets that is non-empty,
+closed under taking subsets, and satisfies the \engterm{exchange
+property}: if $I$ and $J$ are independent with $\abs{I} < \abs{J}$,
+then some element of $J \setminus I$ can be added to $I$ keeping it
+independent. Taking the ground set to be the edges and the
+independent sets to be the acyclic edge subsets (the forests) gives
+the \engterm{graphic matroid}, and Kruskal's algorithm is the generic
+matroid greedy algorithm specialised to it. The governing theorem,
+due to Rado and Edmonds, is exact: the greedy algorithm that
+considers elements in order of weight and keeps each one that
+preserves independence returns a minimum-weight (or maximum-weight)
+maximal independent set \emph{if and only if} the independence
+structure is a matroid. This is why greedy is provably optimal for
+minimum spanning tree and provably \emph{not} optimal for the
+matching and knapsack problems seen earlier, whose feasible sets are
+not matroids, which is exactly why those problems need augmenting
+paths or dynamic programming rather than a sort. The matroid
+abstraction also unifies the two MST algorithms (both are matroid
+greedy), extends to the weighted matroid intersection problems that
+model assignment and scheduling, and gives the engineer a sharp test
+before reaching for greedy: check the exchange property, and if it
+holds, greedy is not a heuristic but the exact algorithm.
+\end{mastery}
+
 A worked Prim trace fixes the mechanics. Take the weighted graph of
 exercise 17.5: vertices $\set{1, 2, 3, 4, 5}$ with edges $\set{1,2}{:}1$,
 $\set{1,3}{:}3$, $\set{2,3}{:}4$, $\set{3,4}{:}2$, $\set{4,5}{:}5$,
@@ -1471,6 +1979,8 @@ the warning of the failure section in miniature: a greedy matching
 is not a maximum matching, and only the augmenting-path search
 certifies optimality.
 
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-bipartite-matching.tex}
+
 \subsection{Network flow and the max-flow min-cut theorem}\pathtag{standard}
 
 A \engterm{flow network} is a directed graph $G = (V, E)$ with a
@@ -1505,7 +2015,10 @@ minimum cut.
 
 The theorem is the dual of the matching result of the previous
 subsection: the augmenting-path search that grows a matching is the
-same search, run in the residual network, that grows a flow. The
+same search, run in the residual network, that grows a flow. Figure
+\ref{fig:vol02:ch17:bipartite-matching} draws the worker-task
+instance of the previous subsection with its augmenting path marked.
+The
 \engterm{Ford-Fulkerson method} iterates it directly. Find a path
 from $s$ to $t$ along edges with spare capacity, push the largest
 flow the path's tightest edge allows, update the residual capacities
@@ -1815,7 +2328,21 @@ collapsing to $a \land b$. The minimised form $f = (\lnot a \land c)
 the gate count. The combining step is the Boolean identity $(X \land
 y) \lor (X \land \lnot y) = X$, applied wherever two minterms are
 adjacent; a Karnaugh map is just a layout that places adjacent
-minterms next to each other so the eye finds the combinations.
+minterms next to each other so the eye finds the combinations
+(figure \ref{fig:vol02:ch17:karnaugh}). The map's columns run in
+Gray-code order $00, 01, 11, 10$ rather than binary counting order
+precisely so that stepping one cell changes exactly one variable, and
+a block of $2^{k}$ adjacent ones then reads off as one product term
+with $k$ variables eliminated. The two blocks the map exposes,
+$\lnot a \land c$ and $a \land b$, are the two product terms of the
+minimised cover, and the reader can confirm that no larger block is
+available: the four ones do not form a single rectangle, so two terms
+is the minimum. The layout scales to four variables (a $4 \times 4$
+map with both axes Gray-coded) before the adjacency wraps become hard
+to see by eye, which is the point at which the digital-design
+generation handed the task to Espresso and its successors.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-karnaugh.tex}
 
 \begin{mastery}
 The data structure behind a modern logic-synthesis and
@@ -1960,6 +2487,33 @@ geometric growth factor is what makes the amortised cost constant; a
 fixed-increment growth strategy (grow by a constant, not a factor)
 gives $O(n^{2})$ total and is the textbook performance bug.
 
+Three accounting disciplines make the amortised bound rigorous
+rather than a hopeful average, and an engineer should know which one a
+claimed bound rests on. The \engterm{aggregate method} bounds the
+total cost of a worst-case sequence of $n$ operations and divides by
+$n$; the dynamic-array argument above is an aggregate argument, since
+$2n$ total copying work over $n$ appends gives $2$ per append. The
+\engterm{accounting method} charges each operation a fixed amortised
+price, banks the surplus when the true cost is below the price, and
+spends the bank when the true cost is above it; for the dynamic array,
+charge each append $3$ units, spend $1$ on the insertion itself, and
+bank $2$, so that when a doubling copies $k$ elements the bank holds
+exactly the $2k$ units the two-per-append surplus accumulated since
+the last doubling, and the copy is paid for in advance. The invariant
+the accounting method must maintain is that the bank never goes
+negative, which is the proof obligation. The \engterm{potential
+method} generalises the bank to a function $\Phi$ of the data
+structure's state, defining the amortised cost of an operation as its
+true cost plus $\Phi_{\text{after}} - \Phi_{\text{before}}$; choosing
+$\Phi$ to be twice the number of elements past the half-full mark
+reproduces the dynamic-array bound and extends cleanly to structures
+where a single number cannot track the stored credit. The three
+methods agree on the answer and differ in the proof they demand: the
+aggregate method needs a total-cost bound, the accounting method needs
+a non-negative bank, the potential method needs a potential that never
+drops below its starting value. The engineer who states which method a
+bound uses has stated where the proof obligation sits.
+
 The union-find structure of Kruskal's algorithm (section 17.3) is
 the other working example: with path compression and union by rank,
 a sequence of $m$ operations on $n$ elements costs $O(m\, \alpha(n))$
@@ -2037,6 +2591,30 @@ Karatsuba's $T(n) = 3 T(n/2) + n$ is case 1, giving $\Theta(n^{\log_{2}
 3}) = \Theta(n^{1.585\ldots})$. Strassen's $T(n) = 7 T(n/2) +
 n^{2}$ is case 1, giving $\Theta(n^{\log_{2} 7})$.
 
+Figure \ref{fig:vol02:ch17:master-regimes} reads the three cases as
+the distribution of work down the recursion tree, and a worked
+comparison shows how a design decision moves a recurrence between
+cases. Suppose an engineer must sort $n$ items by a divide-and-conquer
+scheme and can choose the split. Splitting into two halves and merging
+in linear time gives $T(n) = 2 T(n/2) + \Theta(n)$: here $\log_{b} a
+= \log_{2} 2 = 1$ and $f(n) = \Theta(n^{1})$, case 2, so $T(n) =
+\Theta(n \log n)$, the mergesort cost. Splitting into two halves but
+merging in quadratic time (a naive merge that rescans) gives $T(n) =
+2 T(n/2) + \Theta(n^{2})$: now $f(n) = \Theta(n^{2})$ grows faster
+than $n^{\log_{b} a} = n$, case 3 applies, and the root work
+dominates, $T(n) = \Theta(n^{2})$, the quadratic penalty landing
+entirely at the top of the tree. Splitting into four quarters and
+recombining in linear time gives $T(n) = 4 T(n/4) + \Theta(n)$, again
+$\log_{b} a = 1$ and case 2, back to $\Theta(n \log n)$; the split
+count and the branching factor moved together, so the balance held.
+The lesson the figure makes visual is that the case boundary is the
+comparison between the recombination cost $f(n)$ and the leaf-count
+growth $n^{\log_{b} a}$, and an engineer who wants $\Theta(n \log n)$
+must keep the recombination linear relative to that growth, not
+merely ``fast.''
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-master-regimes.tex}
+
 \subsection{Linear recurrences and the characteristic equation}
 
 A \engterm{linear homogeneous recurrence with constant
@@ -2078,6 +2656,32 @@ combinatorial sequences (Fibonacci, Catalan, Bell, integer
 partitions) are tabulated in
 \repopath{volumes/02-form/ch17-discrete-mathematics/data/recurrence_growth.csv},
 where the divergent growth rates are visible by column.
+
+A worked example shows the Fibonacci recurrence doing coding work rather
+than growth accounting. Every positive integer has a unique
+representation as a sum of non-consecutive Fibonacci numbers, the
+\engterm{Zeckendorf representation}, and the greedy algorithm that
+builds it is a two-line loop: subtract the largest Fibonacci number not
+exceeding the remaining value, repeat. Take $n = 100$. The Fibonacci
+numbers up to $100$ are $1, 2, 3, 5, 8, 13, 21, 34, 55, 89$. Greedy
+subtracts $89$, leaving $11$; subtracts $8$, leaving $3$; subtracts
+$3$, leaving $0$. So $100 = 89 + 8 + 3$, and the three summands are
+pairwise non-consecutive in the Fibonacci sequence ($89 = F_{11}$, $8 =
+F_{6}$, $3 = F_{4}$, no two adjacent indices). The non-consecutiveness
+is forced, not lucky: if the greedy step ever picked two consecutive
+Fibonacci numbers $F_{k}$ and $F_{k-1}$, their sum $F_{k+1}$ would have
+been the larger choice greedy takes first, a contradiction. Writing the
+chosen indices as a bit string, one bit per Fibonacci number with a $1$
+where the number is used, encodes $100$ as the Fibonacci-base string
+whose $1$-bits sit at positions $11, 6, 4$ and whose defining property
+is that no two $1$-bits are adjacent. The count of such length-$m$
+strings with no two adjacent ones is itself a Fibonacci number, $F_{m +
+2}$, the same recurrence reappearing as the count of its own
+representations. The representation is the arithmetic behind
+Fibonacci-coded integers used in data compression, where the terminal
+pattern $11$ (impossible inside a Zeckendorf codeword) serves as a
+self-synchronising end-of-number marker that lets a decoder resynchronise
+after a corrupted symbol without an external length field.
 
 \subsection{From recurrence to dynamic program}\pathtag{standard}
 
@@ -2176,6 +2780,32 @@ concern. Generating functions convert sequence operations
 (shifting, convolution, weighted summation) into algebraic
 operations on power series, often turning a recurrence into an
 algebraic equation that solves in closed form.
+
+The power of the method comes from a short dictionary between
+operations on a sequence and operations on its generating function
+$A(x) = \sum a_{n} x^{n}$, which an engineer applies without
+re-deriving. Shifting the sequence forward by one, so that the new
+term $n$ is $a_{n-1}$, multiplies the generating function by $x$;
+this is the identity that lets a recurrence be rewritten as an
+algebraic relation, because a term like $a_{n-1}$ becomes $x A(x)$.
+Scaling term $n$ by $n$, the operation $a_{n} \mapsto n a_{n}$,
+applies the operator $x \frac{d}{dx}$, so weighted sums such as the
+mean of a distribution are read off a derivative at $x = 1$.
+Multiplying two generating functions convolves their sequences: the
+coefficient of $x^{n}$ in $A(x) B(x)$ is $\sum_{i} a_{i} b_{n-i}$,
+which is exactly the count that arises when an object of ``size $n$''
+splits into a first part of size $i$ and a second part of size
+$n - i$, the structural reason products of generating functions count
+combined structures. Two building-block series close the dictionary:
+the geometric series $\sum_{n \geq 0} x^{n} = 1/(1 - x)$, whose
+coefficients are all $1$, and its scaled form $\sum_{n \geq 0} c^{n}
+x^{n} = 1/(1 - c x)$, whose coefficient of $x^{n}$ is $c^{n}$. The
+partial-fraction decomposition of a rational generating function into
+such terms is the mechanical route from a solved algebraic equation
+back to a closed form for $a_{n}$, and it is the step that turns the
+Fibonacci equation $F(x) = x/(1 - x - x^{2})$ into the golden-ratio
+formula below. The dictionary is what makes the method a calculus of
+sequences rather than a collection of tricks.
 
 The Fibonacci generating function $F(x) = \sum_{n \geq 0} F_{n}
 x^{n}$ satisfies $F(x) = x F(x) + x^{2} F(x) + x$, which solves to
@@ -2290,6 +2920,23 @@ reading the binary expansion of $b$: square the running base at each
 bit, multiply into the accumulator when the bit is set. A $2048$-bit
 exponent costs about $3000$ modular multiplications rather than
 $2^{2048}$, the difference between a millisecond and an eternity.
+
+A small worked trace shows the bit-reading in action. Compute
+$7^{13} \bmod 11$. The exponent $13$ is $1101_{2}$, so reading its
+bits from most significant to least, the square-and-multiply rule
+starts the accumulator at $1$ and, for each bit, squares the
+accumulator modulo $11$ and multiplies in $7$ when the bit is $1$.
+Bit $1$ (the leading $1$): square $1^{2} = 1$, multiply by $7$, giving
+$7$. Bit $1$: square $7^{2} = 49 \equiv 5$, multiply by $7$, giving
+$35 \equiv 2$. Bit $0$: square $2^{2} = 4$, no multiply, giving $4$.
+Bit $1$: square $4^{2} = 16 \equiv 5$, multiply by $7$, giving $35
+\equiv 2$. The result is $7^{13} \equiv 2 \pmod{11}$, reached in four
+squarings and three multiplications rather than twelve
+multiplications, and the saving compounds: a $b$-bit exponent needs
+about $b$ squarings and at most $b$ multiplications, the $O(\log b)$
+cost that makes public-key cryptography run at all. A direct check
+confirms the answer: $7^{13} = 96\,889\,010\,407$, and $96\,889\,010\,407
+\bmod 11 = 2$.
 The reference implementation in
 \repopath{volumes/02-form/ch17-discrete-mathematics/code/number_theory.py}
 uses the standard-library \texttt{pow(a, b, n)}, which applies this
@@ -2362,6 +3009,32 @@ implementations decrypt roughly four times faster by working modulo
 $p$ and $q$ separately and recombining by CRT, and residue number
 systems exploit the same decomposition for fast parallel arithmetic
 in signal processing.
+
+The theorem is a bijection between residues modulo the product and
+tuples of residues modulo the factors (figure
+\ref{fig:vol02:ch17:crt-grid}), and reading it as a bijection is
+what makes the construction memorable. A worked instance carries the
+formula through. Solve $x \equiv 2 \pmod 3$, $x \equiv 3 \pmod 5$,
+$x \equiv 2 \pmod 7$ with $N = 3 \cdot 5 \cdot 7 = 105$. The partial
+products are $N_{1} = 35$, $N_{2} = 21$, $N_{3} = 15$. Each needs its
+inverse modulo the matching factor: $35 \equiv 2 \pmod 3$ and
+$2^{-1} \equiv 2 \pmod 3$, so $M_{1} = 2$; $21 \equiv 1 \pmod 5$, so
+$M_{2} = 1$; $15 \equiv 1 \pmod 7$, so $M_{3} = 1$. The construction
+assembles
+\[
+x \equiv 2 \cdot 35 \cdot 2 + 3 \cdot 21 \cdot 1 + 2 \cdot 15 \cdot 1
+= 140 + 63 + 30 = 233 \equiv 23 \pmod{105},
+\]
+recovering Sun-tzu's answer through the general recipe rather than by
+search. The bijection view also bounds the work: because each
+coordinate is independent, an arithmetic operation on $x$ modulo
+$105$ is three independent operations on the coordinates modulo
+$3, 5, 7$, which is exactly the parallelism an RSA implementation
+exploits when it decrypts modulo $p$ and $q$ separately, each on an
+operand half the bit length, and recombines the two half-size results
+by this same construction.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-crt-grid.tex}
 
 \subsection{Primes}
 
@@ -2500,6 +3173,34 @@ gcd phenomenon of the modular clock. The pigeonhole principle
 (section 17.1) bounds the worst case: $n$ keys in $k$ buckets force
 some bucket to hold at least $\lceil n/k \rceil$ keys, the
 collision-chain length an engineer sizes the table to keep small.
+
+The quantity $\alpha = n / k$ is the \engterm{load factor}, and it,
+not the raw key count, governs performance. Under the idealising
+assumption that a hash spreads keys uniformly and independently across
+buckets (\engterm{simple uniform hashing}), the expected length of the
+chain a lookup traverses is $1 + \alpha$ for an unsuccessful search and
+about $1 + \alpha/2$ for a successful one, so the expected cost is
+$\Theta(1 + \alpha)$ and stays constant as long as $\alpha$ is held
+below a fixed ceiling. This is why a growable hash table resizes when
+$\alpha$ crosses a threshold (Python's dict grows near $\alpha =
+2/3$), rehashing all keys into a larger table at an amortised $O(1)$
+per insertion by the same doubling argument the dynamic array used. The
+uniformity assumption is the fragile part: a fixed hash function has a
+worst-case input, a set of keys that all collide into one bucket and
+turn every operation $\Theta(n)$, and an adversary who knows the
+function can construct that input, the basis of algorithmic
+complexity-attack denial of service. \engterm{Universal hashing}
+answers this by choosing the hash function at random from a family
+designed so that any two distinct keys collide with probability at most
+$1/k$; the family $h_{a,b}(x) = ((a x + b) \bmod p) \bmod k$ with a
+prime $p$ exceeding the key range and $a, b$ drawn uniformly (with $a
+\neq 0$) has this property, and it makes the $\Theta(1 + \alpha)$
+expected bound hold against \emph{any} input, since the randomness is
+in the function choice rather than in an assumption about the keys. The
+engineer's working reading: the load factor sets the expected cost, the
+uniformity assumption sets whether the bound survives a hostile input,
+and universal hashing is the standard way to make the bound
+adversary-proof.
 
 A \engterm{check digit} appends a redundant symbol computed from the
 payload so that common errors fail the check. The \engterm{Luhn
@@ -3005,6 +3706,56 @@ heuristic with a proven ratio is an engineering deliverable; a
 heuristic that ``usually does well'' on unstated inputs is a liability
 whose failure mode the engineer has not bounded.
 \end{mastery}
+
+\subsection{Applied vignette: monitor placement as set cover}
+
+An operator must place monitoring stations across a facility so that
+every zone is observed by at least one station, and each candidate
+station location observes a known subset of zones. Minimising the
+number of stations is the \engterm{set cover} problem: the zones are
+the ground set, each candidate location is a subset (the zones it
+covers), and the goal is the fewest subsets whose union is the whole
+ground set. The problem is NP-hard, so for a facility with hundreds
+of zones the operator cannot enumerate every subfamily of locations,
+and the vignette shows how the approximation guarantee turns the
+tractable greedy heuristic into a defensible engineering answer.
+
+\paragraph{The instance and the greedy run.}
+Figure \ref{fig:vol02:ch17:set-cover} sketches a twelve-zone
+instance. The optimum here is three locations, the row-sets
+$S_{1}, S_{2}, S_{3}$, each covering a disjoint group of four zones.
+The greedy algorithm repeatedly picks the location covering the most
+still-uncovered zones. If a large diagonal location $S_{A}$ covers
+six zones, greedy takes it first, then must patch the remaining six
+zones with locations that each cover fewer, and can end with four or
+five locations against the optimum of three. The greedy answer is not
+optimal, and on adversarial instances the gap grows: greedy's
+worst-case ratio on a ground set of $n$ elements is $H_{n} = 1 +
+\tfrac12 + \cdots + \tfrac1n \approx \ln n$, achieved by a family of
+instances whose sets are sized to lure greedy into a chain of
+locally-largest but globally-poor picks.
+
+\paragraph{Why the guarantee is enough.}
+The ratio $\ln n$ is the whole point. A facility with $n = 400$ zones
+has $\ln 400 \approx 6$, so greedy is guaranteed to use at most about
+six times the optimum number of stations, and in practice, on the
+structured instances real facilities produce, it lands far closer. A
+result of Dinur and Steurer (2014) shows no polynomial-time algorithm
+beats $(1 - o(1)) \ln n$ unless $\mathrm{P} = \mathrm{NP}$, so greedy
+is not merely convenient, it is the best guarantee any
+efficient algorithm can offer. The operator who reports ``greedy
+placement, provably within a factor $\ln n$ of the minimum'' has
+delivered an engineering contract; the operator who reports ``a hand
+placement that looked reasonable'' has delivered a number with no
+bound on how wrong it is. The two responses cost the same to compute
+and differ only in whether the failure mode was characterised, which
+is the discipline the whole failure section presses. The same set
+cover structure recurs in test-suite minimisation (cover every
+requirement with the fewest tests), in facility location, in
+crew-scheduling column generation, and in feature selection, and the
+greedy-plus-guarantee pattern carries to all of them.
+
+\input{volumes/02-form/ch17-discrete-mathematics/figures/fig-set-cover.tex}
 
 \subsection{The named failures}
 

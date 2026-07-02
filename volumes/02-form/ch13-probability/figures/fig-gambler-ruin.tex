@@ -1,67 +1,63 @@
-% Gambler's ruin: the overflow (absorption-at-N) probability r_k as a
-% function of the starting position k, for the fair walk and two biased
-% walks, showing how a small drift concentrates the outcome.
+% Gambler's ruin: probability of reaching the upper boundary N before
+% the lower boundary 0, as a function of the fractional starting
+% position k/N. The fair walk (p = q = 1/2) gives the straight line
+% r_k = k/N; a slight upward drift (p > q) bows the curve upward, a
+% downward drift bows it down. Curves plotted from the closed form
+% r_k = (1 - (q/p)^k) / (1 - (q/p)^N) with N = 100, sampled on k.
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[font=\small]
+\begin{tikzpicture}
 \begin{axis}[
-  width=10.5cm, height=6.4cm,
-  xlabel={starting tokens $k$ (buffer size $N=100$)},
-  ylabel={$\Pr(\text{overflow before empty})$},
-  xmin=0, xmax=100, ymin=0, ymax=1.03,
-  xtick={0,20,40,60,80,100},
-  ytick={0,0.25,0.5,0.75,1.0},
-  grid=both, grid style={enggray!25},
-  tick label style={font=\scriptsize},
-  label style={font=\scriptsize},
-  legend style={font=\scriptsize, at={(0.02,0.98)}, anchor=north west,
-    draw=enggray!50},
+  width=10.5cm, height=7.2cm,
+  xlabel={starting fraction $k/N$},
+  ylabel={overflow probability $r_k$},
+  xmin=0, xmax=1, ymin=0, ymax=1,
+  domain=0.0001:0.9999, samples=120,
+  legend pos=north west,
+  legend cell align=left,
+  grid=both,
+  grid style={enggray!18},
+  tick label style={font=\small},
+  label style={font=\small},
+  legend style={font=\scriptsize},
 ]
-  % fair walk: r_k = k/N, a straight line
-  \addplot[thick, engblue, domain=0:100, samples=2] {x/100};
-  \addlegendentry{$p=0.50$ (fair): $r_k=k/N$}
 
-  % biased p = 0.52, q = 0.48 : r_k = (1-(q/p)^k)/(1-(q/p)^N),
-  % q/p = 0.923077, (q/p)^100 approx 0.000432
-  % r_k = (1 - 0.923077^k)/(1 - 0.000432)
-  \addplot[thick, engred, mark=none, smooth] coordinates {
-    (0,0) (5,0.3315) (10,0.5527) (15,0.7003) (20,0.7988)
-    (25,0.8645) (30,0.9083) (40,0.9591) (50,0.9789)
-    (60,0.9906) (70,0.9958) (80,0.9981) (90,0.9993) (100,1.0)
-  };
-  \addlegendentry{$p=0.52$ (slight up-drift)}
+% Fair walk: r = x (the straight line)
+\addplot[very thick, engblack, domain=0:1, samples=2] {x};
+\addlegendentry{$p=0.50$ (fair): $r=k/N$}
 
-  % biased p = 0.48, q = 0.52 : q/p = 1.08333, mirror of above
-  \addplot[thick, engorange, dashed, mark=none, smooth] coordinates {
-    (0,0) (10,0.0007) (20,0.0019) (30,0.0042) (40,0.0094)
-    (50,0.0211) (60,0.0355) (70,0.0917) (75,0.1355) (80,0.2012)
-    (85,0.2997) (90,0.4473) (95,0.6685) (100,1.0)
-  };
-  \addlegendentry{$p=0.48$ (slight down-drift)}
+% Upward drift p = 0.52, q = 0.48, N = 100. Let a = q/p = 0.48/0.52.
+% r(x) = (1 - a^{100 x}) / (1 - a^{100}). a^100 is tiny, so
+% denominator ~ 1. a = 0.923076..., ln a = -0.080043.
+% a^{100 x} = exp(100 x ln a) = exp(-8.0043 x).
+\addplot[very thick, engblue, domain=0:1, samples=120]
+  {(1 - exp(-8.0043*x)) / (1 - exp(-8.0043))};
+\addlegendentry{$p=0.52$ (upward drift)}
 
-  % mark the midpoint outcomes
-  \addplot[only marks, mark=*, engred, mark size=2pt] coordinates {(50,0.9789)};
-  \addplot[only marks, mark=*, engblue, mark size=2pt] coordinates {(50,0.5)};
-  \node[anchor=west, font=\scriptsize, engred] at (axis cs:52,0.90)
-    {$r_{50}\approx0.98$};
-  \node[anchor=north west, font=\scriptsize, engblue] at (axis cs:52,0.46)
-    {$r_{50}=0.50$};
+% Downward drift p = 0.48, q = 0.52, N = 100. a = 0.52/0.48 = 1.08333,
+% ln a = 0.080043. a^{100 x} = exp(8.0043 x). Denominator 1 - a^100 is
+% large negative; ratio stays in [0,1].
+\addplot[very thick, engred, domain=0:1, samples=120]
+  {(1 - exp(8.0043*x)) / (1 - exp(8.0043))};
+\addlegendentry{$p=0.48$ (downward drift)}
+
+% Midpoint reference line
+\draw[dashed, enggray] (axis cs:0.5,0) -- (axis cs:0.5,1);
+
 \end{axis}
 \end{tikzpicture}
-\caption[Gambler's ruin and the effect of drift]{The overflow
-probability of a bounded buffer of size $N=100$ that gains a token with
-probability $p$ and loses one with probability $1-p$ each tick, absorbing
-at empty ($0$) or full ($N$), as a function of the starting level $k$. The
-fair walk ($p=0.5$, blue) gives the linear law $r_k = k/N$: the overflow
-probability is just the fractional starting position. A four-percentage-
-point upward drift ($p=0.52$, red) bends the curve sharply so that a
-buffer starting half full overflows with probability $0.98$ rather than
-$0.50$; a symmetric downward drift ($p=0.48$, orange dashed) makes
-overflow from the midpoint nearly impossible. A tiny bias dominates a long
-walk, which is why first-passage outcomes concentrate and why the
-expected time to absorption, $k(N-k)$ in the fair case, is the timescale
-over which a balanced buffer wanders before it hits a boundary. Source:
-computed by the authors from the gambler's-ruin recurrence,
-\cite[ch.~6]{text:wasserman2004}.}
-\label{fig:vol02:ch13:gambler-ruin}
+\caption[Gambler's ruin: overflow probability]{The gambler's-ruin
+overflow probability $r_k$, the chance a buffer that starts with $k$ of
+$N=100$ tokens fills before it empties, as a function of the fractional
+start $k/N$. For the fair walk ($p=q=\tfrac12$) the probability is the
+straight line $r_k = k/N$: the outcome is decided by where the walk
+starts. A four-percentage-point drift bends the curve sharply. With an
+upward drift $p=0.52$ a buffer starting at the midpoint (dashed line)
+overflows with probability near $0.98$; with a downward drift $p=0.48$
+it overflows with probability near $0.02$. A small persistent bias
+overwhelms the starting position once the boundaries are far apart,
+which is the first-passage lesson behind sequential tests and
+ruin-of-a-reserve problems. Source: computed by the authors from the
+closed-form ruin probability of section 13.6.}
+\label{fig:vol02ch13:gambler-ruin}
 \end{figure}

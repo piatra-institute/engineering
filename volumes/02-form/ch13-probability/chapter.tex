@@ -224,6 +224,75 @@ is $(N - n)/(N - 1)$, which an auditor sampling a sizeable fraction
 of a finite lot must apply and a textbook example on an infinite
 population may ignore.
 
+\paragraph{Worked example: the matching problem and inclusion-exclusion.}
+A reassembly step returns $n$ calibrated modules to $n$ slots at random
+after servicing, and the concern is that at least one module lands back
+in its own slot, defeating the intended reshuffle. The probability that
+\emph{no} module returns to its own slot is the derangement fraction,
+computed by inclusion-exclusion on the events $A_{i} = \{\text{module }i
+\text{ in its own slot}\}$. A single fixed point has probability
+$\Pr(A_{i}) = 1/n$ (the module lands in one of $n$ equally likely slots),
+a specified pair has $\Pr(A_{i} \cap A_{j}) = 1/[n(n-1)]$, and in general
+a specified set of $k$ fixed points has probability $(n-k)!/n!$. The
+$n$-event inclusion-exclusion formula of the earlier mastery box then
+gives
+\[
+\Pr\!\left(\bigcup_{i} A_{i}\right)
+= \sum_{k=1}^{n} (-1)^{k+1} \binom{n}{k}\frac{(n-k)!}{n!}
+= \sum_{k=1}^{n} \frac{(-1)^{k+1}}{k!},
+\]
+so the probability of no fixed point is $1 - \sum_{k=1}^{n}
+(-1)^{k+1}/k! = \sum_{k=0}^{n} (-1)^{k}/k! \to e^{-1} \approx 0.368$ as
+$n$ grows. The convergence is immediate: already at $n = 5$ the
+no-match probability is $0.3667$, within a thousandth of the limit, and
+at $n = 7$ it is indistinguishable from $1/e$ at three figures. The
+engineering content is that the chance of at least one accidental
+self-match sits near $1 - 1/e \approx 0.632$ and is nearly independent of
+$n$, so a random reshuffle of any sizeable batch leaves a self-match more
+likely than not, which is why a reassembly protocol that must guarantee a
+change of slot cannot rely on randomisation and needs an explicit
+permutation check. The same $1/e$ appears in hashing without fixed
+points, in the secretary problem, and wherever a random permutation's
+fixed-point count is the quantity of interest, its distribution being
+approximately $\mathrm{Pois}(1)$ for large $n$.
+
+\paragraph{Worked example: geometric probability and Buffon's needle.}
+A sample space need not be discrete. Drop a needle of length $\ell$ onto
+a floor ruled with parallel lines a distance $d \geq \ell$ apart, and ask
+for the probability that the needle crosses a line. The outcome is fixed
+by two continuous quantities: the distance $x$ from the needle's centre
+to the nearest line, uniform on $[0, d/2]$, and the acute angle $\theta$
+the needle makes with the lines, uniform on $[0, \pi/2]$, taken
+independent. The sample space is the rectangle $[0, d/2] \times [0,
+\pi/2]$ with the uniform (area) measure, and the event ``crosses'' is the
+region where the needle reaches the line, $x \leq (\ell/2)\sin\theta$.
+The probability is the area of that region divided by the area of the
+rectangle,
+\[
+\Pr(\text{cross}) =
+\frac{1}{(d/2)(\pi/2)}
+\int_{0}^{\pi/2} \frac{\ell}{2}\sin\theta \,\dd\theta
+= \frac{4}{\pi d}\cdot\frac{\ell}{2}
+= \frac{2\ell}{\pi d}.
+\]
+For a needle as long as the line spacing ($\ell = d$) the crossing
+probability is $2/\pi \approx 0.637$. The identity runs backward as a
+computation: dropping the needle $n$ times and recording the crossing
+fraction $\hat p$ estimates $2\ell/(\pi d)$, so $\hat\pi = 2\ell/(d\hat
+p)$ estimates $\pi$ itself, the earliest physical Monte Carlo method,
+drawn in Figure~\ref{fig:vol02ch13:buffon-needle}. The estimator inherits
+the $1/\sqrt{n}$ wall of every average, and because $\hat p$ enters
+through a reciprocal it also inherits a Jensen bias (section 13.3) that
+makes $\hat\pi$ slightly high on small samples. The engineering content
+is the modelling move, not the party trick: a continuous sample space
+with a uniform measure turns a probability into an area integral, and the
+same reduction prices the chance that a randomly placed via lands on a
+buried trace, that a scratch of random orientation bridges two conductors
+a fixed pitch apart, and that a dropped tool spans a gap, each a
+Buffon problem with the geometry relabelled.
+
+\input{volumes/02-form/ch13-probability/figures/fig-buffon-needle.tex}
+
 \begin{mastery}
 \textbf{Why the axioms need measure theory.} The countable additivity
 axiom looks like a technicality and is the load-bearing one. On a finite
@@ -617,6 +686,81 @@ update of this section run on a sampled, rather than parametric,
 representation of belief.
 \end{mastery}
 
+\subsection{Applied vignette: sequential monitoring of a production
+line}
+
+The recursive-Bayes machinery earns a full worked application on a
+problem an engineer meets on a factory floor: deciding, from a stream of
+pass/fail inspections, whether a production line has drifted out of
+control, while paying neither for a false alarm that stops a healthy line
+nor for a missed drift that ships defective product. The problem is a
+running hypothesis test, and the odds-form update is the tool that makes
+it a computation rather than a guess.
+
+Take a line that runs in one of two states: in control, with defect
+probability $p_{0} = 0.01$ per unit, or out of control, with defect
+probability $p_{1} = 0.05$. The engineer does not observe the state; the
+engineer observes the pass/fail outcome of each inspected unit. Before
+the first inspection the prior odds that the line is out of control are
+low, say $1$ in $99$ (a prior probability of $0.01$ that the line has
+drifted since the last verified reset), so the prior odds are $O_{0} =
+0.01/0.99 \approx 0.0101$. Each inspected unit supplies a likelihood
+ratio. A defective unit has likelihood ratio $\Lambda_{\text{fail}} =
+p_{1}/p_{0} = 0.05/0.01 = 5$, evidence for drift. A good unit has
+likelihood ratio $\Lambda_{\text{pass}} = (1 - p_{1})/(1 - p_{0}) =
+0.95/0.99 \approx 0.9596$, mild evidence against drift. The odds-form
+update multiplies the running odds by the likelihood ratio of each new
+observation,
+\[
+O_{t} = O_{t-1} \times \Lambda_{t},
+\]
+and on the log scale the evidence adds: each good unit subtracts
+$|\ln 0.9596| = 0.0412$ from the log-odds, and each defective unit adds
+$\ln 5 = 1.609$, so a single defect undoes about thirty-nine good units
+of reassurance. The asymmetry is the quantitative statement that a rare
+defect is far more informative than a common pass, which is why the
+monitor reacts sharply to defects and drifts only slowly downward through
+a clean run.
+
+The engineer sets two thresholds and stops. An upper threshold $A$
+triggers an out-of-control alarm (stop and inspect the line); a lower
+threshold $B$ declares the line healthy for now (reset the monitor and
+continue). Choosing $A$ and $B$ from the tolerable false-alarm and
+missed-detection rates is exactly Wald's sequential probability ratio
+test: for a target false-alarm probability $\alpha$ and missed-detection
+probability $\beta$, the log-odds thresholds are approximately $\ln((1 -
+\beta)/\alpha)$ and $\ln(\beta/(1 - \alpha))$. With $\alpha = 0.01$ and
+$\beta = 0.05$, the upper log-odds threshold is $\ln(0.95/0.01) = 4.55$
+and the lower is $\ln(0.05/0.99) = -2.98$. Starting from log-odds
+$\ln O_{0} = -4.59$, the monitor needs a net evidence swing of about
+$9.1$ log-odds units to raise an alarm, which a run of good units cannot
+supply on its own (each contributes only $-0.0412$) and which requires on
+the order of $\lceil (4.55 - (-4.59))/1.609 \rceil = 6$ defects net of
+the good-unit erosion between them. The design number the engineer needs
+is the \engterm{average run length}: under an in-control line the monitor
+raises a false alarm on average once every $1/\alpha' $ resets, and under
+a drifted line it detects the drift after inspecting on average
+$(A - \ln O_{0})/\E[\ln \Lambda \mid \text{drift}]$ units, where the
+expected per-unit log-likelihood-ratio under drift is $p_{1}\ln 5 + (1 -
+p_{1})\ln 0.9596 = 0.05(1.609) + 0.95(-0.0412) = 0.0805 - 0.0391 =
+0.0414$. The expected number of units to detection from the prior is then
+about $(4.55 - (-4.59))/0.0414 \approx 221$ units. A tighter false-alarm
+target raises $A$, lengthens the detection delay, and the engineer reads
+the trade directly off the two thresholds rather than tuning by trial.
+
+The vignette closes on the assumption that makes it work and the failure
+it invites. The update treats successive inspections as conditionally
+independent given the line state, which holds when defects arise from a
+stationary per-unit mechanism and fails when a single upstream event (a
+bad material lot, a tool chip) produces a burst of correlated defects.
+Correlated defects violate the likelihood-ratio arithmetic in the
+direction of over-reaction on the burst and under-reaction afterward, and
+the honest monitor either models the burst structure (a two-timescale
+hidden state) or resets conservatively after any alarm. The sequential
+monitor is the recursive-Bayes update of the previous subsection run as a
+control chart, and it is the seed of the change-point detection that
+Volume IX develops for control systems.
+
 \section{Random variables, expectation, variance}\pathtag{core}
 
 A random variable $X$ on a probability space $(\Omega, \mathcal{F},
@@ -721,6 +865,38 @@ final one alone takes $n$ cycles on average. The coupon-collector
 result sets expectations for coverage testing, cache-warming, and
 any sampling scheme that must touch every category of a finite set.
 
+\begin{mastery}
+\textbf{Jensen's inequality and why the average of a ratio is not the
+ratio of the averages.} For a convex function $g$ (one that curves
+upward, $g'' \geq 0$) and any random variable $X$ with finite mean,
+\[
+\E[g(X)] \geq g(\E[X]),
+\]
+with the inequality reversed for concave $g$ and equality only when $g$
+is linear or $X$ is degenerate. The gap between the two sides is the
+\engterm{Jensen gap}, and it is the systematic error an engineer commits
+by plugging a mean into a non-linear formula instead of averaging the
+formula over the distribution. Three consequences recur. The mean of a
+reciprocal exceeds the reciprocal of the mean, $\E[1/X] \geq 1/\E[X]$, so
+a throughput computed from an average cycle time understates the true
+average throughput; a fleet whose vehicles average $30$ and $50$ units of
+fuel economy does not average $40$ in the harmonic sense the
+distance-per-fuel calculation requires. The mean of a square exceeds the
+square of the mean by exactly the variance, $\E[X^{2}] - (\E[X])^{2} =
+\Var(X) \geq 0$, which is Jensen for $g(x) = x^{2}$ and the reason a
+power that goes as current-squared has a mean that exceeds the power at
+the mean current, the delta-method correction of section 13.3 read as an
+exact inequality rather than an approximation. And the geometric mean
+never exceeds the arithmetic mean, which is Jensen for the concave
+logarithm and the reason a portfolio's expected log-return (the quantity
+that compounds) sits below the log of its expected return. The practical
+rule is to carry the distribution through a non-linear step whenever the
+curvature is appreciable over the input's spread, and to reach for the
+delta-method or Monte Carlo correction rather than the plug-in mean; the
+plug-in error always has the sign Jensen predicts, so the engineer knows
+in advance which way the naive estimate is biased.
+\end{mastery}
+
 \subsection{Variance and standard deviation}
 
 The \engterm{variance} of a random variable with finite mean
@@ -812,6 +988,98 @@ exists, replaces it; it is the tool behind the proof of the central
 limit theorem.
 \end{mastery}
 
+\subsection{Entropy: expectation of surprise}
+
+Expectation gives a distribution a second summary beyond its moments: how
+much uncertainty it carries. The \engterm{surprise} of an outcome $x$
+under a discrete law $p$ is $-\log p(x)$, large when the outcome was
+improbable and zero when it was certain, and the \engterm{Shannon
+entropy} is the expected surprise,
+\[
+H(X) = -\sum_{i} p(x_{i}) \log p(x_{i}) = \E[-\log p(X)],
+\]
+in bits when the logarithm is base two and in nats when it is natural.
+Entropy is an expectation of a function of the distribution against
+itself, so the law-of-the-unconscious-statistician machinery applies
+unchanged, and the concavity of the logarithm (Jensen, from the mastery
+box above) delivers its two governing facts at once: entropy is
+non-negative, and among all laws on $k$ outcomes the uniform law
+maximises it at $H = \log k$. A fair coin carries one bit; a biased coin
+with $p = 0.9$ carries only $-0.9\log_{2}0.9 - 0.1\log_{2}0.1 \approx
+0.469$ bits, because its outcome is already half-known before the flip.
+
+\paragraph{Worked example: entropy sizes a diagnostic code.}
+An inspection sorts each unit into one of four disposition classes with
+probabilities $0.7$, $0.2$, $0.07$, $0.03$. How many yes/no questions,
+on average, must a fault-isolation routine ask to name the class? The
+entropy is
+\[
+H = -\big(0.7\log_{2}0.7 + 0.2\log_{2}0.2
++ 0.07\log_{2}0.07 + 0.03\log_{2}0.03\big) \approx 1.33\ \text{bits}.
+\]
+A naive fixed code that spends two bits on every unit ($\log_{2}4 = 2$)
+wastes the head room the skewed distribution leaves; a code matched to
+the probabilities (short codewords for the common classes, long ones for
+the rare) reaches an average length within one bit of $H$ by the
+source-coding theorem, so about $1.4$ bits per unit against the naive
+$2.0$, a $30\,\%$ reduction in the average number of tests. The entropy
+is the floor no decision procedure can beat, and it is the same quantity
+a decision tree minimises when it splits on the feature that most reduces
+class uncertainty. An engineer who reads entropy as the intrinsic
+difficulty of an identification problem reaches for the right benchmark:
+a low-entropy source is cheap to encode, cheap to diagnose, and cheap to
+compress, while a high-entropy source resists all three in proportion.
+
+For a continuous law with density $f$ the analogue is the
+\engterm{differential entropy} $h(X) = -\int f(x)\log f(x)\,\dd x$, which
+unlike the discrete entropy can be negative and is not
+coordinate-invariant, so it measures uncertainty only relative to a
+choice of scale. Its one clean use is comparative: among all densities on
+the line with a fixed variance $\sigma^{2}$, the Gaussian is the unique
+maximiser of differential entropy, at $h = \tfrac12\log(2\pi e
+\sigma^{2})$, which is the information-theoretic reason the Gaussian is
+the least-committal model once only a mean and a variance are pinned
+down.
+
+\begin{mastery}
+\textbf{Maximum entropy and Kullback-Leibler divergence.} The
+distributions of section 13.4 are not an arbitrary catalogue; each is the
+maximum-entropy law under a particular set of constraints, which is why
+they arise as the least-committal model an engineer can assert given
+partial knowledge. Maximising $H$ subject to fixed constraints by
+Lagrange multipliers yields the exponential-family form $f(x) \propto
+\exp(\sum_{k}\lambda_{k}T_{k}(x))$ of section 13.5: a fixed support and
+nothing else gives the uniform; a fixed mean on $[0, \infty)$ gives the
+exponential; a fixed mean and variance on the line give the Gaussian; a
+fixed mean count gives the Poisson. Reading the named families this way
+turns model selection into a question about which constraints the data
+actually justify, rather than a search over shapes. The companion object
+is the \engterm{Kullback-Leibler divergence}
+\[
+D_{\mathrm{KL}}(p \,\|\, q) = \sum_{i} p(x_{i})
+\log\frac{p(x_{i})}{q(x_{i})}
+= \E_{p}\!\left[\log\frac{p(X)}{q(X)}\right],
+\]
+the expected log-likelihood-ratio in favour of $p$ over $q$ when the data
+truly follow $p$. It is non-negative (Jensen again, applied to the convex
+$-\log$), and zero only when $p = q$, so it behaves as a directed
+``distance'' between laws, though it is not symmetric and violates the
+triangle inequality. Three engineering readings recur. The KL divergence
+is the number of extra bits per symbol paid by coding a $p$-source with a
+code built for $q$, the exact penalty for a mismatched model. It is the
+expected weight of evidence per observation in a sequential likelihood
+ratio test, so the drift of the log-odds monitor of section 13.2 is a KL
+divergence and its detection delay is inversely proportional to it. And
+maximum-likelihood estimation is minimisation of the KL divergence from
+the empirical distribution to the model, which is why the fitted model is
+the exponential-family member whose sufficient statistics match the
+sample. The Gaussian's maximum-entropy property and the KL penalty for
+using it on a heavy-tailed source are two views of the same fact: the
+least-committal model is safe only when its constraints are the only
+knowledge available, and the divergence measures the cost when the world
+carries structure the model discarded.
+\end{mastery}
+
 \subsection{Markov and Chebyshev inequalities}
 
 The \engterm{Markov inequality} says that for a non-negative random
@@ -837,6 +1105,34 @@ Gaussian the true two-$\sigma$ probability is about $0.046$, against
 the Chebyshev bound of $0.25$. A working engineer reaches for
 Chebyshev when distributional assumptions are weak and for the
 relevant tabulated tail when the distribution is named.
+
+\paragraph{Worked example: distribution-free sample-size planning.} An
+engineer must estimate a population mean $\mu$ to within a tolerance
+$\varepsilon$ with confidence $1 - \delta$, but knows only the standard
+deviation $\sigma$ and refuses to assume a distributional shape. The
+sample mean $\bar X_{n}$ has variance $\sigma^{2}/n$, and Chebyshev on
+$\bar X_{n}$ gives a bound that requires nothing beyond a finite
+variance,
+\[
+\Pr(|\bar X_{n} - \mu| \geq \varepsilon)
+\leq \frac{\Var(\bar X_{n})}{\varepsilon^{2}}
+= \frac{\sigma^{2}}{n\varepsilon^{2}}.
+\]
+Setting the right side to $\delta$ and solving gives the required sample
+size $n \geq \sigma^{2}/(\delta\varepsilon^{2})$. For $\sigma = 5$,
+$\varepsilon = 1$, and $\delta = 0.05$, the Chebyshev requirement is
+$n \geq 25/(0.05 \cdot 1) = 500$. Compare the sample size the CLT would
+demand for the same target: the CLT reads the tolerance as $z_{1 -
+\delta/2}\,\sigma/\sqrt{n} = \varepsilon$, giving $n \geq (1.96 \cdot
+5/1)^{2} = 96$. The distribution-free Chebyshev plan asks for about five
+times the sample the Gaussian plan asks for, and the factor is the price
+of assuming nothing about the shape. The engineering choice is explicit:
+use the Chebyshev size when the distribution is genuinely unknown and a
+guaranteed bound is required (a safety certification that cannot rest on
+an unverified normality claim), and use the CLT size when the sample is
+large enough that the sample mean is credibly Gaussian and the extra
+factor of five is not worth paying. The two numbers bracket the honest
+range, and reporting only the smaller one silently assumes the shape.
 
 \subsection{Functions of random variables and error propagation}
 
@@ -1174,6 +1470,48 @@ orders, and the total service time of a random number of jobs, which is
 why the result is the entry point to the collective-risk models of
 actuarial and operations engineering.
 
+\input{volumes/02-form/ch13-probability/figures/fig-total-variance.tex}
+
+Figure~\ref{fig:vol02ch13:total-variance} renders the decomposition as
+three conditional densities, one per value of the conditioning variable:
+the average width of the three bells is the within-group term and the
+spread of their centres is the between-group term. Reading the picture
+supplies the intuition that a conditioning variable earns its keep only
+when it moves the group means apart, not merely when it exists.
+
+\paragraph{Worked example: measurement variance across a mixed fleet.}
+A depot measures the fuel efficiency of vehicles drawn from three model
+lines. Line $1$ supplies half the fleet with mean efficiency
+$8.0\,\text{L}/100\,\text{km}$; line $2$ supplies three tenths at
+$6.0\,\text{L}/100\,\text{km}$; line $3$ supplies two tenths at
+$10.0\,\text{L}/100\,\text{km}$. Within each line, unit-to-unit
+variation has standard deviation $0.5\,\text{L}/100\,\text{km}$, so the
+within-line variance is $0.25$ for every line. Let $X$ be the line
+label and $Y$ the measured efficiency of a random vehicle. The
+within-group term is the average conditional variance,
+\[
+\E[\Var(Y \mid X)] = 0.5(0.25) + 0.3(0.25) + 0.2(0.25) = 0.25,
+\]
+the same $0.25$ because every line shares the within-line spread. The
+between-group term needs the fleet mean first,
+$\E[Y] = 0.5(8) + 0.3(6) + 0.2(10) = 7.8\,\text{L}/100\,\text{km}$, and
+then the variance of the three conditional means about it,
+\[
+\Var(\E[Y \mid X]) = 0.5(8 - 7.8)^{2} + 0.3(6 - 7.8)^{2}
++ 0.2(10 - 7.8)^{2} = 0.02 + 0.972 + 0.968 = 1.96.
+\]
+The total variance is $\Var(Y) = 0.25 + 1.96 = 2.21\,(\text{L}/100\,
+\text{km})^{2}$, a standard deviation of $1.49\,\text{L}/100\,\text{km}$.
+The decomposition reports that almost nine tenths of the fleet variance
+lives between the lines and only a ninth within them, so an engineer who
+wants to shrink fleet-wide fuel scatter gains far more from narrowing the
+between-line gap (retiring the thirsty line, retuning it toward the
+fleet mean) than from tightening unit-to-unit control inside a line. The
+same accounting is what a gauge-repeatability-and-reproducibility study
+computes when it splits measurement variance into part-to-part,
+operator, and instrument components, and it is the reason a variance
+report that gives only the pooled figure hides the lever that matters.
+
 \begin{mastery}
 \textbf{Conditional expectation, projection, and the orthogonality
 principle.} In the space $L^{2}$ of square-integrable random variables
@@ -1364,6 +1702,34 @@ $p = 0.10$ is the plan's discriminating power, and a buyer who wants
 tighter discrimination must raise $n$ or lower the acceptance
 number.
 
+\begin{mastery}
+\textbf{The negative binomial and overdispersed counts.} The Poisson
+imposes $\Var = \E$, a rigid equality that empirical counts routinely
+violate: defects per wafer, failures per fleet-month, and events per
+region are usually \engterm{overdispersed}, with variance above the
+mean. The \engterm{negative binomial} distribution relaxes the
+constraint. It arises as a Poisson whose rate is itself random,
+gamma-distributed across the population: if $X \mid \Lambda \sim
+\mathrm{Pois}(\Lambda)$ and $\Lambda \sim \mathrm{Gamma}(r, \theta)$,
+then marginalising over $\Lambda$ gives a negative binomial count with
+mean $\mu = r\theta$ and variance $\mu + \mu^{2}/r$. The extra term
+$\mu^{2}/r$ is the overdispersion, and it vanishes as $r \to \infty$,
+recovering the Poisson; a small $r$ means a heavily varying underlying
+rate and a fat count tail. The mechanism is the gamma-Poisson mixture,
+which is also a conjugate pair: a $\mathrm{Gamma}(r, \theta)$ prior on a
+Poisson rate, updated by an observed count, yields a gamma posterior, so
+a Bayesian rate estimate that starts gamma stays gamma. The engineering
+lesson is diagnostic. When a fitted Poisson underpredicts the frequency
+of high counts, the cause is almost always an unmodelled variation in the
+rate across the units being pooled (different machines, different lots,
+different operating conditions), and the negative binomial both fits the
+tail and names the cause. An engineer who forces a Poisson onto
+overdispersed counts and then computes a control limit from
+$\mu + 3\sqrt{\mu}$ sets the limit too tight and generates false alarms
+at the overdispersed rate, the count-data version of fitting a thin
+Gaussian to a heavy-tailed quantity.
+\end{mastery}
+
 \subsection{Continuous: uniform, exponential, normal, gamma, beta}
 
 A \engterm{uniform random variable} $X \sim \mathrm{Unif}(a, b)$ has
@@ -1380,6 +1746,33 @@ variance is $1/\lambda^{2}$. The exponential is memoryless and
 arises as the waiting time between events of a Poisson process with
 rate $\lambda$. Volume I Chapter 8 §8.2 named the engineering
 contexts.
+
+\paragraph{Worked example: competing exponential clocks.} A subsystem
+runs until the first of three independent failure mechanisms strikes:
+thermal fatigue at rate $\lambda_{1} = 0.02\,\text{yr}^{-1}$, corrosion
+at $\lambda_{2} = 0.05\,\text{yr}^{-1}$, and mechanical wear at
+$\lambda_{3} = 0.03\,\text{yr}^{-1}$. Each mechanism's time to failure
+is exponential, and the subsystem fails at the minimum of the three
+clocks. The minimum of independent exponentials is exponential with the
+rates added, so the time to first failure is $\mathrm{Exp}(\lambda_{1} +
+\lambda_{2} + \lambda_{3}) = \mathrm{Exp}(0.10\,\text{yr}^{-1})$, a mean
+life of $10\,\text{yr}$. The probability that a given failure is caused
+by a particular mechanism is that mechanism's share of the total rate,
+independent of when the failure occurs: corrosion causes
+$\lambda_{2}/\sum\lambda = 0.05/0.10 = 50\,\%$ of failures, wear
+$30\,\%$, and thermal fatigue $20\,\%$. The two facts, that the combined
+lifetime is exponential and that the cause is a rate-proportional draw
+made independently of the timing, are the competing-risks decomposition,
+and they hold only because each clock is memoryless: the elapsed
+run-time carries no information about which mechanism is closest to
+striking. An engineer allocating reliability-improvement budget reads the
+answer directly from the rate shares, spending first on corrosion because
+it owns half the failures, and gains a predictable return because halving
+the corrosion rate cuts the total failure rate from $0.10$ to $0.075$, a
+$25\,\%$ life extension. The competing-exponential structure is the
+event-level engine behind the continuous-time-chain holding times of
+section 13.7, where the process leaves a state at the minimum of the
+competing outbound clocks and jumps to the winner.
 
 \begin{mastery}
 \textbf{Hazard rate and why constant hazard means exponential.} The
@@ -1404,6 +1797,59 @@ Volume X develops the apparatus; the lesson here is that the
 exponential is the right model only in the flat middle of the
 bathtub.
 \end{mastery}
+
+\input{volumes/02-form/ch13-probability/figures/fig-hazard-bathtub.tex}
+
+Figure~\ref{fig:vol02ch13:hazard-bathtub} draws the three regimes so the
+reader can see why a single exponential fit to a full lifetime
+misreports the times that matter. Two worked calculations make the
+regimes quantitative.
+
+\paragraph{Worked example: burn-in decides how long to age a part.} A
+population of capacitors follows a Weibull lifetime with shape $k = 0.6$
+(infant mortality, hazard falling with age) and scale set so the
+characteristic life is $1/\lambda = 20\,000\,\text{h}$. The survival
+function is $S(t) = \exp(-(\lambda t)^{0.6})$. A manufacturer wants to
+ship only parts that have survived a burn-in of duration $\tau$, so that
+the population in the field starts on the flatter part of the falling
+hazard. The instantaneous hazard at age $\tau$ is $h(\tau) = \lambda k
+(\lambda \tau)^{k - 1}$. At $\tau = 0$ the hazard is formally infinite
+(the $k - 1 = -0.4$ power), which is the mathematical signature of early
+failures concentrated at the start. At $\tau = 200\,\text{h}$, with
+$\lambda \tau = 0.01$, the hazard is $\lambda \cdot 0.6 \cdot
+0.01^{-0.4} = \lambda \cdot 0.6 \cdot 6.31 = 3.79\lambda$; at $\tau =
+2000\,\text{h}$, with $\lambda\tau = 0.1$, it is $\lambda \cdot 0.6
+\cdot 0.1^{-0.4} = \lambda \cdot 0.6 \cdot 2.51 = 1.51\lambda$. A tenfold
+longer burn-in cuts the shipped-part hazard by a factor of $2.5$, not a
+factor of ten, because the hazard falls only as a fractional power of
+age. The engineer trades burn-in cost against field-failure cost by
+reading this curve: the first hundreds of hours remove the steepest part
+of the risk cheaply, and each further decade of burn-in buys less. The
+fraction of parts surviving to $\tau = 2000\,\text{h}$ is $S(2000) =
+\exp(-0.1^{0.6}) = \exp(-0.251) = 0.778$, so a fifth of the batch is
+culled to place the rest on the flatter hazard, a yield cost the burn-in
+economics must justify.
+
+\paragraph{Worked example: when does replacement beat run-to-failure?}
+A bearing follows a Weibull lifetime with shape $k = 2.5$ (wear-out,
+hazard rising with age) and characteristic life $\eta = 1/\lambda =
+10\,000\,\text{h}$. Run-to-failure lets the rising hazard run unchecked;
+preventive replacement at a fixed age $\tau$ caps it. The hazard at age
+$\tau$ is $h(\tau) = (k/\eta)(\tau/\eta)^{k - 1}$. At $\tau =
+5000\,\text{h}$ ($\tau/\eta = 0.5$) the hazard is $(2.5/\eta)(0.5)^{1.5}
+= (2.5/\eta)(0.354) = 0.884/\eta$; at $\tau = 10\,000\,\text{h}$
+($\tau/\eta = 1$) it is $2.5/\eta$, nearly three times higher. Because
+the hazard climbs, replacing before the bearing reaches its
+characteristic life keeps every unit in the lower-hazard region, and the
+age-replacement optimum balances the wasted remaining life of a
+replaced-early part against the higher failure rate of a run-late part.
+The rising hazard is what makes preventive maintenance rational: a
+constant-hazard (exponential) part gains nothing from replacement,
+because a used unit is statistically as good as new, while a wear-out
+part gains from replacement exactly because it is not. An engineer who
+schedules preventive replacement on a constant-hazard component is
+spending maintenance budget against a hazard that replacement cannot
+lower, a category error the bathtub curve names on sight.
 
 A \engterm{normal random variable} $X \sim \mathcal{N}(\mu,
 \sigma^{2})$ has density
@@ -1473,6 +1919,71 @@ prior for the Bernoulli/binomial likelihood: a $\mathrm{Beta}
 yields a $\mathrm{Beta}(\alpha + k, \beta + n - k)$ posterior. The
 beta is therefore the tool of choice for proportion estimation in
 Bayesian quality control.
+
+\paragraph{Worked example: a beta-binomial proportion update.} A new
+supplier ships a first lot, and the engineer wants a defect-rate
+estimate that honestly reflects both prior knowledge and the small
+sample. Prior experience with comparable suppliers suggests a defect
+rate around $2\,\%$ with real uncertainty, encoded as a
+$\mathrm{Beta}(2, 98)$ prior: mean $2/100 = 0.02$, and a spread wide
+enough not to overwhelm the data. An inspection of $n = 50$ units finds
+$k = 3$ defective. The conjugate update adds the successes to the first
+parameter and the failures to the second, giving the posterior
+$\mathrm{Beta}(2 + 3, 98 + 47) = \mathrm{Beta}(5, 145)$. The posterior
+mean is $5/150 = 0.0333$, pulled up from the prior $0.02$ toward the raw
+sample rate $3/50 = 0.06$ but not all the way, because the prior carries
+the weight of its $100$ pseudo-observations against the sample's $50$.
+The posterior mean is exactly the precision-weighted blend $(2 + 98)
+\cdot 0.02$ prior-count-weighted with the $50$ observed, which an
+engineer can read as ``the prior was worth a hundred units of evidence,
+the sample fifty, so the estimate sits two thirds of the way from prior
+to data.'' A $95\,\%$ credible interval from the $\mathrm{Beta}(5, 145)$
+quantiles runs roughly $[0.012, 0.068]$, a range the engineer can quote
+directly as the probability that the true defect rate lies in it, which
+is the interpretation a frequentist confidence interval cannot claim.
+Ignoring the prior and reporting the raw $6\,\%$ on three defects would
+overstate the rate and hide that three defects in fifty units is a thin
+basis for any point estimate; the beta-binomial update reports both the
+shrunk estimate and its honest uncertainty from one calculation.
+
+\paragraph{Worked example: a mixture distribution and its two-population
+moments.} Not every quantity comes from one named family. A machined
+dimension produced by two tools, or a signal that is background most of
+the time and background-plus-defect occasionally, follows a
+\engterm{mixture}: with probability $w$ the value is drawn from component
+$A$ and with probability $1 - w$ from component $B$. The density is the
+weighted sum $f(x) = w f_{A}(x) + (1 - w) f_{B}(x)$, and the moments
+follow from the law of total expectation over the component label $Z$,
+which is $A$ with probability $w$. Take a bore diameter machined on a
+worn tool ($A$) $20\,\%$ of the time, giving $\mathcal{N}(10.00, 0.02^{2})
+\,\text{mm}$, and on a good tool ($B$) the rest of the time, giving
+$\mathcal{N}(9.98, 0.01^{2})\,\text{mm}$. The mixture mean is the
+weighted mean of the component means,
+\[
+\E[X] = w\mu_{A} + (1 - w)\mu_{B}
+= 0.2(10.00) + 0.8(9.98) = 9.984\,\text{mm}.
+\]
+The variance is not the weighted mean of the component variances; the law
+of total variance of section 13.3 supplies the missing between-component
+term,
+\[
+\Var(X) = \underbrace{w\sigma_{A}^{2} + (1 - w)\sigma_{B}^{2}}
+_{\text{within}}
++ \underbrace{w(1 - w)(\mu_{A} - \mu_{B})^{2}}_{\text{between}}
+= (0.2\cdot0.0004 + 0.8\cdot0.0001) + 0.2\cdot0.8\cdot0.02^{2},
+\]
+which is $1.6 \times 10^{-4} + 6.4 \times 10^{-5} = 2.24 \times 10^{-4}$,
+so $\sigma_{X} \approx 0.0150\,\text{mm}$, larger than either component's
+spread because the separation of the two means adds variance of its own.
+The mixture is bimodal when the means are far apart relative to the
+spreads and unimodal when they are close, and an engineer who fits a
+single Gaussian to a two-tool output reports a spread inflated by the
+between-tool term while hiding the very structure, two distinct
+populations, that a control policy would act on. The right diagnostic is
+to model the mixture explicitly (the expectation-maximisation algorithm
+recovers $w$, $\mu_{A}$, $\mu_{B}$, and the variances), which separates
+the fixable process fault from the irreducible noise, exactly the
+between-versus-within split the variance decomposition names.
 
 \subsection{Recognition table}
 
@@ -1615,6 +2126,35 @@ with finite means,
 for any functions $g, h$ for which the expectations exist. The
 factorisation is the workhorse identity of probability, and its
 absence is where modelling work concentrates.
+
+Independence is a stronger and more delicate condition than the
+factorisation of a single expectation suggests. The definition demands
+that the joint CDF factor for \emph{every} pair $(x, y)$, equivalently
+that $g(X)$ and $h(Y)$ be uncorrelated for \emph{every} pair of
+functions $g, h$, not merely for the identity functions. This is why zero
+covariance (which is the factorisation for $g(x) = x$, $h(y) = y$ alone)
+falls short of independence: it checks one pair of functions where
+independence checks all of them. For a collection of more than two
+variables the condition is stronger still. \engterm{Mutual independence}
+of $X_{1}, \ldots, X_{n}$ requires the joint law to factor across every
+subset, not just across every pair; pairwise independence is genuinely
+weaker, as the three-event fair-coin construction of the exercises shows,
+and an engineer who verifies independence one pair at a time has not
+verified the joint independence that a product-form likelihood assumes.
+The practical test runs the other direction from the definition: rather
+than confirm the product form, name the generative mechanism and ask
+whether any shared input feeds two of the variables. Two dimensions read
+off the same laser interferometer share its wavelength calibration and
+are not independent however clean each looks alone; two arrival streams
+driven by the same daily demand cycle share that cycle. Independence is
+licensed by the absence of a common input in the data-generating process,
+and the factorisation identity is a consequence of that structural fact,
+not a substitute for checking it. When independence does hold, it buys
+the two results the rest of the chapter leans on: the variance of a sum
+reduces to the sum of variances, and the distribution of a sum is the
+convolution of the marginals, which the moment-generating-function
+machinery turns into a product and thence into the closure properties of
+the named families.
 
 \subsection{Covariance and correlation}
 
@@ -1845,6 +2385,32 @@ formal home of the lesson that identical marginals can hide radically
 different joint-tail behaviour.
 \end{mastery}
 
+\input{volumes/02-form/ch13-probability/figures/fig-copula-tails.tex}
+
+Figure~\ref{fig:vol02ch13:copula-tails} sets the two structures side by
+side on the unit square. The Gaussian copula thins toward the corners,
+so the two variables rarely go extreme together; the $t$-copula fills
+those corners, so they do. The bulk of the two clouds is deliberately
+identical, which is the visual form of the warning that a matched
+central correlation certifies nothing about the joint tail.
+
+\paragraph{Worked example: how much joint-tail mass the copula choice
+moves.} Two loss variables each have probability $0.05$ of exceeding a
+high threshold. Under the independence copula the joint exceedance
+probability is $0.05 \times 0.05 = 0.0025$. Under a comonotone (perfect
+positive dependence) copula it is $\min(0.05, 0.05) = 0.05$, twenty
+times larger. A Gaussian copula with correlation $\rho = 0.5$ sits
+between them but, because of its asymptotic tail independence, closer to
+the independent end deep in the tail: the joint exceedance is roughly
+$0.0075$, three times the independent figure. A $t$-copula with the same
+$\rho = 0.5$ and few degrees of freedom carries lower-tail dependence and
+lands near $0.015$, six times the independent figure. The four numbers,
+$0.0025$, $0.0075$, $0.015$, $0.05$, span a factor of twenty on the same
+marginals and the same rank correlation in the body, which is the entire
+content of the copula lesson expressed as a single joint probability: the
+dependence model, not the margins, sets the cluster risk, and choosing
+the Gaussian copula by default quietly picks the near-independent tail.
+
 \subsection{Conditioning in three dimensions, worked}
 
 The Schur-complement formula of the multivariate-normal mastery box is
@@ -1964,8 +2530,49 @@ continuity point $x$ of $F_{X}$.
 Convergence in probability implies convergence in distribution; the
 converse holds when the limit is a constant. Convergence almost
 surely is stronger than convergence in probability and is what the
-strong LLN delivers. The reader needs the names; the working
-content sits in the two theorems below.
+strong LLN delivers.
+
+The three modes are not interchangeable, and the differences carry
+engineering meaning rather than pedantry. \engterm{Convergence in
+distribution} is a statement about the \emph{shape} of the law: the CLT
+says the standardised sample mean has a Gaussian shape in the limit, and
+it says nothing about whether any particular sample path settles down.
+\engterm{Convergence in probability} is a statement about a single
+sequence: the chance that $X_{n}$ differs from its target by more than
+$\varepsilon$ vanishes, so for large $n$ a given draw is probably close,
+though it may occasionally stray. \engterm{Almost-sure convergence} is
+the strongest of the three: with probability one the sequence eventually
+enters and stays inside every band around the target, so a single
+infinite run of the process converges as a numerical sequence. The
+weak law delivers the middle mode and the strong law the top mode, and
+the gap between them is exactly the difference between ``the estimate is
+probably good at each large sample size'' and ``the estimate is good from
+some sample size onward for this run.'' A Monte Carlo integration relies
+on the strong law: the analyst runs one long simulation and trusts that
+this particular running average converges, not merely that a fresh
+average at each $n$ would probably be close.
+
+A short hierarchy fixes the implications. Almost-sure convergence implies
+convergence in probability, which implies convergence in distribution;
+neither reverse arrow holds in general, and the standard failures are
+instructive. A sequence can converge in probability without converging
+almost surely: the ``typewriter'' sequence of indicators that sweep
+across shrinking subintervals of $[0, 1]$ has vanishing probability of
+being nonzero yet, at every point, is nonzero infinitely often, so no
+single path settles. And a sequence can converge in distribution without
+converging in probability: if $X_{n}$ and $X$ are both standard normal
+but independent, then $X_{n} \to_{D} X$ trivially while $|X_{n} - X|$
+does not shrink at all, because the two are never linked. The one place
+the arrows reverse is the constant limit: convergence in distribution to
+a constant does imply convergence in probability to it, which is why the
+weak law can be stated either way. Slutsky's theorem then licenses the
+manipulations inference depends on, that a statistic converging in
+distribution combined with a nuisance quantity converging in probability
+to a constant behaves as if the constant were plugged in, the formal
+permission behind replacing an unknown variance by a consistent estimate
+in a $z$-statistic. The reader carries forward the working content in the
+two theorems below; the modes are the vocabulary that keeps the two
+theorems from being confused.
 
 \subsection{The Law of Large Numbers}
 
@@ -2017,6 +2624,52 @@ high-dimensional integrals, where a grid of $m$ points per axis in
 $d$ dimensions needs $m^{d}$ evaluations while Monte Carlo needs a
 number set only by the target accuracy and the integrand's
 variance.
+
+\paragraph{Worked example: importance sampling for a rare tail.} The
+LLN average is honest but wasteful when the quantity of interest is a
+rare event, because almost every draw misses the region that carries the
+answer. Take $\theta = \Pr(X > 5)$ for a standard normal $X$, whose true
+value is $\Phi(-5) \approx 2.87 \times 10^{-7}$. A naive estimator draws
+$X_{i} \sim \mathcal{N}(0, 1)$ and averages the indicator
+$\mathbf{1}\{X_{i} > 5\}$; the indicator is Bernoulli with $p = \theta$,
+so its relative standard error is $\sqrt{(1 - \theta)/(n\theta)} \approx
+1/\sqrt{n\theta}$, and reaching even $10\,\%$ relative error needs $n
+\approx 100/\theta \approx 3.5 \times 10^{8}$ draws, of which only about
+a hundred land in the tail. \engterm{Importance sampling} moves the
+draws to where the integrand lives. Sample instead from a proposal
+density $g$ shifted onto the tail, here $g = \mathcal{N}(5, 1)$, and
+correct each draw by the \engterm{likelihood ratio} (importance weight)
+$w(x) = f(x)/g(x)$,
+\[
+\theta = \E_{f}[\mathbf{1}\{X > 5\}]
+= \E_{g}\!\left[\mathbf{1}\{X > 5\}\,\frac{f(X)}{g(X)}\right],
+\qquad
+\hat\theta = \frac{1}{n}\sum_{i=1}^{n}
+\mathbf{1}\{X_{i} > 5\}\,\frac{f(X_{i})}{g(X_{i})},
+\quad X_{i} \sim g.
+\]
+The estimator is unbiased because the reweighting exactly undoes the
+change of sampling law, and Figure~\ref{fig:vol02ch13:importance-sampling}
+draws the geometry: the proposal sits over the tail, so roughly half the
+draws now exceed the threshold and every one of them contributes a
+weighted term. For this shift the weight past the threshold is $f(x)/g(x)
+= e^{-5x + 12.5} \leq e^{-12.5}$ at $x = 5$, small and slowly varying,
+which is the signature of a well-chosen proposal: the weights are neither
+tiny nor wild, and the estimator's variance drops by roughly the ratio
+$\theta^{-1}$, some six orders of magnitude here, for the same sample
+budget. The method fails when the proposal is chosen badly, a $g$ with
+lighter tails than $f$ makes $w(x) = f/g$ explode where $g$ is thin and
+the variance can become infinite, so the discipline is to pick a proposal
+at least as heavy-tailed as the target and to monitor the effective
+sample size $(\sum w_{i})^{2}/\sum w_{i}^{2}$, which collapses toward one
+when a single weight dominates, the same degeneracy the particle filter
+of section 13.2 guards against. Importance sampling is the standard tool
+for tail probabilities in reliability, for rare-event failure rates in
+safety analysis, and for pricing deep-out-of-the-money contracts, every
+case where the event that matters is the event a plain average almost
+never sees.
+
+\input{volumes/02-form/ch13-probability/figures/fig-importance-sampling.tex}
 
 \subsection{The Central Limit Theorem}
 
@@ -2230,6 +2883,122 @@ sequential-test stopping rule, the time for a random walk to escape a
 tolerance band, and the ruin probability of a risk reserve all read off
 the same recurrence.
 
+\input{volumes/02-form/ch13-probability/figures/fig-gambler-ruin.tex}
+
+Figure~\ref{fig:vol02ch13:gambler-ruin} plots the overflow probability
+against the fractional start for the fair walk and for two small drifts.
+The fair case is the straight line $r_{k} = k/N$; a four-percentage-point
+drift bends it almost to the ceiling or the floor at the midpoint. The
+picture is the fastest way to see that a persistent bias, however small,
+overwhelms the starting position once the boundaries are far apart.
+
+\paragraph{Worked example: the inspection paradox and length-biased
+sampling.} A subtle bias corrupts an average whenever the sampling scheme
+favours some outcomes over others, and the cleanest instance is the
+\engterm{inspection paradox}. A maintenance log records the intervals
+between successive failures of a machine, and their true mean is $\E[X] =
+\mu$. An inspector who arrives at a random instant and measures the
+interval currently in progress does not sample a typical interval: a long
+interval covers more of the timeline and is correspondingly more likely
+to be the one the arrival falls inside. The interval containing a random
+instant is drawn not from the interval density $f$ but from the
+\engterm{length-biased} density $\tilde f(x) = x f(x)/\E[X]$, which
+reweights each interval by its own length. Its mean is
+\[
+\E[\tilde X] = \int x\,\frac{x f(x)}{\E[X]}\,\dd x
+= \frac{\E[X^{2}]}{\E[X]}
+= \E[X]\big(1 + \mathrm{CV}^{2}\big),
+\]
+where $\mathrm{CV} = \sigma/\mu$ is the coefficient of variation. The
+observed mean exceeds the true mean by the factor $1 + \mathrm{CV}^{2}$,
+drawn in Figure~\ref{fig:vol02ch13:inspection-paradox} for a gamma
+interval that shifts from a true mean of $2$ to an observed mean of $3$.
+For a Poisson failure process the intervals are $\mathrm{Exp}$ with
+$\mathrm{CV} = 1$, so the interval an inspector lands in has mean $2\mu$,
+twice the true mean between failures, and by the memoryless property the
+residual wait to the next failure from a random instant is itself a full
+$\mathrm{Exp}(\mu)$ with mean $\mu$, not $\mu/2$. An engineer who
+estimates mean time between failures by timing the gap a random audit
+falls into, who estimates mean bus headway by waiting at a stop, or who
+estimates mean job runtime by sampling the job a random probe catches
+running, overstates the mean by exactly $1 + \mathrm{CV}^{2}$ and must
+sample intervals directly, not instants, to get the unbiased figure. The
+same length-bias inflates the average class size reported by students
+over the average reported by the registrar, and the average queue an
+arriving customer joins over the time-average queue, each a case where
+the act of sampling is coupled to the size of the thing sampled.
+
+\input{volumes/02-form/ch13-probability/figures/fig-inspection-paradox.tex}
+
+\subsection{Applied vignette: fleet monitoring and the survivorship trap}
+
+The inspection paradox is one member of a family of sampling biases that
+quietly corrupt an engineering estimate, and a fleet-reliability program
+meets several of them at once. Consider an organisation running a fleet
+of $M$ pumps and trying to estimate, from field records, the mean life of
+a pump and the shape of its failure-time distribution. The records are
+not a clean iid sample from the lifetime law, and each departure from
+that ideal moves the estimate in a knowable direction. Reading the biases
+correctly is the difference between a maintenance policy set on the real
+distribution and one set on the distribution the sampling accidentally
+manufactured.
+
+The first trap is \engterm{survivorship}. At any snapshot the fleet
+contains only pumps that have not yet failed, so an analyst who computes
+the mean age of the installed base and reports it as a life estimate
+measures the survivors, not the failures. The installed pumps are
+length-biased in the same sense as the inspection paradox: a pump with a
+long life is more likely to still be present to be counted. The classic
+statement of the trap is the wartime armour analysis, where the bullet
+holes recorded on returning aircraft mark the places a plane can be hit
+and still return, so armour belongs where the holes are absent, not where
+they cluster; the returning fleet is the survivor sample and the missing
+planes carry the information the sample lacks. A reliability analyst who
+studies only the pumps still turning, or only the warranty claims that
+came back, reads a censored and length-biased slice of the true lifetime
+law and will overstate the mean life and understate the early-failure
+rate.
+
+The second trap is \engterm{right-censoring}, and it is the honest
+correction to the first. A pump still running at the snapshot has not told
+us its lifetime; it has only told us that its lifetime exceeds its current
+age. Discarding these units (analysing only the ones that have failed)
+throws away the units with the longest lives and biases the mean life
+downward, the opposite of the survivorship error and equally wrong. The
+correct treatment keeps every unit and contributes each censored unit as
+a lower bound on its life, which is what a survival-analysis estimator
+such as Kaplan-Meier does: it builds the survival function $S(t)$ from the
+hazard in each small interval, using the failures that occurred and the
+units still at risk, so a unit censored at age $t$ informs every estimate
+up to $t$ and leaves the risk set thereafter. The mean life then
+integrates the estimated survival function, $\E[X] = \int_{0}^{\infty}
+S(t)\,\dd t$, rather than averaging the observed failure ages. An analyst
+who ignores censoring on a fleet that is mostly still running can bias the
+mean life by a factor of two or more, because most of the mass of the
+lifetime distribution sits in units that have not yet reached their end.
+
+The third trap couples back to the inspection paradox through the
+\engterm{renewal-reward} structure of a repair program. Availability, the
+fraction of time the fleet is up, is a time-average, and a naive estimate
+that averages over \emph{events} (per-failure downtimes) rather than over
+\emph{time} weights the long downtimes correctly but the intervals
+between them by length, so the two must be combined through the
+renewal-reward theorem: the long-run up-fraction is $\E[U]/(\E[U] +
+\E[D])$, the ratio of expected up-time to expected cycle time, not the
+event-average of the up-fractions. Reading these three biases together
+gives the vignette its discipline. Name the sampling scheme before
+trusting the average; ask whether the sample is length-biased, censored,
+or event-weighted; and convert to the quantity actually wanted, a
+time-average, a per-unit mean life, or a survival function, through the
+matching estimator. The engineer who reports the mean age of the running
+fleet as its mean life has committed all three errors at once, and the
+Kaplan-Meier survival curve, the length-bias correction, and the
+renewal-reward ratio are the three instruments that unwind them. Volume X
+develops survival analysis and censored reliability data in full; the
+probabilistic seed is the recognition that a biased sampling scheme is a
+change of measure, and every change of measure carries a correction
+weight the honest estimate must apply.
+
 \begin{mastery}
 \textbf{Martingales and the optional-stopping theorem.} A sequence
 $\{M_{n}\}$ is a \engterm{martingale} with respect to the information
@@ -2321,6 +3090,38 @@ four of its closure properties, which is the reason the Poisson
 process is the first reach for any stream of rare independent events
 and the analytic backbone of the queueing models in the design
 exercises and in Volume IX.
+
+\input{volumes/02-form/ch13-probability/figures/fig-poisson-superposition.tex}
+
+Figure~\ref{fig:vol02ch13:poisson-superposition} draws the two closure
+properties as operations on a timeline: two independent streams merge
+into one whose rate is the sum, and the merged stream thins to a
+substream whose rate is scaled by the keep-probability. The two pictures
+are why the depot example answered questions about aggregate alarms and
+about critical alarms from the same model.
+
+\paragraph{Worked example: pooling independent request streams.} A web
+service is fed by three independent client regions with request rates
+$\lambda_{1} = 40$, $\lambda_{2} = 25$, and $\lambda_{3} = 15$ requests
+per second, each well modelled as Poisson. By superposition the pooled
+stream the server sees is Poisson at rate $\lambda = 40 + 25 + 15 =
+80\,\text{s}^{-1}$. The probability the server receives no request in a
+$10\,\text{ms}$ window is $e^{-80 \cdot 0.01} = e^{-0.8} \approx 0.449$,
+and the mean number in a $100\,\text{ms}$ window is $8$ with standard
+deviation $\sqrt{8} \approx 2.83$. Now suppose an upstream filter routes
+each request independently to a cache with probability $q = 0.7$ and to
+the origin server with probability $1 - q = 0.3$. By thinning, the origin
+stream is Poisson at rate $0.3 \cdot 80 = 24\,\text{s}^{-1}$ and the
+cache stream is Poisson at rate $0.7 \cdot 80 = 56\,\text{s}^{-1}$, and
+the two thinned streams are independent, a property peculiar to Poisson
+thinning that a deterministic split would not share. The origin server
+can then be sized against a $\mathrm{Pois}(24)$ per-second load rather
+than the full $80$, and the independence of the split streams means the
+cache and origin capacity plans do not interact. The superposition and
+thinning identities turn a messy multi-source, multi-destination traffic
+model into two one-parameter Poisson calculations, which is the reason
+Poisson arrivals are the default assumption in capacity planning and the
+starting point for the queueing models below.
 
 \subsection{Markov chains: definition}
 
@@ -2522,6 +3323,18 @@ that the design exercises use. The repair model of the case study below
 is the birth-death process read in the language of reliability, with
 failures as deaths and repairs as births.
 
+\input{volumes/02-form/ch13-probability/figures/fig-mm1-queue.tex}
+
+The geometric stationary law has mean $\E[N] = \rho/(1 - \rho)$, and
+Figure~\ref{fig:vol02ch13:mm1-queue} plots it against utilisation. The
+curve is the single most consequential picture in capacity planning: it
+is nearly flat until $\rho \approx 0.7$ and then climbs without bound as
+$\rho \to 1$. The engineering reading is that the last increment of
+utilisation is the most expensive, because occupancy and delay diverge
+at the saturation wall, and a system run at $95\,\%$ utilisation carries
+an order of magnitude more work in progress than one run at $80\,\%$ for
+a difference in throughput of less than a fifth.
+
 \section{Case study: a repairable redundant system, end to end}
 \label{sec:vol02:ch13:availability}\pathtag{standard}
 
@@ -2696,6 +3509,73 @@ known mean buys back the precision that rare-event estimation loses. The
 two case studies together cover the two faces of probabilistic
 engineering: the tail of a static margin, and the steady state of a
 dynamic process.
+
+\subsection{Applied vignette: spare-parts provisioning and the warranty
+reserve}
+
+The availability model priced downtime; a companion problem prices the
+parts and the money that downtime consumes. A field of $M = 500$
+identical pumps each fails as a Poisson process of rate $\lambda =
+0.2\,\text{yr}^{-1}$ (mean time to failure five years, the flat middle of
+the bathtub). The maintenance organisation must decide how many spare
+pumps to stock for a one-year replenishment cycle so that the probability
+of a stockout, running out of spares before the next resupply, stays
+below $1\,\%$. The problem chains together three tools from this chapter:
+the superposition of Poisson processes, the Poisson count in a window,
+and the normal approximation to the Poisson.
+
+The number of failures across the whole field in one year is a sum of
+$M$ independent Poisson counts, which by superposition is itself Poisson
+with rate $M\lambda = 500 \cdot 0.2 = 100$ per year. The expected number
+of spares consumed is $100$, with standard deviation $\sqrt{100} = 10$.
+Stocking the mean of $100$ spares leaves a stockout probability near
+one half, because the demand exceeds its mean about half the time. The
+engineer wants the smallest stock $s$ with $\Pr(N > s) \leq 0.01$, that
+is the $99$th percentile of $\mathrm{Pois}(100)$. The normal
+approximation, valid here because the rate is large, places the
+percentile at $100 + z_{0.99}\sqrt{100} = 100 + 2.326 \cdot 10 = 123.3$,
+so stocking $124$ spares meets the target. The $24$ spares above the mean
+are the \engterm{safety stock}, and the calculation shows it scales as
+the square root of the demand: doubling the field to $1000$ pumps doubles
+the mean demand to $200$ but raises the safety stock only to $z_{0.99}
+\sqrt{200} \approx 33$, so the safety stock as a fraction of demand
+shrinks from $24\,\%$ to $16\,\%$. The pooling of independent demands is
+the quantitative case for a central spares depot over per-site stocks:
+one depot serving the whole field carries far less safety stock than the
+sum of independent site stocks, the same square-root pooling benefit that
+made the fused sensor sharper than either input.
+
+The money follows the same arithmetic. Each failure costs a fixed
+replacement charge plus a downtime penalty; if the per-failure cost has
+mean $\mu_{C} = 4000$ currency units and standard deviation $\sigma_{C} =
+1500$, the total annual warranty outlay is a compound sum $T =
+\sum_{i=1}^{N} C_{i}$ with $N \sim \mathrm{Pois}(100)$. The compound-sum
+identities of section 13.3 give the mean and variance directly:
+$\E[T] = \E[N]\mu_{C} = 100 \cdot 4000 = 400\,000$, and
+\[
+\Var(T) = \E[N](\sigma_{C}^{2} + \mu_{C}^{2})
+= 100(1500^{2} + 4000^{2}) = 100(2.25 \times 10^{6} + 1.6 \times 10^{7})
+= 1.825 \times 10^{9},
+\]
+so the standard deviation of the annual outlay is $\sqrt{1.825 \times
+10^{9}} \approx 42\,720$. A warranty reserve set at the mean of
+$400\,000$ is exhausted about half the time; a reserve at the $99$th
+percentile, $400\,000 + 2.326 \cdot 42\,720 \approx 499\,000$, covers the
+year with $99\,\%$ confidence. The reserve premium of about $99\,000$ over
+the mean is the price of the demand and cost uncertainty combined, and
+the compound-sum decomposition shows that the failure-count variability
+($\mu_{C}^{2}\E[N] = 1.6 \times 10^{9}$) dominates the per-failure cost
+variability ($\sigma_{C}^{2}\E[N] = 2.25 \times 10^{8}$) by roughly
+sevenfold: the reserve is uncertain mostly because the engineer does not
+know how many pumps will fail, not because each repair costs an uncertain
+amount. That decomposition tells the organisation where to spend its
+forecasting effort, on the failure rate rather than the repair invoice, a
+conclusion no single-number budget could deliver. The vignette rests on
+the constant-hazard assumption that keeps the field failures Poisson;
+once the pumps enter the wear-out arm of the bathtub the failure rate
+climbs, the counts cluster in time, and the Poisson provisioning
+under-stocks exactly when demand surges, which is the reliability version
+of the independence-and-stationarity failure the chapter closes on.
 
 \section{Case study: load-strength interference}\label{sec:vol02:ch13:case-study}\pathtag{standard}
 

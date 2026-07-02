@@ -548,6 +548,34 @@ ten times closer to its thermal limit. The modeller who scales a
 prototype motor by geometry and assumes the thermal margin scales with
 it has made the square-cube error in its thermal form.
 
+The square-cube law is the simplest member of a general family, and
+naming the family shows the reader when the naive exponents hold and
+when nature routes around them. Any quantity $y$ that scales with a
+characteristic size $\ell$ as a power, $y \propto \ell^{\,a}$, is an
+\engterm{allometric} relation, and the exponent $a$ is fixed by the
+geometry only when the object stays geometrically similar as it grows.
+The interesting engineering cases are the ones where it does not.
+Galileo's bones crush under the naive $\lambda^1$ stress rise precisely
+because bone strength scales as cross-section, $\lambda^2$, while weight
+scales as $\lambda^3$; nature's response is that large animals are not
+geometrically similar to small ones, but grow disproportionately thick
+bones, so that bone cross-section scales faster than $\lambda^2$ and the
+stress stays bounded. The bone exponent departs from the geometric value
+by exactly the amount needed to hold the stress constant, which is the
+signature of a system that has been selected, or designed, to defeat the
+square-cube law rather than to obey it. The engineering lesson is the
+converse of the naive one: the square-cube exponents are the prediction a
+model makes \emph{under geometric similarity}, and a measured exponent
+that departs from them is not an error but a report that the system
+abandoned geometric similarity to survive its own scaling. A designer
+scaling a structure reads the departure as a specification: to hold a
+stress or a temperature constant across scale, some dimension must grow
+disproportionately, and the required disproportion is the difference
+between the geometric exponent and the constant-quantity exponent. This
+is the same move Kleiber's $3/4$ exponent forced in the previous
+subsection, generalised: a scaling exponent that refuses its geometric
+value is the structural information the next model must explain.
+
 \subsection{Power laws and the log-log straight line}
 
 A quantity $y$ that scales as a power of another quantity $x$,
@@ -931,6 +959,32 @@ next measurement 95\% of the time, across many trials, has earned
 the percentage. A 95\% prediction interval that captures the
 next measurement 70\% of the time has not.
 
+The distinction between a prediction interval and a confidence
+interval is the one readers most often collapse, and the collapse
+under-reports uncertainty by a definite amount. A confidence
+interval bounds where the model's \emph{expected} value lies: it
+narrows toward zero as the data accumulate, because more data pin
+the fitted curve more tightly. A prediction interval bounds where
+the \emph{next single measurement} will fall, and it does not
+narrow toward zero, because a new measurement carries its own noise
+that no amount of past data removes. For a linear fit the two are
+related by
+\[
+\sigma_{\text{pred}}^2 = \sigma_{\text{noise}}^2
+  + \sigma_{\text{fit}}^2,
+\]
+the sum of the irreducible measurement noise and the shrinking
+uncertainty in the fitted value. As the sample grows,
+$\sigma_{\text{fit}} \to 0$ and the prediction interval floors at
+$\sigma_{\text{noise}}$, the noise the world will always add. An
+engineer who reports the confidence interval where a downstream user
+needs the prediction interval has promised a precision the next
+measurement cannot honour, and the promise fails exactly when a
+single new datum, not an average, is what the decision rests on. The
+coverage check above tests the right object: it asks whether single
+new measurements land inside the interval at the stated rate, which
+only the prediction interval claims.
+
 \subsection{Validation is not fitting}
 
 The most consequential discipline error in identification is the
@@ -1159,6 +1213,28 @@ the point estimates as if they were known to many decimal
 places, and the model will make predictions to that false
 precision. The engineer who states the interval has done the
 work that a downstream user would otherwise do badly.
+
+The report also carries the correlations among the parameters, not
+only their marginal intervals, and the omission of the correlations
+is a quiet source of wrong downstream predictions. Two parameters
+reported as $\hat\theta_1 = 3.0 \pm 0.4$ and
+$\hat\theta_2 = 5.0 \pm 0.6$ tell a downstream user nothing about
+whether the two move together or in opposition, yet a prediction that
+depends on their difference $\theta_1 - \theta_2$ has variance
+$\sigma_1^2 + \sigma_2^2 - 2\,\mathrm{Cov}(\theta_1, \theta_2)$, which
+a strong positive correlation can shrink to a fraction of the
+independent estimate, or a negative one can inflate. The identification
+returns the full covariance matrix; the working report either passes
+it forward or states the correlation coefficients alongside the
+marginal intervals, so the downstream user propagates the right
+quantity. The habit matters most for exactly the models the chapter
+has flagged as trade-off prone, where a correlation near $\pm 1$
+means the marginal intervals badly misrepresent what the data actually
+constrain. A report that lists only the marginals, for such a model,
+has hidden the ridge the covariance would have exposed, and the
+downstream user who treats the parameters as independent will compute
+a prediction interval that is wrong in a direction the report gave no
+way to detect.
 
 \begin{estimation}
 \textbf{Question.} A reader fits the simple pendulum equation
@@ -2831,6 +2907,699 @@ performed on a schedule, with rising validation residuals as the trigger to
 question the twin rather than the system. The engineering reader takes the
 digital twin as a deployment pattern for the chapter's cycle, not as an
 escape from its discipline.
+\end{mastery}
+
+\section{Worked examples: the moves on unfamiliar systems}\pathtag{standard}
+
+The full-cycle examples ran the loop on cooling, heating, queues, networks,
+and feedback. The moves are the same on systems whose mathematics the
+reader has not yet met in a modelling context. We work a set of shorter
+vignettes on chemistry, biochemistry, fluid friction, and online
+estimation, each pursuing one move to its useful conclusion, and then two
+applied vignettes at full length on problems an engineer is actually paid
+to answer.
+
+\subsection{A second Buckingham collapse: pipe friction}
+
+Section~18.3 collapsed the drag on a sphere onto a single curve. The same
+machinery collapses the pressure drop in a pipe, and the second case earns
+its place because it is the one an engineer sizing a water main or a
+ventilation duct actually uses. The pressure drop $\Delta p$
+($\mathsf{M}\mathsf{L}^{-1}\mathsf{T}^{-2}$) along a pipe can depend on the
+pipe length $\ell$ ($\mathsf{L}$), the diameter $d$ ($\mathsf{L}$), the mean
+flow speed $U$ ($\mathsf{L}\mathsf{T}^{-1}$), the fluid density $\rho$
+($\mathsf{M}\mathsf{L}^{-3}$), the viscosity $\mu$
+($\mathsf{M}\mathsf{L}^{-1}\mathsf{T}^{-1}$), and the wall roughness
+$\varepsilon$ ($\mathsf{L}$). Seven variables, three primary dimensions, so
+the count gives four dimensionless groups. Choosing $\rho$, $U$, $d$ as the
+repeating set, the groups are the pressure coefficient
+$\Delta p/(\rho U^2)$, the Reynolds number $\mathrm{Re} = \rho U d/\mu$, the
+length ratio $\ell/d$, and the relative roughness $\varepsilon/d$. The
+pressure coefficient is known empirically to be linear in $\ell/d$ (a pipe
+twice as long drops twice the pressure at fixed everything else), which
+peels that group off and leaves the \engterm{Darcy friction factor}
+\[
+f = \frac{\Delta p}{(\ell/d)\,\tfrac{1}{2}\rho U^2}
+  = \phi\!\left(\mathrm{Re},\ \frac{\varepsilon}{d}\right),
+\]
+a function of two groups rather than of six raw variables. Dimensional
+analysis has reduced a six-variable experiment to a two-variable chart.
+
+Figure~\ref{fig:vol02ch18:pipe-friction-collapse} is that chart, the Moody
+collapse \cite{paper:moody-1944}. In the laminar regime the dynamics supply
+the constant that dimensional analysis could not: the Hagen-Poiseuille
+solution gives $f = 64/\mathrm{Re}$ exactly, a straight line of slope $-1$
+independent of roughness. In the turbulent regime the friction factor
+flattens toward a plateau set by $\varepsilon/d$, the roughness the laminar
+branch never felt. The modelling lesson repeats the sphere-drag lesson with
+one addition: a single scalar function of two groups, measured once,
+predicts the pressure drop for every pipe, fluid, and flow rate an engineer
+will meet, and the regime boundary between the two branches, near
+$\mathrm{Re} \approx 2300$, is itself a dimensionless threshold the chart
+makes visible.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-pipe-friction-collapse.tex}
+
+\begin{estimation}
+\textbf{Question.} A garden hose $20\,\text{m}$ long and $12\,\text{mm}$ in
+bore carries water at $0.2\,\text{L/s}$. Estimate the Reynolds number, name
+the regime, and estimate the pressure drop, before consulting the chart.
+
+\smallskip
+\textit{Estimate, before any calculation.}
+
+\smallskip
+The cross-section is $A = \pi d^2/4 \approx \pi (0.012)^2/4 \approx
+1.1\times 10^{-4}\,\text{m}^2$, so the mean speed is $U = Q/A \approx
+2\times 10^{-4}/1.1\times 10^{-4} \approx 1.8\,\text{m/s}$. With water's
+$\rho \approx 10^3\,\si{\kilogram\per\cubic\meter}$ and $\mu \approx
+10^{-3}\,\text{Pa}\cdot\text{s}$, the Reynolds number is $\mathrm{Re} =
+\rho U d/\mu \approx 10^3 \cdot 1.8 \cdot 0.012/10^{-3} \approx 2.2\times
+10^4$, comfortably turbulent. A smooth-pipe turbulent friction factor at
+that Reynolds number is near $f \approx 0.026$ from the chart. The pressure
+drop is $\Delta p = f (\ell/d)\tfrac{1}{2}\rho U^2 \approx 0.026 \cdot
+(20/0.012) \cdot 0.5 \cdot 10^3 \cdot 1.8^2 \approx 0.026 \cdot 1667 \cdot
+1620 \approx 7\times 10^4\,\text{Pa}$, roughly $0.7\,\text{atm}$.
+
+\smallskip
+\textbf{Postmortem.} The dimensionless groups did the work. The Reynolds
+number placed the flow on the turbulent branch before any friction factor
+was read, and the length ratio $\ell/d \approx 1700$ shows why a long thin
+hose drops so much pressure: the drop scales with $\ell/d$ directly. An
+engineer who wanted half the drop would reach first for a larger bore,
+because the drop scales as roughly $d^{-5}$ at fixed flow rate (through both
+the $\ell/d$ factor and the speed's dependence on area), the strongest
+lever the dimensional form exposes.
+\end{estimation}
+
+\subsection{Linearise to identify: enzyme kinetics}
+
+The chapter's identifications linearised where they could: the cooling cup
+regressed a logarithm, the pendulum regressed $T^2$ on $L$. Enzyme kinetics
+is the case where the linearising transform is famous, instructive, and a
+trap the modelling discipline must name. The Michaelis-Menten rate law
+\cite{paper:michaelis-menten1913},
+\[
+v = \frac{V_{\max}\,[S]}{K_m + [S]},
+\]
+relates a reaction rate $v$ to a substrate concentration $[S]$ through two
+parameters: the maximum rate $V_{\max}$ and the half-saturation constant
+$K_m$, the concentration at which the rate reaches half its ceiling.
+Figure~\ref{fig:vol02ch18:michaelis-menten}(a) shows the saturating curve.
+The parameters are nonlinear in the rate, but the double-reciprocal
+transform
+\[
+\frac{1}{v} = \frac{K_m}{V_{\max}}\,\frac{1}{[S]} + \frac{1}{V_{\max}}
+\]
+is linear in $1/[S]$, so a straight-line fit of $1/v$ on $1/[S]$ reads
+$1/V_{\max}$ off the intercept and $K_m/V_{\max}$ off the slope, the
+Lineweaver-Burk plot of
+figure~\ref{fig:vol02ch18:michaelis-menten}(b). The transform is the
+related-problem move of P\'olya's discipline, and for a quick graphical
+estimate it is exactly right.
+
+The trap is the noise. The reciprocal $1/v$ magnifies the error on small
+rates, which are the measurements at low substrate, so the transformed fit
+weights the least reliable points most heavily and returns a biased
+$\hat K_m$. The modelling discipline of section~18.4 names the defence: the
+transform supplies starting values, and the honest estimate comes from a
+nonlinear least-squares fit on the untransformed rate, with weights that
+reflect the actual measurement variance. A reader who reports the
+Lineweaver-Burk intercepts as final parameters has committed the noise-model
+error the least-squares section warned against, in one of its most cited
+historical forms. The vignette is small; the discipline is the one the
+whole chapter installs: a linearising transform changes the noise model, and
+a modeller who transforms to identify must fit on the scale the noise is
+additive on.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-michaelis-menten.tex}
+
+\subsection{Two abstractions for one chemistry: the reactor}
+
+The single-tank compartment model of section~18.5 treated a vessel as one
+well-mixed stock. A reactor engineer has a choice of two abstractions for
+the same reaction, and the choice changes the answer by a factor the
+dimensionless group makes precise. The continuous stirred-tank reactor
+(CSTR) keeps the single-compartment abstraction: fresh feed mixes instantly
+into the vessel, and the whole vessel sits at the outlet concentration. The
+plug-flow reactor (PFR) refuses that abstraction: the concentration falls
+along the tube, and no single lumped state describes it. For a first-order
+reaction with rate constant $k$ and mean residence time $\tau$, the
+governing dimensionless group is the Damk\"ohler number $\mathrm{Da} =
+k\tau$, the ratio of the residence time to the reaction timescale. The two
+models give
+\[
+X_{\text{CSTR}} = \frac{\mathrm{Da}}{1 + \mathrm{Da}},
+\qquad
+X_{\text{PFR}} = 1 - e^{-\mathrm{Da}},
+\]
+for the conversion $X$, the fraction of feed reacted.
+Figure~\ref{fig:vol02ch18:reactor-abstraction} plots both.
+
+At the same residence time the tube out-converts the tank, and the gap
+widens with $\mathrm{Da}$: to reach $90\%$ conversion the plug-flow reactor
+needs $\mathrm{Da} = \ln 10 \approx 2.3$, while the tank needs
+$\mathrm{Da} = 9$, four times the residence time and therefore four times
+the volume. The reason is structural, not numerical: the tank dilutes fresh
+high-concentration feed into already-converted product, so its reaction runs
+everywhere at the low outlet concentration, while the tube lets the feed
+react at its full concentration on entry. The modelling decision, which
+abstraction to use, is not a matter of taste; it is the difference between a
+reactor sized right and one four times too large. The engineer who picks the
+single-tank abstraction by habit, because the compartment model was simplest
+in section~18.5, has let a modelling convenience set a capital cost.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-reactor-abstraction.tex}
+
+\subsection{The estimate that updates itself: recursive identification}
+
+Every identification in the chapter processed a batch: all the data in hand,
+one fit, one interval. A large class of engineering systems cannot wait for
+the batch, because the data arrive one at a time and a decision is needed at
+every step. A navigation filter estimates position as each satellite fix
+arrives; a process controller estimates a drifting setpoint as each sample
+lands; a battery gauge estimates charge as each current reading accumulates.
+The modelling move is \engterm{recursive estimation}: keep a current best
+estimate and its uncertainty, and update both as each measurement arrives,
+without re-processing the history.
+
+For a constant quantity measured with independent noise, the update is a
+precision-weighted average. Let $\hat\theta_{n-1}$ be the estimate after
+$n-1$ measurements, with variance $\sigma_{n-1}^2$, and let a new
+measurement $y_n$ arrive with variance $\sigma_y^2$. The updated estimate
+weights the two by their precisions (inverse variances),
+\[
+\hat\theta_n = \hat\theta_{n-1} +
+  \frac{\sigma_{n-1}^2}{\sigma_{n-1}^2 + \sigma_y^2}\,
+  \bigl(y_n - \hat\theta_{n-1}\bigr),
+\qquad
+\frac{1}{\sigma_n^2} = \frac{1}{\sigma_{n-1}^2} + \frac{1}{\sigma_y^2},
+\]
+the second relation showing the precision accumulating by simple addition.
+The correction is the measurement residual $y_n - \hat\theta_{n-1}$ scaled
+by a gain that shrinks as the estimate sharpens: an early measurement, when
+the estimate is uncertain, moves it a lot; a late measurement, when the
+estimate is already tight, barely moves it.
+Figure~\ref{fig:vol02ch18:recursive-estimation} shows the estimate
+converging while its uncertainty band narrows as $1/\sqrt{n}$, the same rate
+the batch mean achieves and, for this linear-Gaussian case, exactly the
+batch answer computed incrementally. The recursive form is the seed of the
+Kalman filter the later volumes develop, where the quantity also drifts
+between measurements and the update carries a model of that drift; the
+modelling content already visible here is that an estimate is a value and an
+uncertainty travelling together, and every measurement is worth exactly the
+precision it adds.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-recursive-estimation.tex}
+
+\begin{mastery}
+The recursive update above assumed the estimated quantity is constant. When
+it drifts, the update needs a model of the drift, and the resulting recursion
+is the \engterm{Kalman filter}: a predict step that advances the estimate and
+inflates its uncertainty by the process model between measurements, and an
+update step that is exactly the precision-weighted correction above. The
+filter is the chapter's whole cycle run at measurement cadence. The predict
+step is the model making a prediction with a stated interval; the update step
+is the validation against a new datum; the gain is the honest weighting of
+model against measurement by their relative precisions; and a filter whose
+predicted residuals (the innovations) show structure is a filter whose
+process model is wrong, the residual-reads-the-revision discipline of
+section~18.5 applied online. The characteristic failure is a filter tuned to
+trust its model too far: a process-noise setting too small makes the gain
+collapse, the filter stops listening to measurements, and it tracks its own
+prediction off into error while reporting a confident interval, the
+simulation-became-the-system failure of section~18.8 in recursive form. The
+engineering reader takes the Kalman filter as the deployment of this
+chapter's discipline for systems that are measured continuously and must be
+estimated in real time, and takes the innovation sequence as the held-out
+residual that keeps such a filter honest.
+\end{mastery}
+
+\subsection{Applied vignette: sizing a rainwater-harvesting tank}
+
+An engineer is asked to size the storage tank for a building that will
+supply its toilet flushing and garden irrigation from harvested rainwater.
+The question has a number attached and a decision behind it: how large a
+tank buys enough reliability to justify its cost, where reliability is the
+fraction of demand the harvested supply meets over a typical year. The
+answer must be a tank volume, good enough that a larger tank would not
+change the recommendation and a smaller one would fail the reliability
+target. The vignette runs the chapter's cycle end to end on a problem whose
+data are a weather record and whose model is a stock and a flow.
+
+\engterm{The question and the data.} The building has a roof catchment area
+$A$, a daily water demand $D$, and access to a multi-year daily-rainfall
+record for the site. The engineering question is the tank volume $V$ that
+achieves, say, $95\%$ supply reliability, and the cost trade-off behind it:
+tank cost rises roughly linearly with volume, while the mains-water cost
+avoided rises with reliability and saturates. The data are the rainfall
+record (the model's forcing), the roof area and a runoff coefficient (the
+catchment efficiency), and the demand schedule.
+
+\engterm{The candidate model.} The tank is a single stock, and the model is
+the mass balance the compartment section named. On each day $t$ the stored
+volume updates as
+\[
+V_t = \min\!\bigl(V_{\max},\ \max(0,\ V_{t-1} + I_t - D_t)\bigr),
+\]
+where $I_t = \eta A r_t$ is the inflow from that day's rainfall $r_t$
+through the runoff coefficient $\eta$, $D_t$ is the demand, and the
+$\min$ and $\max$ enforce the two hard limits: the tank cannot hold more
+than its capacity $V_{\max}$ (excess overflows and is lost) nor less than
+empty (a shortfall is met from the mains). The two clamps are the model's
+nonlinearity, and they are what a naive average-balance calculation misses:
+a tank sized on the annual average of inflow against demand ignores that a
+full tank in a wet month cannot save water for a dry one past its capacity,
+and an empty tank in a dry spell cannot borrow against future rain.
+Figure~\ref{fig:vol02ch18:reservoir-reliability}(a) shows a stock
+trajectory through a wet start and a dry spell that ends in a deficit.
+
+\engterm{Identification and the dominant scale.} The model has no free
+parameters to fit in the statistical sense; its inputs are measured
+($\eta$ from a roof test or a standard table, $A$ from the drawings, $D$
+from the demand schedule) and its forcing is the rainfall record. The
+identification work is the dimensionless framing that tells the engineer
+what tank size to even consider. The governing group is the ratio of tank
+capacity to the demand accumulated over a characteristic dry spell,
+$V_{\max}/(D\,t_{\text{dry}})$: a tank much larger than one dry spell's
+demand rides through droughts, a tank much smaller cannot. The engineer
+estimates $t_{\text{dry}}$ from the rainfall record (the longest common
+dry run) before running anything, and the estimate brackets the tank sizes
+worth simulating.
+
+\engterm{Running the model and reading the reliability.} The model is run
+over the full multi-year record for a range of candidate volumes, and for
+each the reliability is the fraction of demand met from storage rather than
+from the mains. The result is
+figure~\ref{fig:vol02ch18:reservoir-reliability}(b): reliability rises
+steeply with the first cubic metres of storage and then bends over into
+diminishing returns, because past the knee the added capacity only helps in
+the rare dry spells longer than the ones already covered. The knee is the
+sizing answer. The engineer reads the smallest volume that meets the $95\%$
+target and reports it, not the volume that maximises reliability, because
+the last few percent cost far more storage than they return.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-reservoir-reliability.tex}
+
+\engterm{Validation, structural error, and the honest interval.} The
+validation holds out one year of the record, sizes the tank on the rest,
+and checks that the held-out year's reliability matches the prediction; a
+tank sized on a wet decade and validated only on wet years would overstate
+its reliability, the regime-extension failure applied to a weather record.
+The structural error is named honestly: the daily model ignores sub-daily
+intensity (a downpour that overflows a nearly full tank delivers less than
+its daily total suggests), the runoff coefficient drifts with roof debris
+and season, and the demand is treated as fixed when real demand rises in the
+dry season exactly when supply falls, a correlation that makes the naive
+model optimistic. The engineer reports the tank volume with a reliability
+interval that spans the driest and wettest years in the record, states that
+the recommendation assumes the historical rainfall distribution holds, and
+names the regime (a shifting climate, a change of use that raises demand) in
+which the sizing would need re-running. The deliverable is a volume with a
+reliability band and a domain of validity, the same shape of report the
+cooling cup produced, on a system whose forcing is a weather record and
+whose model is one clamped stock.
+
+\subsection{Applied vignette: predicting the range of an electric vehicle}
+
+A second applied vignette runs the cycle on a quantity a driver reads off a
+dashboard and an engineer is responsible for: the remaining range of an
+electric vehicle. The number is a prediction with a decision behind it,
+whether to press on to the next charger or divert, and a wrong prediction
+strands the driver. The vignette exercises identification, the noise-model
+care of section~18.4, validation against a held-out drive, and the honest
+interval, on a system whose model couples a battery to a vehicle.
+
+\engterm{The question and the data.} The engineering question is the
+distance the vehicle can travel from its current charge before the battery
+reaches its cutoff, good enough that the driver can trust it to within a
+margin smaller than the spacing of chargers. The data are a controlled
+discharge of the battery (current, terminal voltage, and accumulated charge
+logged from full to empty at a known load) and a set of drive cycles
+(speed against time, with the energy drawn logged) that stand in for the
+range of real driving.
+
+\engterm{The candidate model, in two coupled parts.} The model has a
+battery part and a vehicle part. The battery is a lumped cell: an
+open-circuit voltage that depends on the state of charge through a measured
+curve, in series with an internal resistance that drops voltage under load,
+\[
+V_{\text{term}} = V_{\text{oc}}(\text{SOC}) - I R_{\text{int}},
+\qquad
+\text{SOC}(t) = \text{SOC}_0 - \frac{1}{Q_{\text{cap}}}\int_0^t I\,\dd t',
+\]
+where the state of charge is the running integral of current (coulomb
+counting) against the cell's capacity $Q_{\text{cap}}$.
+Figure~\ref{fig:vol02ch18:battery-soc}(a) shows the open-circuit-voltage
+curve, whose long flat plateau is the structural fact that governs the
+modelling choice: voltage is a sharp gauge of charge only near full and
+empty and a useless one in the middle, so the estimator must integrate
+current rather than read voltage, exactly the recursive-estimation move of
+the previous vignette. The vehicle part converts charge into distance
+through an energy model: the power the battery must supply is the sum of
+rolling resistance, aerodynamic drag (which scales as speed squared, the
+dimensional fact that makes highway range shorter than city range), and the
+kinetic energy of accelerations less what regenerative braking returns.
+
+\engterm{Identification, with the noise model watched.} The battery
+parameters are identified from the controlled discharge: the open-circuit
+curve from a slow discharge where the internal-resistance drop is
+negligible, the internal resistance from the voltage drop when the load
+steps, and the capacity from the total charge delivered.
+Figure~\ref{fig:vol02ch18:battery-soc}(b) shows the terminal-voltage fit
+tracking the measured discharge. The noise-model care of section~18.4
+applies: the current sensor's error is roughly constant in absolute terms,
+so coulomb counting accumulates a growing charge error over a long drive, a
+drift the model must carry rather than ignore. The vehicle parameters
+(rolling coefficient, drag area, mass) are identified from the drive-cycle
+energy logs by regressing measured energy on the model's speed-dependent
+terms, a linear identification once the model form is fixed.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-battery-soc.tex}
+
+\engterm{Validation and the prediction.} Validation is a held-out drive
+cycle the identification did not use: predict its energy draw from the
+identified parameters and check it against the logged energy. A model fit to
+gentle city cycles and validated only on them would mispredict a highway
+run, because the drag term the city cycle barely exercised dominates at
+speed, the regime-extension failure again. The range prediction inverts the
+model: integrate the vehicle's energy demand along the anticipated route
+until the battery reaches cutoff, and the accumulated distance is the range.
+The engineer reports it with an interval from two sources the chapter has
+named throughout. The parameter uncertainty propagates the intervals on
+capacity, resistance, and drag through the integrated model. The structural
+uncertainty is larger and is the honest part: the range depends on the
+future drive, which the model cannot know, and on temperature (a cold
+battery has less usable capacity and higher resistance), which a
+single-temperature identification omits. The engineer reports the range as a
+band conditioned on an assumed driving style and temperature, states that
+the plateau of the voltage curve makes a voltage-only fuel gauge unreliable
+in the middle of the range, and names the regimes (hard driving, cold
+weather, a degraded aged battery) in which the prediction would need its
+parameters re-identified. The deliverable is the dashboard number with its
+honest band, produced by the same seven moves the cooling cup used, on a
+system that couples an electrochemical stock to a mechanical energy balance.
+
+\begin{mastery}
+The two applied vignettes share a structure worth naming: each couples two
+sub-models, a stock and its forcing in the tank, a battery and a vehicle in
+the car, and the coupling is where the modelling risk concentrates.
+\engterm{Model coupling} raises a hazard the single-model examples avoided:
+an error in one sub-model can be hidden by a compensating error in the
+other, so that the coupled system validates while both parts are wrong. A
+battery capacity identified too high and a drag coefficient identified too
+high can cancel on the drive cycle they were jointly fit to and diverge on
+any other, the multi-parameter trade-off of section~18.10 crossing a
+sub-model boundary. The defence is to identify and validate each sub-model
+against its own data before coupling them: the battery against the
+controlled discharge, the vehicle against the energy logs, so that each
+part earns its parameters independently and the coupled validation tests the
+coupling rather than compensating for two separate errors. The general rule,
+which recurs wherever an engineer assembles a system model from component
+models (a building from its rooms, a grid from its lines, a supply chain
+from its stages), is that a coupled model is only as trustworthy as the
+weakest independently validated sub-model, and a coupling validated only end
+to end has not ruled out the compensating-error failure that a component
+model, hiding inside, can carry undetected. The discipline of this chapter
+applies to each sub-model and then, separately, to the coupling.
+\end{mastery}
+
+\section{Worked examples: four more moves, and a part that must not break}\pathtag{standard}
+
+The running examples exercised the cycle on cooling, heating, queues,
+networks, feedback, chemistry, and estimation. Four more short vignettes
+finish the tour of moves the chapter has named, each on a system whose
+mathematics the earlier examples did not reach: a field that collapses onto
+one master curve, a nonlinearity that turns a flowing road into a jammed one,
+a design that reads its answer off a phase lag, and a life prediction that
+sums the damage of a random load. A final applied vignette runs the full
+cycle at length on a part an engineer is answerable for, a component that must
+survive its service life without cracking.
+
+\subsection{A field that collapses: similarity and the diffusion profile}
+
+The Buckingham collapses of section~18.3 reduced a scalar (drag, pressure
+drop) to a curve in one group. The same move reduces a whole spatial field to
+one master profile when the field has no intrinsic length or time scale of its
+own. A thick slab, initially uniform at $T_0$, has its surface dropped to
+$T_s$ at $t=0$; the interior cools as heat diffuses inward. The temperature
+$T(x,t)$ depends on depth $x$ ($\mathsf{L}$), time $t$ ($\mathsf{T}$), and the
+thermal diffusivity $\alpha$ ($\mathsf{L}^2\mathsf{T}^{-1}$). Three variables,
+two primary dimensions, so the count gives one dimensionless group, and the
+group is the \engterm{similarity variable}
+\[
+\eta = \frac{x}{2\sqrt{\alpha t}}.
+\]
+The slab is thick enough that no far boundary enters, so no length scale
+competes with $\eta$, and dimensional homogeneity forces the normalised
+temperature to depend on $x$ and $t$ only through their combination $\eta$:
+$(T - T_s)/(T_0 - T_s) = \mathrm{erf}(\eta)$, the diffusion equation's
+self-similar solution. Barenblatt's monograph
+\cite{text:barenblatt1996} is the standard treatment of when a problem admits
+such a similarity reduction and when a hidden scale spoils it.
+
+The modelling payoff is the same as the sphere-drag collapse, raised from a
+scalar to a field. Figure~\ref{fig:vol02ch18:similarity-collapse} shows it: raw
+profiles measured at several times spread rightward as three separate curves,
+and plotted against $\eta$ they fall onto one. An experimenter who did not know
+the similarity would map the field on a grid of depths and times; the reduction
+turns the grid into a single profile, measured once. The move also delivers a
+scaling law for free, the $x\sim\sqrt{\alpha t}$ penetration depth that
+section~18.13's Fourier-number vignette asserted: the collapse is the reason the
+depth grows as the square root of time, because $\eta$ held fixed is exactly that
+statement. The discipline the collapse rests on is a refusal, not an assertion:
+the reduction is honest only while no length scale competes with $\eta$, and a
+slab thin enough for its far face to matter breaks the similarity and demands the
+full two-variable solution the collapse discarded.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-similarity-collapse.tex}
+
+\subsection{A nonlinearity that jams: the traffic fundamental diagram}
+
+The queue of section~18.9 found a congestion nonlinearity in $\rho/(1-\rho)$,
+the wait diverging as utilisation approached one. A road carries the same shape
+of nonlinearity in a different quantity, and the vignette earns its place
+because the nonlinearity is one every commuter meets and few can name. The
+modelling question is the road's capacity: how many vehicles per hour can a lane
+carry, and what happens when demand exceeds it. The abstraction discipline names
+the state variables first: the traffic density $\rho$ (vehicles per kilometre)
+and the mean speed $v$. The load-bearing assumption is a relation between them,
+and the simplest defensible one, Greenshields's, is linear: drivers slow as the
+road fills, from a free-flow speed $v_f$ on an empty road to a standstill at the
+jam density $\rho_{\text{jam}}$,
+\[
+v(\rho) = v_f\left(1 - \frac{\rho}{\rho_{\text{jam}}}\right).
+\]
+The flow, the vehicles per hour crossing a point, is the product $q = \rho v$,
+and substituting the speed relation gives the \engterm{fundamental diagram}
+\[
+q(\rho) = v_f\,\rho\left(1 - \frac{\rho}{\rho_{\text{jam}}}\right),
+\]
+an inverted parabola. Figure~\ref{fig:vol02ch18:traffic-fundamental} plots both
+relations.
+
+The structural insight is available before any data, from the shape of the
+parabola alone. Flow rises with density through the free-flowing regime, peaks at
+a capacity $q_{\max} = v_f\rho_{\text{jam}}/4$ where the density is exactly half
+the jam value, and falls back toward zero as congestion sets in. The peak is the
+nonlinearity that a mean-density argument misses entirely: a road run just past
+its capacity carries \emph{fewer} vehicles per hour at higher density than one
+run just below it, which is the mechanism of a jam. Two densities give the same
+flow, one free-flowing and one congested, and the difference between them is
+whether a small disturbance clears or amplifies. A traffic engineer sizing a lane
+reads the capacity off the peak and holds the operating density below it, exactly
+as the clinic held its utilisation off the shoulder of the queueing blow-up. The
+identification fits $v_f$ and $\rho_{\text{jam}}$ from paired speed-density
+counts, and the structural error is the linear speed law itself, which real
+traffic violates near capacity where the flow is unstable and stop-and-go waves
+form; the residual there is the specification for the kinematic-wave model that a
+later volume develops.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-traffic-fundamental.tex}
+
+\subsection{A design read off a phase lag: vibration isolation}
+
+The feedback example of section~18.11 tuned a controller by moving eigenvalues.
+A large class of design problems needs no controller at all, only the right
+choice of a passive parameter, and the move is to read the design off the
+system's steady-state response to a periodic input rather than off its transient.
+A sensitive instrument sits on a bench that vibrates at a known frequency
+$\omega$ (a nearby pump, a building's structural resonance). The engineering
+question is how to mount the instrument so it feels as little of the bench motion
+as possible. The candidate model is a single mass $m$ on a spring $k$ with damping
+$c$, driven through its base by the bench displacement; the quantity the design
+turns on is the \engterm{transmissibility}, the ratio of the instrument's
+motion amplitude to the bench's. Solving the forced oscillator of Chapter~7 for
+the steady state gives the transmissibility as a function of the frequency ratio
+$r = \omega/\omega_0$, where $\omega_0 = \sqrt{k/m}$ is the mount's natural
+frequency, and the structural fact the design rests on is the shape of that
+function: transmissibility exceeds one (the mount \emph{amplifies}) for
+$r < \sqrt{2}$, equals one at $r = \sqrt{2}$ regardless of damping, and falls
+below one only for $r > \sqrt{2}$.
+
+The design rule falls out of the dimensionless threshold. To isolate, the mount
+must be soft enough that the disturbance frequency sits well above the mount's
+natural frequency, $r \gg \sqrt{2}$, which means choosing $k$ and $m$ so that
+$\omega_0 \ll \omega$. A stiff mount, with $\omega_0$ near $\omega$, sits on the
+resonance and amplifies the very vibration it was meant to block, the failure a
+naive ``make it rigid'' instinct produces. The damping choice carries its own
+trade-off the model exposes: more damping tames the resonance the instrument
+must pass through during start-up, but above $r=\sqrt{2}$ more damping
+\emph{worsens} the isolation, because it couples the high-frequency bench motion
+back through the dashpot. The modelling lesson is that the design number, the
+mount stiffness, is read off a dimensionless frequency ratio and a phase
+relationship, not off a transient, and a designer who reasons only about static
+stiffness has modelled the wrong regime.
+
+\begin{estimation}
+\textbf{Question.} An instrument of mass $8\,\text{kg}$ must be isolated from a
+bench vibrating at $30\,\text{Hz}$. Estimate the mount stiffness that puts the
+system at a frequency ratio of $r = 4$, and estimate the resulting
+transmissibility, before any detailed design.
+
+\smallskip
+\textit{Estimate, before any calculation.}
+
+\smallskip
+A frequency ratio $r = 4$ at a drive frequency of $30\,\text{Hz}$ needs a mount
+natural frequency of $f_0 = 30/4 = 7.5\,\text{Hz}$, so $\omega_0 = 2\pi f_0
+\approx 47\,\text{rad/s}$. The stiffness follows from $\omega_0^2 = k/m$:
+$k = m\omega_0^2 = 8 \times 47^2 \approx 1.8\times 10^4\,\si{\newton\per\meter}$,
+a soft mount that deflects about $mg/k \approx 8\times 9.8/1.8\times 10^4 \approx
+4\,\text{mm}$ under the instrument's weight, a sane static sag. For light damping
+the transmissibility above resonance is roughly $1/(r^2 - 1) = 1/15 \approx
+0.07$, so the instrument feels about seven percent of the bench motion.
+
+\smallskip
+\textbf{Postmortem.} The dimensionless ratio did the work: fixing $r=4$ set the
+natural frequency, which set the stiffness, which the static-sag check then
+confirmed as buildable. A designer tempted to stiffen the mount for
+robustness would raise $\omega_0$ toward the drive frequency, drop $r$ toward
+one, and land on the resonance where transmissibility exceeds one, amplifying
+the disturbance. The isolation lever is softness, not stiffness, which the
+dimensionless form exposes and the static instinct hides.
+\end{estimation}
+
+\subsection{Applied vignette: will the part survive its service life?}
+
+An engineer is responsible for a component that flexes every time the machine
+cycles: a bracket in a compressor, a suspension arm on a vehicle, a weld in a
+crane boom. The question has a number and a liability behind it: will the part
+survive its design life of, say, ten million cycles without a fatigue crack, and
+what margin does the prediction carry. A wrong answer on the unsafe side cracks a
+part in service; a wrong answer on the safe side ships a part heavier and more
+expensive than the duty needs. The vignette runs the chapter's cycle on a model
+whose data are a material's fatigue tests and whose forcing is a measured load
+history, and it earns its length because the failure the model predicts is one
+the earlier examples only named.
+
+\engterm{The question and the data.} The engineering question is the predicted
+fatigue life $N_f$ under the part's actual service loading, good enough that a
+safety factor can be applied with confidence. The data are two streams. The
+first is a set of constant-amplitude fatigue tests on the material: coupons cycled
+at several stress amplitudes until they crack, giving pairs of stress amplitude
+$S$ and cycles-to-failure $N$. The second is a measured service-load history: a
+strain gauge on a prototype logs the stress the part actually sees over a
+representative operating period, a jagged signal of large and small cycles mixed
+together.
+
+\engterm{The candidate model.} The model has two parts, and each is a small
+model in its own right. The material part is the \engterm{S-N curve}, the
+empirical relation between stress amplitude and life, which plots as a straight
+line on log-log axes over the finite-life range,
+\[
+S^{m} N = C
+\qquad\text{equivalently}\qquad
+\log N = \log C - m \log S,
+\]
+the power law of section~18.4 in fatigue's clothing, with the exponent $m$ and
+the constant $C$ the two parameters to identify. The damage-accumulation part is
+\engterm{Miner's rule}: a load history made of $n_i$ cycles at stress amplitude
+$S_i$, each with allowable life $N_i$ read off the S-N line, accumulates a
+linear damage
+\[
+D = \sum_i \frac{n_i}{N_i},
+\]
+and the part is predicted to fail when $D$ reaches unity.
+Figure~\ref{fig:vol02ch18:fatigue-life} shows both parts, the S-N line reading
+off the allowable lives and the Miner sum climbing toward the failure line.
+Stephens and coauthors' fatigue text \cite{text:stephens-fatigue} is the working
+reference for both the S-N fitting and the linear-damage rule, and Dowling
+\cite{text:dowling-mechanical-behavior} treats the mean-stress corrections the
+bare S-N line omits.
+
+\input{volumes/02-form/ch18-mathematical-modelling/figures/fig-fatigue-life.tex}
+
+\engterm{The abstraction the model makes, and the one it hides.} The service
+history is a jagged signal, not a clean set of blocks, so a counting rule must
+first turn it into a histogram of stress amplitudes before Miner's sum can be
+formed. The standard rule pairs each load reversal with its matching one to
+extract closed hysteresis loops, and the modelling decision to use it is the
+decision that the damage depends on the range of each closed cycle and not on the
+order in which the cycles arrive. That order-independence is exactly what Miner's
+linear rule assumes, and it is the model's largest structural error: real fatigue
+damage depends on sequence, because a large cycle can open a crack that
+subsequent small cycles then grow, so a history's damage is not truly the sum of
+its parts. The abstraction is defensible because the sequence effect is modest for
+many spectra and the linear rule is simple and auditable, but the modeller names
+it rather than hiding it.
+
+\engterm{Identification and the noise model.} The S-N parameters are identified by
+regressing $\log N$ on $\log S$ across the coupon tests, a linear fit on the log-log
+scale exactly as the chapter's power laws demanded. The noise-model care of
+section~18.4 applies with force here: fatigue life scatters by a factor of several
+at a fixed stress amplitude, and the scatter is multiplicative (a lognormal life),
+so the fit must be on $\log N$, where the noise is additive, not on $N$. A modeller
+who regressed $N$ directly would let the long-lived outliers dominate and return a
+biased, over-optimistic line. The identification returns the exponent $m$, the
+constant $C$, and, because the scatter is the whole point, the standard deviation
+of $\log N$ about the line, which is the parameter the safety margin will use.
+
+\engterm{Validation, structural error, and the honest interval.} Validation holds
+out a subset of the coupon tests, fits the S-N line on the rest, and checks that
+the held-out lives fall within the predicted scatter band; a line fit only to
+high-stress short-life coupons and extrapolated to the low-stress long-life regime
+is the regime-extension failure the chapter has named repeatedly, and it is
+especially dangerous here because the low-stress regime is where the part actually
+operates and where tests are most expensive to run. The prediction the engineer
+reports is a life with an interval, and the interval has the two sources the
+chapter has tracked throughout. The parameter uncertainty propagates the intervals
+on $m$ and $C$ and the coupon scatter through the Miner sum. The structural
+uncertainty is larger and is the honest part: the linear damage rule ignores load
+sequence, the S-N line ignores mean stress unless corrected, and the service
+history is one representative sample of a loading that varies from duty to duty.
+The engineer reports the predicted life as a band, states that the median
+prediction assumes the historical duty cycle and no unusual overloads, applies a
+safety factor sized to the scatter rather than to the median alone, and names the
+regimes (an overload event that shifts the mean stress, a corrosive environment
+that accelerates crack growth, a duty cycle heavier than the logged one) in which
+the prediction would need its coupon data re-acquired. The deliverable is a life
+with a scatter band and a domain of validity, the same shape of report the cooling
+cup produced, on a system whose failure is a crack rather than a wrong
+temperature.
+
+\begin{mastery}
+The fatigue model rests on a linear damage rule that is known to be wrong in a
+specific, characterisable way, and the case is worth naming because it is the
+purest illustration of the chapter's ``all models are wrong, but some are
+useful'' epigraph. Miner's rule assumes damage accumulates independently of
+sequence and sums to unity at failure; measured failures scatter around a Miner
+sum anywhere from about $0.3$ to $3$, because a high-low load sequence damages
+differently from a low-high one and the interaction the linear rule omits is real.
+The engineering response is not to abandon the rule but to carry its error
+explicitly: the observed spread of the failure-point Miner sum is a directly
+measured structural-error distribution, and the safety factor is sized to cover
+it. The more accurate alternatives, a nonlinear damage rule that tracks the crack
+state, or a fracture-mechanics model that integrates the Paris crack-growth law
+\cite{text:hertzberg-fatigue} cycle by cycle, buy fidelity at the cost of
+parameters (the initial flaw size, the crack-growth exponents) that are themselves
+hard to identify and scatter widely. The modeller's judgement is the chapter's
+recurring one: climb the fidelity ladder only as far as the decision requires, and
+where the simple linear rule is retained, report its measured scatter as the honest
+interval rather than pretending the unit-damage threshold is sharp. A fatigue life
+quoted as a single number, without the factor-of-several scatter band the material
+data show, has committed the chapter's central error, reporting a model's point
+output as if it were a calibrated prediction.
 \end{mastery}
 
 \section{Failure: models that fooled their builders}\pathtag{core}

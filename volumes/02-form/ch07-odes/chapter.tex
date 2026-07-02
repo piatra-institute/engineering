@@ -2688,6 +2688,135 @@ single-precision representation. For most non-stiff problems at
 working engineering tolerances, RK4 is the default; the step size
 chosen by accuracy lies far above the stability bound.
 
+\subsection{Adaptive step-size control}
+
+Every fixed-step calculation so far pays the same price at every step,
+whether the solution is turning sharply or coasting along a smooth
+tail. A solution with a fast transient followed by a slow settling
+wastes almost all of its arithmetic: the step must be small enough for
+the transient, and that same small step then crawls across a tail that
+would tolerate a step a hundred times larger. An adaptive method sizes
+each step to the local behaviour of the solution, spending short steps
+where the solution earns them and long steps where it does not.
+
+The machinery has two parts: an estimate of the error committed on the
+current step, and a rule that turns that estimate into the next step
+size. The error estimate is the harder part, because the exact
+solution is not in hand to difference against. The cheapest honest
+estimate advances the same interval twice, once with a step $h$ and
+once with two steps of $h/2$, and compares. For a method of order $p$,
+the single step carries local error $\approx C h^{p+1}$, and the two
+half-steps carry roughly $2 \cdot C (h/2)^{p+1} = C h^{p+1}/2^{p}$.
+Subtracting, the difference between the two results is
+\[
+\delta = y_{\text{half}} - y_{\text{full}}
+\approx C h^{p+1}\Bigl(1 - 2^{-p}\Bigr),
+\]
+so $|\delta|$ is a computable proxy for the local error, and the more
+accurate half-step result can even be corrected by
+$\delta/(2^{p}-1)$, the local form of Richardson extrapolation from
+Chapter 6. The step-doubling estimate costs three evaluations of the
+interval where one would do, which is why production solvers replace it
+with an embedded pair that recovers the same estimate from a single
+set of stage evaluations; the mastery box below states the mechanism.
+
+The controller then compares $|\delta|$ to a user tolerance
+$\text{tol}$ and resizes. If the equation for local error is
+$|\delta| \approx C h^{p+1}$, the step $h_{\text{new}}$ that would have
+hit the tolerance exactly satisfies
+$\text{tol} \approx C h_{\text{new}}^{p+1}$, and dividing the two
+relations removes the unknown constant $C$:
+\[
+h_{\text{new}} = h \, \Bigl(\frac{\text{tol}}{|\delta|}\Bigr)^{1/(p+1)}.
+\]
+A safety factor of about $0.9$ multiplies the right-hand side so the
+resized step lands under tolerance rather than on it, and the growth
+per step is clamped (typically to a factor of five) so a single lucky
+step cannot fling the integrator into a region it has not earned. If
+the current step already exceeded tolerance the same formula returns
+$h_{\text{new}} < h$; the step is rejected and retried at the smaller
+size. The tolerance is read as error per unit step, and in practice as
+a blend of a relative tolerance on the solution's own magnitude and an
+absolute tolerance that keeps components passing through zero from
+demanding an infinite relative accuracy.
+
+\input{volumes/02-form/ch07-odes/figures/fig-adaptive-step.tex}
+
+\Cref{fig:vol02:ch07:adaptive-step} shows the payoff: the accepted step
+size tracks the local time scale of the solution, collapsing to resolve
+the transient and expanding by more than two orders of magnitude across
+the smooth tail. The same discipline is what lets a modern solver
+detect stiffness without being told, by watching the step-rejection
+rate climb when the stability bound rather than the accuracy bound is
+what is holding $h$ down.
+
+\begin{estimation}
+\textbf{Question.} A smooth non-stiff problem is integrated to a local
+error tolerance of $10^{-8}$ per step with an embedded RK pair of order
+$p = 4$. A trial step of $h = 0.1$ returns an error estimate
+$|\delta| = 4 \times 10^{-6}$. Estimate the step size the controller
+accepts next, and estimate how many steps the same tolerance would take
+if the solution's sharp feature occupied only the first tenth of the
+interval.
+
+\smallskip
+\textit{Estimate, before reading on.}
+
+\smallskip
+The step is far too large: $|\delta| = 4 \times 10^{-6}$ overshoots the
+tolerance $10^{-8}$ by a factor of $400$. With $p = 4$ the exponent is
+$1/(p+1) = 1/5$, so the resize factor is
+$(10^{-8}/4\times 10^{-6})^{1/5} = (2.5 \times 10^{-3})^{1/5}$. The
+fifth root of $2.5 \times 10^{-3}$ is about $0.30$, so with the safety
+factor $0.9$ the accepted step is $h_{\text{new}} \approx 0.9 \times
+0.30 \times 0.1 \approx 0.027$, and the step is rejected and retried
+there. On the smooth tail, where the solution changes slowly, the same
+tolerance permits a step perhaps thirty times larger, so a fixed-step
+run pinned at $h \approx 0.027$ would take of order thirty times more
+steps on the tail than the adaptive run does. If the sharp feature
+occupies a tenth of the interval, the adaptive method spends most of
+its steps in that tenth and coasts the rest, while the fixed-step
+method spends nine-tenths of its steps resolving a tail that needed
+almost none. The estimate sets the working rule: adaptive control pays
+for itself exactly when the solution's time scale varies across the
+interval, and buys little when it does not.
+\end{estimation}
+
+\begin{mastery}
+An embedded Runge-Kutta pair recovers the step-doubling error estimate
+from one set of stage evaluations rather than three. The stages
+$k_{1}, \ldots, k_{s}$ are computed once, and two different weighted
+sums of the same stages produce a result of order $p$ and a result of
+order $p+1$:
+\[
+y_{n+1} = y_{n} + h \sum_{i} b_{i} k_{i}, \qquad
+\hat{y}_{n+1} = y_{n} + h \sum_{i} \hat{b}_{i} k_{i},
+\]
+and their difference $\sum_{i} (b_{i} - \hat{b}_{i}) k_{i}$, scaled by
+$h$, is the local error estimate at no extra right-hand-side cost.
+The Runge-Kutta-Fehlberg 4(5) pair, the Cash-Karp 4(5) pair, and the
+Dormand-Prince 5(4) pair (the DOPRI5 behind MATLAB's \texttt{ode45}
+and SciPy's \texttt{RK45}) are the standard non-stiff embedded pairs;
+Dormand-Prince is tuned so the higher-order weights minimise the
+truncation error of the result actually propagated, a design choice
+called local extrapolation. The step controller can be sharpened
+beyond the pure power law above: treating the sequence of error
+estimates as a signal to be regulated, a proportional-integral (PI)
+controller sets
+\[
+h_{n+1} = h_{n}\,
+\Bigl(\frac{\text{tol}}{|\delta_{n}|}\Bigr)^{\alpha}
+\Bigl(\frac{|\delta_{n-1}|}{\text{tol}}\Bigr)^{\beta},
+\]
+with small exponents such as $\alpha \approx 0.7/(p+1)$ and
+$\beta \approx 0.4/(p+1)$; the integral term damps the step-size
+oscillation that a pure controller shows near a stability boundary and
+smooths the accepted-step sequence. The full treatment of embedded
+pairs, dense output for continuous interpolation between steps, and PI
+control is in \textcite{text:v2ch07-hairer-norsett-wanner} and
+\textcite{text:v2ch07-shampine-gladwell-thompson}.
+\end{mastery}
+
 \begin{mastery}
 The stability of a one-step method is read off a single function.
 Apply the method to the scalar test equation $\dot{y} = \lambda y$
@@ -3707,6 +3836,240 @@ bifurcation box. The Robertson system is the clean stiff benchmark
 precisely because it strips those couplings away and leaves the
 stiffness alone, which is why it appears in every stiff-solver test
 suite.
+
+\subsection{Terminal velocity: nondimensionalising a nonlinear first-order ODE}
+
+A body falling through air fast enough for the flow to separate carries
+a drag force that grows with the square of the speed, not linearly. The
+vertical velocity $v$ measured downward obeys Newton's second law with
+weight down and drag up,
+\[
+m \dot{v} = m g - b v^{2},
+\]
+where $m$ is the mass, $g$ the gravitational acceleration, and $b$ the
+quadratic drag coefficient. The equation is first-order in $v$ and
+nonlinear, and it is separable, but the working move is to
+nondimensionalise it first, because doing so exposes the two scales
+that govern every falling body and collapses the whole family of
+problems onto one curve.
+
+At the \engterm{terminal velocity} the acceleration vanishes and drag
+balances weight, $m g = b v_{\infty}^{2}$, so
+\[
+v_{\infty} = \sqrt{\frac{m g}{b}},
+\]
+the natural velocity scale. The natural time scale is
+$\tau = v_{\infty}/g$, the time gravity alone would take to reach
+$v_{\infty}$. Measuring velocity in units of $v_{\infty}$ and time in
+units of $\tau$, write $u = v/v_{\infty}$ and $s = t/\tau$. Then
+$\dot{v} = (v_{\infty}/\tau)\, du/ds = g\, du/ds$, and dividing the
+equation by $m g$ gives
+\[
+\frac{du}{ds} = 1 - u^{2}.
+\]
+Every parameter has left the equation. The mass, the drag coefficient,
+and the gravitational acceleration survive only in the scales
+$v_{\infty}$ and $\tau$; the shape of the approach is universal.
+Separating variables with $u(0) = 0$,
+\[
+\int_{0}^{u} \frac{du'}{1 - u'^{2}} = \int_{0}^{s} ds'
+\quad\Longrightarrow\quad
+\operatorname{artanh}(u) = s,
+\]
+so $u(s) = \tanh s$ and, in dimensional form,
+\[
+v(t) = v_{\infty} \tanh\!\Bigl(\frac{t}{\tau}\Bigr).
+\]
+The velocity rises from zero, is nearly linear ($v \approx g t$) while
+$t \ll \tau$ and drag is negligible, and saturates at $v_{\infty}$ as
+$t$ grows. At $t = 2\tau$ the speed is $v_{\infty} \tanh 2 = 0.964\,
+v_{\infty}$, within four percent of terminal, so two time constants is
+the working rule for a quadratic-drag fall the way five time constants
+was the rule for a linear first-order decay.
+
+A skydiver in the belly-to-earth posture reaches roughly
+$v_{\infty} \approx 55\,\si{\meter\per\second}$, which fixes
+$\tau = v_{\infty}/g \approx 5.6\,\si{\second}$, so the free-fall
+speed is within four percent of terminal after about
+$11\,\si{\second}$, consistent with the observed leveling-off of a
+jump. The contrast with the low-Reynolds regime is instructive: a fine
+droplet or a sphere settling in oil feels linear drag $-c v$, giving
+$\dot{v} = g - (c/m) v$, whose solution is the exponential approach
+$v(t) = v_{\infty}(1 - e^{-t/\tau})$ met in the first-order sections.
+Both regimes climb to a terminal velocity set by the weight-drag
+balance; the quadratic law approaches it faster once the speed is an
+appreciable fraction of $v_{\infty}$, because its retarding force grows
+with the square of the speed.
+
+\input{volumes/02-form/ch07-odes/figures/fig-terminal-velocity.tex}
+
+\Cref{fig:vol02:ch07:terminal-velocity} draws the two approaches on the
+dimensionless axes, where the collapse is complete: one $\tanh$ curve
+serves every body in the quadratic regime and one exponential serves
+every body in the linear regime. The nondimensional form is the
+economical statement of the physics, and it is the form in which a
+draining tank, an RC circuit, and a falling body reveal themselves as
+the same first-order problem wearing different scales.
+
+\subsection{The hardening oscillator and the jump phenomenon}
+
+The linear resonance of \S7.5 has one steady amplitude at each drive
+frequency, and the response curve is single-valued. A real spring
+stiffens as it stretches, a beam pulls taut as it deflects, and a
+pendulum's restoring torque falls below the linear estimate at large
+swing. Adding the leading correction to the restoring force turns the
+forced oscillator into the \engterm{Duffing equation},
+\[
+\ddot{u} + 2\zeta \dot{u} + u + \varepsilon u^{3} = F \cos \Omega t,
+\]
+written in the dimensionless form where time is measured in units of
+the small-amplitude period, $\zeta$ is the damping ratio, $\varepsilon$
+sets the strength of the cubic nonlinearity (positive for a hardening
+spring), and $F$ and $\Omega$ are the drive amplitude and frequency. No
+closed-form solution exists, but the steady-state amplitude near
+resonance is captured by the method of harmonic balance: assume the
+response is dominated by a single harmonic $u(t) \approx A \cos(\Omega t
+- \phi)$, substitute, and keep only the terms at the drive frequency.
+
+The cubic term is where the new behaviour enters. Using the identity
+$\cos^{3}\theta = \tfrac{3}{4}\cos\theta + \tfrac{1}{4}\cos 3\theta$
+and discarding the third harmonic, $u^{3}$ contributes an effective
+restoring term $\tfrac{3}{4}\varepsilon A^{3}\cos(\Omega t - \phi)$ at
+the drive frequency. The single-harmonic balance then reads, for the
+in-phase and quadrature parts,
+\[
+\bigl(1 - \Omega^{2} + \tfrac{3}{4}\varepsilon A^{2}\bigr) A = F \cos\phi,
+\qquad
+2\zeta \Omega A = F \sin\phi.
+\]
+Squaring and adding removes the phase and leaves the amplitude-response
+relation as an implicit equation in $A$ and $\Omega$,
+\[
+\Bigl[\bigl(1 - \Omega^{2} + \tfrac{3}{4}\varepsilon A^{2}\bigr)^{2}
++ (2\zeta \Omega)^{2}\Bigr] A^{2} = F^{2}.
+\]
+Setting $\varepsilon = 0$ recovers the linear Lorentzian resonance of
+\S7.5 exactly, single-valued in $A$. With $\varepsilon > 0$ the
+effective natural frequency $\sqrt{1 + \tfrac{3}{4}\varepsilon A^{2}}$
+rises with amplitude, so the resonance peak leans to the right, and for
+a drive strong enough the amplitude-response relation becomes cubic in
+$A^{2}$ and admits three real roots across a band of frequencies. Two
+of the three are stable and one, the middle branch, is unstable and is
+never observed.
+
+The consequence is the \engterm{jump phenomenon}. Sweep the drive
+frequency slowly upward from below resonance: the amplitude climbs the
+lower-frequency side of the leaned-over peak, rides the upper branch
+past the nominal resonance, and at the right-hand turning point the
+upper branch ceases to exist, so the amplitude drops abruptly to the
+lower branch. Sweep downward from above resonance and the amplitude
+rides the lower branch to the left-hand turning point, where that branch
+ends and the amplitude jumps up. The two sweeps trace different curves,
+a hysteresis loop that a linear resonance never produces, and the
+amplitude the system shows at a frequency inside the loop depends on the
+history of the sweep, not on the frequency alone.
+
+\input{volumes/02-form/ch07-odes/figures/fig-duffing-response.tex}
+
+\Cref{fig:vol02:ch07:duffing-response} shows the leaned-over response
+with its two turning points and the up-sweep and down-sweep jumps. The
+practical lesson is that a system with a stiffening restoring force,
+tested by a slow frequency sweep, will report a different resonance on
+the way up than on the way down, and neither reading is the harmonic
+average that a linear model predicts. The measurement to confirm that a
+suspected jump is nonlinear and not an instrument artefact is to repeat
+the sweep at a lower drive amplitude: below the amplitude at which the
+response relation first develops three roots, the fold disappears and
+the single-valued Lorentzian returns. The full weakly-nonlinear theory,
+including the third-harmonic term dropped here and the subharmonic
+resonances that appear at stronger drive, is in
+\textcite{text:v2ch07-strogatz-nonlinear}.
+
+\subsection{Applied vignette: sizing the integrator for a real-time simulator}
+
+An engineering team building a hardware-in-the-loop test rig for a
+vehicle's electronic stability controller must run a dynamics model of
+the vehicle fast enough to close the loop with the real controller
+hardware. The controller samples its sensors and issues commands every
+$1\,\si{\milli\second}$, so the simulated vehicle state must be advanced
+by one millisecond of model time within each one-millisecond wall-clock
+window, every window, without exception. A single missed deadline feeds
+the controller a stale state and can trip a fault the controller was
+never meant to see. The question is which integrator, at which step
+size, meets the deadline with margin, and the analysis is a direct
+application of the chapter's error and stability results to a hard
+real-time budget.
+
+The vehicle model is a system of about twenty coupled ODEs: chassis
+translation and rotation, four wheel-speed states, tyre-force lags, and
+the hydraulic-actuator dynamics of the brakes. The fastest mode is the
+actuator, with a time constant near $5\,\si{\milli\second}$; the tyre
+relaxation is near $15\,\si{\milli\second}$; the chassis yaw and roll
+modes are near $100$ to $300\,\si{\milli\second}$. The spectral range is
+therefore about $300/5 = 60$, wide enough to matter but far short of the
+$10^{6}$ that would force an implicit solver. The stability constraint
+for an explicit method is set by the fastest mode: forward Euler needs
+$h < 2\tau_{\text{fast}} = 10\,\si{\milli\second}$ for the actuator
+mode, which the accuracy requirement will beat comfortably.
+
+Accuracy sets the real budget. The controller acts on the vehicle's yaw
+rate and lateral acceleration, and the rig specification allows a state
+error below one part in $10^{3}$ over the one-millisecond advance. A
+fixed-step method is mandatory: an adaptive method's step count varies
+from window to window, and a real-time loop cannot tolerate a step
+count it cannot bound in advance, so the adaptive machinery of the
+previous section, useful as it is for offline work, is the wrong tool
+here. The choice is a fixed-step explicit method sized so its
+worst-case per-window error clears the tolerance. Take classical RK4.
+Its global error over one millisecond scales as $C_{4} h^{4}$ with
+$C_{4}$ of order the fourth derivative of the fastest resolved mode. A
+single RK4 step of $h = 1\,\si{\milli\second}$ across the actuator mode
+carries error of order $(h/\tau_{\text{fast}})^{4} = (1/5)^{4}
+= 1.6 \times 10^{-3}$, just above tolerance; two substeps of
+$h = 0.5\,\si{\milli\second}$ cut that by $2^{4} = 16$ to about
+$10^{-4}$, safely under. So two RK4 substeps per one-millisecond window,
+eight right-hand-side evaluations, is the accuracy-driven choice.
+
+The deadline is the second constraint, and it is not the same as the
+accuracy constraint. Each right-hand-side evaluation of the
+twenty-state model costs a fixed number of floating-point operations,
+call it $R$ operations; two RK4 substeps cost $8R$ per window. The rig
+processor must complete $8R$ operations plus the controller-interface
+overhead inside the one-millisecond window with margin for the
+operating system's scheduling jitter. The working discipline reserves
+no more than about sixty percent of the window for computation, leaving
+the rest for input capture, output, and jitter, so the requirement is
+$8R + (\text{overhead}) < 0.6\,\si{\milli\second}$ of processor time. If
+the measured cost of $8R$ is $0.35\,\si{\milli\second}$ and the overhead
+is $0.15\,\si{\milli\second}$, the budget closes at
+$0.5\,\si{\milli\second}$ with a comfortable margin; if it does not
+close, the responses in order of preference are to reduce the model
+order by collapsing the fastest actuator mode to its quasi-steady
+value (the quasi-steady approximation met in the Robertson example,
+which removes the stiffest mode and relaxes the step), to drop to a
+second-order method such as Heun and accept a smaller step, or, last,
+to move to faster hardware.
+
+The failure mode this analysis guards against is subtle. An engineer
+tuning the rig offline, with no deadline, runs an adaptive solver, sees
+it settle on an average step of $0.3\,\si{\milli\second}$, and concludes
+that a fixed step of $0.3\,\si{\milli\second}$ will do in real time. The
+average is the wrong statistic. The adaptive solver took its smallest
+steps during the sharp transients of an aggressive manoeuvre, and it is
+exactly those transients, a hard brake into a low-friction patch, that
+the stability controller exists to handle. Sizing the fixed step to the
+average rather than to the worst-case transient means the rig is least
+accurate at the moment it is being tested hardest. The correct budget
+is set by the fastest resolved dynamics under the most demanding
+manoeuvre in the test envelope, computed as above, and verified by
+replaying the worst-case manoeuvre offline at the chosen fixed step
+against a high-accuracy reference. The real-time integrator is qualified
+the way any numerical method reused outside a benign regime must be
+qualified: against the envelope it will actually be asked to cover, not
+against the average case it happened to be tuned on. Practical guidance
+on fixed-step real-time integration and the selection of methods by
+problem class is in
+\textcite{text:v2ch07-shampine-gladwell-thompson}.
 
 \subsection{A short history of ODE solution methods}\pathtag{mastery}
 

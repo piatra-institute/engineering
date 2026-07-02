@@ -1,81 +1,65 @@
-% Hazard-rate shapes: Weibull hazard for k<1, k=1, k>1, and the
-% composite bathtub curve stitched from the three regimes.
+% Bathtub hazard curve: three regimes stitched together. A falling
+% infant-mortality phase (Weibull shape k<1), a flat useful-life phase
+% where the exponential applies (constant hazard), and a rising
+% wear-out phase (Weibull shape k>1). Plot units are arbitrary; the
+% shape is what carries the lesson.
 \begin{figure}[htbp]
 \centering
-\begin{tikzpicture}[font=\small]
+\begin{tikzpicture}[x=1.05cm, y=1.05cm, font=\small]
 
-% ---- Left panel: three Weibull hazards ----
-\begin{axis}[
-  name=weib,
-  width=7.0cm, height=5.6cm,
-  xlabel={time $t$},
-  ylabel={hazard $h(t)$},
-  xmin=0, xmax=3, ymin=0, ymax=3.2,
-  xtick={0,1,2,3}, ytick={0,1,2,3},
-  grid=both, grid style={enggray!25},
-  tick label style={font=\scriptsize},
-  label style={font=\scriptsize},
-  title style={font=\small\bfseries},
-  title={Weibull hazard $h(t)=k\,t^{k-1}$},
-  legend style={font=\scriptsize, at={(0.98,0.98)}, anchor=north east,
-    draw=enggray!50},
-]
-  % k = 0.5 : falling (infant mortality). h = 0.5 t^{-0.5}; clamp at t>=0.15
-  \addplot[thick, engblue, domain=0.15:3, samples=80] {0.5*x^(-0.5)};
-  \addlegendentry{$k=0.5$ (infant)}
-  % k = 1 : constant (exponential)
-  \addplot[thick, enggray, domain=0:3, samples=2] {1};
-  \addlegendentry{$k=1$ (constant)}
-  % k = 2.5 : rising (wear-out)
-  \addplot[thick, engred, domain=0:1.55, samples=80] {2.5*x^(1.5)};
-  \addlegendentry{$k=2.5$ (wear-out)}
-\end{axis}
+% Axes
+\draw[->, thick] (0, 0) -- (10.4, 0) node[right] {age $t$};
+\draw[->, thick] (0, 0) -- (0, 4.4) node[above] {hazard $h(t)$};
 
-% ---- Right panel: the bathtub curve ----
-\begin{axis}[
-  at={($(weib.east)+(1.5cm,0)$)}, anchor=west,
-  width=7.0cm, height=5.6cm,
-  xlabel={service age $t$},
-  ylabel={hazard $h(t)$},
-  xmin=0, xmax=10, ymin=0, ymax=2.6,
-  xtick={0,2,4,6,8,10}, ytick={0,1,2},
-  grid=both, grid style={enggray!25},
-  tick label style={font=\scriptsize},
-  label style={font=\scriptsize},
-  title style={font=\small\bfseries},
-  title={Bathtub curve},
-]
-  % composite: falling + flat floor + rising
-  % h(t) = 1.8 e^{-0.9 t} + 0.3 + 0.010*(t)^{2.6}, sampled
-  \addplot[thick, engorange, mark=none, smooth] coordinates {
-    (0.2,1.80) (0.6,1.36) (1.0,1.03) (1.5,0.77) (2.0,0.61)
-    (3.0,0.49) (4.0,0.55) (5.0,0.70) (6.0,0.95) (7.0,1.28)
-    (8.0,1.69) (9.0,2.16) (9.6,2.48)
-  };
-  % regime dividers
-  \draw[dashed, enggray] (axis cs:2.4,0) -- (axis cs:2.4,2.6);
-  \draw[dashed, enggray] (axis cs:6.4,0) -- (axis cs:6.4,2.6);
-  \node[anchor=south, font=\scriptsize, align=center] at (axis cs:1.2,2.0)
-    {infant\\mortality};
-  \node[anchor=south, font=\scriptsize, align=center] at (axis cs:4.4,1.9)
-    {useful life\\(exponential)};
-  \node[anchor=south, font=\scriptsize, align=center] at (axis cs:8.2,1.9)
-    {wear-out};
-\end{axis}
+% Region shading boundaries at t = 3.0 and t = 7.0
+\fill[engblue!8]  (0,0) rectangle (3.0, 4.2);
+\fill[englime!12] (3.0,0) rectangle (7.0, 4.2);
+\fill[engred!8]   (7.0,0) rectangle (10.2, 4.2);
+
+% Infant-mortality: falling branch, clamped positive. A decaying
+% curve from a high value down to the flat level 1.0.
+\draw[very thick, engblue, smooth]
+  plot[domain=0.35:3.0, samples=60]
+  (\x, {1.0 + 3.0*exp(-1.3*\x)});
+
+% Useful life: flat constant hazard at level 1.0
+\draw[very thick, englime!60!black]
+  (3.0, 1.0) -- (7.0, 1.0);
+
+% Wear-out: rising branch from 1.0 upward, a quadratic climb clamped
+% inside the frame.
+\draw[very thick, engred, smooth]
+  plot[domain=7.0:10.0, samples=50]
+  (\x, {1.0 + 0.32*(\x-7.0)*(\x-7.0)});
+
+% Region dividers
+\draw[dashed, enggray] (3.0, 0) -- (3.0, 4.2);
+\draw[dashed, enggray] (7.0, 0) -- (7.0, 4.2);
+
+% Region labels
+\node[anchor=south, engblue, font=\scriptsize, align=center]
+  at (1.5, 3.5) {infant\\mortality\\$k<1$};
+\node[anchor=south, englime!45!black, font=\scriptsize, align=center]
+  at (5.0, 3.5) {useful life\\$h=\lambda$ (constant)\\exponential};
+\node[anchor=south, engred, font=\scriptsize, align=center]
+  at (8.6, 3.5) {wear-out\\$k>1$};
+
+% Constant-level reference tick
+\node[anchor=east, font=\scriptsize] at (-0.05, 1.0) {$\lambda$};
+\draw (0, 1.0) -- (-0.08, 1.0);
 
 \end{tikzpicture}
-\caption[Hazard-rate shapes and the bathtub curve]{The hazard rate
-$h(t)=f(t)/S(t)$ is the instantaneous failure rate of a unit that has
-survived to age $t$, and its shape selects the model. Left: the Weibull
-hazard $h(t)=k\,t^{k-1}$ falls for shape $k<1$ (infant mortality), is
-constant for $k=1$ (the memoryless exponential, the only law with flat
-hazard), and rises for $k>1$ (wear-out). Right: the reliability bathtub
-curve is three hazard regimes stitched together, a falling early phase in
-which weak units are culled, a flat useful-life floor over which the
-exponential model is valid, and a rising wear-out phase. The exponential
-is the right model only in the flat middle; a constant-hazard assumption
-applied across the early or late regime misreads the failure rate in the
-direction the curve bends. Source: computed by the authors from the
-Weibull hazard formula.}
-\label{fig:vol02:ch13:hazard-bathtub}
+\caption[The bathtub hazard curve]{The bathtub curve of reliability
+engineering, three hazard regimes stitched together. Early in life the
+hazard falls as manufacturing defects are culled, a Weibull shape
+$k<1$. Through the useful-life plateau the hazard is constant at
+$\lambda$, the one regime where the exponential lifetime model of
+section 13.4 holds and the memoryless property applies. Late in life
+the hazard rises as wear, fatigue, and corrosion accumulate, a Weibull
+shape $k>1$. The exponential is the right model only in the flat middle;
+fitting it across a full lifetime averages away the two regimes that
+drive the earliest and the latest failures. Source: schematic by the
+authors; the hazard-survival identity $S(t)=\exp(-\int_0^t h)$ is
+derived in section 13.4.}
+\label{fig:vol02ch13:hazard-bathtub}
 \end{figure}

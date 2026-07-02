@@ -1023,6 +1023,157 @@ evaluations per accelerated step and a fragility near $x_{k+2} -
 extrapolation must be guarded.
 \end{mastery}
 
+\subsection{Higher order, and the step from scalar to system}
+
+Newton doubles the digit count per step; a method that uses one more
+derivative can triple it. \engterm{Halley's method} folds the second
+derivative into the iteration,
+
+\[
+x_{k+1} = x_{k} - \frac{2 f(x_{k}) f'(x_{k})}
+{2 f'(x_{k})^{2} - f(x_{k}) f''(x_{k})},
+\]
+
+and converges cubically at a simple root: the error obeys $\abs{e_{k+1}}
+\approx C \abs{e_{k}}^{3}$, so the number of correct digits roughly triples
+each step rather than doubling. The method is the fixed-point iteration
+whose map has both a vanishing first \emph{and} a vanishing second
+derivative at the root, which is the structural reason its order climbs one
+past Newton's. The cost is one extra derivative per step, and the working
+question is whether the third-order rate saves enough iterations to repay the
+$f''$ evaluation; when $f''$ is available in closed form and evaluations
+dominate the runtime, Halley reaches machine precision in three or four steps
+where Newton takes five or six.
+
+\begin{example}
+\textbf{Halley against Newton on a cube root.} Solve $f(x) = x^{3} - 2 = 0$
+for the real root $x^{*} = 2^{1/3} = 1.2599210498948732$, from $x_{0} = 1$.
+Newton uses $f'(x) = 3x^{2}$: $x_{1} = 1 - (-1)/3 = 1.3333333$, error $7.34
+\times 10^{-2}$; $x_{2} = 1.2643172$, error $4.40 \times 10^{-3}$; $x_{3} =
+1.2599296$, error $8.5 \times 10^{-6}$; $x_{4}$ at the binary64 floor, four
+steps to full precision. Halley adds $f''(x) = 6x$: the first step is $x_{1}
+= x_{0} - 2 f f' / (2 f'^{2} - f f'')$ with $f(1) = -1$, $f'(1) = 3$, $f''(1)
+= 6$, giving $x_{1} = 1 - 2(-1)(3)/(2 \cdot 9 - (-1)(6)) = 1 + 6/24 = 1.25$,
+error $9.9 \times 10^{-3}$; $x_{2} = 1.2599211$, error $1.4 \times 10^{-8}$;
+$x_{3}$ at the floor, two steps to full precision. The digit count runs $2,
+8, 16$ for Halley against $1, 2, 5, 16$ for Newton, the cubic-versus-quadratic
+signature that Figure~\ref{fig:vol02ch16:halley-newton} plots. Halley reached
+machine precision in one fewer step at the price of one $f''$ evaluation per
+step; on this cheap cubic the trade is a wash, and Newton's simplicity wins,
+which is why Halley is reserved for the case where $f''$ is cheap and every
+saved evaluation of an expensive $f$ pays for itself.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-halley-newton}
+
+\begin{example}
+\textbf{Steffensen recovers Newton's rate without a derivative, by the
+numbers.} The Aitken-acceleration mastery box promised that folding the
+$\Delta^{2}$ extrapolation into a fixed-point iteration recovers quadratic
+convergence with no derivative. Carry it on the linearly convergent map
+$g(x) = (x + 2)^{1/3}$ for the root of $x^{3} - x - 2$ near $x^{*} =
+1.5213797$. From $x_{0} = 1.5$, one Steffensen step evaluates $g$ twice,
+$a = g(x_{0}) = (3.5)^{1/3} = 1.5182945$ and $b = g(a) = (3.5182945)^{1/3} =
+1.5210313$, then extrapolates $x_{1} = x_{0} - (a - x_{0})^{2}/(b - 2a +
+x_{0})$. The numerator is $(a - x_{0})^{2} = (1.8294 \times 10^{-2})^{2} =
+3.347 \times 10^{-4}$ and the denominator is $b - 2a + x_{0} = 1.5210313 -
+3.0365890 + 1.5 = -1.5254 \times 10^{-2}$, so $x_{1} = 1.5 - (3.347 \times
+10^{-4})/(-1.5254 \times 10^{-2}) = 1.5 + 2.1942 \times 10^{-2} = 1.5219420$,
+error $5.6 \times 10^{-4}$ against the plain iteration's $3.1 \times 10^{-3}$
+after two raw applications. The next Steffensen step drops the error to $1.9
+\times 10^{-7}$ and the one after to below $10^{-14}$: the error squares each
+accelerated step, the quadratic rate the raw linear map could never reach, and
+no derivative of $f$ was formed. The three evaluations of $g$ per accelerated
+step (two here, plus the restart) are the price, and the guard against the
+denominator $b - 2a + x_{0}$ vanishing near convergence is the one piece of
+defensive code the method demands.
+\end{example}
+
+\subsection{Newton for systems}
+
+The root-finding of the previous subsections was scalar, and most
+engineering root problems are not: an equilibrium of a reaction network, a
+power-flow balance, a trajectory constraint, each is a system $\vect{F}
+(\vect{x}) = \vect{0}$ with $\vect{F}: \R^{n} \to \R^{n}$. \engterm{Vector
+Newton} linearises the whole map at the current iterate. Writing the
+\engterm{Jacobian} $\mat{J}(\vect{x})$ with entries $J_{ij} = \partial F_{i}
+/ \partial x_{j}$, the step solves the linear system
+
+\[
+\mat{J}(\vect{x}_{k})\, \Delta\vect{x}_{k} = -\vect{F}(\vect{x}_{k}),
+\qquad \vect{x}_{k+1} = \vect{x}_{k} + \Delta\vect{x}_{k},
+\]
+
+which replaces the scalar division by $f'$ with a linear solve against
+$\mat{J}$. The convergence is quadratic near a root where $\mat{J}$ is
+nonsingular, exactly as in the scalar case, with the conditioning of
+$\mat{J}$ now setting how many digits the linear solve inside each step can
+deliver. The method inherits the scalar method's fragility: a poor start can
+diverge or cycle, a singular Jacobian stalls it, and production code
+safeguards the step with a line search or a trust region that shortens
+$\Delta\vect{x}_{k}$ when the full step does not reduce $\norm{\vect{F}}$.
+
+\begin{example}
+\textbf{A $2\times2$ system solved by vector Newton.} Find the intersection in
+the first quadrant of the circle $x^{2} + y^{2} = 16$ and the parabola $y =
+x^{2}/3$, that is the root of
+
+\[
+\vect{F}(x, y) = \begin{pmatrix} x^{2} + y^{2} - 16 \\ x^{2} - 3 y
+\end{pmatrix}, \qquad
+\mat{J}(x, y) = \begin{pmatrix} 2x & 2y \\ 2x & -3 \end{pmatrix}.
+\]
+
+From $\vect{x}_{0} = (1.5, 0.8)^{\transpose}$: $\vect{F}_{0} = (1.5^{2} +
+0.8^{2} - 16,\, 1.5^{2} - 3(0.8))^{\transpose} = (-13.11, -0.15)^{\transpose}$
+and $\mat{J}_{0} = \begin{psmallmatrix} 3 & 1.6 \\ 3 & -3 \end{psmallmatrix}$,
+whose determinant is $-9 - 4.8 = -13.8$. Solving $\mat{J}_{0}\Delta\vect{x} =
+-\vect{F}_{0} = (13.11, 0.15)^{\transpose}$ gives $\Delta\vect{x} =
+\tfrac{1}{-13.8}\begin{psmallmatrix} -3 & -1.6 \\ -3 & 3 \end{psmallmatrix}
+(13.11, 0.15)^{\transpose} = (2.867, 2.817)^{\transpose}$, so $\vect{x}_{1} =
+(4.367, 3.617)^{\transpose}$, a large first step from the coarse start. The
+second step re-evaluates and returns $\vect{x}_{2} = (3.13, 2.63)^{\transpose}$,
+the third $\vect{x}_{3} = (2.73, 2.47)^{\transpose}$, and the iteration settles
+to $\vect{x}^{*} = (2.708, 2.445)^{\transpose}$ with the error squaring once
+the estimate is close, the quadratic rate the scalar method also enjoys.
+Figure~\ref{fig:vol02ch16:vector-newton} draws the two curves and the
+approach. The example exposes the one structural change from the scalar
+method: every step is a linear solve against the Jacobian, so vector Newton is
+the place where the root-finding of this section and the linear-algebra of the
+next meet, and a system with an ill-conditioned Jacobian loses digits in the
+step for exactly the reasons section 16.2 names.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-vector-newton}
+
+\begin{mastery}
+\textbf{Newton fractals and the global-convergence question.} The
+convergence theorems of this section are all \emph{local}: they promise
+quadratic convergence once the iterate is close enough to a simple root, and
+say nothing about which root a given start reaches, or whether it reaches one
+at all. The global picture is far wilder than the local theory suggests.
+Colour each starting point of the complex plane by which root of $z^{3} - 1 =
+0$ the complex Newton iteration $z_{k+1} = z_{k} - (z_{k}^{3} - 1)/(3
+z_{k}^{2})$ converges to, and the resulting map is a fractal: the three
+basins of attraction interlock along a boundary that is self-similar at every
+scale, so that arbitrarily close to a point that converges to one root sit
+points that converge to each of the others. The boundary is the \engterm{Julia
+set} of the Newton iteration, and its infinite intricacy means no finite
+tolerance on the initial guess can guarantee which root a Newton solve will
+find near that boundary. The engineering reading is not that Newton is
+unreliable but that its reliability is a statement about a neighbourhood the
+engineer must establish, not assume: a Newton solve reported without evidence
+that the start lay in the target root's basin is a solve whose outcome the
+fractal boundary can overturn. The safeguards of this section, the bracket
+fallback in one dimension and the trust region in many, exist precisely to tame
+the global behaviour the local theorems ignore, and the homotopy or
+continuation methods of later volumes trace a path from an easy problem whose
+basin is known to the hard one, so that the start is always inside the basin
+by construction. The fractal is the visible form of the gap between local
+convergence, which the mathematics guarantees, and global convergence, which
+the engineer must engineer.
+\end{mastery}
+
 \subsection{Choosing among the three}
 
 The working choice depends on three properties of the problem.
@@ -1160,6 +1311,33 @@ linearly in the node count and whose only subtractions are the node
 differences fixed once at setup. The example shows the machinery a call to a
 production interpolant runs: precompute the weights, then evaluate each query
 point as one weighted-reciprocal sum over one weighted-reciprocal sum.
+\end{example}
+
+\begin{example}
+\textbf{Clenshaw's recurrence for a Chebyshev series.} A smooth function is
+often stored not as node values but as coefficients of a Chebyshev series
+$p(x) = \sum_{k=0}^{n} a_{k} T_{k}(x)$, the natural representation once the
+Runge-safe Chebyshev nodes are in hand. Evaluating that series by forming
+each $T_{k}(x)$ and summing is both wasteful and numerically poor near the
+endpoints, where the high-degree $T_{k}$ swing between $\pm 1$ and their
+weighted sum cancels. \engterm{Clenshaw's recurrence} evaluates the series by
+a single backward sweep that exploits the three-term recurrence $T_{k+1}(x) =
+2 x\, T_{k}(x) - T_{k-1}(x)$. Set $b_{n+1} = b_{n+2} = 0$ and run downward,
+$b_{k} = a_{k} + 2 x\, b_{k+1} - b_{k+2}$ for $k = n, n-1, \ldots, 1$; the
+value is $p(x) = a_{0} + x\, b_{1} - b_{2}$. Take the four-term series with
+$a = (1, 0.5, 0.25, 0.125)$ at $x = 0.6$, using $T_{0} = 1$, $T_{1} = x$,
+$T_{2} = 2x^{2} - 1 = -0.28$, $T_{3} = 4x^{3} - 3x = -0.936$. The direct sum
+is $1 + 0.5(0.6) + 0.25(-0.28) + 0.125(-0.936) = 1 + 0.3 - 0.07 - 0.117 =
+1.113$. Clenshaw runs $b_{3} = a_{3} = 0.125$; $b_{2} = a_{2} + 1.2 b_{3} -
+0 = 0.25 + 0.15 = 0.4$; $b_{1} = a_{1} + 1.2 b_{2} - b_{3} = 0.5 + 0.48 -
+0.125 = 0.855$; then $p = a_{0} + x b_{1} - b_{2} = 1 + 0.6(0.855) - 0.4 =
+1.113$, the same value in $n$ multiply-adds with no $T_{k}$ table formed and
+no endpoint cancellation. Clenshaw is to a Chebyshev series what Horner is to
+a monomial polynomial: the stable, minimal-operation backward recurrence that
+every spectral and approximation library runs, and its backward stability is
+the reason a Chebyshev representation of a function can be evaluated to full
+precision across the whole interval where the monomial form loses digits at
+the ends.
 \end{example}
 
 \subsection{Newton's divided differences}
@@ -1575,6 +1753,40 @@ shift (the inverse-power and shifted-QR refinements) to separate the target
 eigenvalue from its neighbours.
 \end{example}
 
+\begin{example}
+\textbf{The conditioning of an eigenvalue, and why nonsymmetric matrices are
+worse.} An eigenvalue carries its own condition number, distinct from the
+matrix's condition number for a linear solve. For a simple eigenvalue
+$\lambda$ with right eigenvector $\vect{v}$ and left eigenvector $\vect{w}$
+(so $\vect{w}^{\transpose}\mat{A} = \lambda \vect{w}^{\transpose}$), a
+perturbation $\mat{A} + \varepsilon\mat{E}$ shifts $\lambda$ by
+$\varepsilon\, (\vect{w}^{\transpose}\mat{E}\vect{v})/(\vect{w}^{\transpose}
+\vect{v}) + O(\varepsilon^{2})$, so the eigenvalue condition number is
+$s(\lambda)^{-1} = \norm{\vect{w}}\norm{\vect{v}}/\abs{\vect{w}^{\transpose}
+\vect{v}}$, the reciprocal of the cosine of the angle between the left and
+right eigenvectors. For a symmetric matrix the left and right eigenvectors
+coincide, that angle is zero, the cosine is one, and every eigenvalue is
+perfectly conditioned: a perturbation of size $\varepsilon$ moves each
+eigenvalue by at most $\varepsilon$. For a nonsymmetric matrix the two
+eigenvectors can be nearly orthogonal, the cosine tiny, and the eigenvalue
+wildly sensitive. Take $\mat{A} = \begin{psmallmatrix} 1 & 1000 \\ 0 & 1.001
+\end{psmallmatrix}$, whose eigenvalues are the diagonal $1$ and $1.001$. The
+right eigenvector for $\lambda = 1$ is $(1, 0)^{\transpose}$; the left
+eigenvector is nearly $(0, 1)^{\transpose}$ because the large off-diagonal
+couples the rows asymmetrically, so $\vect{w}^{\transpose}\vect{v} \approx
+10^{-3}$ against $\norm{\vect{w}}\norm{\vect{v}} \approx 1$, an eigenvalue
+condition number near $10^{3}$. A perturbation of $10^{-6}$ in the matrix
+moves the eigenvalue by as much as $10^{-3}$, three decades of amplification
+that a symmetric matrix would never show. The engineer who computes natural
+frequencies (a symmetric mass-stiffness problem, well conditioned) reads the
+eigenvalues at face value; the engineer who computes the poles of a
+nonsymmetric state-space system (an unsymmetric $\mat{A}$) reports the
+eigenvalue condition numbers alongside, because a backward-stable eigensolver
+still returns eigenvalues whose forward error is the backward error times this
+per-eigenvalue conditioning, exactly the master inequality of section 16.2
+applied to the spectrum.
+\end{example}
+
 \begin{mastery}
 \textbf{Randomised numerical linear algebra.} The classical factorisations
 cost $O(mn^{2})$ and touch the whole matrix, which is prohibitive when
@@ -1940,6 +2152,8 @@ geometry that a better solver cannot improve, and the reason a receiver reports
 a position-accuracy estimate that varies with the satellite configuration
 overhead even when the ranging hardware is unchanged.
 
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-gps-gdop}
+
 \paragraph{The numerical reading.}
 A worked instance fixes the scale. Suppose four satellites give a
 $\mat{G}^{\transpose}\mat{G}$ whose inverse has trace $9$, so $\mathrm{GDOP} =
@@ -1954,6 +2168,75 @@ to avoid squaring $\kappa(\mat{G})$), the conditioning (the GDOP at the solve
 epoch), and the resulting position uncertainty (the ranging noise times the
 GDOP). The same three-part statement is the error budget of section 16.10
 applied to a system in every pocket.
+
+\subsection{Applied vignette: coefficient quantisation in a digital filter}
+
+Every piece of audio a listener hears through a phone, every control loop
+that stabilises a drone, every biomedical trace cleaned of mains hum, passes
+through a \engterm{recursive digital filter} whose behaviour turns on the
+placement of its poles relative to the unit circle. The filter's stability is
+a root-location question, and the finite word length of the coefficients that
+realise it is a conditioning question, so a sharp filter that is correct in
+exact arithmetic can be unstable once its coefficients are stored in the
+processor's floating-point or fixed-point format. The vignette carries the
+chapter's coefficient-to-root conditioning of section 16.2 into a device the
+reader owns.
+
+\paragraph{Poles, stability, and the recurrence.}
+An infinite-impulse-response (IIR) filter computes each output sample from
+past inputs and past outputs by a recurrence $y_{n} = \sum_{k} b_{k}
+x_{n-k} - \sum_{k=1}^{p} a_{k} y_{n-k}$, and its behaviour is fixed by the
+roots of the denominator polynomial $A(z) = 1 + a_{1} z^{-1} + \cdots +
+a_{p} z^{-p}$, the \engterm{poles} of the filter. The recurrence is stable,
+meaning its response to a bounded input stays bounded, exactly when every
+pole lies strictly inside the unit circle $\abs{z} < 1$; a pole on or outside
+the circle produces an impulse response that fails to decay or grows without
+bound. A selective filter (a narrow band-pass, a steep low-pass) achieves its
+sharpness by placing poles very close to the unit circle, where the response
+is large, and that is precisely where the design is most fragile.
+
+\paragraph{Quantisation as a coefficient perturbation.}
+The coefficients $a_{k}$ are computed in the design software to full
+precision and then stored in the target's finite word length, whether a
+$32$-bit float on a signal processor or a $16$-bit fixed-point word on a
+low-power microcontroller. The stored coefficients are the design
+coefficients perturbed by a rounding of relative size the format's unit
+round-off, $\hat{a}_{k} = a_{k}(1 + \delta_{k})$ with $\abs{\delta_{k}} \leq
+u$. The realised poles are the roots of the perturbed $\hat{A}(z)$, and the
+map from the coefficients to the poles is the same coefficient-to-root map
+that Wilkinson's polynomial showed can be catastrophically ill conditioned.
+When two poles cluster near the unit circle, as they do in a sharp filter,
+the coefficient-to-pole conditioning is large, and a rounding of the
+coefficients at the level of $u$ can move a pole across the circle.
+Figure~\ref{fig:vol02ch16:iir-quantization} plots a pole pair placed just
+inside the circle in exact arithmetic and pushed outside by the coefficient
+quantisation, and the decaying versus growing impulse response that follows.
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-iir-quantization}
+
+\paragraph{The numerical reading and the fix.}
+A worked scale fixes the danger. A second-order section with poles at radius
+$r = 0.995$ and angle $\theta$ has denominator $A(z) = 1 - 2r\cos\theta\,
+z^{-1} + r^{2} z^{-2}$, so the coefficient $a_{2} = r^{2} = 0.990025$; a
+$16$-bit fixed-point word with a fractional resolution of $2^{-15} \approx 3
+\times 10^{-5}$ can represent $a_{2}$ only to that step, and a rounding of one
+step moves $r^{2}$ by $3 \times 10^{-5}$, hence $r$ by about $1.5 \times
+10^{-5}$, which is safe for this single section but grows dangerous as the
+pole radius climbs toward $r = 0.9997$ where the margin to the circle is
+itself of order the quantisation step. The defence is structural and is
+universal in filter deployment: never realise a high-order filter as one
+direct-form recurrence, whose high-degree denominator has the Wilkinson
+conditioning, but factor it into a \engterm{cascade of second-order sections}
+(biquads), each with only two poles whose coefficient-to-root map is benign,
+and quantise each section's four coefficients separately. The cascade trades
+the ill-conditioned high-degree root problem for a product of well-conditioned
+quadratic ones, exactly the reformulation-not-higher-precision move the
+chapter's conditioning-versus-stability diagnostic prescribes. The engineer
+who ships a filter states three things the chapter demands: the arithmetic
+format of the coefficients, the pole radii and their margin to the unit
+circle (the conditioning), and the realisation structure (the evidence that
+the coefficient-to-pole map was kept well conditioned), and a filter reported
+without them is a recurrence whose field stability the engineer cannot defend.
 
 \section{Numerical integration revisited}\pathtag{standard}
 
