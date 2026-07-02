@@ -109,6 +109,33 @@ $\tr \mat{A} = \sum_{i} \lambda_{i}$ and $\det \mat{A} = \prod_{i}
 \lambda_{i}$. The two invariants summarise the spectrum from
 quantities that are cheap to compute directly from the entries.
 
+\begin{mastery}
+The trace and determinant are the first and last of a full family. The
+characteristic polynomial of an $n \times n$ matrix,
+\[
+p_{\mat{A}}(\lambda) = (-1)^{n}\bigl(\lambda^{n} - c_{1}\lambda^{n-1}
++ c_{2}\lambda^{n-2} - \cdots + (-1)^{n}c_{n}\bigr),
+\]
+has coefficients $c_{k}$ that are the \engterm{elementary symmetric
+functions} of the eigenvalues: $c_{1} = \sum_i \lambda_i = \tr\mat{A}$,
+$c_{2} = \sum_{i<j}\lambda_i\lambda_j$, up to $c_{n} = \prod_i
+\lambda_i = \det\mat{A}$. Each $c_{k}$ also equals the sum of the
+$k \times k$ principal minors of $\mat{A}$, so all $n$ invariants are
+computable from the entries without ever finding an eigenvalue. The
+middle coefficients are not idle. For a $3 \times 3$ matrix, $c_{2} =
+\tfrac{1}{2}\bigl((\tr\mat{A})^{2} - \tr(\mat{A}^{2})\bigr)$ is the
+second invariant of a stress or inertia tensor, the quantity that,
+with the trace and determinant, forms the three coordinate-free
+numbers a continuum-mechanics analysis reports. The power sums
+$p_k = \sum_i \lambda_i^k = \tr(\mat{A}^k)$ connect to the $c_k$
+through Newton's identities, which is how a spectral quantity such as
+$\sum_i \lambda_i^{2}$ is read off $\tr(\mat{A}^2)$ directly rather
+than by squaring each eigenvalue. Every symmetric function of the
+spectrum is a function of these invariants, and the invariants are
+functions of the entries; the eigenvalues sit in between as the roots
+that tie the two descriptions together.
+\end{mastery}
+
 \subsection{Geometric and algebraic multiplicity}
 
 An eigenvalue $\lambda$ is a root of the characteristic polynomial.
@@ -189,6 +216,36 @@ true eigenvalue. The quadratic accuracy is why production
 eigensolvers report eigenvalues by Rayleigh quotients of their
 iterates rather than by any cruder formula.
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-rayleigh-quotient.tex}
+
+\Cref{fig:vol02:ch10:rayleigh-quotient} makes the trapping visible for
+the symmetric matrix $\begin{psmallmatrix} 4 & 1 \\ 1 & 4
+\end{psmallmatrix}$. As the input unit vector sweeps through every
+direction, the quotient traces a curve that never leaves the band
+between $\lambda_{\min} = 3$ and $\lambda_{\max} = 5$ and touches each
+extreme exactly at the corresponding eigenvector. The flatness of the
+curve at each touch point is the stationarity that gives the quadratic
+accuracy; away from the touch points the quotient moves at full speed,
+so a rough eigenvector guess still lands a good eigenvalue estimate.
+
+\begin{example}
+The quadratic accuracy is worth watching on numbers. Take the same
+matrix $\mat{A} = \begin{psmallmatrix} 4 & 1 \\ 1 & 4
+\end{psmallmatrix}$, whose top eigenvector is $\vect{v} = (1, 1)/
+\sqrt{2}$ at eigenvalue $\lambda = 5$. Feed in a vector $6^{\circ}$
+off that direction, $\vect{x} = (\cos 51^{\circ}, \sin 51^{\circ}) =
+(0.629, 0.777)$. The eigenvector error is the sine of the offset
+angle, $\sin 6^{\circ} \approx 0.105$, about $10\%$. The Rayleigh
+quotient is $R(\vect{x}) = \vect{x}\transpose\mat{A}\vect{x} =
+4 + 2(0.629)(0.777) = 4 + 0.977 = 4.977$, an eigenvalue error of
+$0.023$, or $0.46\%$ of the eigenvalue. A $10\%$ error in the vector
+has become a sub-half-percent error in the eigenvalue, the square-law
+gain $R$ delivers because it is stationary at $\vect{v}$. The same
+input reports the eigenvalue two orders of magnitude more accurately
+than it reports the eigenvector, which is why an eigensolver quotes
+$R$ of its current iterate as its running eigenvalue estimate.
+\end{example}
+
 \subsection{Gerschgorin discs: bounding the spectrum from the entries}
 
 The eigenvalues of a matrix can be localised, without computing
@@ -238,6 +295,33 @@ that two eigenvalues live near the well-separated diagonal entries and
 two share a merged region. The disc radii also bound how far an
 eigenvalue can move under a perturbation of the off-diagonal entries,
 which is the next subsection's subject.
+
+\begin{example}
+The counting half of the theorem, the part that says a cluster of $k$
+discs holds exactly $k$ eigenvalues, is where Gerschgorin earns real
+work. Take
+\[
+\mat{A} = \begin{pmatrix} 1 & 0.1 & 0.1 \\ 0.2 & 5 & 0.3 \\
+0.1 & 0.2 & 9 \end{pmatrix}.
+\]
+The three discs are centred at $1$, $5$, $9$ with radii $r_1 = 0.2$,
+$r_2 = 0.5$, $r_3 = 0.3$, giving intervals $[0.8, 1.2]$, $[4.5, 5.5]$,
+$[8.7, 9.3]$ on the real axis. The three intervals are pairwise
+disjoint, so each isolated disc contains exactly one eigenvalue by the
+second half of the theorem: one eigenvalue near $1$, one near $5$, one
+near $9$, each pinned to a narrow band without solving a cubic. The
+true eigenvalues, computed for the check, are $0.994$, $4.99$, and
+$9.02$, each comfortably inside its own disc and near the disc centre
+because the off-diagonal entries are small. The engineer reads off,
+from the entries alone, that this matrix has three well-separated real
+eigenvalues and that a shift-and-invert solver targeting any one of
+them needs only to place its shift at the corresponding diagonal entry.
+Widen the off-diagonals until two discs overlap, say by raising the
+$(2,3)$ and $(3,2)$ entries so that $r_2$ and $r_3$ grow past $2$, and
+the union of those two discs then holds two eigenvalues that
+Gerschgorin can no longer separate individually; the count survives the
+merge, but the isolation does not.
+\end{example}
 
 \subsection{Eigenvalue perturbation: how far a spectrum can move}\pathtag{mastery}
 
@@ -727,6 +811,54 @@ is a hyperbola, and the matrix has one positive and one negative
 eigenvalue. The sign of a single $2 \times 2$ determinant flips the
 geometry from bowl to saddle.
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-quadratic-conics.tex}
+
+\Cref{fig:vol02:ch10:quadratic-conics} draws the three geometries the
+eigenvalue signs produce. Two positive eigenvalues give the ellipse of
+the worked example, tilted along its principal directions with the
+short axis along the stiff eigenvector; one sign flip gives the
+hyperbola, its asymptotes running along the directions where the form
+vanishes; a single zero eigenvalue collapses the ellipse into a pair
+of parallel lines, flat along the null direction. The reader who
+classifies a matrix by its eigenvalue signs is naming which of these
+three shapes its energy surface takes.
+
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-definiteness-map.tex}
+
+\Cref{fig:vol02:ch10:definiteness-map} lifts Sylvester's criterion
+into a single diagram in the trace-determinant plane. The determinant
+sign draws the line between definite and indefinite matrices; among the
+definite ones, the trace sign separates positive from negative. The
+worked example's slide from bowl to saddle, driven by dropping the
+$(1,1)$ entry from $5$ to $3$, is one horizontal step downward across
+the $\delta = 0$ axis of that map: the determinant crosses zero and the
+matrix changes character while the trace barely moves.
+
+\begin{example}
+The definiteness test is where a Hessian earns its keep. Consider
+minimising $f(x_1, x_2) = x_1^{2} + x_1 x_2 + x_2^{2} - 3x_1$. The
+gradient is $(\,2x_1 + x_2 - 3,\ x_1 + 2x_2\,)$, which vanishes at the
+single critical point $x_1 = 2$, $x_2 = -1$. The Hessian is the
+constant symmetric matrix
+\[
+\mat{H} = \begin{pmatrix} 2 & 1 \\ 1 & 2 \end{pmatrix},
+\]
+with trace $4$ and determinant $4 - 1 = 3$. Both leading minors are
+positive ($2 > 0$ and $3 > 0$), so Sylvester's criterion certifies
+$\mat{H}$ positive definite without computing an eigenvalue, and the
+critical point is a strict local minimum. The eigenvalues, if wanted,
+are $3$ and $1$, both positive, confirming the classification and
+saying the objective curves three times as sharply along $(1,1)/
+\sqrt{2}$ as along $(1,-1)/\sqrt{2}$: the same anisotropy that sets the
+conditioning of a gradient-descent step on this bowl. Change the
+cross-term coefficient from $1$ to $3$ and the Hessian becomes
+$\begin{psmallmatrix} 2 & 3 \\ 3 & 2 \end{psmallmatrix}$ with
+determinant $4 - 9 = -5 < 0$; the critical point turns into a saddle,
+and a minimiser that trusted the vanishing gradient without checking
+the Hessian sign would have stopped at a point that is not a minimum
+at all.
+\end{example}
+
 \begin{estimation}
 \textbf{Question.} A symmetric $10 \times 10$ stiffness matrix has
 diagonal entries near $4$ and off-diagonal entries near $-1$, the
@@ -967,6 +1099,41 @@ reciprocals as zero rather than as enormous. This is regularisation
 read off the spectrum, and it is the bridge to Tikhonov
 regularisation and ridge regression in Volume VII.
 
+\begin{example}
+The minimum-norm property is visible on a rank-deficient system where
+ordinary least squares has no unique answer. Take
+\[
+\mat{A} = \begin{pmatrix} 1 & 1 \\ 1 & 1 \end{pmatrix}, \qquad
+\vect{b} = \begin{pmatrix} 2 \\ 4 \end{pmatrix}.
+\]
+The matrix has rank one, so the columns span only the line through
+$(1,1)$, and $\mat{A}\vect{x} = \vect{b}$ has no exact solution because
+$\vect{b}$ is off that line. Least squares projects $\vect{b}$ onto the
+column space: the projection is the average, $(3, 3)\transpose$, so the
+best achievable output is $3$ in both rows and the residual is
+$\norm{\vect{b} - (3,3)\transpose}_2 = \norm{(-1,1)\transpose}_2 =
+\sqrt{2}$. Any $\vect{x} = (x_1, x_2)$ with $x_1 + x_2 = 3$ achieves
+this residual, an entire line of least-squares solutions. The
+pseudoinverse picks the one of smallest norm. The SVD is $\sigma_1 =
+2$ with $\vect{u}_1 = \vect{v}_1 = (1,1)/\sqrt{2}$ and $\sigma_2 = 0$,
+so
+\[
+\mat{A}^{+} = \frac{1}{\sigma_1}\vect{v}_1\vect{u}_1\transpose
+= \frac{1}{2}\cdot\frac{1}{2}\begin{pmatrix} 1 & 1 \\ 1 & 1
+\end{pmatrix} = \begin{pmatrix} 1/4 & 1/4 \\ 1/4 & 1/4 \end{pmatrix},
+\]
+and $\vect{x} = \mat{A}^{+}\vect{b} = (1.5, 1.5)\transpose$. This is
+the point on the line $x_1 + x_2 = 3$ closest to the origin, the
+minimum-norm least-squares solution, and the zero singular value is
+handled by leaving its reciprocal at zero rather than blowing up. Had
+the engineer instead formed the normal equations $\mat{A}\transpose
+\mat{A}\vect{x} = \mat{A}\transpose\vect{b}$, the matrix
+$\mat{A}\transpose\mat{A} = \begin{psmallmatrix} 2 & 2 \\ 2 & 2
+\end{psmallmatrix}$ is singular and the solve fails outright; the
+pseudoinverse route returns the sensible answer where the normal
+equations refuse to run.
+\end{example}
+
 \subsection{The polar decomposition}\pathtag{mastery}
 
 A square matrix factors as $\mat{A} = \mat{Q} \mat{P}$, with
@@ -1034,6 +1201,39 @@ decay quickly, $\mat{A}_{k}$ is close to $\mat{A}$ at small $k$ and
 the matrix is effectively low-rank. When they decay slowly,
 truncation costs accuracy and full rank is the genuine signal.
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-eckart-young-error.tex}
+
+\Cref{fig:vol02:ch10:eckart-young-error} plots the two error norms
+against the retained rank for a matrix with a geometric spectrum. The
+theorem's sharpness is what makes the plot a design tool rather than a
+sketch: the spectral-norm curve is the next singular value exactly, and
+the Frobenius-norm curve is the square root of the discarded tail
+exactly, so the engineer reads the smallest rank that clears a
+tolerance off the graph with no safety factor for slop in the bound
+itself. The two norms answer different questions, and they usually
+disagree by a component, the spectral norm asking only about the
+largest thing thrown away and the Frobenius norm about the total energy
+thrown away.
+
+\begin{example}
+The two error norms diverge most where they matter. Take a matrix with
+singular values $\sigma = (10,\ 9,\ 8,\ 1,\ 1,\ 1,\ 1,\ 1,\ 1,\ 1)$, a
+clean three-component signal on a flat tail of seven small values. At
+rank $k = 3$ the spectral-norm error is $\sigma_{4} = 1$, a single
+small value, and the plot's blue curve says the truncation looks nearly
+perfect. The Frobenius-norm error tells a different story: it is
+$\sqrt{\sigma_{4}^{2} + \cdots + \sigma_{10}^{2}} = \sqrt{7} \approx
+2.65$, larger than the largest discarded value because the seven small
+tail terms accumulate. Reported as a fraction of the total energy
+$\sqrt{\sum_i \sigma_i^2} = \sqrt{100 + 81 + 64 + 7} = \sqrt{252}
+\approx 15.9$, the rank-three Frobenius error is $2.65/15.9 \approx
+17\%$, not the near-zero the spectral norm suggests. An engineer who
+certifies the truncation on spectral-norm error alone would overstate
+its quality whenever the tail is long, which is the natural-image case;
+the honest report quotes both norms, and the scree plot below is how
+the reader inspects the tail that the Frobenius norm sums.
+\end{example}
+
 \subsection{PCA from the SVD}
 
 \engterm{Principal Component Analysis} is the SVD applied to a
@@ -1090,6 +1290,33 @@ covers the same pattern across information retrieval, image
 processing, and microarray analysis with the bookkeeping in this
 chapter's vocabulary.
 
+The graph-Laplacian case deserves a closer look because it turns a
+combinatorial problem into a spectral one. For a graph with adjacency
+matrix $\mat{W}$ and diagonal degree matrix $\mat{D}$ (each diagonal
+entry the sum of a row of $\mat{W}$), the \engterm{graph Laplacian} is
+$\mat{L} = \mat{D} - \mat{W}$, symmetric and positive semidefinite. Its
+smallest eigenvalue is always zero, with the all-ones eigenvector,
+because every row of $\mat{L}$ sums to zero by construction. The
+information lives in the next eigenvalues. The multiplicity of the zero
+eigenvalue counts the connected components of the graph exactly: a
+graph in two disconnected pieces has a two-dimensional null space
+spanned by the indicator vectors of the two pieces. When the graph is
+connected but nearly splits into two clusters joined by a few edges,
+the second-smallest eigenvalue is small but nonzero, and its
+eigenvector, the \engterm{Fiedler vector}, is positive on one cluster
+and negative on the other. Thresholding the Fiedler vector at zero
+partitions the graph into its two natural clusters, an approximate
+minimum-cut computed by one eigenvector rather than by searching over
+exponentially many partitions. This is \engterm{spectral clustering},
+and its correctness rests on the same spectral-gap reasoning as power
+iteration: a clear gap between the second and third Laplacian
+eigenvalues means the two-cluster structure is real, and no gap means
+the graph has no clean two-way split to find. The eigenvalues of a
+matrix built from a graph's connectivity read off the graph's
+large-scale shape, which is why the same apparatus serves image
+segmentation, community detection in networks, and the reordering that
+makes a sparse matrix cheaper to factor.
+
 \input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-singular-value-decay.tex}
 
 \Cref{fig:vol02:ch10:singular-value-decay} compares four schematic
@@ -1139,9 +1366,22 @@ of $\mat{V}_{k}$ form a basis of \emph{topics}; the rows of
 $\mat{U}_{k}$ map terms onto topics; the rows of $\mat{X}_{c}
 \mat{V}_{k}$ map documents onto topics. The technique is from the
 late 1980s and is foundational for the embedding methods of Volume
-VII (information). We mention it at recognition level. The reader
-who completes the project of this chapter has implemented PCA, which
-is LSA on a different data matrix.
+VII (information). The engineering payoff is that two documents sharing
+no words can still land close in the $k$-dimensional topic space if
+they use synonymous vocabulary that co-occurs with the same third
+terms: the truncation folds synonyms together because they load on the
+same singular direction, and it separates the two senses of a
+polysemous word because they load on different ones. A retrieval query,
+projected into the same topic space by $\vect{q}\mat{V}_k$, then matches
+documents by topic overlap rather than by literal word overlap, which
+is why LSA retrieved relevant documents that keyword search missed.
+The choice of $k$ is the same scree-plot judgment as everywhere else in
+this section: too small and distinct topics collapse together, too
+large and the retained tail is sampling noise in the word counts. We
+mention the method at recognition level. The reader who completes the
+project of this chapter has implemented PCA, which is the same
+truncated-SVD computation on a mean-centred numerical data matrix
+rather than a term-by-document count matrix.
 
 \subsection{Randomised SVD for large low-rank matrices}\pathtag{mastery}
 
@@ -1214,6 +1454,41 @@ by back substitution. The route avoids forming $\mat{A}\transpose
 \mat{A}$ and the conditioning squaring that comes with it, the same
 discipline the SVD imposes, at lower cost than the SVD when the full
 spectral picture is not needed.
+
+\begin{example}
+Gram-Schmidt makes the factorisation concrete. Take
+\[
+\mat{A} = \begin{pmatrix} 1 & 1 \\ 1 & 0 \\ 0 & 1 \end{pmatrix},
+\]
+with columns $\vect{a}_1 = (1,1,0)\transpose$ and $\vect{a}_2 =
+(1,0,1)\transpose$. Normalise the first column: $\norm{\vect{a}_1} =
+\sqrt{2}$, so $\vect{q}_1 = (1,1,0)\transpose/\sqrt{2}$ and $R_{11} =
+\sqrt{2}$. Project the second column off $\vect{q}_1$: the overlap is
+$R_{12} = \vect{q}_1\transpose\vect{a}_2 = (1 + 0 + 0)/\sqrt{2} =
+1/\sqrt{2}$, and the residual is $\vect{a}_2 - R_{12}\vect{q}_1 =
+(1,0,1) - \tfrac{1}{2}(1,1,0) = (1/2, -1/2, 1)$. Its norm is
+$\sqrt{1/4 + 1/4 + 1} = \sqrt{3/2}$, so $R_{22} = \sqrt{3/2}$ and
+$\vect{q}_2 = (1/2, -1/2, 1)\transpose/\sqrt{3/2}$. The factorisation is
+\[
+\mat{Q} = \begin{pmatrix} 1/\sqrt{2} & 1/\sqrt{6} \\ 1/\sqrt{2} &
+-1/\sqrt{6} \\ 0 & 2/\sqrt{6} \end{pmatrix}, \qquad
+\mat{R} = \begin{pmatrix} \sqrt{2} & 1/\sqrt{2} \\ 0 & \sqrt{3/2}
+\end{pmatrix},
+\]
+where $\vect{q}_2$ has been rewritten by clearing the common factor
+($1/\sqrt{3/2}$ times $(1/2,-1/2,1)$ equals $(1,-1,2)/\sqrt{6}$). The
+columns of $\mat{Q}$ are orthonormal, $\mat{R}$ is upper triangular
+with the pivot norms on its diagonal, and multiplying $\mat{Q}\mat{R}$
+recovers $\mat{A}$. To solve a least-squares problem
+$\min\norm{\mat{A}\vect{x} - \vect{b}}_2$ the engineer then forms
+$\mat{Q}\transpose\vect{b}$ and back-substitutes through $\mat{R}$,
+never touching the ill-conditioned $\mat{A}\transpose\mat{A} =
+\begin{psmallmatrix} 2 & 1 \\ 1 & 2 \end{psmallmatrix}$ whose formation
+would have squared the conditioning. Classical Gram-Schmidt as written
+here loses orthogonality under rounding for nearly dependent columns,
+which is why production code runs the algebraically equivalent
+Householder version, but the arithmetic is the same factorisation.
+\end{example}
 
 The QR decomposition also names the standard general eigenvalue
 algorithm. The \engterm{QR algorithm} computes eigenvalues by
@@ -1368,6 +1643,67 @@ linear-algebra core of why simultaneously measurable quantities in a
 linear theory share principal directions, and it recurs whenever an
 analysis hopes to read two coupled matrices in one common basis.
 
+\subsection{Applied vignette: keeping a machine off resonance}
+
+The generalised eigenproblem earns its place in a design decision that
+recurs across mechanical engineering: a rotating machine must not run
+near a natural frequency of its support, or the vibration amplifies
+without bound. A pump and its motor, a combined mass, sit on an
+elevated steel frame. The frame flexes in two coupled ways, a
+side-to-sway and a rocking tilt, and the design question is whether the
+pump's running speed, current as of 2025, falls dangerously close to
+either natural frequency of the loaded frame.
+
+Reduced to two degrees of freedom, the sway displacement $q_1$ and the
+tilt angle scaled to a displacement $q_2$, the loaded frame has mass
+and stiffness matrices
+\[
+\mat{M} = \begin{pmatrix} 400 & 0 \\ 0 & 250 \end{pmatrix}\ \text{kg},
+\qquad
+\mat{K} = \begin{pmatrix} 2.7 & -0.5 \\ -0.5 & 3.4 \end{pmatrix}
+\times 10^{6}\ \text{N/m},
+\]
+with the off-diagonal stiffness the coupling between sway and tilt that
+a single-degree-of-freedom hand estimate ignores. The natural
+frequencies solve the generalised eigenproblem $\mat{K}\vect{x} =
+\lambda\mat{M}\vect{x}$ with $\lambda = \omega^{2}$, and the
+disciplined route of the previous subsections keeps the symmetry: the
+frequencies are the eigenvalues of $\tilde{\mat{K}} = \mat{L}\inv\mat{K}
+\mat{L}^{-\transpose}$ with $\mat{M} = \mat{L}\mat{L}\transpose$, not
+of the non-symmetric $\mat{M}\inv\mat{K}$.
+
+The generalised eigenvalues are $\lambda_1 = 6.40 \times 10^{3}$ and
+$\lambda_2 = 1.39 \times 10^{4}\ \text{s}^{-2}$, so the natural
+frequencies are $\omega_1 = \sqrt{\lambda_1} = 80.0\ \text{rad/s}$ and
+$\omega_2 = 118\ \text{rad/s}$, that is $f_1 = 12.7\ \text{Hz}$ and
+$f_2 = 18.8\ \text{Hz}$. The pump runs at $780$ revolutions per minute,
+a forcing frequency of $780/60 = 13.0\ \text{Hz}$. That sits within
+$3\%$ of the first natural frequency $f_1 = 12.7\ \text{Hz}$, squarely
+inside the resonance danger band (the usual design rule keeps the
+forcing frequency at least $20\%$ away from any natural frequency), so
+the design as drawn will shake itself apart. The wrong shortcut, taking
+the ordinary eigenvalues of $\mat{K}$ alone and dividing by a single
+lumped mass, would have reported frequencies too high by the square
+root of the mass ratio and might have declared the design safe.
+
+The mode shapes say how to fix it. The generalised eigenvector at
+$\lambda_1$ is $(1,\ 0.28)$ up to normalisation, dominated by the sway
+coordinate, so the first mode is a sway-led motion; the second mode
+$(0.17,\ 1)$ is tilt-led. Stiffening the frame against sway, adding a
+diagonal brace that raises the $(1,1)$ stiffness entry, moves $f_1$
+upward and away from the pump speed while barely touching the tilt-led
+second mode. Recomputing the generalised eigenproblem with the $(1,1)$
+stiffness raised to $4.0 \times 10^{6}\ \text{N/m}$ lifts $f_1$ to
+$15.4\ \text{Hz}$, now $19\%$ above the forcing frequency and just
+inside the design margin. The whole intervention, brace the sway
+direction and recheck, is one recomputation of a two-by-two generalised
+eigenproblem, and the mode shape is what told the engineer which of the
+two stiffness entries to raise rather than stiffening blindly. The
+$\mat{M}$-orthonormal mode shapes of the simultaneous-diagonalisation
+result are also what let the forced response be checked mode by mode:
+the pump's harmonic force projects onto each mode, and only the mode
+whose frequency is near the forcing shows large amplification.
+
 \subsection{Matrix functions through the spectrum}
 
 Section 10.2 noted that $f(\mat{A}) = \mat{S}f(\mat{\Lambda})\mat{S}\inv$
@@ -1391,6 +1727,58 @@ factor $\mat{L}$ of $\mat{C}$ does the same job more cheaply but is not
 symmetric; the symmetric square root is preferred where the symmetry
 itself matters, as in interpolating between covariances or in the
 geometry of the positive-definite cone.
+
+\subsection{Applied vignette: whitening correlated sensor noise}
+
+A concrete estimation problem shows the matrix square root doing work
+that no scalar operation can. Three accelerometers mounted on one rigid
+bracket measure what should be independent axes, but shared mounting
+compliance and a common power-supply ripple correlate their noise. A
+bench calibration, current as of 2025, with the bracket at rest,
+records the noise covariance
+\[
+\mat{C} = \begin{pmatrix} 4 & 2 & 0 \\ 2 & 5 & 2 \\ 0 & 2 & 4
+\end{pmatrix}
+\]
+in units of $(\text{milli-}g)^{2}$, symmetric and, the engineer must
+confirm, positive definite before treating it as a covariance. The
+leading minors are $4 > 0$, $4\cdot5 - 2^{2} = 16 > 0$, and $\det
+\mat{C} = 4(20-4) - 2(8-0) = 64 - 16 = 48 > 0$, so Sylvester's
+criterion passes and the matrix is a legitimate covariance.
+
+An estimator downstream (a least-squares fit, a fault detector) assumes
+independent unit-variance noise on each channel. The step that makes
+that assumption true is whitening: transform the raw residual
+$\vect{r}$ by $\mat{C}^{-1/2}$ so that $\vect{z} = \mat{C}^{-1/2}
+\vect{r}$ has covariance $\mat{C}^{-1/2}\mat{C}\mat{C}^{-1/2} =
+\mat{I}$. Computing $\mat{C}^{-1/2}$ is a matrix-function problem
+solved through the spectrum. Diagonalise $\mat{C} = \mat{Q}\mat{\Lambda}
+\mat{Q}\transpose$; the eigenvalues are $\lambda = (1.63,\ 4.00,\ 7.37)$
+to three digits, all positive as the definiteness check promised, and
+$\mat{C}^{-1/2} = \mat{Q}\diag(\lambda_i^{-1/2})\mat{Q}\transpose$. The
+whitening matrix scales each eigen-direction by $1/\sqrt{\lambda_i}$:
+the noisiest direction (eigenvalue $7.37$, the common-mode axis where
+the two coupling entries reinforce) is shrunk hardest, by a factor
+$1/\sqrt{7.37} \approx 0.368$, so a fault detector applied to $\vect{z}$
+no longer mistakes the loud shared-noise axis for a signal.
+
+The reverse operation generates correlated test noise from a random
+generator that only produces white noise. Draw $\vect{w}$ with
+independent unit-variance entries and form $\vect{r} = \mat{C}^{1/2}
+\vect{w}$ with $\mat{C}^{1/2} = \mat{Q}\diag(\sqrt{\lambda_i})\mat{Q}
+\transpose$; the result has covariance exactly $\mat{C}$, reproducing
+the bench-measured correlation structure for a Monte Carlo study of the
+estimator. Either direction could use the Cholesky factor $\mat{L}$
+with $\mat{L}\mat{L}\transpose = \mat{C}$, which is cheaper, and for
+plain sampling the engineer usually does. The symmetric square root
+earns its extra cost only where the symmetry is load-bearing: when the
+whitening must not rotate the axes (so the whitened residuals stay
+interpretable per channel), or when the covariance is interpolated
+between two operating points, where the Cholesky factor's dependence on
+the arbitrary column order produces a discontinuous path and the
+symmetric root does not. The eigendecomposition of section 10.2, the
+definiteness test of section 10.3, and the matrix-function identity of
+this section combine into one estimation-pipeline step.
 
 \subsection{Worked example: the matrix exponential, numerically}
 
@@ -1461,6 +1849,18 @@ collision of section 10.7 deserves the caution it gets. The general
 $k \times k$ Jordan block produces terms up to $t^{k-1}e^{\lambda t}$,
 the polynomial degree set by the size of the block.
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-jordan-transient.tex}
+
+\Cref{fig:vol02:ch10:jordan-transient} contrasts the defective response
+with the pure exponential a diagonalisable matrix would give at the
+same eigenvalue. The extra factor of $t$ pushes the response up to a
+hump before the exponential pulls it down, peaking at $t = -1/\lambda$,
+a transient a diagonalisable model does not predict. The picture is the
+time-domain reading of the algebra: the defect is not a divergence when
+$\lambda < 0$, but it is a bulge the naive model misses, and near the
+collision the bulge is what tips a linearised system past a saturation
+limit before its spectrum's verdict of decay takes hold.
+
 \subsection{Cayley-Hamilton in computation}\pathtag{mastery}
 
 The Cayley-Hamilton theorem of section 10.2 is not only an algebraic
@@ -1526,6 +1926,29 @@ least squares is the calibration engineer's tool whenever the
 independent variable is itself an instrument reading, and the SVD is
 what makes it a one-line computation rather than a nonlinear
 optimisation.
+
+\begin{example}
+A calibration bench fits a proportional model $y = a x$ to four paired
+readings $(x, y)$ where both instruments are noisy: $(1, 1.2)$,
+$(2, 1.8)$, $(3, 3.4)$, $(4, 3.6)$. Ordinary least squares treats $x$
+as exact and minimises the vertical residuals, giving slope $a_{\text{OLS}}
+= (\sum x_i y_i)/(\sum x_i^2) = 29.4/30 = 0.980$. Total least squares, honest about
+noise in $x$, minimises the perpendicular residuals through the
+augmented SVD. Stack the data as $[\,\mat{A}\;\vect{b}\,]$ with $\mat{A}
+= (1, 2, 3, 4)\transpose$ and $\vect{b} = (1.2, 1.8, 3.4, 3.6)
+\transpose$, a $4 \times 2$ matrix. Its singular values are $\sigma_1 =
+7.68$ and $\sigma_2 = 0.444$, and the smallest right singular vector is
+$\vect{v}_2 = (-0.702,\ 0.712)\transpose$. Partitioning $\vect{v}_2 =
+(v_x, v_b)$ with $v_x = -0.702$ and $v_b = 0.712$, the total-least-squares
+slope is $a_{\text{TLS}} = -v_x/v_b = 0.702/0.712 = 0.986$. The TLS
+slope is slightly steeper than the OLS slope, the standard consequence
+of accounting for the horizontal scatter that OLS pretends away, and
+the residual is exactly the smallest singular value $\sigma_2 = 0.444$,
+the Eckart-Young cost of collapsing the augmented data onto the
+best-fit line. The whole computation is one SVD and a division; the
+nonlinear perpendicular-distance minimisation the definition suggests
+never has to be run.
+\end{example}
 
 \subsection{Krylov methods: Lanczos and Arnoldi}\pathtag{mastery}
 
@@ -2011,6 +2434,36 @@ the reader move the shift toward the complex pair to target a
 different eigenvalue.
 \end{example}
 
+\input{volumes/02-form/ch10-eigenvalues-and-decompositions/figures/fig-inverse-iteration-target.tex}
+
+\Cref{fig:vol02:ch10:inverse-iteration-target} is the picture behind
+the method. The spectral transformation $\lambda \mapsto 1/(\lambda -
+\mu)$ has a pole at the shift, so the eigenvalue nearest the shift
+receives the largest-magnitude image and becomes the target that power
+iteration on the shifted inverse converges to. Sliding the shift picks
+a different eigenvalue, which is how the engineer targets the mode
+nearest a known resonance rather than merely the dominant one.
+
+\begin{example}
+The geometric rate of fixed-shift inverse iteration is the ratio of
+the two largest transformed magnitudes, and the shift controls it
+directly. Take the symmetric spectrum $\{1, 3, 5, 7\}$ and a shift
+$\mu = 4.6$ aimed at the eigenvalue $5$. The transformed magnitudes are
+$1/\abs{\lambda_i - \mu} = (0.278,\ 0.625,\ 2.50,\ 0.417)$ for the
+eigenvalues $(1, 3, 5, 7)$, so the dominant transformed value is
+$2.50$ at $\lambda = 5$ and the next largest is $0.625$ at $\lambda =
+3$. Inverse iteration therefore converges to the eigenvector at
+$\lambda = 5$ at rate $0.625/2.50 = 0.25$ per step, a quarter of the
+error removed each iteration, three digits in about five steps. Move
+the shift closer, to $\mu = 4.9$: the target magnitude jumps to
+$1/0.1 = 10$ while the runner-up at $\lambda = 3$ rises only to
+$1/1.9 = 0.526$, so the rate sharpens to $0.526/10 \approx 0.053$ and
+three digits arrive in three steps. A shift landing nearer the wanted
+eigenvalue buys faster convergence, which is exactly the incentive
+that Rayleigh-quotient iteration below exploits by updating the shift
+toward the eigenvalue at every step.
+\end{example}
+
 \subsection{Rayleigh-quotient iteration}\pathtag{mastery}
 
 Inverse iteration with a fixed shift converges geometrically.
@@ -2303,6 +2756,31 @@ The engineering import for this chapter: if a transient analysis
 matters and the matrix is non-normal, the eigenvalues alone are not
 the right diagnostic and a pseudospectral plot is the next tool.
 
+\begin{mastery}
+A cheaper non-normality diagnostic than the full pseudospectrum is the
+\engterm{numerical range} (or field of values), the set
+$W(\mat{A}) = \{\,\vect{x}^{*}\mat{A}\vect{x} : \norm{\vect{x}}_{2} =
+1\,\}$ of all Rayleigh quotients over unit vectors. For a symmetric
+matrix the numerical range is exactly the interval $[\lambda_{\min},
+\lambda_{\max}]$, the trapping of the Rayleigh-quotient figure above.
+For a general matrix the Toeplitz-Hausdorff theorem says $W(\mat{A})$
+is a convex region of the complex plane that always contains the
+eigenvalues, and for a non-normal matrix it bulges out beyond them. The
+gap between the numerical range and the convex hull of the spectrum is
+a one-number measure of non-normality: for the normal matrix the two
+coincide, and for the transient-growth matrix of the worked example
+below the numerical range extends well to the right of the two negative
+eigenvalues, its rightmost point being positive even though both
+eigenvalues are negative. That positive numerical abscissa is a
+guarantee of initial transient growth: the largest initial slope of
+$\norm{e^{\mat{A}t}\vect{x}_0}$ equals the rightmost real part in
+$W(\mat{A})$, so an eigenvalue analysis reporting only negative real
+parts can coexist with a numerical range that certifies the response
+grows before it decays. The numerical range costs one small
+optimisation rather than the grid of resolvent norms a pseudospectrum
+needs, and it answers the initial-growth question exactly.
+\end{mastery}
+
 \subsection{Worked example: transient growth from a stable spectrum}
 
 The non-normal trap is best seen on a single small matrix. Consider
@@ -2368,6 +2846,33 @@ classification in full; the eigenvalue apparatus of this chapter is
 what makes the classification computable. A control engineer who
 designs a feedback law without checking the closed-loop eigenvalues
 has not done the design.
+
+The classification carries a boundary the engineer must respect. For a
+continuous-time system $\dot{\vect{x}} = \mat{A}\vect{x}$ the stability
+frontier is the imaginary axis: every eigenvalue with negative real
+part decays, and the design margin is the distance of the rightmost
+eigenvalue from that axis, the \engterm{spectral abscissa}. For a
+discrete-time system $\vect{x}_{t+1} = \mat{A}\vect{x}_t$ the frontier
+is the unit circle instead, because the response scales by
+$\lambda^{t}$ and decays exactly when $\abs{\lambda} < 1$; the margin
+is one minus the largest eigenvalue magnitude, the \engterm{spectral
+radius}. The two frontiers are joined by the exponential map: a
+continuous-time eigenvalue $\lambda$ becomes the discrete-time
+eigenvalue $e^{\lambda h}$ under sampling at interval $h$, and the left
+half-plane maps to the inside of the unit disc. An engineer who runs a
+continuous-time stability test on a system that is actually sampled at
+a coarse rate can pass the wrong test, which is the discretisation
+failure the closing failure-analysis exercise dissects. Two cautions
+from earlier in the chapter attach here. A pair on the imaginary axis
+(or on the unit circle) is the neutral case the linearisation cannot
+resolve; the nonlinear terms Volume III Chapter 7 carries decide the
+verdict, and the eigenvalue analysis honestly reports that it cannot.
+And a spectrum comfortably inside the stable region does not by itself
+rule out the transient growth of the non-normal worked example above:
+the eigenvalues govern the asymptotic fate, and a saturation limit
+crossed during a transient can end the system before the asymptote
+arrives. Stability analysis is eigenvalue location plus a check that
+the transient the eigenvalues do not see stays within bounds.
 
 \section{Worked examples: PCA, modal analysis, image compression}\pathtag{standard}
 

@@ -405,6 +405,30 @@ Cholesky factorisation. The Gram matrix $\mat{A}^{\transpose}\mat{A}$
 of a full-column-rank $\mat{A}$ is positive definite, a fact the
 normal equations of section 9.6 rest on.
 
+\begin{example}[Testing positive definiteness by leading minors]
+Checking $\vect{x}^{\transpose}\mat{A}\vect{x} > 0$ for every nonzero
+$\vect{x}$ is not something the engineer does directly. Sylvester's
+criterion reduces the test to the signs of the leading principal minors,
+the determinants of the top-left $1 \times 1$, $2 \times 2$, up to $n
+\times n$ submatrices: a symmetric matrix is positive definite exactly
+when all of them are positive. Take $\mat{A} = \begin{psmallmatrix} 2 &
+-1 & 0 \\ -1 & 2 & -1 \\ 0 & -1 & 2 \end{psmallmatrix}$, the
+one-dimensional stiffness matrix. The leading minors are $\det[2] = 2 >
+0$, $\det\begin{psmallmatrix} 2 & -1 \\ -1 & 2 \end{psmallmatrix} = 3 >
+0$, and $\det\mat{A} = 2(4-1) - (-1)(-2) = 6 - 2 = 4 > 0$. All three
+are positive, so $\mat{A}$ is positive definite and the Cholesky
+factorisation is guaranteed to run. The minors are not computed
+separately in practice; the Cholesky algorithm itself is the efficient
+form of the test, since its running diagonal radicands are the ratios of
+successive leading minors, and a non-positive radicand is a
+non-positive minor. Sylvester's criterion is the hand test at small
+size; Cholesky is the machine test at any size. Contrast the indefinite
+matrix $\begin{psmallmatrix} 1 & 2 \\ 2 & 1 \end{psmallmatrix}$, whose
+second minor is $1 - 4 = -3 < 0$: it fails the criterion, and its
+quadratic form $x_{1}^{2} + 4x_{1}x_{2} + x_{2}^{2}$ is negative at
+$\vect{x} = (1, -1)^{\transpose}$.
+\end{example}
+
 \subsection{Block matrices and the Schur complement}
 
 Large engineering matrices arrive partitioned. A coupled
@@ -477,6 +501,37 @@ unknowns until the interface displacements are known. The condensed
 matrix is again symmetric positive definite, the property that lets a
 substructured solver chain Schur complements up a tree of
 substructures.
+\end{example}
+
+\begin{example}[The inverse of a block matrix through the Schur complement]
+The Schur complement also assembles the inverse of a block matrix in
+closed form, which the engineer meets whenever a covariance matrix or a
+saddle-point system must be inverted block by block. With $\mat{S} =
+\mat{D} - \mat{C}\mat{A}^{-1}\mat{B}$ the Schur complement of the
+invertible top-left block, the inverse is
+\[
+\begin{pmatrix} \mat{A} & \mat{B} \\ \mat{C} & \mat{D} \end{pmatrix}^{-1}
+= \begin{pmatrix}
+\mat{A}^{-1} + \mat{A}^{-1}\mat{B}\mat{S}^{-1}\mat{C}\mat{A}^{-1} &
+-\mat{A}^{-1}\mat{B}\mat{S}^{-1} \\
+-\mat{S}^{-1}\mat{C}\mat{A}^{-1} & \mat{S}^{-1}
+\end{pmatrix}.
+\]
+The formula turns one $(n+m) \times (n+m)$ inversion into an $n \times
+n$ inversion (of $\mat{A}$) and an $m \times m$ inversion (of $\mat{S}$),
+the block analogue of never inverting more than necessary. Take the
+symmetric block matrix with $\mat{A} = \begin{psmallmatrix} 2 & 0 \\ 0 &
+2 \end{psmallmatrix}$, $\mat{B} = \mat{C}^{\transpose} =
+\begin{psmallmatrix} 1 \\ 0 \end{psmallmatrix}$, and $\mat{D} = [3]$.
+Then $\mat{A}^{-1} = \tfrac{1}{2}\mat{I}$, $\mat{C}\mat{A}^{-1}\mat{B} =
+(1, 0)\tfrac{1}{2}\mat{I}(1, 0)^{\transpose} = \tfrac{1}{2}$, so
+$\mat{S} = 3 - \tfrac{1}{2} = \tfrac{5}{2}$ and $\mat{S}^{-1} =
+\tfrac{2}{5}$. The bottom-right block of the inverse is $\tfrac{2}{5}$,
+which the reader verifies against a direct $3 \times 3$ inversion. The
+same block inverse, applied to a Gaussian covariance matrix, is the
+algebra behind conditional distributions in Volume IX: the Schur
+complement of a covariance block is the conditional covariance, and the
+off-diagonal blocks give the conditional mean's regression coefficients.
 \end{example}
 
 \subsection{Kronecker products and structured grids}
@@ -760,6 +815,36 @@ The same example is the input to the LU demonstration code in
 elimination and verifies $\mat{L}\mat{U} = \mat{A}$ and
 $\mat{A}\vect{x} = \vect{b}$ to machine precision.
 
+\begin{example}[Elimination as a product of elementary matrices]
+The elimination of the worked example can be read as left-multiplication
+by a sequence of elementary matrices, which is where the $\mat{L}$ of
+$\mat{P}\mat{A} = \mat{L}\mat{U}$ comes from. Each row operation
+``subtract $m$ times row $j$ from row $i$'' is the matrix $\mat{E}_{ij}(m)
+= \mat{I} - m\,\vect{e}_{i}\vect{e}_{j}^{\transpose}$, the identity with
+a single $-m$ off the diagonal. The first pass of the worked example
+applies $\mat{E}_{21}(2)$ and $\mat{E}_{31}(4)$; the second applies
+$\mat{E}_{32}(3)$. Their product acting on $\mat{A}$ produces $\mat{U}$:
+\[
+\mat{E}_{32}(3)\,\mat{E}_{31}(4)\,\mat{E}_{21}(2)\,\mat{A} = \mat{U}.
+\]
+The inverse of each elementary matrix simply flips the sign of the
+multiplier, $\mat{E}_{ij}(m)^{-1} = \mat{E}_{ij}(-m)$, and the product
+of the inverses, taken in reverse order, is $\mat{L}$:
+\[
+\mat{L} = \mat{E}_{21}(2)^{-1}\mat{E}_{31}(4)^{-1}\mat{E}_{32}(3)^{-1}
+= \begin{pmatrix} 1 & 0 & 0 \\ 2 & 1 & 0 \\ 4 & 3 & 1 \end{pmatrix}.
+\]
+The multipliers land in $\mat{L}$ with their original sign and in their
+original positions because the elementary matrices for a single
+elimination pass commute in exactly the way that keeps the bookkeeping
+trivial. This is the reason $\mat{L}$ can be assembled in place, during
+the elimination, from the multipliers already being computed: no
+separate matrix products are ever formed. A row swap is a fourth kind
+of elementary matrix, a permutation, and collecting the swaps into
+$\mat{P}$ is what turns the factorisation into its pivoted form
+$\mat{P}\mat{A} = \mat{L}\mat{U}$.
+\end{example}
+
 \subsection{The matrix inverse and when not to use it}
 
 The inverse $\mat{A}^{-1}$ of an invertible square matrix satisfies
@@ -791,6 +876,95 @@ itself, not the solution of a system, is the required output. The
 rare cases that genuinely need the inverse (a variance-covariance
 matrix in statistics, a small analytic Jacobian inverse) are
 exactly those where $\mat{A}^{-1}$ is the deliverable.
+
+\subsection{Rank-one updates: the Sherman-Morrison formula}
+
+A matrix in an engineering computation is rarely solved once and left
+alone. A sensor is recalibrated and one column of a design matrix
+shifts; a single spring in a network is stiffened and one entry of the
+stiffness matrix changes; an optimiser takes a step and the Hessian
+receives a rank-one correction. In each case the new matrix is the old
+one plus a rank-one term, $\mat{A} + \vect{u}\vect{v}^{\transpose}$,
+and refactoring from scratch discards the work already invested in the
+factors of $\mat{A}$. The \engterm{Sherman-Morrison formula} corrects
+the inverse instead of recomputing it:
+\[
+(\mat{A} + \vect{u}\vect{v}^{\transpose})^{-1} = \mat{A}^{-1} -
+\frac{\mat{A}^{-1}\vect{u}\,\vect{v}^{\transpose}\mat{A}^{-1}}
+{1 + \vect{v}^{\transpose}\mat{A}^{-1}\vect{u}},
+\]
+valid whenever the scalar denominator $1 + \vect{v}^{\transpose}
+\mat{A}^{-1}\vect{u}$ is nonzero, which is exactly the condition that
+the updated matrix stays invertible. The formula is never applied by
+forming inverses. Its computational content is that the updated solve
+$(\mat{A} + \vect{u}\vect{v}^{\transpose})\vect{x} = \vect{b}$ reuses
+the existing factors of $\mat{A}$ through two triangular solves, one
+for $\vect{y} = \mat{A}^{-1}\vect{b}$ (already in hand if $\mat{A}
+\vect{x} = \vect{b}$ was solved) and one for $\vect{z} = \mat{A}^{-1}
+\vect{u}$, and then closes with an $\oom{n}$ correction. Each
+single-column edit costs $\oom{n^{2}}$ rather than the $\oom{n^{3}}$
+of a fresh factorisation, the same reuse discipline the LU section
+applied across right-hand sides, now applied across small changes to
+the matrix itself. Figure~\ref{fig:vol02:ch09:sherman-morrison}
+contrasts the two routes.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-sherman-morrison.tex}
+
+\begin{example}[A recalibrated sensor by rank-one update]
+A weighted least-squares fit has already solved $\mat{A}\vect{x} =
+\vect{b}$ with $\mat{A} = \begin{psmallmatrix} 4 & 1 \\ 1 & 3
+\end{psmallmatrix}$, whose inverse is $\mat{A}^{-1} = \tfrac{1}{11}
+\begin{psmallmatrix} 3 & -1 \\ -1 & 4 \end{psmallmatrix}$. One
+measurement is reweighted, adding the rank-one term $\vect{u}
+\vect{v}^{\transpose}$ with $\vect{u} = \vect{v} = (1, 0)^{\transpose}$,
+so the $(1,1)$ entry rises from $4$ to $5$. Rather than invert the new
+matrix, apply the formula. First $\mat{A}^{-1}\vect{u} = \tfrac{1}{11}
+(3, -1)^{\transpose}$, and the denominator is $1 + \vect{v}^{\transpose}
+\mat{A}^{-1}\vect{u} = 1 + 3/11 = 14/11$. The correction term is
+\[
+\frac{(\mat{A}^{-1}\vect{u})(\vect{v}^{\transpose}\mat{A}^{-1})}
+{14/11} = \frac{11}{14}\cdot\frac{1}{121}
+\begin{pmatrix} 3 \\ -1 \end{pmatrix}
+\begin{pmatrix} 3 & -1 \end{pmatrix}
+= \frac{1}{154}\begin{pmatrix} 9 & -3 \\ -3 & 1 \end{pmatrix},
+\]
+so the updated inverse is $\mat{A}^{-1}$ minus this, and the reader who
+forms $\begin{psmallmatrix} 5 & 1 \\ 1 & 3 \end{psmallmatrix}^{-1} =
+\tfrac{1}{14}\begin{psmallmatrix} 3 & -1 \\ -1 & 5 \end{psmallmatrix}$
+directly confirms the two agree. At $2 \times 2$ the direct inverse is
+as cheap, and the point is the scaling: at $n = 10^{4}$ the update is
+one back-solve against a full refactorisation, four orders of magnitude
+apart. The denominator also serves as a diagnostic, since a value near
+zero warns that the edit is pushing the matrix toward singularity, the
+rank-one signature of a measurement about to make the system
+ill-posed.
+\end{example}
+
+\begin{mastery}
+The block generalisation is the \engterm{Woodbury identity}, which
+updates the inverse under a rank-$k$ change $\mat{U}\mat{C}
+\mat{V}^{\transpose}$ with $\mat{U} \in \R^{n \times k}$, $\mat{C} \in
+\R^{k \times k}$, $\mat{V} \in \R^{n \times k}$:
+\[
+(\mat{A} + \mat{U}\mat{C}\mat{V}^{\transpose})^{-1} = \mat{A}^{-1} -
+\mat{A}^{-1}\mat{U}\bigl(\mat{C}^{-1} + \mat{V}^{\transpose}\mat{A}^{-1}
+\mat{U}\bigr)^{-1}\mat{V}^{\transpose}\mat{A}^{-1}.
+\]
+The identity turns an $n \times n$ solve after a rank-$k$ update into
+the original solve plus a $k \times k$ solve, a saving that is large
+whenever $k \ll n$. Its reach across engineering is wide. The Kalman
+filter of Volume IX is the Woodbury identity applied to a covariance
+matrix as each measurement of rank equal to the sensor count arrives;
+the recursive least-squares estimator updates its normal-equations
+inverse the same way as each new data row is appended; and quasi-Newton
+optimisers (BFGS and its limited-memory variant) maintain an
+approximate inverse Hessian by exactly these low-rank updates, never
+factoring the full Hessian at all. Recognising a problem as a sequence
+of low-rank updates to a fixed base matrix is the cue to reach for
+Woodbury rather than a re-solve, and the small inner matrix $\mat{C}^{-1}
++ \mat{V}^{\transpose}\mat{A}^{-1}\mat{U}$ carries the conditioning of
+the update in a $k \times k$ object the engineer can inspect directly.
+\end{mastery}
 
 \subsection{The pseudoinverse and the minimum-norm solution}
 
@@ -1014,6 +1188,32 @@ provides a clean test of singularity at the level of pencil-and-paper
 work, though for finite-precision computation the condition number
 of section 9.7 is more informative than the determinant.
 
+\begin{example}[A rank-one update to a determinant]
+The \engterm{matrix determinant lemma} is the determinant counterpart of
+the Sherman-Morrison inverse update: a rank-one change to a matrix
+changes its determinant by a scalar factor,
+\[
+\det(\mat{A} + \vect{u}\vect{v}^{\transpose}) = \det(\mat{A})\,
+\bigl(1 + \vect{v}^{\transpose}\mat{A}^{-1}\vect{u}\bigr).
+\]
+The same scalar $1 + \vect{v}^{\transpose}\mat{A}^{-1}\vect{u}$ that
+appeared in the Sherman-Morrison denominator reappears here, and its
+vanishing is again the exact condition that the update makes the matrix
+singular. Take $\mat{A} = \begin{psmallmatrix} 4 & 1 \\ 1 & 3
+\end{psmallmatrix}$ with $\det\mat{A} = 11$ and $\mat{A}^{-1} =
+\tfrac{1}{11}\begin{psmallmatrix} 3 & -1 \\ -1 & 4 \end{psmallmatrix}$,
+and add the rank-one term $\vect{u} = \vect{v} = (1, 0)^{\transpose}$
+that raised the $(1,1)$ entry to $5$. The scalar is $1 + \vect{v}^{
+\transpose}\mat{A}^{-1}\vect{u} = 1 + 3/11 = 14/11$, so the new
+determinant is $11 \cdot 14/11 = 14$, which the reader checks against
+$\det\begin{psmallmatrix} 5 & 1 \\ 1 & 3 \end{psmallmatrix} = 15 - 1 =
+14$. The lemma turns a determinant recomputation into one inner product
+against the already-known inverse, and it is the tool behind incremental
+determinant tracking in a sequence of low-rank edits, for instance
+monitoring how close a stiffness matrix drifts toward singularity as a
+structure is progressively modified.
+\end{example}
+
 The classroom result \engterm{Cramer's rule} expresses each
 component of the solution to $\mat{A}\vect{x} = \vect{b}$ as a
 ratio of determinants. Cramer's rule is theoretically clean and
@@ -1105,7 +1305,38 @@ A matrix norm $\norm{\mat{A}}$ measures how much $\mat{A}$ can
 amplify a vector: $\norm{\mat{A}} = \max_{\vect{x} \neq \vect{0}}
 \norm{\mat{A}\vect{x}}/\norm{\vect{x}}$. The induced 2-norm equals
 the largest singular value $\sigma_{1}(\mat{A})$, a fact we use in
-section 9.7.
+section 9.7. The induced 1-norm and infinity-norm have closed forms
+that need no maximisation: the induced 1-norm is the largest
+absolute column sum, and the induced infinity-norm is the largest
+absolute row sum. These two are computable by inspection, which makes
+them the norms to reach for when a quick bound on amplification is
+wanted and the singular values are not in hand.
+
+\begin{example}[The three induced matrix norms by hand]
+Take $\mat{A} = \begin{psmallmatrix} 1 & -2 \\ 3 & 4
+\end{psmallmatrix}$. The induced 1-norm is the largest column sum of
+absolute values: column one sums to $\abs{1} + \abs{3} = 4$, column
+two to $\abs{-2} + \abs{4} = 6$, so $\norm{\mat{A}}_{1} = 6$. The
+induced infinity-norm is the largest row sum of absolute values: row
+one gives $\abs{1} + \abs{-2} = 3$, row two gives $\abs{3} + \abs{4}
+= 7$, so $\norm{\mat{A}}_{\infty} = 7$. The induced 2-norm is the
+largest singular value, which requires the eigenvalues of
+$\mat{A}^{\transpose}\mat{A} = \begin{psmallmatrix} 10 & 10 \\ 10 &
+20 \end{psmallmatrix}$: the characteristic equation $(10 - \lambda)
+(20 - \lambda) - 100 = 0$ gives $\lambda^{2} - 30\lambda + 100 = 0$,
+so $\lambda = 15 \pm \sqrt{125}$, and $\sigma_{1} = \sqrt{15 +
+5\sqrt{5}} \approx 5.12$. The three norms disagree, as they must,
+and each bounds the true amplification in its own vector norm. The
+1-norm and infinity-norm bracketed the 2-norm here without any
+eigenvalue work, which is their value: an $\oom{n^{2}}$ scan of the
+entries yields two bounds on the amplification, where the 2-norm
+demands the $\oom{n^{3}}$ singular-value computation. The Frobenius
+norm $\norm{\mat{A}}_{F} = \sqrt{\sum_{ij} A_{ij}^{2}} = \sqrt{1 + 4
++ 9 + 16} = \sqrt{30} \approx 5.48$ is a fourth measure, not induced
+by any vector norm but cheap and often used as a stand-in for the
+2-norm since $\norm{\mat{A}}_{2} \leq \norm{\mat{A}}_{F} \leq
+\sqrt{r}\,\norm{\mat{A}}_{2}$ with $r$ the rank.
+\end{example}
 
 \subsection{Orthogonality}
 
@@ -2041,6 +2272,231 @@ is ill-conditioned, and the squared conditioning of the Gram matrix
 makes the normal-equations solution numerically meaningless before
 the engineer notices.
 
+\subsection{Cheap bounds: Gershgorin discs and diagonal dominance}
+
+The condition number is the exact diagnostic, and it costs a
+singular-value decomposition to compute. Before paying that price, the
+engineer can bound where the spectrum lies from the matrix entries
+alone. The \engterm{Gershgorin disc theorem} states that every
+eigenvalue of $\mat{A}$ lies inside at least one of the $n$ discs in
+the complex plane, the $i$-th disc centred on the diagonal entry
+$a_{ii}$ with radius the sum of the off-diagonal magnitudes in that row,
+$R_{i} = \sum_{j \neq i} \abs{a_{ij}}$. The proof is one line: if
+$\mat{A}\vect{x} = \lambda\vect{x}$ and $x_{i}$ is the largest component
+in magnitude, the $i$-th equation rearranges to $(\lambda - a_{ii})x_{i}
+= \sum_{j \neq i} a_{ij}x_{j}$, and dividing by $x_{i}$ and taking
+magnitudes gives $\abs{\lambda - a_{ii}} \leq R_{i}$.
+Figure~\ref{fig:vol02:ch09:gershgorin} draws the discs for a small
+matrix.
+
+The theorem earns its keep as an invertibility test that costs only a
+scan of the rows. When no disc reaches the origin, no eigenvalue can be
+zero, so the matrix is nonsingular. The condition ``no disc contains the
+origin'' is exactly $\abs{a_{ii}} > R_{i}$ for every row, which is
+\engterm{strict diagonal dominance}. A strictly diagonally dominant
+matrix is invertible, needs no pivoting in Gaussian elimination, and, if
+symmetric with positive diagonal, is positive definite. The stiffness
+and conductance matrices of the network examples are diagonally
+dominant by construction, which is why the earlier examples could reach
+for Cholesky without a pivoting discussion. Diagonal dominance is the
+structural property an engineer checks first, because it settles
+solvability and stability together at the cost of a single pass over the
+matrix.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-gershgorin.tex}
+
+\begin{example}[Gershgorin invertibility and a dominance check]
+Take $\mat{A} = \begin{psmallmatrix} 5 & 1 & -1 \\ 0 & 4 & 1 \\ 1 & -1
+& 6 \end{psmallmatrix}$. The row radii are $R_{1} = \abs{1} + \abs{-1}
+= 2$, $R_{2} = \abs{0} + \abs{1} = 1$, $R_{3} = \abs{1} + \abs{-1} =
+2$. The three discs are centred at $5$, $4$, $6$ with radii $2$, $1$,
+$2$, so they span the real intervals $[3, 7]$, $[3, 5]$, $[4, 8]$. None
+reaches the origin, so $\mat{A}$ is invertible and its eigenvalues all
+lie between $3$ and $8$; without computing a single eigenvalue the
+engineer knows the matrix is well clear of singularity. The dominance
+check confirms it directly: $\abs{5} > 2$, $\abs{4} > 1$, $\abs{6} >
+2$, so $\mat{A}$ is strictly diagonally dominant, Gaussian elimination
+needs no pivoting, and the smallest possible eigenvalue magnitude is at
+least $\min_{i}(\abs{a_{ii}} - R_{i}) = 3$. That lower bound feeds a
+crude condition-number ceiling, since $\norm{\mat{A}}_{\infty} = 8$
+gives $\kappa_{\infty} \lesssim 8/3 \approx 2.7$ once the inverse's
+norm is bounded through the dominance gap. The discs converted a scan
+of nine entries into a guarantee that no factorisation would surprise
+the engineer.
+\end{example}
+
+\subsection{Scaling and equilibration}
+
+Not every large condition number reflects a hard problem. A matrix
+whose columns carry different physical units, a displacement in metres
+beside a rotation in radians, or a stiffness beside a compliance, can
+show a condition number of $10^{8}$ that collapses to single digits the
+moment the columns are rescaled to a common magnitude. The
+ill-conditioning is an artefact of the units, not a property of the map,
+and \engterm{equilibration} removes it. The operation divides each
+column of $\mat{A}$ by its norm, $\mat{A} = \tilde{\mat{A}}\mat{D}$ with
+$\mat{D}$ diagonal, solves the better-conditioned $\tilde{\mat{A}}$
+system, and rescales the solution by $\mat{D}$ at the end. The solution
+of the original problem is recovered exactly; only the conditioning
+changed. Row scaling does the same for equations that carry mismatched
+units on the right-hand side.
+Figure~\ref{fig:vol02:ch09:scaling-conditioning} shows the condition
+number sweeping through a basin as the column scales are brought into
+balance.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-scaling-conditioning.tex}
+
+\begin{example}[Equilibration rescues a mixed-unit system]
+A two-variable calibration relates a temperature reading and a pressure
+reading through
+\[
+\mat{A} = \begin{pmatrix} 1 & 10^{4} \\ 1 & -10^{4} \end{pmatrix},
+\qquad \vect{b} = \begin{pmatrix} 10^{4} \\ -10^{4} + 2 \end{pmatrix},
+\]
+where the second column carries a variable scaled in different units.
+The singular values are near $\sqrt{2}\cdot 10^{4}$ and $\sqrt{2}$, so
+$\kappa(\mat{A}) \approx 10^{4}$, and a naive solve loses four digits.
+Equilibrate by dividing the second column by $10^{4}$, giving
+$\tilde{\mat{A}} = \begin{psmallmatrix} 1 & 1 \\ 1 & -1
+\end{psmallmatrix}$ with $\kappa(\tilde{\mat{A}}) = 1$, a perfectly
+conditioned system. Solve $\tilde{\mat{A}}\tilde{\vect{x}} = \vect{b}$
+to get $\tilde{x}_{1} = 1$, $\tilde{x}_{2} = 10^{4} - 1$, then rescale
+the second unknown by dividing by $10^{4}$ to recover $x_{2} = 1 -
+10^{-4}$ in the original units. The four digits the raw conditioning
+threatened are recovered in full, because the difficulty was never in
+the problem, only in the coordinates it was posed in. A production
+solver equilibrates by default and reports the condition number of the
+equilibrated matrix, since the pre-equilibration number would flag a
+difficulty that a change of units dissolves.
+\end{example}
+
+\subsection{Regularisation: solving what conditioning would refuse}
+
+The refusal discipline of section 9.8 says when to decline an
+ill-conditioned solve. Regularisation is what the engineer does instead
+when a solve is genuinely required and the raw problem is too
+ill-conditioned to trust. \engterm{Tikhonov regularisation} (called
+ridge regression in statistics) adds a penalty on the solution norm to
+the least-squares objective,
+\[
+\min_{\vect{x}} \; \norm{\mat{A}\vect{x} - \vect{b}}_{2}^{2} +
+\lambda\norm{\vect{x}}_{2}^{2},
+\]
+whose minimiser solves the modified normal equations $(\mat{A}^{
+\transpose}\mat{A} + \lambda\mat{I})\vect{x} = \mat{A}^{\transpose}
+\vect{b}$. The added $\lambda\mat{I}$ lifts every eigenvalue of the Gram
+matrix by $\lambda$, so the smallest eigenvalue can no longer approach
+zero and the effective condition number is capped at roughly
+$(\sigma_{1}^{2} + \lambda)/(\sigma_{n}^{2} + \lambda)$, which for a
+tiny $\sigma_{n}$ is near $\sigma_{1}^{2}/\lambda$ rather than
+$\sigma_{1}^{2}/\sigma_{n}^{2}$. The parameter $\lambda$ is the
+engineer's dial between fidelity to the data (small $\lambda$, low bias,
+high variance) and stability of the solution (large $\lambda$, high
+bias, low variance). Choosing it is the L-curve problem of
+Figure~\ref{fig:vol02:ch09:tikhonov-lcurve}: sweep $\lambda$, plot the
+solution norm against the residual norm, and take the corner.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-tikhonov-lcurve.tex}
+
+\begin{example}[Ridge regularisation of a near-singular fit]
+The near-singular matrix $\mat{A} = \begin{psmallmatrix} 1 & 1 \\ 1 &
+1.0001 \end{psmallmatrix}$, with $\kappa \approx 4 \times 10^{4}$, is to
+be used in a least-squares solve for $\vect{b} = (2, 2.0001)^{\transpose}$
+where the data carry noise at the $10^{-3}$ level. The unregularised
+solution $\vect{x} = (1, 1)^{\transpose}$ is exact for clean data but
+swings wildly under the noise the conditioning amplifies. Add
+$\lambda = 10^{-3}$. The Gram matrix $\mat{A}^{\transpose}\mat{A} =
+\begin{psmallmatrix} 2 & 2.0001 \\ 2.0001 & 2.0002
+\end{psmallmatrix}$ becomes $\begin{psmallmatrix} 2.001 & 2.0001 \\
+2.0001 & 2.0012 \end{psmallmatrix}$, whose smallest eigenvalue has been
+lifted from about $2.5 \times 10^{-9}$ to about $10^{-3}$, dropping the
+effective condition number from $\approx 1.6 \times 10^{9}$ to $\approx
+4 \times 10^{3}$. The regularised solution is pulled slightly toward
+the origin, trading a small, controlled bias for a solution that no
+longer amplifies the measurement noise by four orders of magnitude. The
+choice $\lambda \approx (\text{noise level})^{2}$ is the working default,
+and stating $\lambda$ with the fit is the regularisation counterpart of
+stating the SVD cutoff: it declares, on the record, which directions the
+data were allowed to determine.
+\end{example}
+
+\subsection{Applied vignette: deblurring an image as an inverse problem}
+
+A camera with an out-of-focus lens or a moving subject records a blurred
+image. Recovering the sharp image is a linear inverse problem, and it is
+the cleanest engineering demonstration of why an invertible matrix can
+still be useless to invert. The blur is a linear operation: each output
+pixel is a weighted average of nearby input pixels, so if the sharp
+image is the vector $\vect{x}$ (its pixels stacked into a column) and the
+blurred image is $\vect{b}$, then $\vect{b} = \mat{A}\vect{x} +
+\vect{n}$, where $\mat{A}$ is the blur matrix and $\vect{n}$ is sensor
+noise. The blur matrix is square and, for most physical blurs,
+technically invertible. The naive recovery $\vect{x} = \mat{A}^{-1}
+\vect{b}$ is a disaster.
+
+\paragraph{Why the direct inverse fails.}
+A blur is a smoothing operation, and smoothing suppresses high spatial
+frequencies. In the singular-value picture, the small singular values of
+$\mat{A}$ correspond to the fine-detail directions the blur nearly
+destroys. Inverting the matrix divides by those singular values, so
+$\mat{A}^{-1}$ multiplies the fine-detail directions by huge factors.
+The sensor noise $\vect{n}$, spread across all directions including the
+fine-detail ones, is amplified by $1/\sigma_{n}$, and for a blur of any
+severity $\sigma_{n}$ is small enough that the amplified noise buries the
+recovered image in speckle. The condition number is the exact statement
+of the trouble: $\kappa(\mat{A}) = \sigma_{1}/\sigma_{n}$ is large
+precisely because the blur has a wide dynamic range between the
+frequencies it preserves and the frequencies it suppresses, and the
+sensitivity bound of this section says the relative error in $\vect{x}$
+can be $\kappa(\mat{A})$ times the relative noise in $\vect{b}$. A blur
+with $\kappa = 10^{6}$ turns a clean $0.1\%$ sensor noise into a $10^{5}
+\times$ error, which is why the direct inverse returns noise.
+
+\paragraph{The truncated-SVD recovery.}
+The SVD names the fix. Write $\vect{x} = \sum_{i} (\vect{u}_{i}^{
+\transpose}\vect{b}/\sigma_{i})\vect{v}_{i}$, the SVD form of
+$\mat{A}^{-1}\vect{b}$. The terms with small $\sigma_{i}$ are the ones
+that explode, and they are also the ones the blur has already stripped
+of reliable signal, so the noise dominates them. Truncating the sum at
+the singular values that stand above the noise floor, keeping only the
+$r$ terms with $\sigma_{i}$ above a cutoff, discards the noise-dominated
+directions and keeps the signal-dominated ones. The recovered image is
+sharper than the blurred input and free of the speckle the direct
+inverse produced. The cutoff is the engineering choice: too high and the
+image stays blurred (over-truncation), too low and the speckle returns
+(under-truncation). The truncation is the low-rank approximation of the
+earlier example applied to the operator rather than the image, and the
+cutoff plays the role the SVD cutoff plays in the chapter's project.
+
+\paragraph{The regularised recovery.}
+Tikhonov regularisation reaches the same end by a smooth dial instead of
+a hard cutoff. The ridge solution $\vect{x}_{\lambda} = (\mat{A}^{
+\transpose}\mat{A} + \lambda\mat{I})^{-1}\mat{A}^{\transpose}\vect{b}$
+weights the $i$-th SVD term by the \engterm{filter factor}
+$\sigma_{i}^{2}/(\sigma_{i}^{2} + \lambda)$, which is near one for large
+singular values (kept) and near zero for small ones (suppressed). The
+filter is a soft version of the truncation, and the L-curve of
+Figure~\ref{fig:vol02:ch09:tikhonov-lcurve} chooses $\lambda$. In
+practice the regularisation term is often not $\norm{\vect{x}}_{2}^{2}$
+but a roughness penalty $\norm{\mat{L}\vect{x}}_{2}^{2}$ with $\mat{L}$
+a discrete derivative, which penalises jagged solutions and prefers
+smooth ones, the prior knowledge that a real image is mostly smooth. The
+same machinery, with the same L-curve, recovers a deblurred image, a
+denoised measurement, or a regularised regression coefficient; the
+inverse problem, the conditioning failure, and the regularised fix are
+one pattern across imaging, geophysics, and tomography.
+
+\paragraph{What the vignette teaches.}
+Invertibility is not usability. The blur matrix is invertible in exact
+arithmetic and worthless to invert in finite precision with noisy data,
+because the conditioning routes the noise straight into the answer. The
+engineer's move is to declare, through a truncation cutoff or a
+regularisation parameter, which directions the data can support, and to
+solve the reduced problem those directions define. This is the refusal
+discipline of section 9.8 in constructive form: rather than refuse the
+solve outright, refuse the noise-dominated directions and solve the
+rest.
+
 \subsection{Iterative solvers and sparse systems}
 
 The cubic cost of direct factorisation sets a ceiling on the dense
@@ -2054,7 +2510,94 @@ only to its mesh neighbours. Storing only the nonzeros, in a
 compressed-row or coordinate format, turns an impossible $\oom{n^{2}}$
 storage into a manageable $\oom{n}$, and a sparse-direct
 factorisation with a good ordering keeps the fill-in (the new
-nonzeros the elimination creates) under control.
+nonzeros the elimination creates) under control. The ordering is not a
+detail. The same sparse matrix, eliminated in two different orders, can
+produce a factor that is nearly as sparse as the original or one that is
+almost dense, and Figure~\ref{fig:vol02:ch09:fillin-reordering} shows
+the two extremes on an arrow-shaped matrix. Finding a good ordering is a
+combinatorial problem the sparse-direct libraries solve with
+nested-dissection and minimum-degree heuristics before any arithmetic
+begins.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-fillin-reordering.tex}
+
+\subsection{Applied vignette: the discrete Poisson problem on a grid}
+
+The single most common large linear system in engineering is the
+discretised Poisson equation, $-\nabla^{2}u = f$, which governs steady
+heat conduction, electrostatic potential, incompressible-flow pressure,
+and the elastic membrane. Discretising it on a grid produces a linear
+system whose structure makes every idea in this section concrete at
+once: sparsity, bandedness, the Kronecker product, positive
+definiteness, conditioning that grows with resolution, and the choice
+between direct and iterative solvers.
+
+\paragraph{From the equation to the matrix.}
+On a one-dimensional grid of $N$ interior points with spacing $h$, the
+second derivative at point $i$ is approximated by the central difference
+$u''(x_{i}) \approx (u_{i-1} - 2u_{i} + u_{i+1})/h^{2}$, so the operator
+$-u''$ becomes the tridiagonal matrix $\mat{T} = h^{-2}\,
+\mathrm{tridiag}(-1, 2, -1)$, the same matrix whose determinant the
+$4 \times 4$ example of section 9.4 computed as $n + 1$. On a
+two-dimensional $N \times N$ grid, each interior node couples to its
+four neighbours, the five-point stencil weighting the node by $+4$ and
+each neighbour by $-1$ (before the $h^{-2}$ scaling), drawn in the left
+panel of Figure~\ref{fig:vol02:ch09:poisson-stencil}. The full operator
+is the Kronecker sum $\mat{L}_{2\mathrm{D}} = \mat{T} \otimes \mat{I} +
+\mat{I} \otimes \mat{T}$ of section 9.2, an $N^{2} \times N^{2}$ matrix
+that is sparse (five nonzeros per row), symmetric, positive definite,
+and banded with bandwidth $N$.
+
+\input{volumes/02-form/ch09-linear-algebra/figures/fig-poisson-stencil.tex}
+
+\paragraph{The conditioning grows with resolution.}
+The eigenvalues of the one-dimensional operator are $\mu_{j} =
+(4/h^{2})\sin^{2}(j\pi h/2)$ for $j = 1, \ldots, N$, so the largest is
+near $4/h^{2}$ and the smallest near $\pi^{2}$ (the continuous
+eigenvalue), giving a condition number $\kappa(\mat{T}) \approx
+4/(\pi^{2}h^{2}) = \oom{N^{2}}$. The Kronecker sum inherits this: the
+two-dimensional eigenvalues are the pairwise sums $\lambda_{jk} = \mu_{j}
++ \mu_{k}$, so $\kappa(\mat{L}_{2\mathrm{D}}) = \oom{N^{2}}$ as well.
+Refining the grid to resolve finer detail, doubling $N$, quadruples the
+condition number. This is the structural reason a Poisson solver on a
+fine grid loses digits: the physics of the continuous problem, where
+smooth low-frequency modes decay slowly and sharp high-frequency modes
+decay fast, shows up in the matrix as a wide spread of eigenvalues, and
+that spread is the condition number. The engineer reads the resolution
+off the conditioning budget: at $N = 10^{3}$, $\kappa \approx 10^{6}$,
+which double precision handles with ten digits to spare; at $N = 10^{6}$
+in one dimension, $\kappa \approx 10^{12}$, which begins to bite.
+
+\paragraph{Direct against iterative.}
+For a two-dimensional grid the banded direct solve costs $\oom{n b^{2}}
+= \oom{N^{2} \cdot N^{2}} = \oom{N^{4}}$ flops with the natural
+ordering, because the bandwidth is $N$ and the matrix size is $N^{2}$; a
+nested-dissection ordering brings this down to $\oom{N^{3}}$ and the
+fill-in to $\oom{N^{2}\log N}$, the best a sparse-direct solver
+achieves on this problem. Iterative methods do better asymptotically.
+Conjugate gradient on the symmetric positive-definite Poisson matrix
+converges in $\oom{\sqrt{\kappa}} = \oom{N}$ iterations, each an
+$\oom{N^{2}}$ matrix-vector product, for an $\oom{N^{3}}$ total that a
+good preconditioner cuts further. Multigrid, built specifically for this
+elliptic operator, drives the residual down in $\oom{N^{2}}$ work, one
+pass over the unknowns, by treating the wide eigenvalue spread head-on:
+smooth the high-frequency error on the fine grid, transfer the
+low-frequency error to a coarse grid where it is cheap to resolve, and
+recurse. The wide conditioning that makes the problem hard for a
+single-grid iteration is exactly what multigrid exploits, and the
+Poisson problem is where the method was born.
+
+\paragraph{What the vignette teaches.}
+One partial differential equation exercises the whole chapter. The
+discretisation is a linear system; its matrix is sparse, banded,
+symmetric positive definite, and expressible as a Kronecker sum; its
+conditioning grows as the square of the resolution and is read off the
+one-dimensional spectrum for free; Cholesky is the factorisation the
+structure invites; the fill-in is controlled by ordering; and above a
+size threshold the iterative and multigrid methods take over because the
+cubic wall of direct factorisation cannot be scaled. Volume IV builds
+the numerical solution of partial differential equations on exactly this
+foundation, and the algebra is the algebra of this chapter.
 
 \begin{mastery}
 Iterative solvers reach the systems direct factorisation cannot.
@@ -2195,6 +2738,31 @@ Figure~\ref{fig:vol02:ch09:svd-geometry} draws the geometric
 content: rotate, scale, rotate.
 
 \input{volumes/02-form/ch09-linear-algebra/figures/fig-svd-geometry.tex}
+
+\begin{mastery}
+The SVD reveals the rank and the near-rank of a matrix at the price of
+the full spectral decomposition. When only the rank is wanted, and
+wanted cheaply, \engterm{column-pivoted QR} is the working
+alternative. The ordinary Householder QR of section 9.3 processes the
+columns left to right; the pivoted variant, at each step, swaps in the
+column of largest remaining norm before it reflects. The diagonal
+entries of the resulting $\mat{R}$ then come out in decreasing
+magnitude, $\abs{R_{11}} \geq \abs{R_{22}} \geq \cdots$, and a sharp
+drop in that sequence marks the numerical rank: the columns before the
+drop are independent to working precision, and the columns after it are
+nearly dependent on them. The factorisation is $\mat{A}\mat{P} =
+\mat{Q}\mat{R}$ with $\mat{P}$ the permutation of the pivots, and it
+costs the same $\oom{mn^{2}}$ as unpivoted QR, an order of magnitude
+below the SVD. The diagonal of $\mat{R}$ estimates the singular values
+well enough for rank detection, subset selection (which columns of a
+design matrix to keep), and the rank-revealing step inside a
+least-squares solve that must handle a rank-deficient design matrix
+without the full SVD. The SVD gives the exact singular values and the
+optimal low-rank approximation; column-pivoted QR gives a fast, usually
+adequate estimate of the same rank information, and the engineer chooses
+between them by whether the exactness is worth the order-of-magnitude
+cost \cite[ch.~5]{text:v2ch09-golub-vanloan2013}.
+\end{mastery}
 
 \begin{mastery}
 A small SVD computed by hand shows where the singular values come

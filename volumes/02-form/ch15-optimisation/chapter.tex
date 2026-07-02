@@ -479,6 +479,38 @@ quantity of interest is the expectation of a convex (or concave)
 function of a random input, and read off the inequality.
 \end{mastery}
 
+\input{volumes/02-form/ch15-optimisation/figures/fig-jensen-inequality.tex}
+
+\paragraph{Worked example: convexity by the sublevel-set and
+epigraph tests.}
+The Hessian test needs a twice-differentiable function; the two
+geometric tests do not, and they settle convexity for functions the
+Hessian cannot reach. The \engterm{epigraph} of $f$ is the set of
+points on or above its graph, $\operatorname{epi} f = \set{(\vect{x},
+t) : t \geq f(\vect{x})}$, and $f$ is convex exactly when
+$\operatorname{epi} f$ is a convex set.
+Take $f(x) = \max(x^{2} - 1, \; 2x - 2)$, a pointwise maximum of a
+convex parabola and an affine function, with a kink where the two
+pieces meet. The Hessian does not exist at the kink, so the
+second-order test is silent, but the epigraph is the intersection of
+the two epigraphs $\set{t \geq x^{2} - 1}$ and $\set{t \geq 2x - 2}$,
+each convex, and an intersection of convex sets is convex, so $f$ is
+convex. The \engterm{sublevel set} $\set{\vect{x} : f(\vect{x}) \leq
+\alpha}$ of a convex $f$ is convex for every threshold $\alpha$, which
+is why an inequality constraint $f_{i}(\vect{x}) \leq 0$ built from a
+convex $f_{i}$ carves out a convex feasible region. The converse
+fails, and the failure is worth seeing: $g(x) = \sqrt{\abs{x}}$ has
+convex sublevel sets (each is an interval symmetric about the origin)
+yet is not convex (its chord from $-1$ to $1$ lies below the graph at
+the origin). A function all of whose sublevel sets are convex is
+\engterm{quasiconvex}, a strictly weaker property than convexity, and
+the engineer who checks only the sublevel sets has verified
+quasiconvexity, which guarantees a connected set of minimisers but not
+the local-implies-global theorem that convexity delivers. The three
+tests form a ladder: the epigraph test is equivalent to convexity, the
+sublevel-set test is necessary but not sufficient, and the Hessian
+test is the computational shortcut when the function is smooth.
+
 \subsection{Convex optimisation problems}
 
 \begin{definition}[Convex optimisation problem]
@@ -953,6 +985,98 @@ on a polyhedral feasible region.
 \end{mastery}
 
 \input{volumes/02-form/ch15-optimisation/figures/fig-central-path.tex}
+
+\subsection{Applied vignette: economic dispatch of a power system}
+
+A grid operator must meet an electrical demand $D$ at every instant by
+choosing how hard to run each generator, and the choice is a convex QP
+solved thousands of times a day in every wholesale electricity market.
+The setting shows the chapter's apparatus carrying a decision with real
+money and real physics attached, and it shows the shadow price
+reappearing as a quantity the market actually pays.
+
+\paragraph{The brief.}
+Three generators serve a demand of $D = 500\,\si{\mega\watt}$. Each
+generator $i$ has a quadratic running cost $C_{i}(P_{i}) = a_{i} +
+b_{i} P_{i} + c_{i} P_{i}^{2}$ in dollars per hour, with the quadratic
+term capturing the rising marginal cost of pushing a unit toward its
+ceiling, and each has an output range $[P_{i}^{\min}, P_{i}^{\max}]$.
+Take the coefficients
+\[
+\begin{array}{c|ccc}
+ & b_{i}\ (\text{USD/MWh}) & c_{i}\ (\text{USD/MWh}^{2})
+ & [P_{i}^{\min}, P_{i}^{\max}]\ (\si{\mega\watt}) \\ \hline
+\text{unit 1} & 20 & 0.020 & [50, 300] \\
+\text{unit 2} & 25 & 0.010 & [50, 300] \\
+\text{unit 3} & 40 & 0.005 & [50, 300]
+\end{array}
+\]
+The fixed terms $a_{i}$ drop out of the optimisation because the units
+are committed and running. The dispatch problem in plain English:
+split $500\,\si{\mega\watt}$ across the three units to meet demand at
+least total cost.
+
+\paragraph{The brief becomes a program.}
+The decision variable is $\vect{P} = (P_{1}, P_{2}, P_{3})$, the
+objective is $\sum_{i}(b_{i} P_{i} + c_{i} P_{i}^{2})$, and the
+constraints are the demand balance $\sum_{i} P_{i} = D$ and the box
+$P_{i}^{\min} \leq P_{i} \leq P_{i}^{\max}$. The Hessian is
+$\diag(2c_{1}, 2c_{2}, 2c_{3}) \succ 0$, so the problem is a strictly
+convex QP with a unique global optimum.
+
+\paragraph{The equal-incremental-cost rule.}
+Ignore the box bounds first and attach a multiplier $\lambda$ to the
+demand balance. Stationarity of the Lagrangian $\sum_{i}(b_{i} P_{i} +
+c_{i} P_{i}^{2}) + \lambda(D - \sum_{i} P_{i})$ gives $b_{i} + 2 c_{i}
+P_{i} = \lambda$ for every unit: at the optimum every generator runs at
+the same \engterm{incremental cost} $\lambda$, the classical
+equal-lambda dispatch rule. Solving each for $P_{i} = (\lambda -
+b_{i})/(2 c_{i})$ and substituting into $\sum_{i} P_{i} = 500$,
+\[
+\frac{\lambda - 20}{0.04} + \frac{\lambda - 25}{0.02} +
+\frac{\lambda - 40}{0.01} = 500.
+\]
+Multiplying through, $25(\lambda - 20) + 50(\lambda - 25) + 100(\lambda
+- 40) = 500$, so $175 \lambda - 500 - 1250 - 4000 = 500$, giving
+$175 \lambda = 6250$ and $\lambda^{*} \approx 35.7\,\text{USD/MWh}$.
+The dispatched outputs are $P_{1} = (35.7 - 20)/0.04 \approx 393$,
+$P_{2} = (35.7 - 25)/0.02 \approx 536$, $P_{3} = (35.7 - 40)/0.01
+\approx -430$. The last two violate the box: unit 2 exceeds its
+$300\,\si{\mega\watt}$ ceiling and unit 3 falls below its
+$50\,\si{\mega\watt}$ floor.
+
+\paragraph{The active set fixes the dispatch.}
+The box violations are the KKT complementary-slackness conditions
+speaking. Pin the violated units at their nearest bound: $P_{2} = 300$
+(ceiling) and $P_{3} = 50$ (floor). The remaining demand $500 - 300 -
+50 = 150\,\si{\mega\watt}$ falls to unit 1, which is interior, so
+$P_{1} = 150$, well inside $[50, 300]$. The optimal dispatch is
+$\vect{P}^{*} = (150, 300, 50)\,\si{\mega\watt}$, and the system
+incremental cost is set by the one interior (marginal) unit: $\lambda^{*}
+= b_{1} + 2 c_{1} P_{1} = 20 + 0.04 \times 150 = 26\,\text{USD/MWh}$.
+
+\paragraph{What the multiplier pays for.}
+The multiplier $\lambda^{*} = 26\,\text{USD/MWh}$ is the shadow price
+of the demand-balance constraint: the marginal cost of serving one more
+megawatt-hour of load, met by the marginal unit. In an electricity
+market this number is the \engterm{locational marginal price}, the
+price every generator is paid and every consumer charged for energy at
+that node in that interval, and it falls directly out of the QP dual.
+The two boundary units carry their own nonzero multipliers on the
+active box constraints: unit 2's ceiling multiplier is the amount by
+which system cost would fall per megawatt of extra capacity on unit 2,
+which quantifies the value of an upgrade to that generator; unit 3's
+floor multiplier is the cost the minimum-run constraint imposes, which
+quantifies what the operator pays to keep an expensive unit spinning
+for reliability. The QP thus returns not one number but a full price
+signal: the energy price, the value of relieving each binding limit,
+and the merit order of the fleet. The same problem with transmission
+limits and multiple nodes stays a convex QP with more constraint rows
+and is the optimal-power-flow computation at the centre of Volume X's
+treatment of the grid; the three-unit case here is that computation
+stripped to the one insight that survives at every scale, which is that
+the balance multiplier is the price and the active set is the merit
+order.
 
 \subsection{Primal and dual: the LP case}
 
@@ -1547,6 +1671,42 @@ scaling the convergence theorem predicts. The example is the
 whole story of first-order convergence in two coordinates: the
 condition number sets the rate, and the best step balances the
 two extreme curvatures against each other.
+\Cref{fig:vol02:ch15:newton-vs-gd} sets the same two-coordinate
+quadratic against Newton's one-step finish, the picture the method
+comparison of \cref{fig:vol02:ch15:method-comparison} summarises
+asymptotically.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-newton-vs-gd.tex}
+
+\paragraph{Worked example: preconditioning collapses the condition
+number.}
+The zigzag of the elongated quadratic is a coordinate-scaling
+artifact, and a change of variables removes it. Take again
+$f(x_{1}, x_{2}) = \tfrac{1}{2}(x_{1}^{2} + 100 x_{2}^{2})$ with
+Hessian $P = \diag(1, 100)$ and condition number $\kappa = 100$.
+Rescale the variables by $\vect{y} = D \vect{x}$ with the diagonal
+$D = \diag(1, 10)$, so that $x_{2}$ is measured in units ten times
+coarser. In the new coordinates the objective is $\tilde{f}(\vect{y})
+= \tfrac{1}{2} \vect{y}^{\transpose} D^{-1} P D^{-1} \vect{y} =
+\tfrac{1}{2}(y_{1}^{2} + y_{2}^{2})$, a perfectly round bowl with
+Hessian $I$ and condition number $\kappa = 1$. Gradient descent on
+$\tilde{f}$ reaches the optimum in a single step from any start,
+because the negative gradient of an isotropic quadratic points
+straight at the centre. Undoing the change of variables, the update
+$\vect{y}_{k+1} = \vect{y}_{k} - \eta \grad \tilde{f}$ becomes
+$\vect{x}_{k+1} = \vect{x}_{k} - \eta \, D^{-2} \grad f(\vect{x}_{k})$
+in the original coordinates: gradient descent with the gradient
+premultiplied by the fixed matrix $M = D^{-2} = \diag(1, 1/100)$. That
+matrix is a \engterm{preconditioner}, and the perfect choice here is
+$M = P^{-1}$, which turns the preconditioned gradient step into exactly
+the Newton step $-P^{-1} \grad f$. The lesson generalises past the
+diagonal case: any positive-definite $M$ that approximates $P^{-1}$
+shrinks the effective condition number $\kappa(M^{1/2} P M^{1/2})$
+toward $1$, and the whole art of practical first-order optimisation,
+from diagonal Jacobi scaling through the adaptive per-coordinate steps
+of Adam to the limited-memory inverse-Hessian estimate of L-BFGS, is
+the search for a cheap $M$ that does the work an exact Newton solve
+would do at $O(n^{3})$ cost.
 
 \subsection{Step-size selection}
 
@@ -1774,6 +1934,66 @@ and the $\sqrt{\kappa}$ rate is the reason it earns its keep over plain
 gradient descent.
 \end{mastery}
 
+\subsection{Constrained descent: the projected gradient}
+
+The gradient methods above solve unconstrained problems, and the
+chapter reduces a constrained problem to that case through penalty,
+barrier, or projection. The projection route is the most transparent
+of the three and deserves to be developed, because it keeps every
+iterate feasible and reuses the whole first-order apparatus unchanged.
+
+\begin{definition}[Projected gradient descent]
+For the problem $\min_{\vect{x} \in \mathcal{C}} f(\vect{x})$ over a
+closed convex feasible set $\mathcal{C}$, \engterm{projected gradient
+descent} alternates an unconstrained gradient step with a projection
+back onto $\mathcal{C}$:
+\[
+\vect{x}_{k+1} = \Pi_{\mathcal{C}}\!\left(\vect{x}_{k} - \eta_{k}
+\grad f(\vect{x}_{k})\right),
+\qquad
+\Pi_{\mathcal{C}}(\vect{z}) = \argmin_{\vect{u} \in \mathcal{C}}
+\norm{\vect{u} - \vect{z}}_{2},
+\]
+where $\Pi_{\mathcal{C}}$ is the Euclidean projection onto
+$\mathcal{C}$.
+\end{definition}
+
+The projection is itself a convex optimisation (minimise distance to
+$\vect{z}$ over $\mathcal{C}$), so the method is only cheap when the
+projection is cheap, and for the feasible sets an engineer meets most
+often it is. Projection onto a box $[\vect{l}, \vect{u}]$ clips each
+coordinate to its bounds; projection onto a Euclidean ball of radius
+$r$ scales a point outside the ball back to the surface; projection
+onto a half-space moves a violating point orthogonally onto the
+bounding hyperplane; projection onto the probability simplex is a
+sort-and-threshold that costs $O(n \log n)$. The method inherits the
+convergence rate of unconstrained gradient descent, geometric on a
+strongly convex objective, because the projection onto a convex set is
+\engterm{nonexpansive}: it never increases the distance between two
+points, so it cannot spoil the contraction the gradient step provides
+(\cref{fig:vol02:ch15:projected-gradient}).
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-projected-gradient.tex}
+
+\paragraph{Worked example: projection onto the simplex.}
+A resource-allocation problem constrains the decision to be a
+distribution: $\vect{x} \geq \vect{0}$ and $\vect{1}^{\transpose}
+\vect{x} = 1$. Take the gradient step's output $\vect{z} = (0.8, 0.1,
+0.6, -0.3)$ and project it onto the simplex. The projection has the
+form $x_{i} = \max(z_{i} - \tau, \; 0)$ for a single scalar threshold
+$\tau$ fixed by the requirement $\sum_{i} \max(z_{i} - \tau, 0) = 1$.
+Sorting $\vect{z}$ descending gives $(0.8, 0.6, 0.1, -0.3)$. Try
+keeping the top two active: $\tau = (0.8 + 0.6 - 1)/2 = 0.2$, which
+gives $x = (0.6, 0, 0.4, 0)$ after checking that the third-largest
+entry $0.1$ falls below $\tau = 0.2$ and is correctly zeroed. The
+projected point $(0.6, 0, 0.4, 0)$ sums to one, is nonnegative, and is
+the closest simplex point to $\vect{z}$. The soft-threshold shape of
+the answer is not a coincidence; it is the same shrink-and-clip
+structure that soft-thresholding produces for the $\ell_{1}$ proximal
+operator, because both are projections and proximal maps of piecewise-
+linear convex functions, and the two constructions are the same
+machinery seen from two sides.
+
 \subsection{Nonsmooth objectives: subgradient and proximal methods}
 
 The methods above assume a differentiable objective. Many
@@ -1979,6 +2199,46 @@ size-$b$ batch is sublinear in $b$ over the relevant range. The
 batch size is a hardware-utilisation decision wearing the costume
 of a statistics decision, and the engineer who tunes it should
 profile the throughput curve, not just the convergence curve.
+\Cref{fig:vol02:ch15:sgd-variance} plots the two curves the choice
+balances.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-sgd-variance.tex}
+
+\paragraph{Worked example: the noise ball of a constant step.}
+A constant step size does not let SGD converge to a point; it lets
+SGD converge to a neighbourhood, and the size of that neighbourhood is
+worth computing because it sets the floor on the achievable loss. On a
+$\mu$-strongly convex quadratic with minibatch gradient variance
+$\sigma_{b}^{2} = \sigma^{2}/b$, the expected squared distance to the
+optimum under a constant step $\eta$ obeys the recursion
+\[
+\E \norm{\boldsymbol{\theta}_{k+1} - \boldsymbol{\theta}^{*}}^{2}
+\leq (1 - \eta \mu) \, \E \norm{\boldsymbol{\theta}_{k} -
+\boldsymbol{\theta}^{*}}^{2} + \eta^{2} \sigma_{b}^{2},
+\]
+a contraction toward the optimum fighting a constant noise injection.
+The fixed point of the recursion is the equilibrium error
+\[
+\E \norm{\boldsymbol{\theta}_{\infty} - \boldsymbol{\theta}^{*}}^{2}
+= \frac{\eta \sigma_{b}^{2}}{\mu},
+\]
+the radius of the \engterm{noise ball} the iterate rattles around in
+once the transient has decayed. Two readings follow directly. Halving
+the step halves the equilibrium error but also halves the contraction
+rate $\eta \mu$, so a smaller step buys a tighter ball at the cost of a
+slower approach, the same trade the diminishing schedule
+$\eta_{k} \to 0$ resolves by shrinking the ball to a point over time.
+Doubling the batch halves $\sigma_{b}^{2}$ and halves the ball at fixed
+step, which is the convergence-side reason to enlarge a batch late in
+training. With $\sigma^{2} = 4$, $b = 64$, $\mu = 1$, and $\eta = 0.1$,
+the equilibrium error is $0.1 \times (4/64) / 1 = 6.25 \times 10^{-3}$,
+a distance of about $0.08$ from the optimum that no number of further
+constant-step iterations will improve; reaching a tighter answer
+requires dropping the step, growing the batch, or switching to a
+variance-reduced method. The engineer who sees an SGD loss curve
+flatten well above the known noise floor should suspect the noise ball
+before suspecting the model, and the fix is a step-size decay, not more
+epochs at the same step.
 
 \subsection{Variance reduction, recognition level}
 
@@ -2225,6 +2485,10 @@ branch-and-bound estimate of the estimation exercise set. A
 runnable implementation that prints the visited-node count against
 the brute-force leaf count is in
 \repopath{volumes/02-form/ch15-optimisation/code/knapsack_branch_and_bound.py}.
+\Cref{fig:vol02:ch15:branch-bound-tree} draws the search tree, the
+incumbent's rise from $200$ to $220$, and the pruning that closes it.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-branch-bound-tree.tex}
 
 \subsection{Worked assignment problem: integrality for free}
 
@@ -2799,6 +3063,86 @@ chance-constrained design under Gaussian uncertainty, all of which
 reduce a worst-case or probabilistic guarantee to a norm-bounded affine
 constraint.
 
+\subsection{Applied vignette: fuel-optimal powered descent}
+
+A lander approaching a planetary surface must fire its engine to arrive
+at the target with zero velocity while spending the least propellant,
+and the thrust it can command is bounded below (an engine that cannot
+throttle to zero) and above (a structural limit) and points within a
+cone about the vertical. The naive formulation is nonconvex, and the
+result that made autonomous rocket landing routine is that the problem
+convexifies exactly into an SOCP. The vignette shows a hard-looking
+control problem collapsing onto the conic apparatus of this section.
+
+\paragraph{The brief.}
+Over a fixed descent time discretised into $H$ steps of length
+$\Delta t$, the lander's position $\vect{p}_{k} \in \R^{3}$ and
+velocity $\vect{v}_{k} \in \R^{3}$ evolve under gravity $\vect{g}$ and
+a commanded thrust acceleration $\vect{u}_{k}$:
+\[
+\vect{v}_{k+1} = \vect{v}_{k} + \Delta t\,(\vect{u}_{k} + \vect{g}),
+\qquad
+\vect{p}_{k+1} = \vect{p}_{k} + \Delta t\, \vect{v}_{k}
++ \tfrac{1}{2}\Delta t^{2}\,(\vect{u}_{k} + \vect{g}).
+\]
+The boundary conditions fix the initial state $(\vect{p}_{0},
+\vect{v}_{0})$ and demand a soft touchdown $\vect{p}_{H} =
+\vect{p}_{\text{target}}$, $\vect{v}_{H} = \vect{0}$. The engine
+imposes three limits at every step: a magnitude ceiling
+$\norm{\vect{u}_{k}}_{2} \leq u_{\max}$, a magnitude floor
+$\norm{\vect{u}_{k}}_{2} \geq u_{\min} > 0$, and a pointing constraint
+that the thrust stay within an angle $\theta$ of vertical. The
+objective minimises total propellant, proportional to $\sum_{k}
+\norm{\vect{u}_{k}}_{2} \Delta t$, the accumulated thrust magnitude.
+
+\paragraph{Where the nonconvexity lives.}
+The dynamics are affine in the decision variables $\set{\vect{u}_{k}}$,
+so they contribute only linear equality constraints. The ceiling
+$\norm{\vect{u}_{k}}_{2} \leq u_{\max}$ is a second-order cone
+constraint, convex. The pointing constraint $\vect{u}_{k}$ within angle
+$\theta$ of vertical is $\norm{\vect{u}_{k}}_{2} \cos\theta \leq
+u_{k,z}$, again a second-order cone constraint, convex. The objective,
+a sum of norms, is convex. The single nonconvex element is the thrust
+floor $\norm{\vect{u}_{k}}_{2} \geq u_{\min}$: a lower bound on a norm
+carves out the region \emph{outside} a ball, which is not convex, and a
+naive solver stalls on it.
+
+\paragraph{The convexification.}
+Introduce a slack variable $\Gamma_{k}$ that stands in for the thrust
+magnitude, replace the objective with $\sum_{k} \Gamma_{k} \Delta t$,
+and replace the three thrust constraints with
+\[
+\norm{\vect{u}_{k}}_{2} \leq \Gamma_{k}, \qquad
+u_{\min} \leq \Gamma_{k} \leq u_{\max}, \qquad
+\Gamma_{k} \cos\theta \leq u_{k,z}.
+\]
+The first is a second-order cone constraint tying the true magnitude to
+its surrogate; the second is now a pair of plain linear bounds on the
+scalar $\Gamma_{k}$, convex; the third is linear. The nonconvex floor
+has been lifted into a linear bound on the slack, and the whole program
+is an SOCP. The subtlety that makes this exact rather than a relaxation:
+at the optimum the surrogate constraint $\norm{\vect{u}_{k}}_{2} \leq
+\Gamma_{k}$ is always tight, $\norm{\vect{u}_{k}}_{2} = \Gamma_{k}$,
+because the objective drives $\Gamma_{k}$ down until it meets the norm.
+The relaxation therefore recovers the true optimum of the nonconvex
+problem, a property called \engterm{lossless convexification}, proved
+for exactly this powered-descent problem and the reason a spacecraft
+can solve a guaranteed-optimal landing trajectory onboard in
+milliseconds with a general SOCP solver.
+
+\paragraph{What the vignette teaches.}
+The powered-descent problem is the second-order-cone counterpart of the
+truss LP and the battery calibration: a plain-English brief carried
+into a formal program whose structural class decides its tractability.
+The recognition that the dynamics are affine, the ceiling and pointing
+limits are cones, and the troublesome floor lifts to a linear bound on
+a slack is the entire difficulty; once the class is named as SOCP the
+solver is a library call. The lesson restates the chapter's first
+diagnostic in a control setting: identify the structural class before
+choosing a method, and a problem that looks nonconvex may convexify
+exactly when the one nonconvex constraint can be traded for a slack
+that the objective keeps tight.
+
 \subsection{Semidefinite programs}
 
 \begin{definition}[Semidefinite program]
@@ -2954,6 +3298,34 @@ problem at each sweep point. The engineer who reports a Pareto front
 from a weighted-sum sweep alone, on a problem whose front might be
 non-convex, has under-reported the achievable designs, and the
 $\epsilon$-constraint sweep is the honest alternative.
+\Cref{fig:vol02:ch15:nonconvex-pareto} shows the blind spot and the
+repair on a re-entrant front.
+
+\input{volumes/02-form/ch15-optimisation/figures/fig-nonconvex-pareto.tex}
+
+\paragraph{Worked example: a re-entrant front the weighted sum
+misses.}
+A concrete two-objective problem exhibits the blind spot in closed
+form. Minimise the pair $f_{1}(x) = x$ and $f_{2}(x) = (x - 1)^{2}(x -
+3) + 4$ over $x \in [0, 3]$, a design parameter traded against a
+performance measure whose curve dips, rises, and dips again. Sweeping
+a weight ratio $w = w_{2}/w_{1}$ and minimising $x + w \, f_{2}(x)$
+finds a stationary point wherever $1 + w f_{2}'(x) = 0$, with
+$f_{2}'(x) = 3(x - 1)(x - 7/3)$. For a range of small positive weights
+the scalarised objective has two competing local minima, one on each
+convex arc of the front, and the global minimiser jumps discontinuously
+from the left arc to the right arc as $w$ crosses a threshold, never
+resting on the middle arc between $x \approx 1.6$ and $x \approx 2.1$.
+Those middle designs are Pareto optimal: no feasible $x$ improves both
+$f_{1}$ and $f_{2}$ against them. The weighted-sum sweep skips them
+entirely, leaving a visible gap in the reported front exactly where the
+front is re-entrant. The $\epsilon$-constraint method recovers them by
+solving $\min_{x} f_{2}(x)$ subject to $f_{1}(x) = x \leq \epsilon$ and
+sweeping $\epsilon$ across $[0, 3]$: at each $\epsilon$ the constraint
+pins $x$ and the middle-arc designs appear one by one. The example
+turns the geometric statement of the figure into arithmetic: the
+weighted sum sees the convex hull of the front, and the parts of the
+front strictly inside that hull are invisible to it.
 
 \section{Failure: local minima, ill-posed objectives, optimisation
 theatre}\pathtag{core}

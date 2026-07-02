@@ -495,6 +495,54 @@ critically damped response) from a transversal crossing (a simple
 root, a sign change, an underdamped overshoot). Reading multiplicity
 is reading the local behaviour of the system the polynomial models.
 
+\paragraph{Worked example: evaluating a polynomial without waste.}
+A polynomial written in the form $a_n x^n + \cdots + a_1 x + a_0$ and
+evaluated term by term recomputes each power of $x$ from scratch,
+costing roughly $n^2/2$ multiplications for a degree-$n$ polynomial and
+accumulating rounding error in every separate power. The rewrite that
+removes the waste is \engterm{Horner's method}, the nested form
+\[
+  p(x) = a_0 + x\bigl(a_1 + x\bigl(a_2 + \cdots + x(a_{n-1} +
+    x\,a_n)\bigr)\bigr),
+\]
+evaluated from the innermost bracket outward. Take
+$p(x) = 2x^3 - 6x^2 + 2x - 1$ at $x = 3$. The nested form is
+$((2 \cdot 3 - 6) \cdot 3 + 2) \cdot 3 - 1$: the inner bracket is
+$2 \cdot 3 - 6 = 0$, the next is $0 \cdot 3 + 2 = 2$, the outer is
+$2 \cdot 3 - 1 = 5$, so $p(3) = 5$ in three multiplications and three
+additions rather than the six multiplications the term-by-term form
+would use. Horner's method is the algorithm every numerical library
+uses to evaluate a polynomial, and the same nested sweep, carried one
+step further, is the synthetic division that factored the cubic two
+examples back. Fewer operations means less accumulated rounding, so
+the nested form is both the faster and the more accurate evaluation,
+which is why it is the default rather than an optimisation.
+
+\begin{mastery}
+The way a function is written changes how accurately a computer
+evaluates it, even when the algebra is identical, because floating-point
+arithmetic rounds at every step and some arrangements of the same
+expression cancel large nearly-equal numbers where others do not. The
+polynomial $p(x) = (x - 1)^6$ evaluated near $x = 1$ from its expanded
+form $x^6 - 6x^5 + 15x^4 - 20x^3 + 15x^2 - 6x + 1$ subtracts terms of
+order one to leave a result of order $10^{-12}$, and the rounding error
+in the large terms swamps the tiny true value, so the expanded form
+returns visible noise where the factored form returns a clean near-zero.
+The general name for this hazard is \engterm{catastrophic
+cancellation}: subtracting two numbers that agree in their leading
+digits discards those digits and promotes the rounding error in the
+trailing digits to the leading role. The engineering habit that follows
+is to prefer the arrangement that avoids differencing nearly equal
+quantities, to use the factored form near a root, to replace
+$\sqrt{1 + x} - 1$ by $x/(\sqrt{1 + x} + 1)$ for small $x$, and to
+reach for the quadratic formula's numerically stable variant when
+$b^2 \gg 4ac$. The function on paper and the function in the machine
+are the same map; the arithmetic that connects them is not exact, and
+carrying that distinction is the difference between a formula that
+computes and one that merely reads correctly. The subject is developed
+in Volume II Chapter 16 on numerical methods.
+\end{mastery}
+
 \paragraph{Worked example: interpolating a device curve, and why a
 high-degree polynomial fails.}
 A manufacturer supplies a sensor characteristic as a short table of
@@ -641,6 +689,34 @@ tool of control engineering already in hand. Volume IX develops the
 pole-placement and root-locus methods that this observation seeds.
 \end{mastery}
 
+\paragraph{Worked example: a partial-fraction decomposition, worked.}
+The decomposition the box names is worth carrying out once by hand, so
+the algebra is not a black box when Chapter 3 leans on it. Take
+$r(x) = 1/[(x - 1)(x + 2)]$, a rational function with two simple poles
+at $x = 1$ and $x = -2$ and a numerator of degree zero, so the
+degree condition $\deg p < \deg q$ holds. Write the target form with
+one unknown constant per pole,
+\[
+  \frac{1}{(x - 1)(x + 2)} = \frac{A}{x - 1} + \frac{B}{x + 2},
+\]
+and recover the constants by the cover-up rule: multiply through by
+$(x - 1)$ and set $x = 1$ to isolate $A = 1/(1 + 2) = 1/3$; multiply
+through by $(x + 2)$ and set $x = -2$ to isolate $B = 1/(-2 - 1) =
+-1/3$. The cover-up rule works because each multiplication cancels the
+pole whose constant is wanted and every other term carries a factor
+that vanishes at the substituted value. The decomposition is therefore
+$r(x) = \tfrac{1/3}{x - 1} - \tfrac{1/3}{x + 2}$, and
+\Cref{fig:vol02:ch02:partial-fraction} shows the full curve as the sum
+of the two simple-pole terms on a window between the poles. The
+engineering payoff arrives in the next chapter: a transfer function
+that factors into simple poles inverts term by term, and each term
+$\tfrac{A_i}{s - s_i}$ inverts to a single exponential mode
+$A_i e^{s_i t}$, so a two-pole system rings as the sum of two
+exponentials whose rates are the two pole locations. The partial
+fraction is the bridge from the pole map to the time response.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-partial-fraction.tex}
+
 \paragraph{Worked example: a low-pass filter's magnitude response.}
 The first-order low-pass filter has the transfer function
 $H(s) = 1/(1 + s/\omega_{c})$ with $s = \mathrm{j}\omega$ and cutoff
@@ -683,6 +759,35 @@ their positions, which is the entry move of the control engineering
 that Volume IX develops in full.
 
 \input{volumes/02-form/ch02-functions-and-graphs/figures/fig-pole-zero-map.tex}
+
+\paragraph{Worked example: reading the quality factor off a resonance.}
+A resonant rational function has a magnitude response that rises to a
+peak near its natural frequency and falls away on both sides, and the
+sharpness of that peak is the single number a designer most often
+wants. \Cref{fig:vol02:ch02:resonance-q} plots the magnitude of a
+second-order bandpass, normalised so the peak is one, and two readings
+fix the response. The peak frequency is $f_0$, read off the top of the
+curve. The two frequencies at which the magnitude has fallen to
+$1/\sqrt{2} \approx 0.707$ of the peak, the half-power points, bracket
+the bandwidth $\Delta f$, and the \engterm{quality factor} is their
+ratio $Q = f_0/\Delta f$. The half-power level is $1/\sqrt{2}$ and not
+one half because the labels are amplitudes while ``half power'' is a
+statement about the square of the amplitude: power scales as amplitude
+squared, so half power is amplitude $1/\sqrt{2}$, which in decibels is
+$20\log_{10}(1/\sqrt{2}) = -3\,\si{\deci\bel}$, the origin of the
+ubiquitous $-3\,\si{\deci\bel}$ corner. For the curve drawn, the peak
+sits at $f/f_0 = 1$ and the half-power crossings sit at about
+$0.95 f_0$ and $1.05 f_0$, so $\Delta f \approx 0.1 f_0$ and $Q
+\approx 10$. A high-$Q$ circuit, a quartz crystal reaching $Q$ in the
+tens of thousands, has a needle-sharp peak and rings for many cycles;
+a low-$Q$ circuit has a broad peak and settles fast. The same two
+readings, peak location and half-power width, characterise a tuned
+antenna, a laser cavity, a struck bell, and a vibration-isolation
+mount, and each is the resonant cousin of the pole pair
+\Cref{fig:vol02:ch02:pole-zero-map} drew: a high $Q$ is a pole pair
+close to the imaginary axis.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-resonance-q.tex}
 
 \subsection{Piecewise functions, steps, and saturation}
 
@@ -735,6 +840,30 @@ linear gain alone will be in error outside the central window. The
 piecewise model is the engineering correction; the linear model is
 the small-signal approximation valid for $|V_{\text{in}}| < 5/11\,
 \si{\volt}$.
+
+\paragraph{Worked example: a lookup table and its interpolation error.}
+Firmware often stores a sensor characteristic as a table of points and
+computes intermediate values by joining adjacent entries with straight
+segments, which is a piecewise-linear function on the domain, one
+segment per table interval. The engineering question is how coarse the
+table can be before the straight-line joins depart too far from the
+true curve. For a function with bounded curvature, the largest error of
+linear interpolation across an interval of width $h$ is at most
+$\tfrac{1}{8} h^2 \max|f''|$, the error peaking in the middle of the
+interval where the chord sits farthest from the arc. Take a temperature
+sensor whose characteristic curves with $\max|f''| = 0.02\,\si
+{\per\kelvin}$ over the working range, and suppose the design allows a
+$0.01$ interpolation error. Solving $\tfrac{1}{8} h^2 (0.02) \leq 0.01$
+gives $h^2 \leq 4$, that is, $h \leq 2\,\si{\kelvin}$, so table entries
+every two kelvin hold the interpolation error inside budget, and a
+coarser table would not. The example turns a vague ``how many table
+points'' into a computed spacing, and the same bound sets the node
+count for a piecewise-linear approximation of any function whose second
+derivative the engineer can bound, which is the memory-versus-accuracy
+trade every embedded lookup table makes. Halving the error needs the
+spacing cut by $\sqrt{2}$, since the error scales as $h^2$, the
+quadratic-convergence signature that separates piecewise-linear
+interpolation from the cubic spline's faster $h^4$ approach.
 
 \subsection{Dead band, hysteresis, and the limit of the function model}
 
@@ -856,6 +985,34 @@ $2^{10} = 1024 \approx 10^{3}$, so ten doublings is roughly three
 decades; and $\ln(2) \approx 0.693$, the half-life-to-time-constant
 conversion.
 
+\begin{mastery}
+The argument of an exponential, a logarithm, or a trigonometric
+function must be dimensionless, and checking that it is is one of the
+fastest audits of a written formula. The reason is the series
+definition: $e^{x} = 1 + x + x^2/2 + \cdots$ adds $x$ to $x^2$ to $1$,
+and terms of different dimension cannot be added, so $x$ can only be a
+pure number. The same argument bars a logarithm of a dimensioned
+quantity, because $\ln x$ inherits the same series through
+$\ln(1 + u)$, and it explains why every physical exponential in the
+chapter carries its argument as a ratio: the decay $e^{-t/\tau}$
+divides time by a time constant, the Arrhenius factor
+$e^{-E_a/k_B T}$ divides an energy by an energy, the sinusoid
+$\sin(\omega t)$ multiplies an angular frequency in radians per second
+by a time to leave radians, which are dimensionless by construction. A
+formula that writes $\ln(p)$ for a pressure $p$ is therefore
+incomplete: what is meant is $\ln(p/p_{\text{ref}})$ for some reference
+pressure, and the reference has been dropped, which is the same
+unstated-reference-level defect the graph-reading section names for
+decibel and pH axes. When a logarithm of an apparently dimensioned
+quantity appears, the missing reference is hiding in the additive
+constant, since $\ln(p/p_{\text{ref}}) = \ln p - \ln p_{\text{ref}}$,
+and the engineer who restores it recovers a formula whose every
+argument is honestly dimensionless. The habit is Volume I's
+unit-carrying discipline applied inside the transcendental functions,
+where a dimension error does not announce itself as a mismatched unit
+in the answer but as a silently meaningless argument.
+\end{mastery}
+
 \subsection{Working in base $e$ and base $10$}
 
 The two bases serve different engineering purposes.
@@ -947,9 +1104,39 @@ dataset rather than the early points alone. The same curve, under
 other names, describes an autocatalytic reaction, a technology
 adoption curve, a tumour-volume model, and the charge of a
 self-limiting battery; recognising the saturating-S shape is
-recognising that a resource ceiling has entered the mechanism.
+recognising that a resource ceiling has entered the mechanism. The
+logistic equation is also the entry point to nonlinear dynamics, where
+its discrete cousin, the logistic map, is the standard first example of
+a route to chaos \cite{v2c02-text:strogatz1994}, a reminder that the
+same functional form the engineer fits as a growth curve carries
+behaviour far richer than the smooth S once its parameters are pushed.
 
 \input{volumes/02-form/ch02-functions-and-graphs/figures/fig-logistic-fit.tex}
+
+\paragraph{Worked example: why a distribution is log-normal.}
+A quantity built by multiplying many independent random factors ends up
+distributed log-normally, and understanding why is understanding what
+the logarithm does to a product. If a particle's final size is set by a
+sequence of independent fragmentation steps, each removing a random
+fraction, then the size is a product of random factors, and the
+logarithm of the size is a sum of the logarithms of those factors. A
+sum of many independent contributions tends to a normal distribution
+by the central-limit result of Volume I Chapter 6, so $\ln(\text{size})$
+is approximately normal, which is the definition of the size itself
+being log-normal. The engineering consequences are concrete. Plotting
+the size on a linear axis gives a lopsided distribution with a long
+upper tail that hides its structure; plotting the logarithm of the size,
+or using a log axis, straightens the tail into the symmetric bell the
+central-limit result predicts, and a log-probability plot straightens
+it further into a line whose slope reads the spread. The log-normal
+appears wherever a quantity is a product of proportional effects:
+crushed-rock and aerosol particle sizes, the strength of brittle
+materials set by the largest flaw, income distributions, and the
+time-to-failure of components under multiplicative wear. Recognising
+that a right-skewed quantity may be log-normal is recognising that its
+natural axis is logarithmic and its natural model is a normal
+distribution on that axis, which turns an awkward skewed fit into a
+routine two-parameter one.
 
 \subsection{Semilog and log-log axes}
 
@@ -1080,6 +1267,127 @@ mechanism, and for vertical offset second, since offset carries the
 scale, and to remember that a unit change on the input slides a
 power-law line but tilts an exponential one.
 
+\paragraph{Worked example: the factor of ten and the factor of twenty.}
+The decibel is defined on a power ratio as $10\log_{10}(P/P_{\text{ref}})$
+and on an amplitude ratio as $20\log_{10}(A/A_{\text{ref}})$, and the
+two prefactors are the single most common source of decibel error. The
+$20$ is not a different definition; it is the $10$ carried through the
+fact that power scales as amplitude squared, so
+$10\log_{10}(A^2/A_{\text{ref}}^2) = 20\log_{10}(A/A_{\text{ref}})$. A
+voltage that doubles is $20\log_{10} 2 \approx 6\,\si{\deci\bel}$ up as
+an amplitude, and delivers four times the power into a fixed resistance,
+which is $10\log_{10} 4 \approx 6\,\si{\deci\bel}$ up as a power: the
+same $6\,\si{\deci\bel}$, reached by two routes, which is the check that
+the prefactor was chosen correctly. The trap is to report a voltage
+gain with the power prefactor or the reverse: a tenfold voltage gain is
+$20\,\si{\deci\bel}$, and calling it $10\,\si{\deci\bel}$ understates it
+by a factor of $\sqrt{10} \approx 3.16$ in the quantity that matters.
+The working rule is to name the quantity before the prefactor: power,
+intensity, and mean-square quantities take the $10$; voltage, current,
+pressure, and other amplitudes take the $20$.
+
+\subsection{Applied vignette: a radio link budget in decibels}
+
+A radio link connects a transmitter to a receiver across a path that
+attenuates the signal, and the engineer's design question is whether
+enough power arrives to be demodulated. The whole calculation is a
+sum of logarithmic terms, which is why radio engineers work it in
+decibels and never leave the log domain until the last line. The tool
+is the material of this chapter: an exponential and a power law read
+on log axes, and a chain of gains that adds because logarithms turn
+the product of ratios into a sum of decibels.
+
+The received power in free space follows the inverse-square law. A
+transmitter radiating isotropically spreads its power over a sphere
+whose area grows as $r^2$, so the power crossing a fixed collecting
+area falls as $r^{-2}$. Writing the received power as
+$P_r = P_t \cdot G \cdot r^{-2} \cdot k$ for a lumped constant $k$ and
+antenna gain $G$, the power law $P_r \propto r^{-2}$ is a straight line
+of slope $-2$ on log-log axes, or equivalently, since decibels already
+take the log of the power, a line of slope $-20\,\si{\deci\bel}$ per
+decade on a plot of power in decibels against log range.
+\Cref{fig:vol02:ch02:friis-linkbudget} draws that line together with
+the horizontal floor set by the receiver's sensitivity, the smallest
+power it can still recover. The two cross at the maximum usable range,
+and reading that crossing off the plot answers the design question with
+no further algebra.
+
+Working the budget in decibels turns every physical effect into an
+additive term. Start from the transmitted power in \si{\deci\bel}
+relative to a milliwatt (dBm), add the transmit antenna gain in
+decibels, subtract the free-space path loss in decibels, subtract the
+cable and connector losses, add the receive antenna gain. The result
+is the received power in dBm, compared directly against the receiver
+sensitivity in dBm. Suppose a transmitter puts out $20\,\si{\deci\bel}$
+relative to a milliwatt, the two antennas contribute $+6$ and
+$+3\,\si{\deci\bel}$, the cables cost $-4\,\si{\deci\bel}$, and the
+path loss at the design range is $-113\,\si{\deci\bel}$. The received
+power is $20 + 6 + 3 - 4 - 113 = -88\,\si{\deci\bel}$ relative to a
+milliwatt, computed by addition alone. Against a receiver sensitivity
+of $-100\,\si{\deci\bel}$ relative to a milliwatt, the link closes with
+a $12\,\si{\deci\bel}$ margin, meaning the arriving signal is about
+sixteen times the minimum the receiver needs. The margin is the
+engineer's headroom against rain, fading, and pointing error, and it
+is read off the same additive ledger. Had the sum come out below the
+sensitivity, the link would not close and the engineer would raise
+transmit power, add antenna gain, or shorten the range, each a term
+that slides the sloped line of
+\Cref{fig:vol02:ch02:friis-linkbudget} up or bends the range at which
+it meets the floor. The vignette shows the payoff of the log domain in
+one line: a chain of multiplications in the linear world is a column of
+additions in the decibel world, and the design closes or fails on the
+sign of a single sum.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-friis-linkbudget.tex}
+
+\subsection{Applied vignette: reading a titration curve}
+
+An acid-base titration adds a measured base to an acid and tracks the
+pH, and the resulting curve is a compact demonstration of a logarithmic
+axis, a sigmoidal shape, and a high-gain region all in one plot. The pH
+is $-\log_{10}[\mathrm{H}^{+}]$, the negative base-ten logarithm of the
+hydrogen-ion concentration, so the vertical axis is a logarithmic
+transform of the quantity that chemistry actually changes. A shift of
+one pH unit is a tenfold change in concentration, and the entire
+working range of aqueous chemistry, fourteen orders of magnitude in
+$[\mathrm{H}^{+}]$, compresses onto the fourteen-unit pH scale exactly
+as the decibel compressed the dynamic range of a signal.
+
+\Cref{fig:vol02:ch02:titration-curve} plots pH against the volume of
+base added for a weak acid titrated by a strong base, and the curve has
+three regions the engineer reads by shape. The flat \engterm{buffer
+region} at the start is where added base is absorbed with little change
+in pH, because the acid and its conjugate base together resist the
+change; the pH there equals the acid's $\mathrm{p}K_a$ at the
+half-equivalence point, the volume at which half the acid has been
+neutralised, which is how a titration measures a $\mathrm{p}K_a$
+directly off the curve. The steep jump at the \engterm{equivalence
+point} is where the last of the acid is consumed and a small further
+addition swings the pH by several units; it is the point of maximum
+slope, the high-gain region of the input-output map. The second flat
+region past the equivalence point is where excess strong base sets the
+pH on its own.
+
+Each region is an engineering statement. A chemical engineer designing
+a buffer for a process reads the target pH off the flat region and the
+buffer's capacity off its width, since a wider flat region absorbs more
+acid or base before the pH breaks. A control engineer running an
+automated titration reads the steep region as the zone where the
+measurement is most sensitive and the control loop hardest to keep
+stable, because the same high slope that makes the endpoint easy to
+detect also makes the pH swing wildly for a small overshoot in
+reagent addition, the reason automated titrators slow their dosing
+near the equivalence point. The sigmoidal shape is the same one the
+logistic fit drew for a saturating population and the logit transform
+straightened for an ion-channel activation curve; a titration is
+another system whose input-output curve is an S, and the reading
+disciplines of this chapter carry across unchanged. The logarithmic
+axis is doing quiet work throughout: without it the buffer region and
+the equivalence jump would sit at concentrations differing by orders
+of magnitude and no single linear plot could show both.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-titration-curve.tex}
+
 \begin{mastery}
 The elementary families of this chapter do not exhaust the functions
 an engineer meets, and the working vocabulary extends to a short list
@@ -1175,6 +1483,34 @@ x$ (good to $1\,\%$ for $x \lesssim 10^{\circ}$, treated in Volume II
 Chapter 4), and in surveying where elevation differences come from
 horizontal distance times $\tan$ of the angle of inclination.
 
+The three functions carry small-argument behaviours the engineer uses
+constantly to linearise a problem near a reference point. For small
+$x$ in radians, $\sin x \approx x$, $\tan x \approx x$, and
+$\cos x \approx 1 - x^2/2$, the leading terms of the Taylor series
+Chapter 4 develops. The approximations are not vague; each carries a
+known error. The next term in $\sin x$ is $-x^3/6$, so the fractional
+error in $\sin x \approx x$ is about $x^2/6$, which the reader can turn
+into a working tolerance rather than a rule of thumb.
+
+\paragraph{Worked example: how small is a small angle.}
+An engineer wants the largest angle at which $\sin\theta \approx
+\theta$ holds to one percent. The fractional error of the
+approximation is approximately $\theta^2/6$, so the tolerance
+$\theta^2/6 \leq 0.01$ gives $\theta \leq \sqrt{0.06} \approx
+0.245\,\si{\radian}$, about $14^{\circ}$. At $10^{\circ} =
+0.1745\,\si{\radian}$ the error is $0.1745^2/6 \approx 0.0051$, half a
+percent, which is where the chapter's earlier claim that
+$\tan x \approx x$ is good to one percent below $10^{\circ}$ comes from.
+The lesson is that ``small angle'' is a quantitative statement with a
+bound attached, not a qualitative licence: a pendulum swung to
+$30^{\circ}$ carries a $\sin\theta \approx \theta$ error near four
+percent, enough to shift its period visibly, which is why the
+simple-pendulum period formula is quoted with the small-amplitude
+caveat that Volume II Chapter 7 makes exact through the elliptic
+integral. Carrying the error bound alongside the approximation is the
+same validity-domain discipline the chapter opened with, applied to a
+truncated series rather than a fitted formula.
+
 \subsection{Phase, frequency, and wavelength}
 
 The general sinusoid is
@@ -1257,6 +1593,48 @@ interference that Volume IV develops for waves. The amplitude never
 exceeds $|3| + |4| = 7\,\si{\pascal}$ (full constructive) nor falls
 below $|4| - |3| = 1\,\si{\pascal}$ for these magnitudes; the actual
 $5\,\si{\pascal}$ sits between, set by the phase relationship.
+
+\subsection{Combining sinusoids of different frequency: beats}
+
+Two sinusoids of the \emph{same} frequency add to one sinusoid of that
+frequency. Two sinusoids of \emph{different} frequency do not; their
+sum is no longer a single sinusoid, and the way it fails to be one is
+the phenomenon of beats. The product-to-sum identity runs the algebra:
+\[
+  \cos(2\pi f_1 t) + \cos(2\pi f_2 t)
+  = 2 \cos\!\Bigl(2\pi \tfrac{f_2 - f_1}{2} t\Bigr)
+      \cos\!\Bigl(2\pi \tfrac{f_1 + f_2}{2} t\Bigr).
+\]
+The right side reads as a fast oscillation at the mean frequency
+$(f_1 + f_2)/2$ multiplied by a slow one at half the difference
+frequency $(f_2 - f_1)/2$. When the two frequencies are close the mean
+is near either one and the difference is small, so a listener hears a
+tone at roughly the common pitch whose loudness swells and fades. The
+loudness follows the magnitude of the slow factor, which completes a
+full cycle of rise and fall twice per period of the half-difference
+term, so the audible beat frequency is the full difference $f_2 - f_1$,
+not half of it.
+
+\paragraph{Worked example: a piano tuner counting beats.}
+A tuner sounds a reference fork at $440\,\si{\hertz}$ against a piano
+string and hears the combined tone swell and fade three times per
+second. The beat frequency is the difference $|f_2 - f_1| = 3\,\si
+{\hertz}$, so the string is at either $443\,\si{\hertz}$ or
+$437\,\si{\hertz}$; the beat count alone does not resolve the sign,
+exactly as $\mathrm{atan2}$ was needed to resolve a quadrant earlier.
+The tuner resolves the sign by tightening the string slightly: if the
+beats speed up the string was already sharp (above the fork) and moved
+further away, if they slow the string was flat and is approaching.
+Tuning to zero beats drives $f_2 - f_1 \to 0$, at which point the sum
+collapses back to the single-frequency case of the previous subsection.
+\Cref{fig:vol02:ch02:beat-envelope} draws the pattern for two nearby
+frequencies, the fast carrier inside its slow envelope. The same
+beating governs the interference of two lasers in a heterodyne
+detector, the roughness of two mistuned engine cylinders, and the
+moir\'e pattern of two overlaid gratings; each is two nearby
+frequencies read through the product identity.
+
+\input{volumes/02-form/ch02-functions-and-graphs/figures/fig-beat-envelope.tex}
 
 \section{Inverse functions}\pathtag{standard}
 
@@ -1396,6 +1774,27 @@ interest); the means of computing it (formula or numerical solve) is
 a separate, practical question.
 \end{mastery}
 
+\paragraph{Worked example: inverting a function by Newton iteration.}
+When a function has no closed-form inverse, the engineer recovers the
+input from an output by solving $f(x) - y = 0$ numerically, and
+Newton's method is the fast standard tool where the derivative is
+available. To invert $y = x + \sin x$ at $y = 1$, define $g(x) =
+x + \sin x - 1$ and iterate $x_{k+1} = x_k - g(x_k)/g'(x_k)$ with
+$g'(x) = 1 + \cos x$. Starting from $x_0 = 0.5$: $g(0.5) = 0.5 +
+0.479 - 1 = -0.021$, $g'(0.5) = 1 + 0.878 = 1.878$, so $x_1 = 0.5 -
+(-0.021)/1.878 = 0.511$. The next step gives $g(0.511) \approx
+-0.0002$ and $x_2 \approx 0.5110$, already correct to four decimals.
+Newton's method roughly doubles the number of correct digits per step
+near the root, which is why two or three iterations suffice once the
+start is close. The precondition is the one the boxes named:
+$f(x) = x + \sin x$ has derivative $1 + \cos x \geq 0$, vanishing only
+at isolated points, so it is monotone increasing and its inverse is
+single-valued, which is what lets a single Newton sequence converge to
+the one right answer rather than wandering between branches. A function
+whose derivative changed sign would need the iteration confined to a
+monotone segment, the same restriction that gave the square root and
+the arcsine their principal branches.
+
 \begin{mastery}
 Monotonicity and convexity are the two structural properties an
 engineer most often needs a function to have, because each carries a
@@ -1444,7 +1843,13 @@ will recover.
 
 We name the discipline. Before reading the curve, the engineer reads
 the frame: the axes, the units, the scale, the origin, the legend,
-and the source. Only then does the engineer read the data.
+and the source. Only then does the engineer read the data. The
+discipline of choosing axes and transforms that let the data show its
+own structure, rather than axes that flatter a conclusion, is the
+subject Cleveland treats as the craft of visualising data
+\cite{v2c02-text:cleveland1993}, and the reading discipline here is its
+mirror image: the same choices the honest maker of a plot weighs are
+the ones the careful reader reverse-engineers.
 
 \subsection{Axes: linear, log, or something else}
 
@@ -1515,6 +1920,36 @@ engineer's calibration needs to be best, and where extrapolation is
 most dangerous. The engineer who reads slope before fitting a curve
 recognises the working regions before applying the formula.
 
+Slope carries units, and the units are the first check on whether a
+slope has been read correctly. On a plot of distance in metres against
+time in seconds the slope is a velocity in metres per second; on a plot
+of voltage against temperature the slope is a sensitivity in volts per
+kelvin, the very number a sensor datasheet quotes. A slope read off a
+plot and reported without its units is as incomplete as a bare number
+without a unit anywhere else in engineering, and a slope whose units do
+not match the quantity it is supposed to represent is a signal that an
+axis was misread. On transformed axes the slope's meaning transforms
+with them, a fact the chapter has used repeatedly and states here as a
+rule: the slope on linear-linear axes is a rate in the ratio of the
+axis units, the slope on semilog axes is a rate constant scaled by
+$\log_{10} e$, and the slope on log-log axes is a dimensionless
+exponent. Reading a semilog slope as if it were a linear rate, or a
+log-log slope as if it carried units, is the same category error as
+mixing units at an interface, and it produces answers wrong by the
+conversion factor between the two readings.
+
+A second reading the slope supports is sensitivity analysis: the slope
+at an operating point is the factor by which an error in the input
+propagates to an error in the output. A steep local slope amplifies
+input noise, so a measurement taken where the characteristic is steep
+carries more output uncertainty per unit of input uncertainty than one
+taken on a flat stretch, which is why an instrument is designed to
+operate where its characteristic has the slope that best trades
+sensitivity against noise. The surveyor's tower-height example earlier
+in the chapter was exactly this calculation: the derivative
+$\dd h/\dd\theta$ was the slope that turned an angle error into a height
+error, and reading it off the geometry set the precision of the result.
+
 \subsection{Asymptotes and limits at infinity}
 
 An \engterm{asymptote} is a line that the curve approaches without
@@ -1534,6 +1969,30 @@ where: a $\sinh(x)/x \to 1$ as $x \to 0$ result lets the engineer
 replace the function with $1$ near zero with controlled error, and a
 function that approaches an asymptote slowly may be replaced by the
 asymptote at the cost of the rate of approach.
+
+The rate at which a curve approaches an asymptote is itself
+engineering information, because it sets how far into the tail the
+approximation by the asymptote stays honest. A horizontal asymptote
+approached exponentially, as in a first-order thermal or electrical
+transient, is within a fixed fraction of its final value after a fixed
+number of time constants, so the engineer can name a settling time: the
+$99\,\%$ point at about five time constants, the $99.9\,\%$ point at
+about seven. A horizontal asymptote approached as a power law, as in a
+$1/r^2$ field far from its source, has no such clean settling number
+because the approach never becomes exponentially fast; the tail must be
+carried explicitly rather than truncated at a fixed multiple of a
+scale. Distinguishing the two approaches is the difference between a
+transient the engineer can declare finished and a tail that must be
+integrated to infinity, and reading which one a curve shows is the same
+move as reading whether the data is exponential or a power law, made at
+the far end of the range rather than the near one. A vertical asymptote
+carries a matched reading: the sign of the function on each side of the
+pole, positive-to-positive for an even-order pole and
+positive-to-negative for an odd-order one, is the local behaviour that
+tells the engineer whether the modelled quantity diverges the same way
+from both sides, as a squared resonance denominator does, or flips
+sign across the singularity, as a simple pole in a transfer function
+does.
 
 \subsection{Scale, origin, and what the eye is being asked to compress}
 

@@ -159,6 +159,41 @@ as the right answer in Volume I now sees that ``right'' depends on
 the loss: $n-1$ minimises bias, $n+1$ minimises mean squared error,
 and $n$ is the maximum-likelihood compromise.
 
+Figure \ref{fig:vol02:ch14:mse-tradeoff-uniform} draws the three
+uniform-endpoint estimators together, in units of $\theta^{2}$ against
+sample size, and the picture carries the lesson that the two worked
+examples argued in symbols: the biased estimators sit below the
+unbiased one at every sample size, and the gap widens because their
+error falls as $1/n^{2}$ against the moment estimator's $1/n$.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-mse-tradeoff-uniform.tex}
+
+\paragraph{Worked example: a gauge study's variance components.} The
+bias-variance decomposition also governs how an engineer reads a
+measurement-system study, where the observed variance of a set of
+gauged parts splits into the true part-to-part variance and the gauge's
+own measurement variance, $\sigma_{\mathrm{obs}}^{2} =
+\sigma_{\mathrm{part}}^{2} + \sigma_{\mathrm{gauge}}^{2}$. A study
+measures ten parts twice each and returns an observed variance of
+$\hat{\sigma}_{\mathrm{obs}}^{2} = 4.00$ working units and a
+repeatability variance, estimated from the paired remeasurements, of
+$\hat{\sigma}_{\mathrm{gauge}}^{2} = 0.36$. The part variance is
+recovered by subtraction, $\hat{\sigma}_{\mathrm{part}}^{2} = 4.00 -
+0.36 = 3.64$, and the \engterm{gauge capability ratio} is
+$\hat{\sigma}_{\mathrm{gauge}}/\hat{\sigma}_{\mathrm{obs}} =
+0.60/2.00 = 0.30$, so the gauge contributes thirty percent of the
+observed spread, above the ten-percent working target that a capable
+gauge should meet. The subtraction is the operational reason the
+engineer never reports the gauge variance as if it were the process
+variance: the two are additive, and a study that ignores the gauge
+component reports a process more variable than it is. The estimator
+$\hat{\sigma}_{\mathrm{part}}^{2}$ is a difference of two variance
+estimates, so its own variance is the sum of their variances, and a
+small part variance recovered as a difference of two large ones is a
+poorly determined number, which is why a gauge study sizes its
+replication to keep $\hat{\sigma}_{\mathrm{gauge}}^{2}$ small relative
+to $\hat{\sigma}_{\mathrm{part}}^{2}$ before the subtraction is trusted.
+
 \subsection{Method of moments}
 
 The \engterm{method of moments} is the oldest systematic estimator
@@ -248,6 +283,24 @@ recovers the maximum-likelihood (uncorrected) variance estimate.
 The plug-in approach is the engineer's first line of attack on any
 functional that does not have a tabled estimator.
 
+\paragraph{Worked example: a plug-in skewness estimate.} The skewness
+$\gamma = \E[(X - \mu)^{3}]/\sigma^{3}$ has no textbook standard-error
+formula, so the plug-in estimator is the natural first reach:
+substitute the empirical distribution and read off
+$\hat{\gamma} = \frac{1}{n}\sum_{i}(x_{i} - \bar{x})^{3} /
+\bigl(\frac{1}{n}\sum_{i}(x_{i} - \bar{x})^{2}\bigr)^{3/2}$. Six
+measured values $\set{2, 3, 3, 4, 5, 13}$ have $\bar{x} = 5$; the
+centred moments are $\frac{1}{6}\sum(x_{i}-5)^{2} = (9 + 4 + 4 + 1 + 0
++ 64)/6 = 13.67$ and $\frac{1}{6}\sum(x_{i}-5)^{3} = (-27 - 8 - 8 - 1
++ 0 + 512)/6 = 76.67$, so $\hat{\gamma} = 76.67/13.67^{3/2} =
+76.67/50.53 = 1.52$, a strong right skew driven by the single value at
+$13$. The plug-in estimate is biased for small $n$ (the sample third
+moment underestimates the population third moment much as the plug-in
+variance underestimates $\sigma^{2}$), and it carries no closed-form
+standard error, which makes it the natural first client of the
+bootstrap the next subsection introduces: resampling supplies the
+standard error the plug-in functional does not.
+
 \subsection{Confidence intervals: definition and construction}
 
 A \engterm{$1-\alpha$ confidence interval} for $\theta$ is a pair of
@@ -306,6 +359,33 @@ by $n = 120$ it is under $1\,\%$. The working rule the chapter
 endorses is to use $t$ always; the cost is negligible at large $n$
 and material at small $n$.
 
+\paragraph{Worked example: Wald against Wilson for a proportion near
+the boundary.} The confidence interval for a binomial proportion is
+where the pivot construction most often misleads, because the standard
+Wald interval $\hat{p} \pm z\sqrt{\hat{p}(1-\hat{p})/n}$ uses a
+standard error that collapses to zero as $\hat{p}$ approaches zero or
+one. A reliability test observes $s = 1$ failure in $n = 20$ trials,
+so $\hat{p} = 0.05$. The Wald $95\,\%$ interval is $0.05 \pm 1.96
+\sqrt{0.05 \cdot 0.95/20} = 0.05 \pm 1.96 \cdot 0.0487 = [-0.045,
+0.145]$, whose lower endpoint is a negative probability, an interval
+the parameter space forbids. The \engterm{Wilson interval} inverts the
+score test instead of the Wald test and stays inside $[0, 1]$ by
+construction; its endpoints are
+\[
+\frac{\hat{p} + \frac{z^{2}}{2n} \pm z\sqrt{\frac{\hat{p}(1-\hat{p})}{n}
++ \frac{z^{2}}{4n^{2}}}}{1 + \frac{z^{2}}{n}},
+\]
+which for these numbers evaluate to
+$\frac{0.05 + 0.096 \pm 1.96\sqrt{0.002375 + 0.0024}}{1.192} =
+\frac{0.146 \pm 1.96 \cdot 0.0690}{1.192} = \frac{0.146 \pm 0.135}
+{1.192}$, giving $[0.009, 0.236]$, an interval that is inside the
+parameter space and asymmetric about $\hat{p}$, wider on the high side
+where the evidence is thinner. The Wilson interval's coverage stays
+near the nominal $95\,\%$ where the Wald interval's coverage collapses
+toward $0.80$ for small $s$, which is the reason the working rule for a
+proportion near a boundary is to reach for Wilson or the closely
+related Agresti-Coull adjustment, never the bare Wald interval.
+
 \subsection{The bootstrap}
 
 When the estimator has no closed-form standard error and no
@@ -354,6 +434,33 @@ point estimate. The script at
 \repopath{volumes/02-form/ch14-statistical-inference/code/bootstrap\_demo.py}
 runs the computation and is the reference implementation for the
 project.
+
+\paragraph{Worked example: a bootstrap interval for a correlation.}
+The Pearson correlation is the second natural client of the bootstrap,
+because its sampling distribution is skewed and bounded in $[-1, 1]$,
+so a symmetric $\hat{r} \pm z\,\widehat{\mathrm{se}}$ interval can spill
+past one. Eight paired measurements of a coating thickness and its
+adhesion strength give a sample correlation $\hat{r} = 0.82$. The
+classical route uses \engterm{Fisher's $z$-transform}, $z =
+\operatorname{artanh}(r) = \frac{1}{2}\ln\frac{1+r}{1-r}$, which is
+approximately Gaussian with standard error $1/\sqrt{n-3}$: here $z =
+\operatorname{artanh}(0.82) = 1.157$, standard error $1/\sqrt{5} =
+0.447$, interval $1.157 \pm 1.96 \cdot 0.447 = [0.281, 2.033]$ on the
+$z$ scale, back-transformed by $r = \tanh(z)$ to $[0.274, 0.966]$.
+The bootstrap reaches the same interval without the transform: resample
+the eight pairs with replacement, recompute $\hat{r}$ on each of $B =
+2000$ resamples, and read the $2.5$th and $97.5$th percentiles, which
+for data this correlated land near $[0.30, 0.96]$, close to the
+Fisher interval and asymmetric about $0.82$ in the same direction. The
+agreement is the reassurance that the small-sample interval is
+trustworthy; a disagreement would have told the engineer that eight
+pairs are too few for either approximation and that the correlation
+should be reported as a point estimate with an explicit small-sample
+caveat rather than a precise interval. The bootstrap of a correlation
+also exposes a resampling subtlety the median example did not: the
+pairs must be resampled together, as units, because resampling the two
+columns independently would destroy the very association the statistic
+measures.
 
 \subsection{Confidence versus prediction}
 
@@ -584,6 +691,46 @@ chi-square statistic is the generalised likelihood-ratio statistic's
 quadratic approximation, which is why the two agree to leading order
 on large tables.
 
+\paragraph{Worked example: an independence test on a $2\times3$ table.}
+A quality engineer asks whether the defect type on a rejected part is
+associated with the shift that produced it. The counts across three
+defect types and two shifts are
+
+\begin{center}
+\small
+\begin{tabular}{lcccc}
+\toprule
+        & crack & void & inclusion & row total \\
+\midrule
+day shift   & $30$ & $20$ & $10$ & $60$ \\
+night shift & $18$ & $22$ & $20$ & $60$ \\
+\midrule
+column total & $48$ & $42$ & $30$ & $120$ \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+Under the null of independence the expected count in each cell is the
+row total times the column total over the grand total, $E_{ij} =
+R_{i}C_{j}/n$. With equal row totals of $60$ each, the expected counts
+are the column totals halved: $E_{\cdot,\text{crack}} = 24$,
+$E_{\cdot,\text{void}} = 21$, $E_{\cdot,\text{inclusion}} = 15$ in both
+rows. The Pearson statistic sums $(O - E)^{2}/E$ over the six cells:
+day shift contributes $(30-24)^{2}/24 + (20-21)^{2}/21 +
+(10-15)^{2}/15 = 1.500 + 0.048 + 1.667 = 3.215$, and night shift
+contributes the same magnitudes by the symmetry of the equal row
+totals, $(18-24)^{2}/24 + (22-21)^{2}/21 + (20-15)^{2}/15 = 1.500 +
+0.048 + 1.667 = 3.215$, for a total $\chi^{2} = 6.43$ on $(r-1)(c-1) =
+1 \cdot 2 = 2$ degrees of freedom. Against $\chi^{2}_{0.95,2} = 5.99$
+the test rejects at $\alpha = 0.05$ with $p \approx 0.040$: defect type
+and shift are associated, and the table shows the direction, night
+shift running heavier on inclusions and lighter on cracks. The engineer
+reports the association together with the largest cell contributions,
+because the two inclusion cells and the two crack cells carry almost
+all of the statistic and point the follow-up investigation at the
+night-shift inclusion mechanism rather than at voids, whose
+contribution is negligible.
+
 \paragraph{One-way analysis of variance.} When the engineer
 compares $g$ group means, running $\binom{g}{2}$ pairwise
 $t$-tests inflates the family-wise error rate, the very failure
@@ -765,6 +912,70 @@ $\alpha$-versus-power trade explicit and quantitative. A
 safety-critical decision is not ``smaller $\alpha$'' by reflex; it
 is the test whose threshold reflects the actual cost ratio.
 
+\subsection{Applied vignette: statistical process control as a live test}
+
+The decision-theoretic framing becomes a running procedure the moment
+the engineer stops testing a single sample and starts testing every
+sample as it arrives. A fill line dispenses a nominal $100\,\si{\gram}$
+of product into each container, and the operator wants to know, in real
+time, whether the process mean has drifted off target. The tool is the
+\engterm{Shewhart control chart}, and reading it as a sequence of
+hypothesis tests is what connects it to this section.
+
+The process is sampled in \engterm{rational subgroups}: every fifteen
+minutes the operator weighs $n = 5$ consecutive containers and records
+the subgroup mean $\bar{x}$. Under the in-control null, the individual
+fills are $\mathcal{N}(100, \sigma^{2})$ with a process standard
+deviation established from a capability study as $\sigma = 4.47\,
+\si{\gram}$, so the subgroup mean has standard error
+$\sigma/\sqrt{n} = 4.47/\sqrt{5} = 2.00\,\si{\gram}$. The
+\engterm{control limits} sit at three standard errors either side of
+the target, $100 \pm 3 \cdot 2.00 = [94, 106]\,\si{\gram}$. Each
+plotted subgroup mean is then a two-sided test of $H_{0}: \mu = 100$
+at a per-point significance level of $\Pr[\abs{Z} > 3] = 0.0027$, the
+false-alarm rate the three-sigma convention encodes. The choice of
+three sigma rather than two is a decision-theoretic one: a fill line
+that stops on every alarm pays for a tighter limit in downtime, so the
+limit is set where the cost of a false stop and the cost of a missed
+shift balance, and three sigma is the working compromise the process
+literature settled on \cite[ch.~4]{text:box-hunter-hunter-2005}.
+
+Figure \ref{fig:vol02:ch14:control-chart} plots twenty subgroup means.
+The first nine sit inside the limits, consistent with the null. The
+tenth pierces the upper limit at $105.8\,\si{\gram}$, a single-point
+out-of-control signal that triggers an immediate investigation: at a
+per-point false-alarm rate of $0.0027$, a point outside the limits is
+far more plausibly a real shift than a chance excursion, and the
+operator acts on it. The subtler signal is the run of eight rising
+points from subgroup thirteen onward, none of which leaves the band.
+No single point rejects its null, yet the probability that eight
+consecutive independent points all fall above the centre line under the
+in-control null is $(1/2)^{8} = 0.0039$, comparable to the single-point
+alarm rate, so the \engterm{run rules} that supplement the three-sigma
+limit flag the drift before any point escapes. The chart catches a slow
+mean shift that a sequence of independent single-point tests, each
+looking only at its own subgroup, would miss.
+
+The economic reading closes the vignette. The \engterm{average run
+length} is the expected number of subgroups until an alarm. In control,
+it is $1/0.0027 \approx 370$ subgroups between false alarms, roughly
+one false stop per four days at fifteen-minute sampling, a rate the
+line can absorb. When the mean shifts by one standard error, to
+$102\,\si{\gram}$, the probability a subgroup mean exceeds the upper
+limit rises to $\Pr[Z > (106 - 102)/2] = \Pr[Z > 2] = 0.023$, giving
+an out-of-control average run length near $1/0.023 \approx 44$
+subgroups, about eleven hours to detect a one-sigma shift. An engineer
+who needs faster detection of small shifts reaches for the cumulative
+sum or exponentially weighted moving average charts, which pool
+information across subgroups and detect a one-sigma shift in a handful
+of points rather than dozens, at the cost of a delayed response to a
+large sudden shift. The choice among the charts is the same
+decision-theoretic trade this section opened with: the cost of a false
+alarm against the cost of a slow one, made explicit and quantified
+rather than defaulted.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-control-chart.tex}
+
 \section{Likelihood and maximum likelihood}\pathtag{core}
 
 Given data $X_{1}, \ldots, X_{n}$ with joint density $p(x_{1},
@@ -849,6 +1060,20 @@ order. The Fisher information matrix is
 $I_{1}(\mu, \sigma^{2}) = \operatorname{diag}(1/\sigma^{2},
 1/(2\sigma^{4}))$, so the asymptotic variances are $\sigma^{2}/n$
 for $\hat{\mu}$ and $2\sigma^{4}/n$ for $\hat{\sigma}^{2}$.
+
+Figure \ref{fig:vol02:ch14:likelihood-surface} draws the log-likelihood
+as a contour map over the two parameters, and the geometry reads the
+algebra back. The vertical ridge at $\mu = \bar{x}$ is the statement
+that the mean estimate does not move with the variance; the level sets
+stretch further along the $\sigma$ axis than the $\mu$ axis, the
+picture of a variance estimate whose sampling distribution is skewed at
+small $n$; and the single interior peak is the joint MLE the score
+equations located. An engineer who has met numerical optimisation
+reads the same figure as a well-conditioned maximisation, concave near
+the top with no competing local maxima, which is why the Gaussian MLE
+is found in one step by any reasonable solver.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-likelihood-surface.tex}
 
 \paragraph{Worked example: an exponential lifetime MLE with its
 standard error.} A reliability test records ten times-to-failure
@@ -1219,7 +1444,13 @@ true defect rate exceeds a $5\,\%$ action threshold is
 $\Pr[p > 0.05 \mid \text{data}]$ under $\mathrm{Beta}(9, 189)$,
 which numerical integration places near $0.37$; the engineer who
 has set a halt rule at posterior probability $0.5$ does not halt,
-but the rising trend across batches is the signal to watch.
+but the rising trend across batches is the signal to watch. Figure
+\ref{fig:vol02:ch14:beta-posterior-update} draws the prior and the two
+sequential posteriors on one axis, and the visual signal the engineer
+watches is the posterior mode marching rightward toward the action
+threshold as each batch's evidence sharpens and shifts the density.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-beta-posterior-update.tex}
 
 \paragraph{Worked example: a Gaussian mean with an informative
 prior.} A thermocouple's bias is believed, from the calibration
@@ -1669,6 +1900,71 @@ weights are the variances of the Bernoulli outcomes at the current
 fit, and the iteration converges because the log-likelihood is
 concave in $\vect{\beta}$.
 
+\subsection{Applied vignette: a defect classifier and the threshold decision}
+
+A fitted logistic model returns a probability, and a probability is not
+yet a decision. This vignette carries a weld-inspection classifier from
+a fitted model to a deployed decision rule, and it shows that the model
+and the operating threshold are separate choices governed by separate
+evidence, the point the receiver operating characteristic exists to make.
+
+An automated inspection station photographs each weld and a logistic
+model returns $\hat{p}_{i}$, the fitted probability that weld $i$ is
+defective, from a handful of image features. The plant has $n = 400$
+welds with known ground-truth labels, of which $60$ are genuinely
+defective, a defect prevalence of $15\,\%$. The engineer must convert
+each $\hat{p}_{i}$ into a keep-or-reject action by fixing a threshold
+$t$: reject the weld when $\hat{p}_{i} > t$. Every threshold produces a
+$2\times2$ table of outcomes. At the textbook default $t = 0.5$ the
+model flags $48$ welds, of which $42$ are truly defective (true
+positives) and $6$ are sound welds wrongly rejected (false positives),
+while $18$ defective welds slip through (false negatives). The
+\engterm{sensitivity}, the fraction of defects caught, is $42/60 =
+0.70$; the \engterm{specificity}, the fraction of sound welds correctly
+passed, is $334/340 = 0.982$; and the overall accuracy is $(42 +
+334)/400 = 0.94$. The $94\,\%$ accuracy looks strong until the
+prevalence is recalled: a trivial classifier that passes every weld
+scores $340/400 = 0.85$ accuracy by doing nothing, so accuracy on an
+imbalanced problem flatters a weak model. Accuracy is the wrong
+headline figure for a rare-event classifier, which is why the vignette
+does not report it alone.
+
+Sweeping the threshold from strict to permissive traces the
+\engterm{receiver operating characteristic}, the curve of sensitivity
+against the false-positive rate $1 - \text{specificity}$ that figure
+\ref{fig:vol02:ch14:roc-curve} draws. At a strict threshold near $t =
+0.8$ the station rejects only the welds it is most sure of, catching few
+defects but almost never rejecting a sound weld (high specificity, low
+sensitivity, the lower-left of the curve). At a permissive threshold
+near $t = 0.2$ it rejects liberally, catching almost every defect at the
+cost of many false rejections (high sensitivity, low specificity, the
+upper-right). The model fixes the shape of the curve; the engineer
+chooses the point on it. The \engterm{area under the curve}, near
+$0.88$ for this model, summarises the ranking quality across all
+thresholds and is prevalence-free, which is why it, not accuracy,
+compares two candidate models.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-roc-curve.tex}
+
+The threshold itself is a decision-theoretic quantity, and the cost
+structure sets it. A defective weld that escapes to the field carries a
+warranty and safety cost the plant estimates at $C_{\mathrm{FN}} =
+2000$ working units; a sound weld wrongly rejected costs a rework
+$C_{\mathrm{FP}} = 50$ units. The Bayes-optimal threshold on the fitted
+probability minimises expected cost and works out to $t^{\star} =
+C_{\mathrm{FP}}/(C_{\mathrm{FP}} + C_{\mathrm{FN}}) = 50/2050 =
+0.024$, far below the $0.5$ default: because a missed defect costs
+forty times a false rejection, the station should reject on even a
+small fitted probability of a defect. At that threshold the sensitivity
+rises toward $0.97$ and the false-positive rate rises with it, and the
+engineer accepts the extra rework as the cheaper error. The lesson is
+the vignette's point: the model produces a probability, the ROC curve
+shows every threshold the probability could take, and the cost ratio
+selects the one threshold the plant should deploy. A vendor who reports
+``$94\,\%$ accurate'' has reported neither the curve nor the threshold
+nor the cost ratio, and the number is silent on the decision the plant
+actually has to make.
+
 \subsection{Generalised linear models and Poisson regression}
 
 Linear regression and logistic regression are two instances of one
@@ -1817,6 +2113,43 @@ shrinkage and variable selection. The closed form does not exist;
 coordinate descent and proximal-gradient methods are the standard
 solvers. Volume II Chapter 15 carries the optimisation; this chapter
 recognises the result.
+
+Figure \ref{fig:vol02:ch14:shrinkage-paths} draws the two penalties'
+coefficient paths side by side as the penalty strength grows. Ridge
+pulls every coefficient smoothly toward zero along a hyperbola and
+never reaches it, so the full predictor set survives at every penalty;
+lasso drives coefficients to exactly zero one after another, so the
+model sheds predictors as the penalty rises. The contrast is the whole
+practical difference between the two: ridge stabilises an
+ill-conditioned fit while keeping every variable, and lasso selects a
+sparse subset when many candidates are believed inactive.
+
+\input{volumes/02-form/ch14-statistical-inference/figures/fig-shrinkage-paths.tex}
+
+\paragraph{Worked example: ridge on an orthogonal design, coefficient
+by coefficient.} When the predictors are standardised and orthogonal,
+so $\mat{X}^{\transpose}\mat{X} = \mat{I}_{p}$, ridge has a
+coordinate-wise closed form that makes the shrinkage transparent. The
+estimator collapses to $\hat{\beta}_{j}^{\mathrm{ridge}}(\lambda) =
+\hat{\beta}_{j}^{\mathrm{OLS}}/(1 + \lambda)$, every coefficient
+divided by the same factor. With OLS coefficients $\hat{\vect{\beta}}^{
+\mathrm{OLS}} = (2.4, 1.5, 0.8, -1.0)^{\transpose}$ and $\lambda = 1$,
+each coefficient halves to $(1.2, 0.75, 0.4, -0.5)^{\transpose}$; at
+$\lambda = 4$ each shrinks to a fifth, $(0.48, 0.30, 0.16,
+-0.20)^{\transpose}$. The lasso on the same orthogonal design applies
+\engterm{soft thresholding} instead, $\hat{\beta}_{j}^{\mathrm{lasso}}
+= \operatorname{sgn}(\hat{\beta}_{j}^{\mathrm{OLS}})\max(0,\,
+\abs{\hat{\beta}_{j}^{\mathrm{OLS}}} - \lambda/2)$, subtracting a fixed
+amount from each coefficient's magnitude and clipping at zero. At
+$\lambda/2 = 0.9$ the lasso estimates are $(1.5, 0.6, 0, -0.1)^{
+\transpose}$: the third coefficient, whose OLS value $0.8$ fell below
+the threshold, is set exactly to zero while the others are pulled in by
+the same $0.9$. The two rules expose the geometric difference the
+figure draws. Ridge scales, so a coefficient never reaches zero and
+the relative ordering of the coefficients is preserved; lasso
+translates, so small coefficients vanish and the surviving ones are
+biased toward zero by a constant, which is the selection-versus-scaling
+distinction the engineer trades on when choosing between them.
 
 The choice of $\lambda$ for either estimator is the central
 modelling decision, and cross-validation is the standard discipline

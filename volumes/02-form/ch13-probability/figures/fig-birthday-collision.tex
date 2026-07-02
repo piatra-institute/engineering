@@ -1,0 +1,83 @@
+% Birthday-collision probability against group size, with the
+% square-root threshold that governs hash collisions. Two panels:
+% the classic birthday curve, and the general sqrt(slots) rule.
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[font=\small]
+
+% ---- Left panel: birthday probability vs number of people ----
+\begin{axis}[
+  name=birthday,
+  width=7.2cm, height=5.6cm,
+  xlabel={number of people $k$},
+  ylabel={$\Pr(\text{some shared birthday})$},
+  xmin=0, xmax=70, ymin=0, ymax=1.05,
+  xtick={0,10,20,30,40,50,60,70},
+  ytick={0,0.25,0.5,0.75,1.0},
+  grid=both, grid style={enggray!25},
+  tick label style={font=\scriptsize},
+  label style={font=\scriptsize},
+  title style={font=\small\bfseries},
+  title={Birthday coincidence},
+]
+  % P(collision) = 1 - prod_{j=0}^{k-1} (365-j)/365, sampled points
+  \addplot[thick, engblue, mark=none, smooth] coordinates {
+    (0,0) (5,0.0271) (10,0.1169) (15,0.2529) (20,0.4114)
+    (23,0.5073) (25,0.5687) (30,0.7063) (35,0.8144) (40,0.8912)
+    (45,0.9410) (50,0.9704) (55,0.9863) (60,0.9941) (70,0.9992)
+  };
+  % marker at k = 23, the just-over-one-half point
+  \addplot[only marks, mark=*, engred, mark size=2pt] coordinates {(23,0.5073)};
+  \draw[dashed, engred] (axis cs:23,0) -- (axis cs:23,0.5073);
+  \draw[dashed, engred] (axis cs:0,0.5073) -- (axis cs:23,0.5073);
+  \node[anchor=west, font=\scriptsize, engred] at (axis cs:25,0.34)
+    {$k=23$: just over $\tfrac12$};
+\end{axis}
+
+% ---- Right panel: threshold scales as sqrt(number of slots) ----
+\begin{axis}[
+  at={(birthday.right of south east)}, anchor=left of south west,
+  xshift=1.1cm,
+  width=7.2cm, height=5.6cm,
+  xlabel={$\log_{2}(\text{number of slots }N)$},
+  ylabel={$\log_{2}(\text{items at }50\%)$},
+  xmin=0, xmax=128, ymin=0, ymax=68,
+  xtick={0,32,64,96,128},
+  ytick={0,16,32,48,64},
+  grid=both, grid style={enggray!25},
+  tick label style={font=\scriptsize},
+  label style={font=\scriptsize},
+  title style={font=\small\bfseries},
+  title={Collision threshold},
+]
+  % half-collision at ~ 1.18 sqrt(N); on a log2 axis the item-count
+  % exponent is ~ (1/2) log2(N) + const. Draw y = 0.5 x + 0.24.
+  \addplot[thick, engblue, domain=0:128, samples=2] {0.5*x + 0.24};
+  \node[anchor=north west, font=\scriptsize, engblue] at (axis cs:34,24)
+    {slope $\tfrac12$: $\sim\sqrt{N}$};
+  % the 128-bit identifier design point
+  \addplot[only marks, mark=*, engred, mark size=2pt] coordinates {(128,64.24)};
+  \node[anchor=north east, font=\scriptsize, engred] at (axis cs:126,63)
+    {$128$-bit id: $\sim 2^{64}$};
+  % naive-linear intuition (a fixed fraction) for contrast
+  \addplot[thick, engorange, dashed, domain=6:74, samples=2] {x - 6};
+  \node[anchor=south west, font=\scriptsize, engorange] at (axis cs:12,10)
+    {linear intuition};
+\end{axis}
+
+\end{tikzpicture}
+\caption[Birthday coincidence and the collision threshold]{The birthday
+arithmetic and its engineering face. Left: the probability that at least
+two of $k$ people share a birthday climbs past one half at $k = 23$, far
+sooner than the linear guess $k/365$ suggests, because the count of pairs
+grows as $\binom{k}{2}$. Right: the same square-root law governs hash and
+identifier collisions. A collision becomes likely once the number of
+issued items reaches about $\sqrt{N}$ for $N$ slots, so on a base-two log
+scale the threshold exponent is half the slot exponent (slope $\tfrac12$,
+solid). A $128$-bit identifier space reaches a $50\%$ collision
+probability near $2^{64}$ issued identifiers, not near a fixed fraction of
+$2^{128}$ (dashed orange), a gap of nineteen orders of magnitude that the
+linear intuition misses. Source: computed by the authors from the
+distinct-birthday product and the $\sqrt{N}$ collision approximation.}
+\label{fig:vol02:ch13:birthday-collision}
+\end{figure}

@@ -420,6 +420,78 @@ needs the tighter $O(u)$ bound and can pay the four operations per
 element.
 \end{example}
 
+\begin{example}
+\textbf{The quadratic formula rewritten.} The catalogue of cancellation
+patterns has a member every engineer has typed without a second thought: the
+quadratic formula. To solve $a x^{2} + b x + c = 0$ the textbook writes
+$x_{\pm} = (-b \pm \sqrt{b^{2} - 4 a c})/(2 a)$. Take $a = 1$, $b = 10^{8}$,
+$c = 1$, whose roots are $x_{+} \approx -10^{8}$ and $x_{-} \approx -10^{-8}$.
+The discriminant is $\sqrt{10^{16} - 4} \approx 10^{8} - 2 \times 10^{-8}$,
+which rounds in binary64 to $10^{8}$ because the correction $2 \times 10^{-8}$
+sits below the spacing of $10^{8}$ (which is $\approx 2^{27 - 52} \times 2^{53}
+\approx 1.5 \times 10^{-8} \cdot \ldots$, of order $10^{-8}$). The large root
+$x_{+} = (-10^{8} - 10^{8})/2 = -10^{8}$ is fine, an addition of like signs.
+The small root $x_{-} = (-10^{8} + 10^{8})/2$ subtracts two numbers that agree
+to all their stored digits and returns $0$, which has no correct digits at all
+against the true $-10^{-8}$. The problem is well conditioned; the small root
+depends smoothly on the coefficients. The algorithm is the buyer, and the
+rewrite is the same conjugate trick as the $\sqrt{x+1} - \sqrt{x}$ example.
+Multiply numerator and denominator of the small root by the conjugate to get
+$x_{-} = 2c/(-b - \sqrt{b^{2} - 4 a c})$, an addition of like-signed numbers
+in the denominator, which returns $-10^{-8}$ to full precision. The working
+rule is to compute the root that adds by the standard formula, and the other
+root from the product identity $x_{+} x_{-} = c/a$, so that each root is
+obtained by an addition rather than a cancelling subtraction.
+Figure~\ref{fig:vol02ch16:quadratic-cancellation} tracks the digit loss of the
+naive formula as the roots separate.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-quadratic-cancellation}
+
+\begin{example}
+\textbf{The area of a needle triangle.} Heron's formula computes the area of
+a triangle with sides $a \geq b \geq c$ from the semiperimeter $s = (a + b +
+c)/2$ as $A = \sqrt{s(s-a)(s-b)(s-c)}$. For a \engterm{needle} triangle, one
+that is long and thin so that $a \approx b + c$, the factor $s - a = (-a + b +
+c)/2$ subtracts nearly equal numbers and loses digits, and the loss carries
+into the area under the square root. Take $a = 100000$, $b = c = 50000.00001$,
+a valid triangle by the barest margin. The true $s - a = 10^{-5}$, but in
+binary64 the sum $b + c = 100000.00002$ and the subtraction $-a + b + c$
+returns a value corrupted in its low digits, so the computed $s - a$ carries
+only a few correct figures and the area inherits the loss. Kahan's stable
+rearrangement orders the sides $a \geq b \geq c$ and evaluates $A =
+\tfrac{1}{4}\sqrt{(a + (b + c))\,(c - (a - b))\,(c + (a - b))\,(a + (b - c))}$
+with the parenthesisation exactly as written, which arranges every subtraction
+to be between quantities that are not nearly equal and recovers the full
+precision. The diagnostic is again the section's: the triangle-area problem is
+well conditioned away from the degenerate limit, so a wrong answer indicts the
+algorithm, and the cure is the reparenthesisation, not higher precision.
+\end{example}
+
+\begin{example}
+\textbf{One-pass variance and why textbooks warn against it.} The sample
+variance of $x_{1}, \ldots, x_{n}$ is $s^{2} = \tfrac{1}{n-1}\sum(x_{i} -
+\bar{x})^{2}$, which needs the mean $\bar{x}$ before the sum, hence two passes
+over the data. The tempting one-pass identity $s^{2} = \tfrac{1}{n-1}\big(\sum
+x_{i}^{2} - (\sum x_{i})^{2}/n\big)$ accumulates $\sum x_{i}^{2}$ and $\sum
+x_{i}$ in a single sweep, and it is a numerical trap. Take three values
+$x = (10^{9}, 10^{9} + 1, 10^{9} + 2)$, whose true variance is exactly $1$.
+The one-pass form computes $\sum x_{i}^{2} \approx 3 \times 10^{18}$ and
+$(\sum x_{i})^{2}/n \approx 3 \times 10^{18}$, two eighteen-digit numbers
+whose difference is $2$; binary64 carries about sixteen significant digits, so
+the eighteen-digit operands have already lost the units place before the
+subtraction, and the computed difference is meaningless, often negative, which
+would return an imaginary standard deviation. The two-pass form subtracts the
+mean $\bar{x} = 10^{9} + 1$ first, forming residuals $(-1, 0, 1)$ of order
+unity whose squares sum to $2$ with no cancellation, and returns the exact
+variance. Welford's online algorithm updates a running mean and a running sum
+of squared residuals in a single pass with the two-pass accuracy, and is the
+form a production statistics routine uses \cite{text:v2ch16-mccullough-vinod-1999}.
+The lesson generalises past variance: an algebraic identity that is exact on
+the page can be numerically ruinous when it forms a large intermediate whose
+cancellation destroys the small quantity of interest.
+\end{example}
+
 \subsection{Conditioning}
 
 \engterm{Conditioning} is a property of the problem, not of any
@@ -1038,6 +1110,58 @@ polynomial. The \engterm{barycentric} rewrite of the Lagrange form
 fixes the computational cost and is numerically stable; it is the
 form a production interpolation routine actually uses.
 
+\subsection{The barycentric form}
+
+The barycentric rewrite factors the shared part out of every cardinal
+polynomial. Define the node polynomial $\ell(x) = \prod_{i=0}^{n}(x - x_{i})$
+and the \engterm{barycentric weights}
+
+\[
+w_{j} = \frac{1}{\prod_{i \neq j}(x_{j} - x_{i})},
+\]
+
+each of which depends only on the nodes, not on the data. The cardinal
+polynomial is then $\ell_{j}(x) = \ell(x)\, w_{j}/(x - x_{j})$, and after the
+common $\ell(x)$ cancels between the numerator and a rewritten constant
+denominator, the interpolant takes the \engterm{second (true) barycentric
+form}
+
+\[
+p(x) = \frac{\displaystyle\sum_{j=0}^{n} \frac{w_{j}}{x - x_{j}}\, y_{j}}
+{\displaystyle\sum_{j=0}^{n} \frac{w_{j}}{x - x_{j}}},
+\qquad x \neq x_{j},
+\]
+
+with $p(x_{j}) = y_{j}$ taken as the limit at a node. Two properties earn the
+form its place in every serious interpolation library. Evaluating $p$ at a new
+point costs $O(n)$ once the weights are known, against the $O(n^{2})$ of the
+raw Lagrange sum, and adding a data point updates the weights in $O(n)$ rather
+than forcing a full recomputation, so the barycentric form has the Newton
+form's incremental advantage without its ordering sensitivity. For the
+Chebyshev nodes the weights have the closed form $w_{j} = (-1)^{j}\delta_{j}$
+with $\delta_{j} = \tfrac{1}{2}$ at the two endpoints and $\delta_{j} = 1$
+inside, so no products are formed at all and the evaluation is both fast and
+backward stable for any node distribution that does not cluster
+pathologically.
+
+\begin{example}
+\textbf{Barycentric evaluation of the three-point $\ln$ interpolant.} Return
+to the nodes $x_{0} = 1, x_{1} = 2, x_{2} = 4$ with values $y = (0, 0.6931,
+1.3863)$ from the divided-difference example below. The barycentric weights
+are $w_{0} = 1/((1-2)(1-4)) = 1/3$, $w_{1} = 1/((2-1)(2-4)) = -1/2$, and
+$w_{2} = 1/((4-1)(4-2)) = 1/6$. Evaluate at $x = 3$. The reciprocal distances
+are $1/(3-1) = 0.5$, $1/(3-2) = 1$, $1/(3-4) = -1$, so the numerator is
+$\tfrac{1}{3}(0.5)(0) + (-\tfrac{1}{2})(1)(0.6931) + \tfrac{1}{6}(-1)(1.3863)
+= -0.34655 - 0.23105 = -0.57760$ and the denominator is $\tfrac{1}{3}(0.5) +
+(-\tfrac{1}{2})(1) + \tfrac{1}{6}(-1) = 0.16667 - 0.5 - 0.16667 = -0.5$. The
+quotient is $p(3) = (-0.57760)/(-0.5) = 1.1552$, the same value the Newton and
+Lagrange forms returned to rounding, now from a computation whose cost grows
+linearly in the node count and whose only subtractions are the node
+differences fixed once at setup. The example shows the machinery a call to a
+production interpolant runs: precompute the weights, then evaluate each query
+point as one weighted-reciprocal sum over one weighted-reciprocal sum.
+\end{example}
+
 \subsection{Newton's divided differences}
 
 The \engterm{Newton divided-difference form} builds the interpolant
@@ -1399,6 +1523,92 @@ ill-conditioned least-squares problems and for compressing
 high-rank approximate matrices. Section 16.7 returns to its role
 in reproducibility.
 
+\subsection{Eigenvalues by iteration}
+
+The eigenvalue problem $\mat{A}\vect{v} = \lambda \vect{v}$ appears wherever a
+system's modes matter: the natural frequencies of a structure, the principal
+components of a dataset, the stability of a linearised dynamics. The
+production algorithm for a dense matrix is the shifted QR iteration behind
+\texttt{numpy.linalg.eig} and LAPACK's \texttt{dgeev}, whose backward
+stability the section on Householder QR already underwrites. The engineer
+should be able to compute the single most important eigenvalue by hand,
+because the method that does so, \engterm{power iteration}, is the seed of
+every large-scale eigensolver and the exact algorithm behind the original
+PageRank computation.
+
+Power iteration repeatedly applies $\mat{A}$ to a starting vector and
+renormalises: $\vect{v}_{k+1} = \mat{A}\vect{v}_{k}/\norm{\mat{A}\vect{v}_{k}}$.
+Writing $\vect{v}_{0}$ in the eigenbasis $\vect{v}_{0} = \sum_{i} c_{i}
+\vect{u}_{i}$ with eigenvalues ordered $\abs{\lambda_{1}} > \abs{\lambda_{2}}
+\geq \cdots$, the $k$-th iterate is proportional to $\sum_{i} c_{i}
+\lambda_{i}^{k}\vect{u}_{i} = \lambda_{1}^{k}\big(c_{1}\vect{u}_{1} + \sum_{i
+\geq 2} c_{i}(\lambda_{i}/\lambda_{1})^{k}\vect{u}_{i}\big)$. Every term past
+the first decays by the factor $(\lambda_{i}/\lambda_{1})^{k}$, so the iterate
+aligns with the dominant eigenvector $\vect{u}_{1}$ at the linear rate
+$\abs{\lambda_{2}/\lambda_{1}}$, and the \engterm{Rayleigh quotient}
+$\vect{v}_{k}^{\transpose}\mat{A}\vect{v}_{k}/(\vect{v}_{k}^{\transpose}
+\vect{v}_{k})$ converges to $\lambda_{1}$. The method's rate is governed by
+the eigenvalue gap, the same way a fixed-point iteration's rate is governed by
+$\abs{g'(x^{*})}$; a small gap makes it crawl.
+
+\begin{example}
+\textbf{Power iteration by hand, and the gap that sets its rate.} Take
+$\mat{A} = \begin{psmallmatrix} 2 & 1 \\ 1 & 3 \end{psmallmatrix}$, whose exact
+eigenvalues are $\tfrac{1}{2}(5 \pm \sqrt{5}) = 3.618$ and $1.382$, with ratio
+$\lambda_{2}/\lambda_{1} = 0.382$. Start from $\vect{v}_{0} = (1, 0)^{\transpose}$.
+First application: $\mat{A}\vect{v}_{0} = (2, 1)^{\transpose}$, norm
+$\sqrt{5} = 2.236$, so $\vect{v}_{1} = (0.894, 0.447)^{\transpose}$; the
+Rayleigh quotient is $\vect{v}_{0}^{\transpose}\mat{A}\vect{v}_{0} = 2$. Next:
+$\mat{A}\vect{v}_{1} = (2.236, 2.236)^{\transpose}$, normalise to $\vect{v}_{2}
+= (0.707, 0.707)^{\transpose}$; Rayleigh quotient $\vect{v}_{1}^{\transpose}
+\mat{A}\vect{v}_{1} = 2(0.894)^{2} + 2(0.894)(0.447) + 3(0.447)^{2} = 1.6 +
+0.8 + 0.6 = 3.0$. Next: $\mat{A}\vect{v}_{2} = (2.121, 2.828)^{\transpose}$,
+normalise to $(0.6, 0.8)^{\transpose}$; Rayleigh quotient $= 3.52$. The
+quotients $2.0, 3.0, 3.52, \ldots$ climb toward $3.618$, and the error falls
+by roughly the factor $(0.382)^{2} = 0.146$ per step, because the Rayleigh
+quotient of a symmetric matrix is accurate to second order in the eigenvector
+error. The direction $\vect{v}_{k}$ tends to the dominant eigenvector
+$(0.526, 0.851)^{\transpose}$. The example exposes the two working facts: the
+dominant eigenpair costs one matrix-vector product per step, and the
+convergence rate is the eigenvalue-gap ratio, so a clustered spectrum needs a
+shift (the inverse-power and shifted-QR refinements) to separate the target
+eigenvalue from its neighbours.
+\end{example}
+
+\begin{mastery}
+\textbf{Randomised numerical linear algebra.} The classical factorisations
+cost $O(mn^{2})$ and touch the whole matrix, which is prohibitive when
+$\mat{A}$ is a terabyte-scale data matrix whose useful information sits in a
+rank far below its dimensions. \engterm{Randomised numerical linear algebra}
+computes an accurate low-rank factorisation at a cost that scales with the
+target rank rather than the matrix dimension, by projecting the matrix onto a
+small random subspace. To approximate the leading rank-$k$ subspace of an
+$m \times n$ matrix $\mat{A}$, draw an $n \times (k + p)$ Gaussian random
+matrix $\mat{\Omega}$ with a small oversampling $p$, form the sample matrix
+$\mat{Y} = \mat{A}\mat{\Omega}$ (one pass over $\mat{A}$, cost $O(mnk)$),
+orthonormalise its columns by a QR to get $\mat{Q}$, and project $\mat{B} =
+\mat{Q}^{\transpose}\mat{A}$ down to a small $(k+p) \times n$ matrix whose SVD
+is cheap. The product $\mat{Q}(\mat{U}_{B}\mat{\Sigma}\mat{V}^{\transpose})$ is
+a near-optimal rank-$k$ approximation of $\mat{A}$, and the theory bounds its
+error to within a modest factor of the Eckart-Young optimum with a failure
+probability that falls exponentially in the oversampling $p$. The randomness
+is not a heuristic; it is the mechanism that guarantees, with overwhelming
+probability, that the random subspace captures the dominant directions, because
+a Gaussian vector has a component along every direction. A power-iteration
+refinement, replacing $\mat{Y} = \mat{A}\mat{\Omega}$ with $\mat{Y} =
+(\mat{A}\mat{A}^{\transpose})^{q}\mat{A}\mat{\Omega}$, sharpens the decay of
+the trailing singular values and tightens the bound when the spectrum decays
+slowly, at $q$ extra passes. The randomised SVD is the working tool behind
+large-scale principal-component analysis, spectral clustering, and model-order
+reduction, and it turns a computation that classical dense methods could not
+finish into a one-pass streaming algorithm; Volume VII develops the same
+projection idea for feature learning. The durable point for this chapter is
+that a controlled injection of randomness converts an $O(mn^{2})$ deterministic
+factorisation into an $O(mnk)$ probabilistic one whose error the engineer can
+still bound, a trade that pays whenever the matrix is large and its useful rank
+is small.
+\end{mastery}
+
 \subsection{Iterative methods (recognition level)}
 
 Direct factorisations cost $O(n^{3})$ flops and $O(n^{2})$
@@ -1668,6 +1878,83 @@ loop recovers them and the engineer must raise the residual precision or
 reformulate.
 \end{example}
 
+\subsection{Applied vignette: solving for a receiver position from pseudoranges}
+
+Satellite positioning turns the chapter's linear-algebra apparatus into a
+device three billion people carry. A receiver on the ground estimates its
+three-dimensional position $(x, y, z)$ and its own clock offset $b$ from the
+travel times of signals broadcast by satellites at known positions
+$(x_{k}, y_{k}, z_{k})$. The receiver clock is cheap and drifts, so the
+measured range to each satellite is corrupted by a common unknown offset
+$c\,b$ with $c$ the speed of light, giving the \engterm{pseudorange}
+
+\[
+\rho_{k} = \sqrt{(x - x_{k})^{2} + (y - y_{k})^{2} + (z - z_{k})^{2}} + c\,b
++ \varepsilon_{k},
+\]
+
+with $\varepsilon_{k}$ the measurement noise. Four unknowns $(x, y, z, b)$
+require at least four satellites; a real receiver uses all it can see and
+solves the overdetermined nonlinear least-squares problem for the position and
+offset that best fit the pseudoranges. The problem exercises three strands of
+the chapter at once: a nonlinear solve by Newton's method, a linear
+least-squares step inside each Newton iteration, and a conditioning diagnosis
+that the positioning field has named in its own vocabulary.
+
+\paragraph{The Gauss-Newton iteration.}
+Linearise each pseudorange about a current estimate $(x_{0}, y_{0}, z_{0},
+b_{0})$. The gradient of the geometric range with respect to the position is
+the unit vector $\hat{\vect{e}}_{k}$ pointing from the receiver to satellite
+$k$, and the gradient with respect to the clock offset is $c$, so the
+linearised residual for a position correction $\Delta\vect{p} = (\Delta x,
+\Delta y, \Delta z, c\,\Delta b)$ is $r_{k} - \hat{\vect{e}}_{k} \cdot
+(\Delta x, \Delta y, \Delta z) - c\,\Delta b$, where $r_{k}$ is the current
+pseudorange residual. Stacking the satellites gives an overdetermined linear
+system $\mat{G}\,\Delta\vect{p} = \vect{r}$, where the \engterm{geometry
+matrix} $\mat{G}$ has one row per satellite, the first three entries being the
+components of $-\hat{\vect{e}}_{k}$ and the fourth being $-1$. Each Newton (here
+Gauss-Newton) step solves this least-squares system by Householder QR, updates
+the estimate, and repeats; from a coarse initial guess the iteration reaches
+centimetre-level agreement with the pseudoranges in three or four steps,
+because the geometric range is nearly linear over the correction distances once
+the estimate is within a few kilometres.
+
+\paragraph{Conditioning is dilution of precision.}
+The accuracy of the solve is set not by the algorithm but by the geometry
+matrix's conditioning, and the positioning field gave the conditioning its own
+name before numerical analysts standardised theirs. The covariance of the
+estimated position, for pseudorange noise of standard deviation $\sigma$, is
+$\sigma^{2}(\mat{G}^{\transpose}\mat{G})^{-1}$, and the scalar
+\engterm{geometric dilution of precision} $\mathrm{GDOP} = \sqrt{\operatorname{tr}
+((\mat{G}^{\transpose}\mat{G})^{-1})}$ multiplies the measurement noise into the
+position-plus-clock error. When the visible satellites are spread across the
+sky the rows of $\mat{G}$ point in many directions, $\mat{G}^{\transpose}
+\mat{G}$ is well conditioned, and the GDOP is near its floor of about $2$; when
+the satellites cluster in one part of the sky two rows become nearly parallel,
+$\mat{G}^{\transpose}\mat{G}$ approaches singularity, and the GDOP climbs to
+tens, stretching the same metre of ranging noise into tens of metres of
+position error along the poorly-constrained direction.
+Figure~\ref{fig:vol02ch16:gps-gdop} draws the two geometries. The GDOP is the
+condition number of section 16.2 in field dress: a property of the problem
+geometry that a better solver cannot improve, and the reason a receiver reports
+a position-accuracy estimate that varies with the satellite configuration
+overhead even when the ranging hardware is unchanged.
+
+\paragraph{The numerical reading.}
+A worked instance fixes the scale. Suppose four satellites give a
+$\mat{G}^{\transpose}\mat{G}$ whose inverse has trace $9$, so $\mathrm{GDOP} =
+3$; with pseudorange noise $\sigma = 3\,\text{m}$ (a plausible single-frequency
+civilian figure), the position-plus-clock error standard deviation is $3 \times
+3 = 9\,\text{m}$. Adding a fifth well-placed satellite that lowers the GDOP to
+$2.2$ cuts the error to $6.6\,\text{m}$ with no change to the ranging hardware,
+which is why a receiver's accuracy improves as more satellites rise. The
+engineer who builds such a solver reports three things the chapter demands: the
+algorithm (Gauss-Newton with a QR least-squares step, not the normal equations,
+to avoid squaring $\kappa(\mat{G})$), the conditioning (the GDOP at the solve
+epoch), and the resulting position uncertainty (the ranging noise times the
+GDOP). The same three-part statement is the error budget of section 16.10
+applied to a system in every pocket.
+
 \section{Numerical integration revisited}\pathtag{standard}
 
 Volume II Chapter 6 introduced the trapezoidal rule and Simpson's
@@ -1780,6 +2067,69 @@ weight: Laguerre for $e^{-x}$ on $[0, \infty)$, Hermite for $e^{-x^{2}}$ on
 $\R$, Chebyshev for $(1 - x^{2})^{-1/2}$ on $[-1, 1]$.
 \end{example}
 
+\subsection{Monte Carlo integration}
+
+The deterministic rules place their nodes by a rule and pay a cost that grows
+as $m^{d}$ for $m$ nodes per axis in $d$ dimensions, the \engterm{curse of
+dimensionality} that makes a product Gauss rule useless past a handful of
+dimensions. \engterm{Monte Carlo integration} escapes the curse by sampling.
+To estimate $I = \int_{\Omega} f\, \dd V$ over a domain of volume $V$, draw $N$
+points uniformly at random in $\Omega$ and average:
+
+\[
+\hat{I}_{N} = \frac{V}{N}\sum_{i=1}^{N} f(\vect{x}_{i}).
+\]
+
+The estimator is unbiased, and its error is set by the variance of the sample
+mean: the standard error is $V\,\sigma_{f}/\sqrt{N}$, where $\sigma_{f}$ is the
+standard deviation of $f$ over $\Omega$. The convergence is slow, $O(N^{-1/2})$,
+and it does not improve with smoothness the way the deterministic rules do. Its
+one decisive property is that the $N^{-1/2}$ rate holds in \emph{every}
+dimension, because the central limit theorem that sets the rate does not know
+the dimension of the sample space. A deterministic rule loses a factor per
+dimension; Monte Carlo does not, so above roughly six dimensions Monte Carlo
+and its low-discrepancy refinements are the only feasible quadrature.
+
+\begin{example}
+\textbf{Estimating $\pi$ by darts, and reading the error.} The area of the
+unit quarter-disk is $\pi/4$, so the fraction of uniform random points in the
+unit square that fall inside the quarter-circle $x^{2} + y^{2} \leq 1$
+estimates $\pi/4$. This is Monte Carlo integration of the indicator function
+$f(x, y) = \mathbf{1}[x^{2} + y^{2} \leq 1]$ over the unit square. With $N =
+10^{4}$ points a typical run returns about $7854$ hits, giving $\hat\pi = 4
+\times 7854/10^{4} = 3.1416$, close by luck; the honest report is the error
+bar. The indicator has variance $p(1 - p)$ with $p = \pi/4 \approx 0.785$, so
+$\sigma_{f} = \sqrt{0.785 \times 0.215} = 0.411$, and the standard error of
+$\hat\pi = 4\hat{p}$ is $4\sigma_{f}/\sqrt{N} = 4(0.411)/100 = 0.0164$. The
+estimate is $\hat\pi = 3.14 \pm 0.016$ at $N = 10^{4}$, and to cut the error
+bar to $\pm 0.0016$, one more decimal digit, requires $N = 10^{6}$, a
+hundredfold more work for a tenfold accuracy gain, the signature of the
+$N^{-1/2}$ rate. The example makes the trade concrete: Monte Carlo buys
+dimension-independence at the price of a punishing convergence rate, and the
+engineer who reports a Monte Carlo result without its $\sigma/\sqrt{N}$
+standard error has reported a number without its uncertainty, the numerical
+form of the same omission the whole chapter warns against.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-monte-carlo-convergence}
+
+Figure~\ref{fig:vol02ch16:monte-carlo-convergence} ranks Monte Carlo against
+the deterministic rules in one dimension, where the deterministic rules win
+decisively, and states the property the one-dimensional plot cannot show: the
+Monte Carlo slope is dimension-independent. Two refinements sharpen the rate
+without giving up the dimension-independence. \engterm{Variance reduction}
+(importance sampling, control variates, stratification, antithetic variates)
+lowers the constant $\sigma_{f}$ by sampling where the integrand is large or by
+subtracting a correlated quantity of known integral, and can cut the sample
+count by orders of magnitude for a peaked integrand. \engterm{Quasi-Monte
+Carlo} replaces the pseudorandom points with a low-discrepancy sequence (Sobol,
+Halton) that fills the domain more evenly than random points do, improving the
+rate to nearly $O(N^{-1})$ for integrands of bounded variation while keeping
+the mild dimension dependence. High-dimensional financial and radiative-transfer
+integrals are the working home of both refinements, and the engineer chooses
+among plain Monte Carlo, variance reduction, and quasi-Monte Carlo by the
+integrand's dimension, smoothness, and peaking.
+
 \begin{mastery}
 \textbf{Romberg integration and Richardson extrapolation.} The
 composite trapezoidal rule has an error expansion in even powers of
@@ -1839,6 +2189,62 @@ the same trade-off when calling a black-box adaptive routine: the
 tolerance the engineer requests must lie above the round-off floor
 of the algorithm and the format, and a request below that floor
 returns an answer the engineer cannot defend.
+
+\begin{example}
+\textbf{Richardson extrapolation buys two orders from two evaluations.} The
+centred difference $D(h) = (f(x+h) - f(x-h))/(2h)$ has an error expansion in
+even powers, $D(h) = f'(x) + c_{2} h^{2} + c_{4} h^{4} + \cdots$, because the
+odd Taylor terms cancel by symmetry. Two estimates at $h$ and $h/2$ then
+eliminate the leading $h^{2}$ term the same way Romberg eliminates it in
+quadrature: the combination $D_{R}(h) = (4 D(h/2) - D(h))/3 = f'(x) + O(h^{4})$
+is a fourth-order estimate at the cost of one extra pair of evaluations. Take
+$f(x) = e^{x}$ at $x = 0$, where $f'(0) = 1$. With $h = 0.2$: $D(0.2) =
+(e^{0.2} - e^{-0.2})/0.4 = (1.221403 - 0.818731)/0.4 = 1.006681$, error
+$6.68 \times 10^{-3}$. With $h = 0.1$: $D(0.1) = (1.105171 - 0.904837)/0.2 =
+1.001668$, error $1.67 \times 10^{-3}$, a factor of four smaller as the
+$O(h^{2})$ order promises. The Richardson combination is $D_{R} = (4(1.001668)
+- 1.006681)/3 = (4.006672 - 1.006681)/3 = 1.0000$ (to the digits shown), error
+about $3 \times 10^{-6}$, three decades better than either input at no new
+function values beyond the two the pair already required. The extrapolation is
+the derivative analogue of Romberg quadrature, and it is why a production
+differentiation routine builds a small Richardson table rather than pushing a
+single step size down into the round-off wall of
+Figure~\ref{fig:vol02:ch16:error-vs-h}.
+\end{example}
+
+\begin{example}
+\textbf{The complex step, and why it has no floor.} The finite difference is
+trapped by the subtraction of nearly equal reals. The complex-step estimator
+sidesteps the subtraction entirely. For a function $f$ analytic at a real $x$,
+expand $f$ at an imaginary perturbation: $f(x + \mathrm{i}h) = f(x) +
+\mathrm{i}h\,f'(x) - \tfrac{h^{2}}{2}f''(x) - \mathrm{i}\tfrac{h^{3}}{6}
+f'''(x) + \cdots$. The imaginary part is $\Im[f(x + \mathrm{i}h)] = h\,f'(x) -
+\tfrac{h^{3}}{6}f'''(x) + \cdots$, so
+
+\[
+f'(x) = \frac{\Im[f(x + \mathrm{i}h)]}{h} + O(h^{2}),
+\]
+
+a second-order estimate that never subtracts two nearly equal numbers, because
+the derivative information rides in the imaginary channel and $f(x)$ sits in
+the real channel. Take $f(x) = e^{x}\sin x$ at $x = 1.5$, whose exact
+derivative is $e^{1.5}(\sin 1.5 + \cos 1.5) = 4.4817(0.99749 + 0.070737) =
+4.7853$. A centred difference at $h = 10^{-8}$ already sits near its
+round-off floor and returns about eight correct digits. The complex step at
+$h = 10^{-8}$ evaluates $f(1.5 + \mathrm{i}\,10^{-8}) = e^{1.5 +
+\mathrm{i}10^{-8}}\sin(1.5 + \mathrm{i}10^{-8})$ and divides the imaginary part
+by $10^{-8}$, returning the derivative to full binary64 precision, and it holds
+that precision as $h$ shrinks to $10^{-100}$ and below, where the finite
+difference has long since collapsed to noise.
+Figure~\ref{fig:vol02ch16:complex-step} contrasts the two against Richardson
+extrapolation. The one requirement is that $f$ admit evaluation at a complex
+argument, which every arithmetic expression and every analytic special
+function does; a program that branches on the sign of its input, or calls a
+real-only library routine, does not, and there the engineer falls back to the
+Richardson difference or to automatic differentiation.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-complex-step}
 
 \begin{mastery}
 \textbf{Automatic differentiation defeats the round-off floor.} The
@@ -2270,6 +2676,32 @@ These are not ornaments. Each is a condition under which the
 discretisation is well-posed; each has been the subject of
 documented engineering failures in flow-solver and
 structural-solver deployments.
+
+\begin{example}
+\textbf{The CFL condition read off a step-size sweep.} The advection equation
+$u_{t} + a\,u_{x} = 0$ carries a profile rightward at speed $a$ without
+changing its shape. Discretise it by explicit upwind, $u_{i}^{n+1} = u_{i}^{n}
+- \nu(u_{i}^{n} - u_{i-1}^{n})$ with the \engterm{Courant number} $\nu = a\,
+\Delta t/\Delta x$. Take $a = 1$ on a grid with $\Delta x = 0.01$ and integrate
+a smooth bump. At $\Delta t = 0.008$ the Courant number is $\nu = 0.8 \leq 1$,
+the update coefficients $1 - \nu = 0.2$ and $\nu = 0.8$ are both nonnegative, so
+each new value is a convex average of two old ones, bounded between them, and
+the scheme is stable: the bump advects across the grid holding its shape to the
+scheme's first-order accuracy. At $\Delta t = 0.012$ the Courant number is
+$\nu = 1.2 > 1$, the coefficient $1 - \nu = -0.2$ turns negative, the new value
+is no longer a bounded average, and node-to-node oscillations appear and grow
+by the factor $\abs{1 - \nu} + \nu = 1.4$ per step, so after twenty steps the
+error is amplified by $1.4^{20} \approx 800$ and the solution has diverged. The
+threshold is exactly $\nu = 1$, the Courant-Friedrichs-Lewy condition. The
+stability boundary is not a round-off effect and does not soften with a finer
+grid: refining $\Delta x$ while holding $\Delta t$ makes $\nu$ larger and the
+instability worse, the reverse of the intuition that a finer grid is safer.
+Figure~\ref{fig:vol02ch16:cfl-condition} reads the condition off the stencil as
+a statement about which grid points carry the information the answer needs
+\cite{text:v2ch16-courant-friedrichs-lewy-1928}.
+\end{example}
+
+\input{volumes/02-form/ch16-numerical-methods/figures/fig-cfl-condition}
 
 \section{Reproducibility: deterministic floating-point, exact-arithmetic alternatives}\pathtag{standard}
 

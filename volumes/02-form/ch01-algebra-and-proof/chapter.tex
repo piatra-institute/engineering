@@ -152,6 +152,24 @@ $a_{n-2}$, and so on, with alternating signs. The relations are the
 discrete cousin of the trace and determinant formulas the reader will
 meet in Chapter 8.
 
+\paragraph{Worked example: Vieta's relations as a design check.} A
+controls engineer designs a second-order system whose characteristic
+polynomial is $s^{2} + 2\zeta\omega_{n} s + \omega_{n}^{2}$, with the two
+roots the closed-loop poles. Vieta's relations read the coefficients off
+the roots without solving the quadratic: the sum of the two poles is
+$-2\zeta\omega_{n}$ and their product is $\omega_{n}^{2}$. Suppose the
+specification asks for a natural frequency $\omega_{n} =
+10\,\text{rad/s}$ and a damping ratio $\zeta = 0.7$. The product of the
+poles must then be $\omega_{n}^{2} = 100$ and their sum must be
+$-2(0.7)(10) = -14$. A candidate pole pair $-7 \pm 7.14\mathrm{i}$ is
+checked in one line: the sum is $-14$, matching, and the product is
+$7^{2} + 7.14^{2} = 49 + 51 = 100$, matching. The relations turn a
+two-number specification into two arithmetic checks on the poles, with
+no root extraction, and they catch a transposed digit or a sign slip
+immediately. Run in reverse, the same relations are how the engineer
+places poles to hit a target sum and product, the pole-placement move
+Volume IX builds on.
+
 \subsection{Completing the square}
 
 Completing the square is the single most useful rewriting in
@@ -202,6 +220,64 @@ $C(q)$ will find $C'(q) = 0.004 q - 1.6 = 0$ at the same $q = 400$;
 the two routes agree, and completing the square is the route that does
 not need Chapter 5.
 
+\subsection{The geometric sum, in full}
+
+The geometric finite sum earns a subsection of its own, because it is
+the identity an engineer reaches for whenever a quantity is scaled by a
+constant factor at each step and the running total is wanted. The finite
+form is proved by the telescoping trick, which is worth writing once so
+the convergence condition on the infinite form is not mistaken for an
+afterthought. Let $S = 1 + r + r^{2} + \cdots + r^{n-1}$. Multiply by
+$r$ to get $rS = r + r^{2} + \cdots + r^{n}$, and subtract:
+\[
+S - rS = 1 - r^{n},
+\qquad\text{so}\qquad
+S = \frac{1 - r^{n}}{1 - r}
+\quad (r \neq 1).
+\]
+The subtraction is the telescoping of section 1.1's working library:
+every intermediate power cancels between $S$ and $rS$, leaving only the
+endpoints. The infinite sum is the limit of the finite one as $n \to
+\infty$. The term $r^{n}$ tends to zero exactly when $\abs{r} < 1$, and
+only then does the sum converge, to $1/(1 - r)$. When $\abs{r} \geq 1$
+the term $r^{n}$ does not vanish and the series diverges; the closed
+form $1/(1 - r)$ is then a formal expression with no numerical meaning,
+and an engineer who writes it for $\abs{r} \geq 1$ has dropped the
+licensing condition exactly as the cancellation rule warned against.
+
+\input{volumes/02-form/ch01-algebra-and-proof/figures/fig-geometric-series.tex}
+
+\Cref{fig:vol02:ch01:geometric-series} plots the partial sums for two
+ratios. The tail after $n$ terms is $r^{n}/(1 - r)$, which is the
+finite-sum closed form subtracted from the infinite one, and it sets
+how many terms an engineer keeps for a stated accuracy. The tail shrinks
+by the factor $r$ per term, so a ratio near one converges slowly and a
+small ratio converges fast; the reader reads the term budget off the
+tail rather than guessing it.
+
+\paragraph{Worked example: the settling of a discrete-time filter.} A
+first-order digital filter updates its output by $y_{k} = a y_{k-1} +
+(1 - a) u_{k}$, with $0 < a < 1$ the retention factor and $u_{k}$ the
+input. Applying a unit step $u_{k} = 1$ from rest $y_{0} = 0$, the
+output after $n$ steps unrolls into a geometric sum,
+\[
+y_{n} = (1 - a) \sum_{k=0}^{n-1} a^{k}
+= (1 - a) \cdot \frac{1 - a^{n}}{1 - a}
+= 1 - a^{n}.
+\]
+The steady state is $1$, the limit as $n \to \infty$ because $a^{n} \to
+0$ for $\abs{a} < 1$, and the shortfall from steady state after $n$
+steps is exactly $a^{n}$, the geometric tail. To settle within
+$2\%$ of the final value the engineer solves $a^{n} \leq 0.02$, that
+is, $n \geq \ln(0.02)/\ln(a)$. For $a = 0.9$ this gives $n \geq 37$
+steps; for $a = 0.5$ it gives $n \geq 6$. The retention factor that
+makes the filter smooth is the same factor that makes it slow, and the
+geometric identity turns the trade-off into a number the designer can
+quote before building the filter. The reader meets the same $a^{n}$ tail
+as the transient of a first-order differential equation in Chapter 7,
+where the discrete power $a^{n}$ becomes the continuous exponential
+$e^{-t/\tau}$.
+
 \subsection{Polynomial evaluation: Horner's nested form}
 
 A polynomial is most efficiently and most accurately evaluated in
@@ -235,6 +311,34 @@ nested form matters beyond speed: it avoids forming the large
 intermediate powers that the naive sum then partly cancels, which is
 the accuracy argument the reader meets again in the numerical-methods
 chapter \cite{text:higham-numerical}.
+
+\input{volumes/02-form/ch01-algebra-and-proof/figures/fig-horner-ops.tex}
+
+\Cref{fig:vol02:ch01:horner-ops} plots the two operation counts against
+degree. The linear Horner count and the quadratic naive count separate
+early: at degree ten the naive form does five times the work, at degree
+twenty ten times. The separation is the visible form of the same $n$
+against $n^{2}/2$ comparison the paragraph stated, and it is the reason
+a library polynomial evaluator is written in nested form without
+exception.
+
+\paragraph{Worked example: Horner carrying value and derivative
+together.} The nested sweep computes more than the value. Alongside the
+running value $b_{k}$ that Horner accumulates, an engineer can carry a
+running derivative $d_{k}$ with the twin recurrence $d_{k} = d_{k+1} x +
+b_{k+1}$, initialised at $d_{n} = 0$ and $b_{n} = a_{n}$. We work the
+quadratic $p(x) = 2x^{2} - 3x + 5$ at $x = 4$, whose exact value is
+$32 - 12 + 5 = 25$ and whose exact derivative $p'(x) = 4x - 3$ is
+$13$. The value sweep runs $b_{2} = 2$, then $b_{1} = 2 \cdot 4 + (-3)
+= 5$, then $b_{0} = 5 \cdot 4 + 5 = 25$, recovering the value. The
+derivative sweep runs alongside: $d_{2} = 0$, then $d_{1} = 0 \cdot 4 +
+b_{2} = 2$, then $d_{0} = 2 \cdot 4 + b_{1} = 8 + 5 = 13$, recovering
+the derivative. Both come out of one pass with $2n$ multiplications
+total. The paired recurrence is synthetic division carried one order
+further, and it is the exact update the Newton-Horner root-finder of
+Chapter 16 needs at every iteration: a root step wants $p(x_{k})$ and
+$p'(x_{k})$ at the current guess, and this sweep delivers both without
+forming the derivative polynomial separately.
 
 \subsection{Partial fractions: a preview of a decomposition}
 
@@ -622,6 +726,40 @@ is loose when the errors partially cancel; the engineer learns to
 distinguish the worst-case bound from the typical case, the topic of
 the variance-quadrature rule of Volume I Chapter 4.
 
+\input{volumes/02-form/ch01-algebra-and-proof/figures/fig-error-bounds.tex}
+
+\Cref{fig:vol02:ch01:error-bounds} draws the two accumulation curves for
+$n$ equal contributions. The triangle inequality gives the straight
+worst-case line $n\epsilon$, realised only when every error points the
+same way. The quadrature curve $\sqrt{n}\,\epsilon$ sits far below it for
+independent errors, because independent contributions partly cancel. The
+gap is not a refinement of one bound by the other; the two answer
+different questions. The engineer who must guarantee a specification
+under adversarial alignment quotes the triangle bound; the engineer who
+reports the expected spread of a measurement quotes the quadrature
+estimate. Confusing the two either overstates a typical error by the
+factor $\sqrt{n}$ or understates a worst case by the same factor.
+
+\paragraph{Worked example: stacked tolerances on a shaft assembly.} Five
+spacers are stacked on a shaft. Each spacer has nominal thickness
+$10\,\si{\milli\meter}$ with an independent machining tolerance of $\pm
+0.05\,\si{\milli\meter}$. The worst-case stack tolerance is the triangle
+bound: all five tolerances at their extreme in the same direction gives
+$5 \times 0.05 = 0.25\,\si{\milli\meter}$, so the stack height lies in
+$50 \pm 0.25\,\si{\milli\meter}$. The statistical stack tolerance, valid
+when the five deviations are independent and roughly centred, is the
+quadrature estimate $\sqrt{5} \times 0.05 \approx
+0.11\,\si{\milli\meter}$, so a typical stack lands in $50 \pm
+0.11\,\si{\milli\meter}$. The two numbers differ by the factor
+$\sqrt{5} \approx 2.24$. A designer sizing a mating clearance that must
+never bind chooses the worst-case $0.25\,\si{\milli\meter}$; a designer
+predicting the yield of a production run, where a rare all-aligned stack
+is scrapped rather than catastrophic, works from the quadrature
+$0.11\,\si{\milli\meter}$. The identity that licenses the smaller number
+is the independence assumption, and the engineer who quotes the
+quadrature stack without stating that the deviations are independent has
+made a claim the triangle inequality does not support.
+
 \subsection{The arithmetic mean--geometric mean inequality (AM-GM)}
 
 For non-negative real numbers $a_{1}, \ldots, a_{n}$,
@@ -746,6 +884,44 @@ bound on power dissipation in a circuit, the foundation of the
 projection formula in Chapter 8 of this volume, and the variational
 bound that supports much of optimisation in Chapter 15.
 
+\paragraph{Applied vignette: the power factor as a Cauchy--Schwarz
+ratio.} An alternating-current load draws instantaneous current $i(t)$
+under an applied voltage $v(t)$ over one period $[0, T]$. Three
+quantities describe the load. The real power delivered is the average of
+the instantaneous product, $P = \frac{1}{T}\int_{0}^{T} v(t)\, i(t)\,
+\dd t$. The apparent power is the product of the root-mean-square voltage
+and current, $S = V_{\mathrm{rms}} I_{\mathrm{rms}}$, where
+$V_{\mathrm{rms}}^{2} = \frac{1}{T}\int_{0}^{T} v^{2}\,\dd t$ and
+similarly for the current. The power factor is the ratio $\mathrm{pf} =
+P/S$, and every utility engineer knows it cannot exceed one. The bound
+is Cauchy--Schwarz for functions. Treating the time integral as the
+inner product $\inner{v, i} = \frac{1}{T}\int_{0}^{T} v i\, \dd t$, the
+inequality reads
+\[
+\left(\frac{1}{T}\int_{0}^{T} v\, i\, \dd t\right)^{2}
+\leq
+\left(\frac{1}{T}\int_{0}^{T} v^{2}\, \dd t\right)
+\left(\frac{1}{T}\int_{0}^{T} i^{2}\, \dd t\right),
+\]
+that is, $P^{2} \leq V_{\mathrm{rms}}^{2} I_{\mathrm{rms}}^{2} = S^{2}$,
+so $\abs{\mathrm{pf}} \leq 1$. The equality condition is the content the
+engineer actually uses. Cauchy--Schwarz is tight exactly when the two
+functions are proportional, $i(t) = \kappa\, v(t)$ for a constant
+$\kappa$, which is the case of a purely resistive load: current in phase
+with voltage, power factor one, every volt-ampere delivered as real
+power. Any phase lag or harmonic distortion makes $i$ non-proportional to
+$v$, drops the power factor below one, and the shortfall $S^{2} - P^{2}$
+is the reactive-plus-distortion power the utility must supply but cannot
+bill as work. For the textbook sinusoidal case $v = V_{0}\cos\omega t$,
+$i = I_{0}\cos(\omega t - \phi)$, the integral gives $P = \tfrac12 V_{0}
+I_{0}\cos\phi$ and $S = \tfrac12 V_{0} I_{0}$, so $\mathrm{pf} =
+\cos\phi$, and the Cauchy--Schwarz bound $\cos\phi \leq 1$ is the
+familiar statement that the phase angle can only cost, never add. The
+same inequality that bounds a correlation coefficient by one, and that
+bounds the length of a projection by the length of the vector, bounds
+the fraction of apparent power a load turns into work. One theorem, three
+readings.
+
 \subsection{The power-mean inequality}
 
 AM-GM is one rung of a longer ladder. For positive reals $a_{1},
@@ -823,6 +999,22 @@ y^{2})$ used in the Cauchy-Schwarz derivation of the exercises. Young's
 inequality is the tool an engineer reaches for to split a product into
 a controllable sum of powers, which is the recurring move in bounding
 error terms and in the convex-duality arguments of Chapter 15.
+
+\input{volumes/02-form/ch01-algebra-and-proof/figures/fig-young-inequality.tex}
+
+\Cref{fig:vol02:ch01:young-inequality} reads Young's inequality as an
+area balance, which is the picture that makes the exponents $p$ and $q$
+concrete. The product $ab$ is the area of a rectangle, and it is covered
+by the area under a monotone curve plus the area to the left of it, with
+equality only when the corner of the rectangle sits on the curve. The
+picture also states the equality condition without algebra: the bound is
+tight exactly when $b = f(a)$, which for $f(x) = x^{p-1}$ is the
+condition $a^{p} = b^{q}$, the weighted-AM--GM equality in disguise. An
+engineer who splits a troublesome product $ab$ into $a^{p}/p + b^{q}/q$
+chooses the exponent $p$ to make one of the two terms small enough to
+absorb, and the picture shows what that choice costs: moving $p$ away
+from the value that balances the two areas widens the gap between the
+rectangle and the curve.
 
 \begin{mastery}
 The monotonicity of the power mean is one instance of Jensen's
@@ -1119,6 +1311,44 @@ square root and is more delicate than the one-line contrapositive.
 This small lemma is the step the $\sqrt{2}$ proof below relies on, and
 the contrapositive is how that step is most cleanly established.
 
+\subsection{Worked proof by cases}
+
+Proof by cases partitions the hypothesis into a finite set of
+possibilities that exhaust it and proves the conclusion in each. The
+discipline is to check that the cases genuinely cover everything, because
+a missed case leaves a hole no amount of care inside the other cases can
+fill. We prove a small fact an engineer uses without thinking whenever
+rounding to the nearest integer.
+
+\begin{theorem}
+For every real number $x$, the nearest integer to $x$ differs from $x$
+by at most $\tfrac12$; that is, there is an integer $m$ with $\abs{x - m}
+\leq \tfrac12$.
+\end{theorem}
+
+\begin{proof}
+Write $x = n + f$ where $n = \lfloor x \rfloor$ is the integer part and
+$f = x - n$ is the fractional part, so $0 \leq f < 1$. We argue by cases
+on $f$. Case one, $f \leq \tfrac12$: take $m = n$. Then $\abs{x - m} = f
+\leq \tfrac12$, as required. Case two, $f > \tfrac12$: take $m = n + 1$.
+Then $\abs{x - m} = \abs{(n + f) - (n + 1)} = 1 - f$, and $f > \tfrac12$
+gives $1 - f < \tfrac12$, so $\abs{x - m} < \tfrac12$. The two cases
+cover every $f$ in $[0, 1)$ because every real $f$ is either at most
+$\tfrac12$ or greater than $\tfrac12$, so the conclusion holds for every
+$x$.
+\end{proof}
+
+The proof is complete because the two cases partition the range of $f$
+with no gap and no overlap at the decision point (the boundary $f =
+\tfrac12$ is assigned to case one). The engineering reading is the
+quantisation bound of an ideal rounder: the worst-case rounding error of
+round-to-nearest is exactly half a least significant unit, and the case
+split is where that half comes from. A rounder that broke the cases
+differently, say by rounding $f = \tfrac12$ down every time rather than
+to even, would still meet the same $\tfrac12$ bound; the case analysis
+shows the bound is a property of the partition, not of the tie-breaking
+rule.
+
 \subsection{Worked proof of existence and uniqueness}
 
 Engineers care about existence and uniqueness because a model with no
@@ -1283,6 +1513,34 @@ conclusive, while a test that passes confirms nothing universal. The
 engineer who internalises the asymmetry tests to disprove, designs the
 adversarial input first, and reserves the expense of proof for the
 claims that have earned it by surviving the search.
+
+\begin{mastery}
+The \engterm{pigeonhole principle} is the shortest existence proof in the
+engineer's kit: if $n + 1$ objects are placed in $n$ boxes, some box
+holds at least two objects. The statement is trivial and the
+consequences are not, because it manufactures an existence guarantee from
+a counting mismatch alone, with no construction of the object it
+promises. The proof is one line by contradiction: if every box held at
+most one object, the total would be at most $n$, contradicting $n + 1$.
+The engineering uses are exact counting arguments. A hash table that maps
+more than $n$ distinct keys into $n$ buckets must produce a collision;
+the pigeonhole principle proves collisions are unavoidable once the key
+count exceeds the bucket count, before any particular hash function is
+examined, which is why a collision-handling strategy is not optional. A
+lossless compressor cannot shorten every input: the strings of length
+$n$ number $2^{n}$, the strings shorter than $n$ number $2^{n} - 1$, so
+no injective map sends every length-$n$ string to a shorter one, and some
+input must grow, the counting proof that a universal compressor is
+impossible. An analog-to-digital converter with $2^{N}$ output codes,
+fed more than $2^{N}$ distinguishable input levels, must assign two
+levels the same code, which is the quantisation collision of Volume~I
+Chapter~6 stated as a pigeonhole fact. The generalised form, that $m$
+objects in $n$ boxes force some box to hold at least $\lceil m/n \rceil$,
+sharpens the bound. The principle recurs in the complexity and coding
+arguments of Volume~VII, and its value to an engineer is that it settles
+an existence question by arithmetic, with no need to exhibit the colliding
+pair.
+\end{mastery}
 
 \subsection{Proof, software, and formal verification}\pathtag{mastery}
 
@@ -1653,6 +1911,109 @@ in \texttt{data/welford-vs-naive.csv}. The thread from need to identity to
 proof to code is the chapter's discipline applied end to end on one
 result.
 
+\subsection{Applied vignette: why a fixed-point iteration converges}
+
+A second end-to-end thread joins an inequality, a geometric sum, and an
+induction on one result an engineer relies on every time a solver is run:
+the guarantee that a fixed-point iteration converges, and the bound on
+how fast. Many engineering computations solve an equation $x = h(x)$ by
+picking a start $x_{0}$ and iterating $x_{k+1} = h(x_{k})$, hoping the
+sequence settles on a root. The steady-state filter of section 1.1's
+neighbourhood was one instance; the Newton root-finder of Chapter 16 is
+another; the load-flow solvers of Volume IX are a third. The question is
+when the hope is justified, and the answer is an inequality lifted to all
+$k$ by induction.
+
+\paragraph{Step 1: the contraction hypothesis.} Suppose the map $h$ is a
+\engterm{contraction}: there is a constant $L$ with $0 \leq L < 1$ such
+that for every pair of points $a, b$ in the working interval,
+\[
+\abs{h(a) - h(b)} \leq L \, \abs{a - b}.
+\]
+The constant $L$ says that $h$ shrinks every distance by at least the
+factor $L$. The reader who has met the derivative will recognise $L$ as a
+bound on $\abs{h'}$; the reader who has not can take the inequality as
+the hypothesis. Let $x^{\ast}$ be a fixed point, $x^{\ast} =
+h(x^{\ast})$, whose existence we assume here and whose uniqueness the
+contraction forces.
+
+\paragraph{Step 2: one step shrinks the error.} Let $e_{k} = \abs{x_{k} -
+x^{\ast}}$ be the error after $k$ steps. Apply the contraction with $a =
+x_{k}$ and $b = x^{\ast}$, using $x_{k+1} = h(x_{k})$ and $x^{\ast} =
+h(x^{\ast})$:
+\[
+e_{k+1} = \abs{h(x_{k}) - h(x^{\ast})} \leq L \, \abs{x_{k} - x^{\ast}}
+= L \, e_{k}.
+\]
+One step multiplies the error by at most $L$. This is the single-step
+inequality; the claim the engineer needs is about all steps at once.
+
+\paragraph{Step 3: induction to all steps.} We claim $e_{k} \leq L^{k}
+e_{0}$ for every $k \geq 0$, and prove it by induction. Base case $k = 0$:
+$e_{0} \leq L^{0} e_{0} = e_{0}$, an equality. Inductive step: assume
+$e_{k} \leq L^{k} e_{0}$. Then by Step 2 and the hypothesis,
+\[
+e_{k+1} \leq L \, e_{k} \leq L \cdot L^{k} e_{0} = L^{k+1} e_{0},
+\]
+where the middle inequality multiplies the inductive hypothesis by the
+non-negative constant $L$, preserving direction. By induction the bound
+holds for every $k$. Because $0 \leq L < 1$, the factor $L^{k} \to 0$, so
+$e_{k} \to 0$ and the iteration converges to $x^{\ast}$ from any start in
+the working interval. The convergence is geometric, the same $L^{k}$ tail
+the geometric-series figure drew.
+
+\paragraph{Step 4: a stopping rule from the geometric sum.} The bound
+also tells the engineer when to stop. The distance the iterate still has
+to travel is bounded by summing the remaining steps, a geometric series:
+\[
+\abs{x_{k} - x^{\ast}}
+\leq \sum_{j \geq k} \abs{x_{j+1} - x_{j}}
+\leq \abs{x_{1} - x_{0}} \sum_{j \geq k} L^{j}
+= \abs{x_{1} - x_{0}} \, \frac{L^{k}}{1 - L},
+\]
+which uses the infinite geometric sum with its $\abs{L} < 1$ convergence
+condition, the same condition the contraction supplied. To reach an
+absolute accuracy $\tau$, the engineer iterates until $\abs{x_{1} -
+x_{0}}\, L^{k}/(1 - L) \leq \tau$, that is, until $k \geq \ln\!\bigl(\tau
+(1 - L)/\abs{x_{1} - x_{0}}\bigr)/\ln L$. A contraction with $L = 0.5$
+buys one decimal digit every three or four steps; a contraction with $L =
+0.99$ crawls, needing hundreds of steps for the same digit, which is the
+quantitative warning that a nearly-non-contracting map is a nearly-non-
+convergent solver. The whole guarantee, existence of a limit, convergence
+from any start, and a computable step count, rests on one inequality
+lifted to all $k$ by induction and then summed as a geometric series.
+Three of the chapter's threads carry one working result the engineer
+uses whenever an iterative solver is trusted to terminate.
+
+\begin{mastery}
+The fixed-point vignette assumed a limit existed and proved the iterates
+approach it. The assumption is discharged by the \engterm{Banach
+fixed-point theorem}, which states that a contraction on a
+\engterm{complete metric space} has exactly one fixed point, and the
+iteration converges to it from every starting point. A metric space is a
+set with a distance function $d(a, b)$ that is non-negative, zero only
+when $a = b$, symmetric, and obeys the triangle inequality $d(a, c) \leq
+d(a, b) + d(b, c)$, the same triangle inequality of section 1.2 promoted
+to an axiom. The space is complete when every sequence whose terms
+eventually crowd arbitrarily close together (a Cauchy sequence) actually
+converges to a point of the space. The reals are complete; the rationals
+are not, which is why a sequence of rational approximations to $\sqrt 2$
+crowds together without a rational limit, the completeness counterpart of
+section 1.3's irrationality proof. The theorem's proof is the vignette's
+argument with the missing step supplied: the geometric bound shows the
+iterates form a Cauchy sequence, completeness supplies the limit, and
+continuity of the contraction shows the limit is the fixed point;
+uniqueness follows because two fixed points would have to sit at distance
+$d \leq L d$, forcing $d = 0$. The engineering reach is wide. The theorem
+underwrites the convergence of Picard iteration for the ordinary
+differential equations of Chapter 7, of successive-substitution load-flow
+in power systems, and of the value-iteration algorithms of dynamic
+programming. The working lesson is that an iterative method's guarantee
+has three ingredients, a contraction constant below one, a distance that
+obeys the triangle inequality, and a space in which limits exist, and an
+engineer who trusts a solver has implicitly assumed all three.
+\end{mastery}
+
 \subsection{Worked example: Bernoulli's inequality}
 
 \begin{proof}[Proof of Bernoulli's inequality]
@@ -1707,6 +2068,32 @@ The use of strong induction is what licenses the appeal to the two
 factors $a$ and $b$, both of which are smaller than $n+1$ but neither
 of which is necessarily $n$ itself. Ordinary induction would not let
 the writer make this step.
+
+\input{volumes/02-form/ch01-algebra-and-proof/figures/fig-strong-induction.tex}
+
+\Cref{fig:vol02:ch01:strong-induction} contrasts the two dependency
+structures. Ordinary induction advances one link at a time, each case
+resting on its immediate predecessor. Strong induction lets a case rest
+on the entire run before it, which is what the prime-factorisation proof
+requires: the two factors $a$ and $b$ can sit anywhere below $n+1$, and
+only an arrow reaching back to all earlier cases catches them. The two
+forms are logically equivalent, and the choice between them is a matter
+of which inductive hypothesis the step actually consumes.
+
+\paragraph{Worked example: every postage above eleven cents, from two
+stamps.} A second strong-induction case shows the pattern on a problem
+an engineer recognises as a coin or denomination question. We claim that
+every integer amount $n \geq 12$ can be made from $4$-cent and $5$-cent
+stamps. The base cases are the four consecutive amounts $12 = 4 + 4 + 4$,
+$13 = 4 + 4 + 5$, $14 = 4 + 5 + 5$, and $15 = 5 + 5 + 5$. For the
+inductive step, take any $n \geq 16$ and assume every amount from $12$ up
+to $n - 1$ is makeable. The amount $n - 4$ is at least $12$ and at most
+$n - 1$, so by the inductive hypothesis it is makeable; adding one more
+$4$-cent stamp makes $n$. The step reaches back four cases, not one,
+which is why the proof needs four base cases and the strong form: an
+ordinary induction resting on $n - 1$ alone could not step by four. The
+number of base cases equals the reach of the step, and matching the two
+is the discipline the all-horses paradox showed is easy to lose.
 
 \subsection{Common errors in inductive proofs}
 
@@ -1830,6 +2217,34 @@ instruments, intersection for the common range, difference for the
 extension of one over the other, Cartesian product for the joint
 specification of two independent quantities.
 
+The operations obey an algebra as disciplined as the algebra of numbers,
+and two of its laws do load-bearing work in reliability and logic
+design. De Morgan's laws relate complement to union and intersection,
+\[
+\overline{A \cup B} = \overline{A} \cap \overline{B},
+\qquad
+\overline{A \cap B} = \overline{A} \cup \overline{B},
+\]
+where the overline is complement within a fixed universal set. The laws
+say that the complement of a union is the intersection of the
+complements, and conversely; the operation flips when the complement
+crosses it. Read as logic, with union as OR, intersection as AND, and
+complement as NOT, De Morgan's laws are the identities NOT($P$ OR $Q$)
+$=$ NOT $P$ AND NOT $Q$ and NOT($P$ AND $Q$) $=$ NOT $P$ OR NOT $Q$,
+which are the transformations a digital designer applies to convert a
+circuit between AND-OR and OR-AND form, and which a reliability engineer
+applies to turn a statement about when a system succeeds into a statement
+about when it fails. A system of two redundant components succeeds when
+component one works OR component two works; by De Morgan it fails when
+component one fails AND component two fails, which is the parallel-
+redundancy calculation of Volume~I. Distributivity holds for sets as it
+does for numbers, $A \cap (B \cup C) = (A \cap B) \cup (A \cap C)$, and
+it is the algebra behind expanding a fault tree into its minimal cut
+sets. The engineer who treats set operations as an algebra with stated
+laws, rather than as a picture of overlapping circles, can manipulate a
+specification symbolically and audit the result the same way an algebraic
+identity is audited.
+
 \subsection{Functions}
 
 A function $f$ from a set $A$ to a set $B$, written $f : A \to B$,
@@ -1903,6 +2318,24 @@ f)^{-1} = f^{-1} \circ g^{-1}$. The reversal of order is the same
 reversal that appears in matrix transposition $(AB)\transpose =
 B\transpose A\transpose$ in Chapter 8.
 
+\paragraph{Worked example: the order of undo is the reverse of do.} A
+measurement pipeline first subtracts a zero offset, $f(v) = v - v_{0}$,
+then applies a gain, $g(w) = k w$, so the calibrated reading is $(g \circ
+f)(v) = k(v - v_{0})$. To recover the raw voltage from a calibrated
+reading, the engineer inverts. The inverse of the composition reverses
+the order: $(g \circ f)^{-1} = f^{-1} \circ g^{-1}$. Concretely,
+$g^{-1}(y) = y/k$ undoes the gain first, then $f^{-1}(w) = w + v_{0}$
+adds the offset back, giving $(f^{-1} \circ g^{-1})(y) = y/k + v_{0}$.
+Checking against the forward map, $(f^{-1} \circ g^{-1})(k(v - v_{0})) =
+k(v - v_{0})/k + v_{0} = v$, the raw voltage returns. Applying the
+inverses in the forward order instead, $g^{-1}$ then $f^{-1}$ read
+left-to-right as $f^{-1}$ first, would add the offset to a still-scaled
+value and get the wrong answer. The reversal is not a convention; it is
+forced, the same way the last item packed is the first unpacked. An
+engineer who chains transforms (offset, gain, coordinate rotation,
+unit conversion) inverts them in strict reverse order, and the composition
+identity is the statement of that rule.
+
 \subsection{Relations and equivalence}
 
 A function is a special kind of relation. A \engterm{relation} on sets
@@ -1942,6 +2375,29 @@ fixed reference rather than against neighbouring parts. An engineer who
 chains pairwise ``close enough'' comparisons and expects a consistent
 grouping has assumed transitivity that the relation does not have.
 
+\paragraph{Worked example: casting out nines as an equivalence-class
+check.} Congruence mod $9$ is an equivalence relation on the integers:
+$a \sim b$ when $9$ divides $a - b$. It is reflexive, symmetric, and
+transitive, so it partitions the integers into nine classes, and the
+class of any integer is its remainder on division by $9$. The class of a
+base-ten number equals the class of its digit sum, because $10 \equiv 1
+\pmod 9$ makes every power of ten congruent to $1$, so $\sum_{k} d_{k}
+10^{k} \equiv \sum_{k} d_{k} \pmod 9$. This licenses a one-line
+arithmetic check. To test $2738 \times 41 = 112{,}258$, reduce each
+factor to its class: $2 + 7 + 3 + 8 = 20 \to 2 + 0 = 2$, and $4 + 1 =
+5$. The product of the classes is $2 \times 5 = 10 \to 1$. The claimed
+answer reduces to $1 + 1 + 2 + 2 + 5 + 8 = 19 \to 1 + 9 = 10 \to 1$. The
+two agree, so the answer passes. Had a digit been transposed, the classes
+would disagree with high probability and the error would surface without
+redoing the multiplication. The check works because congruence mod $9$ is
+compatible with addition and multiplication: operating on the whole class
+gives the same class as operating on representatives, which is exactly
+the compression that naming a relation an equivalence relation buys. The
+check cannot catch every error, a transposition of two digits leaves the
+digit sum unchanged, so it is a necessary and not a sufficient test, the
+same balance-test caveat the partial-fraction check carried in section
+1.1.
+
 \subsection{Restriction, extension, image, preimage}
 
 The restriction $f \restriction_{A'}$ of $f : A \to B$ to a subset
@@ -1954,6 +2410,28 @@ invertible; the notation $f^{-1}$ is overloaded between the inverse
 function (when $f$ is bijective) and the preimage (always defined),
 and the engineer must know from context which is meant. Section 1.6
 takes up notation overloading as a discipline issue.
+
+The asymmetry between image and preimage is worth stating precisely,
+because it is the source of a recurring error. The preimage respects
+unions, intersections, and complements exactly: $f^{-1}(B_{1} \cup
+B_{2}) = f^{-1}(B_{1}) \cup f^{-1}(B_{2})$, and the same clean equality
+holds for intersection and for complement. The forward image does not.
+The image respects unions, $f(A_{1} \cup A_{2}) = f(A_{1}) \cup
+f(A_{2})$, but for intersection it gives only containment, $f(A_{1} \cap
+A_{2}) \subseteq f(A_{1}) \cap f(A_{2})$, and the containment can be
+strict. A one-line witness: for $f(x) = x^{2}$ with $A_{1} = \{-1\}$ and
+$A_{2} = \{1\}$, the sets are disjoint so $f(A_{1} \cap A_{2}) =
+f(\emptyset) = \emptyset$, yet $f(A_{1}) \cap f(A_{2}) = \{1\} \cap \{1\}
+= \{1\}$. The two functions collided the two inputs onto one output, and
+the forward image cannot see that the two came from disjoint sets. The
+working consequence is that an engineer who reasons about which outputs a
+system can produce should push the reasoning through the preimage
+whenever possible, because the preimage preserves the set algebra and the
+image does not. The preimage is also the correct tool for a
+specification stated on outputs: the set of inputs that meet an output
+tolerance $B'$ is exactly the preimage $f^{-1}(B')$, defined whether or
+not $f$ is invertible, and computing it does not require the inverse
+function to exist.
 
 \subsection{Functions in engineering}
 
@@ -1969,6 +2447,31 @@ concept covers all of these, and that the discipline of stating the
 domain explicitly is the discipline that prevents an engineer from
 applying $\log$ to a negative number, $\sqrt{\cdot}$ to a negative
 real, or $\arcsin$ to a value outside $[-1, 1]$.
+
+A point the definition makes and casual usage blurs is that a function is
+not the same object as a formula. A function is a domain, a codomain, and
+a rule assigning one output to each input; a formula is one possible
+rule, and the same function can wear several formulas. The function that
+sends $x$ to $x$ on the reals is also written $\sqrt{x^{2}}$ only on the
+non-negative reals, where the two formulas agree; on the negatives
+$\sqrt{x^{2}} = -x$, so the single formula $\sqrt{x^{2}}$ is the
+function $\abs{x}$, not the identity. The discipline this forces is the
+check of \engterm{well-definedness}: whenever a rule offers more than one
+route to the output, the routes must agree, or the rule is not a function
+at all. The check bites hardest when the input is specified indirectly.
+A rule that assigns to a fraction $p/q$ the value $p + q$ is not
+well-defined, because $1/2$ and $2/4$ are the same input yet give $3$ and
+$6$; the rule depends on the representative, not the number. A rule that
+assigns to an angle its cosine is well-defined even though $\theta$ and
+$\theta + 2\pi$ are different representatives of the same direction,
+because cosine returns the same value on both. The engineering setting
+where this recurs is any quantity defined on equivalence classes: a
+function of a physical direction must return the same value on every
+angle that names that direction, and a function of a residue class must
+return the same value on every integer in the class. Naming the domain,
+and checking that the rule respects whatever identifications the domain
+carries, is the difference between a function and a formula that only
+looks like one.
 
 \subsection{Worked example: when an inverse exists}
 
@@ -1991,6 +2494,16 @@ $x \mapsto x^{2}$. The working rule is that an instrument is usable as
 a measurement only on a domain where its response function is
 injective, and identifying that domain is part of specifying the
 instrument.
+
+\input{volumes/02-form/ch01-algebra-and-proof/figures/fig-monotone-inversion.tex}
+
+\Cref{fig:vol02:ch01:monotone-inversion} draws the two cases side by
+side. The monotone response admits a calibration inverse over its whole
+span; the response that turns over shares one output between two
+temperatures, and on the span that includes the turnover no inverse
+function exists. The figure is the pictorial statement of the working
+rule: an instrument is usable as a measurement only on a domain where its
+response is injective.
 
 \begin{mastery}
 The injective-surjective-bijective vocabulary scales from finite sets

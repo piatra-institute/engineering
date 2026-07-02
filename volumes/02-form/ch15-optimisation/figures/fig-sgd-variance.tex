@@ -1,0 +1,48 @@
+\begin{figure}[ht]
+\centering
+\begin{tikzpicture}[font=\small]
+\begin{axis}[
+  width=10.5cm, height=6.4cm,
+  xmode=log, ymode=log,
+  log basis x=2, log basis y=10,
+  xlabel={minibatch size $b$},
+  ylabel={gradient variance $\sigma^{2}/b$},
+  xlabel style={font=\scriptsize},
+  ylabel style={font=\scriptsize},
+  tick label style={font=\scriptsize},
+  xmin=1, xmax=16384, ymin=1e-4, ymax=8,
+  xtick={1,4,16,64,256,1024,4096,16384},
+  ytick={1e-4,1e-3,1e-2,1e-1,1},
+  grid=both,
+  major grid style={enggray!25},
+  minor grid style={enggray!10},
+  legend style={font=\scriptsize, at={(0.98,0.98)}, anchor=north east},
+]
+% Variance sigma^2 / b with sigma^2 = 4, exact 1/b decay.
+\addplot[engblue, very thick, mark=*, mark size=1.4pt, samples at={1,4,16,64,256,1024,4096,16384}]
+  {4/x};
+\addlegendentry{$\sigma^{2}/b$ (variance)}
+% Wall-clock cost per step, normalised; sublinear in b over the
+% saturating range, then linear. Model: cost = max(1, b/64) in units of
+% a b=1 step's arithmetic, capped low until the accelerator saturates.
+\addplot[engorange, very thick, dashed, mark=square*, mark size=1.4pt, samples at={1,4,16,64,256,1024,4096,16384}]
+  {0.02 * max(1, x/64)};
+\addlegendentry{cost/step (accelerator)}
+\end{axis}
+\end{tikzpicture}
+\caption[Minibatch variance and cost against batch size]{The two
+curves an engineer balances when choosing a minibatch size. The
+gradient variance (solid) falls as $\sigma^{2}/b$: doubling the batch
+halves the variance, an exact $1/b$ law from independent sampling. On
+the variance-per-flop ledger this is a wash, because the arithmetic
+cost of a batch gradient rises in proportion to $b$. The decisive
+curve is the wall-clock cost per step on a modern accelerator
+(dashed), which stays nearly flat while the batch is too small to
+saturate the arithmetic units and only rises once the hardware is
+fully occupied. The working batch size (roughly $32$ to $512$ in 2026
+practice) sits at the knee where the cost per step is still cheap but
+the variance has already dropped by one to two orders of magnitude.
+The batch size is a hardware-utilisation decision wearing the costume
+of a statistics decision.}
+\label{fig:vol02:ch15:sgd-variance}
+\end{figure}
