@@ -57,7 +57,7 @@ Run `make stats` for live numbers. Snapshot (2026-06-05):
 | Vol I chapters at Stage 5 | 9 of 9 |
 | Vols II-XII chapters at Stage 4 | 165 awaiting review |
 | Chapters at Stage 1 | 0 |
-| `main.pdf` page count (last build) | 6531 |
+| `main.pdf` page count (last build) | 6709 |
 
 Per-volume page spans against target (figures approximate; from the per-chapter ledger in `CLAUDE.md`):
 
