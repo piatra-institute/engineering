@@ -286,6 +286,12 @@ flexible enough to fit many lifetime datasets but fitted parameters
 should be checked against the underlying physical mechanism: a
 Weibull with $\beta = 0.5$ that is being applied to a wear-out
 process is a fitting error, not a feature of the data.
+\Cref{fig:vol01:ch08:weibull-hazard-family} shows the hazard rate
+$h(t) = (\beta/\eta)(t/\eta)^{\beta - 1}$ for the three regimes;
+the shape of the hazard curve, read against the known failure
+physics, is the first check on any Weibull fit.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-weibull-hazard-family.tex}
 
 \subsection{Poisson}
 
@@ -1015,9 +1021,47 @@ software with the exact procedure.
 specification (e.g., maximum allowable surface roughness, maximum
 contaminant concentration), the one-sided tolerance bound is
 $\bar{x} + k_{1} s$ where the one-sided factor $k_{1}$ uses the
-$p$-quantile (not $p^{*}$) and a different denominator. ISO
+$p$-quantile (not $p^{*}$) and a different denominator. The
+working closed form is the noncentral-$t$ approximation
+\[
+k_{1} \approx \frac{z_{p} + \sqrt{z_{p}^{2} - a b}}{a},
+\quad
+a = 1 - \frac{z_{\gamma}^{2}}{2(n - 1)},
+\quad
+b = z_{p}^{2} - \frac{z_{\gamma}^{2}}{n},
+\]
+where $z_{p}$ is the normal quantile at the coverage $p$ and
+$z_{\gamma}$ the quantile at the confidence $1 - \gamma$. ISO
 16269-6:2014 \cite{std:ch08t3p-iso-16269-6} gives the
 one-sided factors with engineering examples.
+
+\textit{Worked example: an upper bound on surface roughness.} A
+machining process is specified so that no more than $5 \,\%$ of
+parts exceed a roughness ceiling, and the customer wants that
+statement backed at $95 \,\%$ confidence: $p = 0.95$,
+$\gamma = 0.05$. A sample of $n = 40$ parts gives
+$\bar{x} = 0.82\,\si{\micro\meter}$ (arithmetic-average roughness
+$R_{a}$) with $s = 0.11\,\si{\micro\meter}$. The one-sided factor
+uses $z_{0.95} = 1.645$ for both the coverage and the confidence
+(here $p = 1 - \gamma$ coincidentally), giving
+$a = 1 - 1.645^{2}/(2 \cdot 39) \approx 0.9653$,
+$b = 1.645^{2} - 1.645^{2}/40 \approx 2.638$, and
+\[
+k_{1} \approx \frac{1.645 + \sqrt{1.645^{2} - 0.9653 \cdot 2.638}}
+{0.9653} \approx \frac{1.645 + 0.399}{0.9653} \approx 2.12.
+\]
+The upper tolerance bound is
+$\bar{x} + k_{1} s = 0.82 + 2.12 \cdot 0.11 \approx
+1.05\,\si{\micro\meter}$. The engineering statement: with
+$95 \,\%$ confidence, at least $95 \,\%$ of parts have $R_{a}$
+below $1.05\,\si{\micro\meter}$. Compare the naive
+$\bar{x} + 1.645 s = 1.00\,\si{\micro\meter}$, which ignores the
+sampling uncertainty in $\bar{x}$ and $s$ and understates the
+bound by $0.05\,\si{\micro\meter}$; the gap between $k_{1} = 2.12$
+and the bare normal quantile $1.645$ is the price of not knowing
+$\mu$ and $\sigma$ exactly at $n = 40$. As $n$ grows the factor
+$k_{1}$ falls toward $z_{p} = 1.645$; at $n = 40$ the sampling
+penalty is about $29 \,\%$ of the factor.
 
 \paragraph{Nonparametric tolerance intervals.} When the
 Gaussian assumption fails, the distribution-free tolerance
@@ -1070,6 +1114,53 @@ $t$-based intervals coincide when both apply. The bootstrap earns
 its keep when, for instance, the analyst wants a confidence
 interval for the sample median or for the $90$th-percentile
 commute, both of which have no clean parametric form.
+
+\begin{mastery}
+\textbf{The delta method: closed-form uncertainty for a function
+of an estimate.} The bootstrap resamples to find the sampling
+distribution of a statistic. When the statistic is a smooth
+function $g(\hat\theta)$ of an estimate $\hat\theta$ whose own
+standard error is known, the \engterm{delta method} gives the
+answer in closed form and connects this chapter to the
+propagation-of-uncertainty rule of Chapter 4 §4.5. A first-order
+Taylor expansion of $g$ about the true $\theta$ gives
+\[
+g(\hat\theta) \approx g(\theta) + g'(\theta)(\hat\theta - \theta),
+\]
+so, taking variances and using $\Var(\hat\theta)$,
+\[
+\Var\!\left(g(\hat\theta)\right) \approx
+\left[g'(\theta)\right]^{2} \Var(\hat\theta),
+\qquad
+\text{se}\!\left(g(\hat\theta)\right) \approx
+\left|g'(\hat\theta)\right| \cdot \text{se}(\hat\theta).
+\]
+This is Chapter 4's single-variable uncertainty-propagation
+formula, now read as a statement about the sampling distribution
+of an estimator rather than about instrument error.
+
+\smallskip
+\textit{Worked instance.} A reliability engineer estimates a
+failure rate $\hat\lambda = 0.020$ per hour with standard error
+$\text{se}(\hat\lambda) = 0.004$ per hour and wants the
+uncertainty of the mean time between failures
+$\text{MTBF} = g(\lambda) = 1/\lambda$. Here
+$g'(\lambda) = -1/\lambda^{2}$, so
+\[
+\text{se}(\widehat{\text{MTBF}}) \approx
+\frac{1}{\hat\lambda^{2}} \cdot \text{se}(\hat\lambda)
+= \frac{0.004}{0.020^{2}} = 10\,\si{\hour}.
+\]
+The point estimate is $1/0.020 = 50\,\si{\hour}$, so the MTBF is
+$50 \pm 10\,\si{\hour}$ to first order. The delta method is exact
+only in the linear limit; for the strongly nonlinear reciprocal at
+a small $\hat\lambda$, the sampling distribution of the MTBF is
+right-skewed, and a bootstrap or a transformation to the log scale
+gives a more honest interval. The working rule: the delta method
+is the quick closed-form check, and the bootstrap is the arbiter
+when the transform is sharply curved over the range of the
+estimate's uncertainty.
+\end{mastery}
 
 \subsection{Bias-corrected percentile bootstrap: a sensor-calibration
 study}
@@ -1465,6 +1556,86 @@ report the capability on the transformed scale, and back-transform
 the specification limits for interpretation. AIAG SPC chapter 4,
 section 4.7 prescribes the Box-Cox transformation route when the
 skewness exceeds $\pm 1$.
+
+\subsection{Applied vignette: average run length and the economics
+of control-chart limits}
+
+A control chart flags a process as out of control when a plotted
+statistic falls outside its control limits. The engineering
+question the raw chart does not answer is how often the chart will
+raise a false alarm when the process is fine, and how quickly it
+will catch a real shift when the process is not. The
+\engterm{average run length} (ARL) makes both answerable and turns
+the choice of control-limit width from a convention into an
+economic decision.
+
+The ARL is the expected number of samples between signals. For a
+Shewhart $\bar{X}$ chart with limits at $\pm L\sigma_{\bar{x}}$ and
+independent samples, the probability that a single plotted point
+falls outside the limits when the process is on target is
+$p_{0} = 2\Phi(-L)$, and the in-control run length is geometric
+with mean
+\[
+\text{ARL}_{0} = \frac{1}{p_{0}} = \frac{1}{2\Phi(-L)}.
+\]
+At the standard $L = 3$ limits, $p_{0} = 2\Phi(-3) \approx 0.0027$,
+so $\text{ARL}_{0} \approx 370$: a stable process signals a false
+alarm on average once every $370$ samples. Tightening to
+$L = 2$ raises $p_{0}$ to $0.0455$ and drops $\text{ARL}_{0}$ to
+about $22$, a false alarm roughly seventeen times more often. The
+three-sigma convention is not arbitrary; it buys a long quiet
+stretch between false alarms.
+
+The out-of-control ARL measures detection speed. When the process
+mean shifts by $\delta\sigma$ (in units of the single-observation
+standard deviation), a subgroup of size $n$ shifts the plotted mean
+by $\delta\sqrt{n}$ standard errors. The probability that a point
+now falls outside the limits is
+$p_{1} = \Phi(-L + \delta\sqrt{n}) + \Phi(-L - \delta\sqrt{n})$,
+and $\text{ARL}_{1} = 1/p_{1}$. For a one-sigma shift
+($\delta = 1$) with subgroup size $n = 4$ at $L = 3$, the shift is
+$\delta\sqrt{n} = 2$ standard errors, so
+$p_{1} = \Phi(-1) + \Phi(-5) \approx 0.159$ and
+$\text{ARL}_{1} \approx 6.3$: the chart takes about six subgroups
+to catch a one-sigma shift. Doubling the subgroup to $n = 16$
+moves the shift to $4$ standard errors, raises $p_{1}$ to about
+$0.84$, and drops $\text{ARL}_{1}$ to about $1.2$: near-immediate
+detection, at four times the sampling cost.
+
+The economic design of the chart trades the two ARLs against each
+other and against cost. A false alarm costs an investigation that
+finds nothing (operator time, a halted line, a needless teardown);
+a missed shift costs whatever the out-of-control process produces
+before the chart catches it (scrap, rework, a field return). The
+control-limit width $L$ sets $\text{ARL}_{0}$, the subgroup size
+$n$ and sampling interval set $\text{ARL}_{1}$, and the working
+design minimises the expected total cost per unit time:
+\[
+\text{expected cost rate} \approx
+\underbrace{\frac{c_{\text{FA}}}{\text{ARL}_{0} \cdot h}}
+_{\text{false-alarm rate} \times \text{cost}}
++ \underbrace{c_{\text{shift}} \cdot \frac{\text{ARL}_{1} \cdot h}
+{2}}_{\text{expected out-of-control exposure}}
++ \underbrace{\frac{c_{\text{sample}} \cdot n}{h}}
+_{\text{sampling cost}},
+\]
+where $h$ is the sampling interval, $c_{\text{FA}}$ the cost of a
+false alarm, $c_{\text{shift}}$ the cost per unit time of running
+out of control, and $c_{\text{sample}}$ the per-observation cost.
+The formula is a planning sketch, not a production optimiser; the
+Duncan economic-design model and its successors, catalogued in
+Montgomery \cite[ch.~10]{text:ch08-montgomery-spc-2019}, refine it.
+The working point is that $L$ and $n$ are decision variables, not
+constants handed down by convention: a line where a false alarm
+halts a furnace worth thousands per hour wants a wider $L$ and a
+longer $\text{ARL}_{0}$; a line where an undetected shift ships
+defective safety parts wants a larger $n$ and a shorter
+$\text{ARL}_{1}$, and pays for it in sampling. The
+CUSUM and EWMA charts, which accumulate evidence across successive
+samples rather than judging each one alone, reach a much shorter
+$\text{ARL}_{1}$ for small shifts at the same $\text{ARL}_{0}$, and
+are the working choice when the shifts that matter are smaller than
+one sigma.
 
 \section{Bayesian intuition for the practitioner}\pathtag{standard}
 
@@ -1899,6 +2070,159 @@ at the same data would have reported a $1/50 = 2 \,\%$ point
 estimate with an upper $97.5$th-percentile bound near $11 \,\%$,
 which both wastes the prior information and forces a more
 conservative downstream decision than the data warrant.
+
+\subsection{Gamma-Poisson worked example: a failure-rate estimate
+from field exposure}
+
+The beta-binomial pair estimates a probability from pass/fail
+counts. When the data are event counts accumulated over a measured
+exposure rather than successes out of a fixed number of trials, the
+conjugate pair is gamma-Poisson. The unknown quantity is a rate
+$\lambda$: failures per unit of time, defects per unit of area,
+arrivals per unit of duration. The \engterm{gamma distribution} is
+the conjugate prior for the Poisson rate, and the update is again
+arithmetic \cite[ch.~2]{text:ch08-gelman-bda3-2013}.
+
+\textit{Setup.} A pump-seal supplier tracks warranty failures
+across a fleet. Historical experience across the prior model year
+gives a mean failure rate near $0.10$ failures per
+$10^{3}\,\si{\hour}$ of operation, with substantial batch-to-batch
+spread. The reliability engineer encodes this as a
+$\text{Gamma}(\alpha = 2, \beta = 20)$ prior on $\lambda$ (with
+$\lambda$ in failures per $10^{3}\,\si{\hour}$), which has mean
+$\alpha/\beta = 2/20 = 0.10$ and standard deviation
+$\sqrt{\alpha}/\beta = \sqrt{2}/20 \approx 0.071$. A new production
+lot accumulates $T = 40$ units of exposure (each unit is
+$10^{3}\,\si{\hour}$ of operation) and returns $K = 6$ failures.
+What is the posterior rate, and what is the posterior probability
+that the rate exceeds the contract ceiling of $0.20$ failures per
+$10^{3}\,\si{\hour}$?
+
+\textit{Conjugate update.} The Poisson likelihood for $K$ events
+over exposure $T$ is $L(\lambda) \propto \lambda^{K}
+e^{-\lambda T}$. The gamma prior is $\pi(\lambda) \propto
+\lambda^{\alpha - 1} e^{-\beta \lambda}$. Their product is
+proportional to $\lambda^{K + \alpha - 1} e^{-(T + \beta)\lambda}$,
+which is $\text{Gamma}(\alpha + K, \beta + T)$. Add observed
+events to the shape parameter, add observed exposure to the rate
+parameter.
+
+\textit{Computation.} With $\alpha = 2$, $\beta = 20$, $K = 6$,
+$T = 40$, the posterior is $\text{Gamma}(8, 60)$. The posterior
+mean is $8/60 \approx 0.133$ failures per $10^{3}\,\si{\hour}$, and
+the posterior standard deviation is $\sqrt{8}/60 \approx 0.047$.
+The data pulled the estimate up from the prior mean of $0.10$ (the
+observed rate $6/40 = 0.15$ is above the prior mean) and sharpened
+it (the prior standard deviation $0.071$ fell to $0.047$).
+\Cref{fig:vol01:ch08:gamma-poisson-update} shows the prior and
+posterior densities.
+
+\input{volumes/01-quantity/ch08-statistics-for-engineers/figures/fig-gamma-poisson-update.tex}
+
+\textit{Credible interval and contract decision.} A $95 \,\%$
+central credible interval for $\text{Gamma}(8, 60)$ runs from the
+$2.5$th to the $97.5$th percentile, approximately $[0.058, 0.246]$
+failures per $10^{3}\,\si{\hour}$. The posterior probability that
+the rate exceeds the contract ceiling of $0.20$ is
+$\Pr(\text{Gamma}(8, 60) > 0.20) \approx 0.087$, so the team can
+state that the ceiling is exceeded with about $9 \,\%$ posterior
+probability. The batch is accepted under a typical $10 \,\%$
+threshold, but the margin is thinner than the pass/fail phrasing
+alone would suggest, and a purely frequentist rate estimate of
+$6/40 = 0.15 \pm 0.061$ (the Poisson standard error
+$\sqrt{K}/T$) would have carried no prior context to weigh against
+the ceiling.
+
+\textit{Mean-time-between-failures reading.} The rate estimate
+inverts directly to a mean time between failures. The posterior
+mean rate $0.133$ failures per $10^{3}\,\si{\hour}$ corresponds to
+an MTBF of $1/0.133 \approx 7.5 \times 10^{3}\,\si{\hour}$; the
+upper credible bound $0.246$ corresponds to an MTBF floor of
+about $4.1 \times 10^{3}\,\si{\hour}$. A maintenance planner who
+sizes a spares budget uses the MTBF floor, not the point estimate,
+so that the spares stock is not undersized when the true rate sits
+at the pessimistic end of the credible interval.
+
+\textit{Reporting.} \emph{Prior $\text{Gamma}(2, 20)$ (2024 fleet
+data, current as of 2025), exposure $T = 40$ unit-$10^{3}\,$h,
+$K = 6$ failures, posterior $\text{Gamma}(8, 60)$, mean $0.133$
+failures per $10^{3}\,$h, $95 \,\%$ credible interval
+$[0.058, 0.246]$, $\Pr(\lambda > 0.20) = 0.087$; MTBF
+$\approx 7.5 \times 10^{3}\,$h, floor $\approx 4.1 \times
+10^{3}\,$h.} The reader can audit the prior, the exposure, and the
+event count.
+
+\subsection{Dirichlet-multinomial worked example: defect-mode
+mix estimation}
+
+A third conjugate pair handles categorical counts. When a
+manufacturing failure is classified into one of several mutually
+exclusive modes, the unknown quantity is the vector of mode
+proportions $\boldsymbol\theta = (\theta_{1}, \ldots, \theta_{m})$
+summing to one. The \engterm{Dirichlet distribution} is the
+conjugate prior for multinomial category counts, and the update is
+arithmetic in the same way the beta-binomial and gamma-Poisson
+updates are \cite[ch.~3]{text:ch08-gelman-bda3-2013}.
+
+\textit{Setup.} A returned-goods analysis classifies each field
+failure of a connector into one of four modes: contact corrosion,
+solder-joint crack, housing fracture, or contamination. A prior
+$\text{Dir}(2, 2, 2, 2)$ encodes weak symmetry (no mode favoured,
+each with an effective prior count of one observation). A batch of
+$n = 60$ field returns is classified, giving observed counts
+$\boldsymbol n = (31, 14, 9, 6)$ across the four modes.
+
+\textit{Conjugate update.} The multinomial likelihood is
+$L(\boldsymbol\theta) \propto \prod_{j=1}^{m} \theta_{j}^{n_{j}}$
+and the Dirichlet prior is $\pi(\boldsymbol\theta) \propto
+\prod_{j=1}^{m} \theta_{j}^{\alpha_{j} - 1}$. Their product is
+$\text{Dir}(\alpha_{1} + n_{1}, \ldots, \alpha_{m} + n_{m})$. Add
+the observed count in each category to that category's prior
+parameter.
+
+\textit{Computation.} The posterior is
+$\text{Dir}(33, 16, 11, 8)$, with total concentration
+$33 + 16 + 11 + 8 = 68$. The posterior mean for mode $j$ is
+$(\alpha_{j} + n_{j})/68$: contact corrosion
+$33/68 \approx 0.485$, solder-joint crack $16/68 \approx 0.235$,
+housing fracture $11/68 \approx 0.162$, contamination
+$8/68 \approx 0.118$. The posterior standard deviation for the
+dominant mode is
+\[
+\sqrt{\frac{0.485(1 - 0.485)}{68 + 1}} \approx 0.060,
+\]
+using the Dirichlet marginal-variance formula
+$\theta_{j}(1 - \theta_{j})/(A + 1)$ with $A = 68$ the posterior
+concentration. A $95 \,\%$ credible interval on the corrosion
+share is roughly $0.485 \pm 2 \cdot 0.060 = [0.365, 0.605]$.
+
+\textit{Engineering reading.} Contact corrosion is the dominant
+mode with posterior mean near $0.49$ and a credible interval that
+excludes $0.35$, so corrosion accounts for something between a
+third and three-fifths of field failures. The corrective-action
+budget follows the posterior mean weighted by the per-mode repair
+cost, not the raw counts: a rare mode with a catastrophic
+consequence can outrank a common mode with a cheap fix once the
+per-mode cost multiplies the proportion. The Dirichlet posterior
+supplies the proportion and its uncertainty; the cost model
+supplies the weighting.
+
+\textit{Common errors.} (i) Treating the raw fractions
+$31/60, 14/60, \ldots$ as certain, ignoring that $n = 60$ leaves
+each proportion uncertain to several percentage points. (ii)
+Comparing two modes by their point estimates without checking
+whether their credible intervals overlap; solder-joint crack
+($0.235$) and housing fracture ($0.162$) have overlapping
+intervals and are not cleanly separated at $n = 60$. (iii)
+Choosing a strongly informative Dirichlet prior that encodes the
+conclusion the analyst expected.
+
+\textit{Reporting.} \emph{Prior $\text{Dir}(2, 2, 2, 2)$, counts
+$(31, 14, 9, 6)$ over $n = 60$, posterior
+$\text{Dir}(33, 16, 11, 8)$; posterior mean mode mix
+$(0.49, 0.24, 0.16, 0.12)$; corrosion $95 \,\%$ credible interval
+$[0.37, 0.60]$.} The reader can audit the prior and the counts and
+recompute every proportion.
 
 \subsection{Sequential testing for go/no-go gates}
 

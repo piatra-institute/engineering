@@ -136,6 +136,52 @@ not stepped for leap seconds. As of 2026, GPS time is $18 \,\si
 navigation message carries the GPS-UTC offset so receivers can
 present UTC when required \cite{web:usno-gps-time}.
 
+\subsection{Applied vignette: how large systems survive a leap
+second}
+
+A leap second is a one-second discontinuity in UTC, and a
+discontinuity is precisely what a computer's notion of time is not
+built to tolerate. Most operating systems represent civil time as a
+count of seconds since an epoch and assume that count increases
+monotonically. Inserting a leap second forces one of three
+behaviours: repeat the second $23{:}59{:}59$ so the same timestamp
+occurs twice, freeze the clock for one second, or step the clock
+backward by one second. Each breaks a program that assumes
+timestamps strictly increase. The historical record is unforgiving:
+the 30 June 2012 leap second triggered lockups in web services,
+airline reservation systems, and Linux kernels whose high-resolution
+timer code deadlocked when the clock stepped, and several large
+operators took hours to recover.
+
+The working engineering response, adopted across the large-scale
+operators, is the \engterm{leap smear}: instead of inserting the
+extra second at midnight, the time service spreads it across a
+window (commonly $24 \,\si{\hour}$, sometimes centred on the
+insertion) by running every clock slightly slow. Over a
+$24 \,\si{\hour}$ smear window, the fractional rate offset needed to
+absorb one second is $1 \,\si{\second} / 86{,}400 \,\si{\second}
+\approx 1.16 \times 10^{-5}$, so every server's clock runs about
+$11.6 \,\si{\micro\second}$ slow per second for a day, and no
+timestamp ever moves backward or repeats. The cost is that a smeared
+clock disagrees with UTC by up to half a second during the window,
+which is fine for logging and transaction ordering and unacceptable
+for a metrology laboratory or a synchrophasor network that needs
+true UTC to the microsecond.
+
+The vignette carries the general lesson without any new physics: a
+discontinuity in a reference signal is an engineering hazard, and the
+mitigation trades a bounded, known rate error for the elimination of
+the discontinuity. A reader who designs a system that consumes UTC
+should know which behaviour their time source applies at a leap
+second, because a smeared source and a stepped source disagree by up
+to half a second for a day around the event, and a system that mixes
+the two silently misorders records across that window. The
+CGPM Resolution 4 of 2022 direction to widen the tolerance on
+UT1-UTC by or before 2035 would retire the frequent-leap-second
+regime and with it the smear, but until then the smear is the
+working practice for any system where monotonic time matters more
+than sub-second agreement with UTC \cite{web:nist-leap-seconds}.
+
 \subsection{Why the second went first}
 
 The historical pattern is informative. The metre was redefined in
@@ -219,6 +265,36 @@ length thermally (the invar-and-brass gridiron pendulum, whose
 materials' differential expansion cancels the net change). The
 working lesson is that one environmental coupling can dominate the
 error budget of an otherwise precise instrument.
+
+\textbf{Worked example: the gridiron compensation ratio.} The
+gridiron pendulum cancels the temperature drift of the previous
+example by combining two metals whose different expansion
+coefficients pull the effective length in opposite directions. Steel
+rods (coefficient $\alpha_{\text{s}} = 1.2 \times 10^{-5} \,\si{\per
+\kelvin}$) carry the bob downward as they lengthen; brass rods
+(coefficient $\alpha_{\text{b}} = 1.9 \times 10^{-5} \,\si{\per
+\kelvin}$) push it upward. For zero net change in the effective
+length, the heated brass length $\ell_{\text{b}}$ must expand as much
+as the heated steel length $\ell_{\text{s}}$:
+\[
+\alpha_{\text{s}} \ell_{\text{s}} = \alpha_{\text{b}}
+\ell_{\text{b}} \quad\Longrightarrow\quad
+\frac{\ell_{\text{b}}}{\ell_{\text{s}}} =
+\frac{\alpha_{\text{s}}}{\alpha_{\text{b}}} =
+\frac{1.2}{1.9} = 0.63 .
+\]
+For a seconds pendulum whose net effective length is close to
+$1 \,\si{\meter}$, the builder therefore proportions roughly
+$0.63 \,\si{\meter}$ of brass against $1 \,\si{\meter}$ of steel in
+the rod frame. If the ratio is off by $10\,\%$, the residual
+fractional length change over a $5 \,\si{\kelvin}$ excursion is about
+$0.1 \times \alpha_{\text{s}} \times 5 = 6 \times 10^{-6}$, which
+scales to $3 \times 10^{-6}$ in period and $0.26 \,\si{\second}$ per
+day, a factor of ten better than the uncompensated steel rod but far
+short of what the ratio delivers when it is trimmed correctly. The
+working lesson is that compensation converts a first-order
+sensitivity into a residual set by the accuracy of a ratio, and the
+ratio is a construction tolerance the builder can measure and adjust.
 
 \subsection{The quartz crystal oscillator}
 
@@ -339,6 +415,34 @@ replaced caesium as the SI definition of the second. The CCTF and
 national metrology laboratories are preparing the technical basis
 for a future optical redefinition; the schedule should be cited to
 current BIPM or CCTF material rather than stated as a fixed decade.
+
+\textbf{Worked example: the frequency-comb gear ratio.} An optical
+clock ticks at hundreds of terahertz, far above any electronic
+counter's reach, so the comb bridges the gap by dividing the optical
+frequency down to a countable one. A strontium clock transition sits
+near $\nu_{\text{opt}} = 429 \,\si{\tera\hertz}$. A femtosecond comb
+with pulse repetition rate $f_{\text{rep}} = 250 \,\si{\mega\hertz}$
+produces a spectrum of lines at $\nu_n = f_{\text{ceo}} + n
+f_{\text{rep}}$, where $f_{\text{ceo}}$ is the carrier-envelope
+offset frequency (a radio-frequency quantity, here taken as $40 \,\si
+{\mega\hertz}$). The comb line nearest the clock transition has index
+\[
+n = \frac{\nu_{\text{opt}} - f_{\text{ceo}}}{f_{\text{rep}}}
+= \frac{429 \times 10^{12} - 40 \times 10^{6}}{250 \times 10^{6}}
+\approx 1.716 \times 10^{6},
+\]
+so line number roughly $1.7$ million falls on the transition. The
+gear ratio is that index: a fractional change of $10^{-16}$ in the
+optical frequency appears as the same fractional change in
+$f_{\text{rep}}$, but $f_{\text{rep}}$ is a $250 \,\si{\mega\hertz}$
+signal an ordinary counter reads directly. Counting $f_{\text{rep}}$
+and $f_{\text{ceo}}$, both radio frequencies locked to the clock,
+recovers the optical frequency through the comb equation without ever
+counting $429 \,\si{\tera\hertz}$ directly. The working lesson is
+that the comb is a frequency divider with a ratio of order a million,
+and the two radio-frequency outputs it produces are what downstream
+electronics consume; the terahertz transition is never counted, only
+divided down.
 
 \subsection{Comparing the four families}
 
@@ -503,6 +607,32 @@ full rotations of phase, which is the same as zero phase shift if
 all that is observed is the position on the unit circle. The
 engineer who measures phase across two signals must know the
 unwrapped phase, the cycle count, or both.
+
+\Cref{fig:vol01:ch06:phase-relationships} draws the three canonical
+relationships on a common time axis. The reference cosine, the
+quadrature signal a quarter period behind it, and the out-of-phase
+signal a half period behind it are the offsets an engineer reads off
+a two-channel oscilloscope by aligning zero crossings.
+
+\input{volumes/01-quantity/ch06-time-frequency-signals/figures/fig-phase-relationships.tex}
+
+\textbf{Worked example: reading a delay off two oscilloscope
+channels.} Two $60 \,\si{\hertz}$ AC waveforms are displayed on a
+two-channel scope. Channel B crosses zero going positive $0.92 \,\si
+{\milli\second}$ after channel A crosses zero going positive. The
+period is $T = 1/60 \approx 16.67 \,\si{\milli\second}$, so the
+fractional offset is $0.92/16.67 = 0.0552$ of a period, which is
+$\Delta\varphi = 2\pi \times 0.0552 = 0.347 \,\si{\radian} =
+19.9^{\circ}$. Channel B lags channel A by about $20^{\circ}$. A
+technician who reads this as a power-factor angle infers
+$\cos(19.9^{\circ}) = 0.94$, a lagging power factor consistent with
+an inductive load. The reverse check: a $20^{\circ}$ lag at $60 \,\si
+{\hertz}$ corresponds to a delay $\tau = \Delta\varphi/(2\pi f) =
+0.347/(2\pi \times 60) = 0.92 \,\si{\milli\second}$, recovering the
+measured offset. The one trap is the half-cycle ambiguity: if the
+scope trigger picks the wrong zero crossing, the reading is off by a
+full $180^{\circ}$, and only the known sign of the load (inductive
+lags, capacitive leads) resolves which crossing is the right one.
 
 \subsection{The mains as a frequency reference}
 
@@ -1148,6 +1278,38 @@ brightness corresponds to a slow harmonic decay rate; the
 clarinet's hollow tone corresponds to its odd-only structure. The
 spectrum carries the perceptual identity of the instrument; the
 fundamental alone carries only the pitch.
+
+\Cref{fig:vol01:ch06:harmonic-content} collects the three canonical
+waveforms on one amplitude axis. The sawtooth carries every integer
+harmonic at amplitude $1/n$; the square and triangle carry only odd
+harmonics, because both are odd-symmetric about their half-period;
+the triangle's $1/n^2$ decay outruns the square's $1/n$, the
+frequency-domain reading of its smoother time-domain shape.
+
+\input{volumes/01-quantity/ch06-time-frequency-signals/figures/fig-harmonic-content.tex}
+
+\textbf{Worked example: total harmonic distortion of a clipped
+sinusoid.} A power amplifier driven past its rails clips the peaks
+of a $1 \,\si{\kilo\hertz}$ sinusoid, and the clipped output measures
+a fundamental at $1.00 \,\text{V}$ RMS with odd harmonics at
+$0.09 \,\text{V}$ ($3 \,\si{\kilo\hertz}$), $0.05 \,\text{V}$
+($5 \,\si{\kilo\hertz}$), and $0.03 \,\text{V}$ ($7 \,\si{\kilo
+\hertz}$), even harmonics negligible. The total harmonic distortion
+is
+\[
+\mathrm{THD} = \frac{\sqrt{V_3^2 + V_5^2 + V_7^2}}{V_1}
+= \frac{\sqrt{0.09^2 + 0.05^2 + 0.03^2}}{1.00}
+= \frac{\sqrt{0.0115}}{1.00} = 0.107,
+\]
+or about $10.7\,\%$. The odd-only, slowly-falling harmonic pattern is
+the spectral signature of symmetric clipping: the clipped waveform
+approaches a square wave, whose harmonics fall as $1/n$, so the fifth
+harmonic at roughly $1/5$ of the fundamental is the working diagnostic
+that the amplifier is clipping rather than adding low-order distortion
+from a mildly non-linear transfer curve (which would show a stronger
+second harmonic). A reader who sees only the fundamental and misses
+the harmonic structure reports a clean tone and a distorted amplifier
+as the same measurement.
 
 \subsection{Spectrograms: time-localised frequency content}
 
@@ -2561,6 +2723,52 @@ that distinguishes white noise, flicker noise, and random-walk
 noise; the engineer who reports the Allan deviation as a function
 of $\tau$ on a log-log plot preserves the full noise signature
 and can match it against the candidate physical mechanisms.
+
+\begin{mastery}
+\textit{Why the ordinary variance fails for a clock, and the
+two-sample variance rescues it.} The reason the Allan variance
+replaced the ordinary sample variance for oscillators is
+convergence, not convenience. Suppose an engineer records $M$
+non-overlapping fractional-frequency averages $\bar y_1, \ldots,
+\bar y_M$ and computes the ordinary sample variance about the mean,
+\[
+s^2 = \frac{1}{M-1} \sum_{k=1}^{M} (\bar y_k - \bar y)^2 .
+\]
+For white frequency noise this estimator converges as $M$ grows.
+For flicker frequency noise it grows slowly with $M$, and for the
+random-walk frequency noise that dominates most oscillators at long
+averaging times it grows without bound: the longer the record, the
+larger the estimate, so $s^2$ has no limiting value to report. The
+mean $\bar y$ itself is not well defined for these processes, and
+subtracting an ill-defined mean is what makes the ordinary variance
+diverge.
+
+The Allan variance sidesteps the mean by differencing adjacent
+windows rather than subtracting a global average:
+\[
+\sigma_y^2(\tau) = \frac{1}{2} \left\langle (\bar y_{k+1} -
+\bar y_k)^2 \right\rangle .
+\]
+The first difference $\bar y_{k+1} - \bar y_k$ removes any constant
+offset and any linear drift over the pair, so the estimator converges
+for white-PM, white-FM, flicker-FM, and random-walk-FM noise, the
+four processes that between them describe almost every working clock.
+The factor of $\tfrac{1}{2}$ makes $\sigma_y^2(\tau)$ equal to the
+ordinary variance in the one case where the ordinary variance
+converges, namely white frequency noise, so the two agree where they
+can and the Allan variance keeps working where the ordinary variance
+quits.
+
+The same differencing structure appears elsewhere in \emph{Engineering}:
+the first difference is the discrete analogue of a derivative, and
+taking a derivative of a random-walk process yields a stationary
+white process whose variance is finite. The Allan variance is, in
+this sense, the variance of the rate of change of the clock error,
+which is bounded even when the clock error itself is not. A reader
+who meets a divergent variance anywhere (an integrator that never
+settles, a cumulative-sum monitor that trends forever) should ask
+whether a differenced statistic converges where the raw one does not.
+\end{mastery}
 
 \subsection{Worked engineering case: $24$-hour grid frequency
 against a GPS-disciplined reference}\pathtag{standard}
