@@ -91,6 +91,16 @@ audit-docs:
 	        found=1; \
 	    fi; \
 	done; \
+	vol_paths="$$(find volumes -name 'chapter.tex' 2>/dev/null)"; \
+	for token in 'Q55-vol' 'Q56-vol' 'the Q16 categories' 'editorial settlement on exercise types' 'editor should attach' 'attach the solution and rubric'; do \
+	    hits=$$(grep -rnF -- "$$token" $$vol_paths 2>/dev/null || true); \
+	    if [ -n "$$hits" ]; then \
+	        echo ""; \
+	        echo "LEAK in volumes/: $$token"; \
+	        echo "$$hits"; \
+	        found=1; \
+	    fi; \
+	done; \
 	if [ $$found -eq 0 ]; then echo "audit-docs: PASS (no stale references)"; \
 	else echo ""; echo "audit-docs: FAIL"; exit 1; fi
 
