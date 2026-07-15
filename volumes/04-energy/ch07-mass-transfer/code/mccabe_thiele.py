@@ -72,6 +72,6 @@ def stages(xD: float, xW: float, zF: float, alpha: float, R: float,
 
 
 if __name__ == "__main__":
-    out = stages(xD=0.95, xW=0.05, zF=0.40, alpha=2.5, R=1.5)
+    out = stages(xD=0.95, xW=0.05, zF=0.45, alpha=2.4, R=1.8)
     print(f"equilibrium stages : {out['stages']}")
     print(f"feed stage         : {out['feed_stage']}")

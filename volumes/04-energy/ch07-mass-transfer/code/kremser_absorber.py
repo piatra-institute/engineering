@@ -26,7 +26,7 @@ def stages_for_recovery(A: float, target: float) -> float:
         return target / (1.0 - target)
     # invert the Kremser equation for N (lean-solvent form)
     num = log((1.0 - target / A) / (1.0 - target))
-    return num / log(A) - 1.0
+    return num / log(A)
 
 
 if __name__ == "__main__":
