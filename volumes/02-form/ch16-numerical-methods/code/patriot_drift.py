@@ -14,7 +14,7 @@ This script writes ../data/patriot-drift.csv with one row per operating
 hour and the columns:
   hours, counter, timing_error_s, position_error_m_at_scud_speed
 
-Used by section 16.8.1 and Failure-analysis exercise 1.
+Used by section 16.12.2 and Failure-analysis exercise 1.
 """
 from __future__ import annotations
 
